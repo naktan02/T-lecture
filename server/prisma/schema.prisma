@@ -1,0 +1,50 @@
+// server/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id    Int     @id @default(autoincrement())
+  userid String  @unique
+  name  String?
+}
+
+// =========================================
+// 📍 강의장소 (Lecture Location)
+// =========================================
+model LectureLocation {
+  id                       Int      @id @default(autoincrement())
+  unitName                 String   // 부대명
+  address                  String   // 주소
+  contactPerson            String   // 부대 담당자명
+  contactNumber            String   // 담당자번호
+  isCateringAvailable      Boolean  @default(false) // 수탁급식여부
+  isAccommodationAvailable Boolean  @default(false) // 회관숙식여부
+  restAreaNotes            String?  // 강사 휴게실 및 여자 화장실 여부 (단순 O/X보다 상세 정보가 필요할 수 있어 String 추천)
+
+  dailyDetails             DailyEducationDetail[]   // 1:N 관계 설정
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// =========================================
+// 📅 일자별 교육 세부정보 (Daily Education Detail)
+// =========================================
+model DailyEducationDetail {
+  id                Int      @id @default(autoincrement())
+  date              DateTime // 📅 강의 가는 날짜
+  traineeCount      Int      // 👥 교육 인원
+  facilityNote      String?  // 📝 비고 (TV, 마이크 등 변동사항)
+
+  lectureLocationId Int
+  lectureLocation   LectureLocation @relation(fields: [lectureLocationId], references: [id], onDelete: Cascade)
+
+  @@unique([lectureLocationId, date])
+}
