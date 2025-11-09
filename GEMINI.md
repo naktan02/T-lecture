@@ -50,7 +50,6 @@ T-LECTURE/
 │       ├── 📁 common/      # 공통 모듈 (미들웨어, 에러 핸들러)
 │       └── 📁 modules/     # ✅ 도메인별 모듈 (핵심 비즈니스 로직)
 │           ├── 📂 user/
-│           │   ├── 📁 schema/       # 입력값 검증 스키마 (Zod/Joi 등) 또는 DB별 보조 정의
 │           │   ├── 📁 repositories/ # Prisma를 사용한 DB 접근 계층
 │           │   ├── 📁 services/     # 순수 비즈니스 로직 계층
 │           │   └── 📁 controllers/  # HTTP 요청/응답 처리 계층
