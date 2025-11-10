@@ -9,10 +9,49 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// 사용자 역할 (관리자 / 강사)
+enum UserRole {
+  ADMIN      // 관리자
+  INSTRUCTOR // 강사
+}
+
+// 강사 유형 (주강사 / 부강사 / 보조강사)
+enum InstructorType {
+  MAIN      // 주강사
+  SUB       // 부강사
+  ASSISTANT // 보조강사
+}
+
+// 사용자 계정 상태 (승인 대기, 승인됨, 비활성화됨)
+enum UserStatus {
+  PENDING     // 관리자 승인 대기
+  APPROVED    // 승인됨
+  DEACTIVATED // 비활성화됨
+}
+
+// =========================================
+// 👤 사용자 (User) - 강사 및 관리자
+// =========================================
 model User {
-  id    Int     @id @default(autoincrement())
-  userid String  @unique
-  name  String?
+  id            Int     @id @default(autoincrement())
+  email         String  @unique // 이메일/ID (로그인용)
+  password      String  // 비밀번호 (반드시 해시하여 저장)
+  name          String  // 이름
+  contactNumber String? // 연락처
+  address       String? // 거주지 주소
+  addressLat    Float?  // 거주지 위도 (지도 기능)
+  addressLng    Float?  // 거주지 경도 (지도 기능)
+  hasCar        Boolean @default(false) // 자차 여부
+
+  // [요청사항 반영]
+  role           UserRole       @default(INSTRUCTOR) // 관리자/강사 구분
+  instructorType InstructorType? // 강사 유형 (주/부/보조) - 강사일 경우에만 해당
+  status         UserStatus     @default(PENDING)   // 계정 상태 (승인 대기 등)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 다른 모델(Batch, Assignment 등)과의 관계는 추후 추가
 }
 
 // =========================================

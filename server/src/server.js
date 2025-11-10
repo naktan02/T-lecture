@@ -11,7 +11,7 @@ app.use(logger); // Use the logger middleware
 
 // API Routes
 app.use('/api/locations', locationRoutes);
-app.use('/users', userRoutes);
+app.use('/api/users', userRoutes);
 
 // Base Route
 app.get('/', (req, res) => {
