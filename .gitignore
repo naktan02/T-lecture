@@ -31,9 +31,6 @@ lerna-debug.log*
 *.sln
 *.sw?
 
-# Docker
-docker-compose.yml
-
 # Misc
 .DS_Store
 Thumbs.db
