@@ -31,11 +31,11 @@ model Message {
 
 model MessageReceipt {
   messageId    Int @map("메시지id")
-  instructorId Int @map("강사id")
+  userId Int @map("강사id")
   readAt       DateTime? @map("read_at")
 
   message Message @relation(fields: [messageId], references: [id])
-  instructor Instructor @relation(fields: [instructorId], references: [userId])
+  user User @relation(fields: [userId], references: [id])
 
   @@map("메시지 수신자")
   @@id([instructorId, messageId])

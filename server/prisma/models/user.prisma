@@ -10,7 +10,7 @@ enum UserCategory {
 model User {
   id         Int           @id @default(autoincrement())
   name       String?
-  userid String?      @map("userid")
+  userEmail String?      @map("userEamil")
   password   String?
   userphoneNumber String?       @map("userphoneNumber")
   category   UserCategory? @map("분류")
