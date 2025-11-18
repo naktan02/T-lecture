@@ -1,7 +1,15 @@
 enum AssignmentCategory {
   Temporary
   Confirmed
+
   @@map("배치분류__t")
+}
+
+enum AssignmentState {
+  Active // 유효한 배정
+  Canceled // 취소된 배정
+
+  @@map("배정상태__t")
 }
 
 model InstructorAvailability {
@@ -11,35 +19,36 @@ model InstructorAvailability {
 
   instructor Instructor @relation(fields: [instructorId], references: [userId])
 
-  @@map("강사가능일")
   @@unique([instructorId, availableOn], map: "강사가능일_instructor_date_unique")
   @@index([instructorId], map: "강사가능일_instructor_idx")
+  @@map("강사가능일")
 }
 
-model LectureInstructorAssignment  {
-  instructorId Int @map("강사id")
-  unitdateId       Int @map("부대일정id")
-  category     AssignmentCategory? @map("배치분류")
+model InstructorUnitAssignment {
+  userId         Int
+  unitScheduleId Int
+  classification AssignmentCategory? @map("배치분류")
+  state          AssignmentState     @default(Active) @map("배정상태")
 
-  instructor Instructor @relation(fields: [instructorId], references: [userId])
-  schedule   UnitSchedule @relation(fields: [unitdateId], references: [id])
+  User         User         @relation(fields: [userId], references: [id])
+  UnitSchedule UnitSchedule @relation(fields: [unitScheduleId], references: [id])
 
-  @@map("강사-부대 배정")
+  messageAssignments MessageAssignment[]
 
-  @@id([unitdateId, instructorId])
-  @@unique([unitdateId, instructorId], map: "assignment_instructor_schedule_unique")
+  @@id([unitScheduleId, userId])
+  @@unique([unitScheduleId, userId], name: "assignment_instructor_schedule_unique")
+  @@map("강사_부대_배정")
 }
-
 
 model InstructorUnitDistance {
-  instructorId Int      @map("userid")
-  unitId       Int      @map("부대id")
-  distance     Decimal? @map("거리")
-  duration     Int?     @map("걸리는시간")
+  userId   Int
+  unitId   Int      @map("부대id")
+  distance Decimal? @map("거리")
+  duration Int?     @map("걸리는시간")
 
-  instructor Instructor @relation(fields: [instructorId], references: [userId])
+  instructor Instructor @relation(fields: [userId], references: [userId])
   unit       Unit       @relation(fields: [unitId], references: [id])
 
+  @@id([userId, unitId])
   @@map("강사-부대 거리")
-  @@id([instructorId, unitId], map: "instructor_unit_distance_pk")
 }

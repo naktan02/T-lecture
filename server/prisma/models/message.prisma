@@ -2,6 +2,7 @@ enum MessageType {
   Notice
   Temporary
   Confirmed
+
   @@map("유형__t")
 }
 
@@ -10,34 +11,44 @@ enum MessageStatus {
   Pending
   Sent
   Canceled
+
   @@map("상태__t")
 }
 
-
 model Message {
-  id        Int           @id @default(autoincrement())
-  type      MessageType?  @map("유형")
-  body      String?       @map("본문")
-  unitId    Int?          @map("부대id")
+  id        Int            @id @default(autoincrement())
+  type      MessageType?   @map("유형")
+  body      String?        @map("본문")
   status    MessageStatus? @map("상태")
-  createdAt DateTime?     @map("생성일시")
+  createdAt DateTime?      @map("생성일시")
 
-  unit      Unit?          @relation(fields: [unitId], references: [id])
-  receipts  MessageReceipt[]
+  assignments MessageAssignment[]
+  receipts    MessageReceipt[]
 
   @@map("메시지")
-  @@index([unitId], map: "메시지_unit_idx")
 }
 
 model MessageReceipt {
-  messageId    Int @map("메시지id")
-  userId Int @map("강사id")
-  readAt       DateTime? @map("read_at")
+  messageId Int       @map("메시지id")
+  userId    Int       @map("강사id")
+  readAt    DateTime? @map("read_at")
 
   message Message @relation(fields: [messageId], references: [id])
-  user User @relation(fields: [userId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
 
+  @@id([userId, messageId])
+  @@index([userId], map: "메시지수신_user_idx")
   @@map("메시지 수신자")
-  @@id([instructorId, messageId])
-  @@index([instructorId], map: "메시지수신_instructor_idx")
+}
+
+model MessageAssignment {
+  messageId      Int
+  unitScheduleId Int
+  userId         Int
+
+  message    Message                  @relation(fields: [messageId], references: [id])
+  assignment InstructorUnitAssignment @relation(fields: [unitScheduleId, userId], references: [unitScheduleId, userId])
+
+  @@id([messageId, unitScheduleId, userId])
+  @@map("메시지_배정")
 }
