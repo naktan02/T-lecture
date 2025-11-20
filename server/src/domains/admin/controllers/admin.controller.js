@@ -139,3 +139,54 @@ exports.rejectUser = async (req, res) => {
     res.status(500).json({ error: '거절 처리에 실패했습니다.' });
   }
 };
+
+// [일괄 거절] 여러 명의 가입 요청을 한 번에 삭제
+exports.rejectUsersBulk = async (req, res) => {
+  try {
+    const { userIds } = req.body; // 예: { "userIds": [10, 11, 12] }
+
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ error: '거절할 유저 ID 목록(배열)이 필요합니다.' });
+    }
+
+    // 트랜잭션으로 안전하게 삭제
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. 삭제 대상 ID 필터링 (안전을 위해 'PENDING' 상태인 유저만 골라냄)
+      const targets = await tx.user.findMany({
+        where: {
+          id: { in: userIds },
+          status: 'PENDING',
+        },
+        select: { id: true },
+      });
+
+      const targetIds = targets.map((u) => u.id);
+
+      if (targetIds.length === 0) {
+        return { count: 0 };
+      }
+
+      // 2. 연관된 강사 데이터(Instructor) 먼저 삭제
+      // (Foreign Key 제약조건 때문에 자식 데이터를 먼저 지워야 합니다.)
+      await tx.instructor.deleteMany({
+        where: { userId: { in: targetIds } },
+      });
+
+      // 3. 유저 데이터(User) 삭제
+      const deletedUsers = await tx.user.deleteMany({
+        where: { id: { in: targetIds } },
+      });
+
+      return deletedUsers;
+    });
+
+    res.json({
+      message: `${result.count}명의 가입 요청을 거절(삭제)했습니다.`,
+      count: result.count,
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: '일괄 거절 처리에 실패했습니다.' });
+  }
+};
