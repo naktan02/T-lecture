@@ -1,7 +1,7 @@
 // src/server.js
 const express = require('express');
 const config = require('./config');                 
-const { logger } = require('./common/middlewares'); 
+const { logger } = require('./common/middlewares/auth'); 
 const v1Router = require('./api/v1');              
 
 const app = express();
