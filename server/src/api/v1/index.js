@@ -1,6 +1,6 @@
 // src/api/v1/index.js
 const express = require('express');
-const userRoutes = require('./user.routes');
+const userRoutes = require('../../domains/user/routes/user.me.routes');
 const unitRoutes = require('./unit.routes');
 const distanceRoutes = require('./distance.routes');
 const authRoutes = require('./auth.routes');
@@ -13,7 +13,9 @@ const router = express.Router();
 router.use('/auth', authRoutes);
 
 // // /api/v1/users
-// router.use('/users', userRoutes);
+router.use('/users', require('../../domains/user/routes/user.me.routes'));
+// 관리자용 유저 라우터 연결
+router.use('/admin/users', require('../../domains/user/routes/user.admin.routes'));
 
 // /api/v1/locations
 router.use('/units', unitRoutes);

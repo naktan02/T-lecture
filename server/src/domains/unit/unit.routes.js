@@ -4,7 +4,7 @@ const router = express.Router();
 // [수정 전] require('../../modules/unit/controllers/unit.controller');
 const unitController = require('../../domains/unit/controllers/unit.controller');
 
-const { checkAuth, checkAdmin } = require('../../common/middlewares');
+const { checkAuth, checkAdmin } = require('../../common/middlewares/auth');
 
 // [중요] 부대 관리는 '관리자'만 가능하도록 보안 적용
 router.use(checkAuth);

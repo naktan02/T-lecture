@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const instructorController = require('../../domains/instructor/controllers/instructor.controller');
-const { checkAuth, checkInstructor } = require('../../common/middlewares');
+const { checkAuth, checkInstructor } = require('../../common/middlewares/auth');
 
 // [중요] 이 라우터 아래의 모든 요청은 '로그인' + '강사권한'이 필요함
 router.use(checkAuth);

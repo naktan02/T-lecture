@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../../domains/admin/controllers/admin.controller');
-const { checkAuth, checkAdmin } = require('../../common/middlewares');
+const { checkAuth, checkAdmin } = require('../../common/middlewares/auth');
 
 // 관리자만 접근 가능하도록 미들웨어 적용
 router.use(checkAuth);
