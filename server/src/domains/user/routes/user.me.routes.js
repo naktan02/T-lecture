@@ -1,4 +1,4 @@
-// web/server/src/domains/user/routes/user.me.routes.js
+//server/src/domains/user/routes/user.me.routes.js
 const express = require('express');
 const router = express.Router();
 const userMeController = require('../controllers/user.me.controller');

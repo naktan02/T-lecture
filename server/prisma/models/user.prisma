@@ -8,16 +8,16 @@ enum UserCategory {
 }
 
 enum Role {
-  ADMIN       // 관리자
-  INSTRUCTOR  // 강사
-  USER        // 일반 (혹은 승인 대기자)
+  ADMIN // 관리자
+  INSTRUCTOR // 강사
+  USER // 일반 (혹은 승인 대기자)
 }
 
 enum UserStatus {
-  PENDING   // 승인 대기
-  APPROVED  // 승인 완료 (활동 가능)
-  REJECTED  // 승인 거절
-  INACTIVE  // 탈퇴/정지
+  PENDING // 승인 대기
+  APPROVED // 승인 완료 (활동 가능)
+  REJECTED // 승인 거절
+  INACTIVE // 탈퇴/정지
 }
 
 model User {

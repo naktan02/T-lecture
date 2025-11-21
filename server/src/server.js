@@ -3,8 +3,9 @@ require('dotenv').config();
 const express = require('express');
 const config = require('./config');                 
 const { logger } = require('./common/middlewares/auth'); 
-const v1Router = require('./api/v1');              
-
+const v1Router = require('./api/v1');        
+      
+require('./jobs/distanceBatch.job');
 const app = express();
 
 app.use(express.json());

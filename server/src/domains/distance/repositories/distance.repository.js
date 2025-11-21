@@ -25,28 +25,26 @@ class DistanceRepository {
         },
         });
     }
-
     /**
-     * 특정 강사-부대 거리 조회
-     */
+   * 강사-부대 한 쌍의 거리 정보 조회
+   */
     async findOne(instructorId, unitId) {
-        return prisma.instructorUnitDistance.findUnique({
-        where: {
-            instructor_unit_distance_pk: {
-            instructorId,
-            unitId,
+            return prisma.instructorUnitDistance.findUnique({
+            where: {
+                instructor_unit_distance_pk: {
+                instructorId,
+                unitId,
+                },
             },
-        },
-        include: {
-            instructor: true,
-            unit: true,
-        },
-        });
+            include: {
+                unit: true,        // 필요 없으면 삭제
+                instructor: true,  // 필요 없으면 삭제
+            },
+            });
     }
-
     /**
-     * 특정 강사의 특정 범위 내 부대 거리 목록 조회
-     */
+   * 특정 강사 기준, 거리 범위 안에 있는 부대들 조회
+   */
     async findByDistanceRange(instructorId, minDistance, maxDistance) {
         return prisma.instructorUnitDistance.findMany({
         where: {

@@ -35,3 +35,7 @@ lerna-debug.log*
 # Misc
 .DS_Store
 Thumbs.db
+
+mysql_data/
+server/mysql_data/
+

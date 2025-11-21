@@ -138,3 +138,11 @@ exports.findUpcomingSchedules = async (limit = 50) => {
     },
   });
 };
+
+
+exports.updateCoords = async (unitId, lat, lng) => {
+  return prisma.unit.update({
+    where: { id: Number(unitId) },
+    data: { lat, lng },
+  });
+};

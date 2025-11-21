@@ -142,3 +142,18 @@ exports.updateAssignment = async (instructorId, unitScheduleId, data) => {
     data,
   });
 };
+
+
+exports.findActiveInstructors = async () => {
+  return prisma.instructor.findMany({
+    where: {
+      user: {
+        role: 'INSTRUCTOR',
+        status: 'APPROVED',
+      }
+    },
+    include: {
+      user: true,     // 필요 시 사용자 정보 포함
+    }
+  });
+};

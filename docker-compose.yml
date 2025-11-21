@@ -8,4 +8,4 @@ services:
       MYSQL_ROOT_PASSWORD: "1234"
       MYSQL_DATABASE: "Project"
     volumes:
-          - ./mysql_data:/var/lib/mysql
+      - ./mysql_data:/var/lib/mysql

@@ -1,66 +1,62 @@
-// server/src/modules/distance/controllers/distance.controller.js
-const distanceService = require('../services/distance.service');
+// server/src/domains/distance/controllers/distance.controller.js
+const distanceService = require('../../../domains/distance/services/distance.service');
+const kakaoUsageRepository = require('../../../domains/distance/repositories/kakaoUsage.repository');
 
-exports.calculateDistance = async (req, res) => {
+exports.getDistance = async (req, res, next) => {
     try {
-        const { instructorId, unitId } = req.body;
-        if (!instructorId || !unitId) {
-        return res.status(400).json({ error: 'instructorId and unitId are required' });
-        }
-
-        const result = await distanceService.calculateAndSaveDistance(
-        Number(instructorId),
-        Number(unitId)
-        );
-        res.status(201).json(result);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
+        const instructorId = Number(req.params.instructorId);
+        const unitId = Number(req.params.unitId);
+        const record = await distanceService.getDistance(instructorId, unitId);
+        res.json(record);
+    } catch (err) {
+        next(err);
     }
 };
 
-exports.getDistance = async (req, res) => {
+exports.getUnitsWithinDistance = async (req, res, next) => {
     try {
-        const { instructorId, unitId } = req.params;
-        const record = await distanceService.getDistance(Number(instructorId), Number(unitId));
-        res.status(200).json(record);
-    } catch (error) {
-        res.status(404).json({ error: error.message });
+        const instructorId = Number(req.params.instructorId);
+        const min = Number(req.query.min ?? 0);
+        const max = Number(req.query.max ?? 999999);
+
+        const units = await distanceService.getUnitsWithinDistance(
+        instructorId,
+        min,
+        max,
+        );
+        res.json(units);
+    } catch (err) {
+        next(err);
     }
 };
 
-exports.getUnitsWithinDistance = async (req, res) => {
+exports.getTodayUsage = async (req, res, next) => {
     try {
-        const { instructorId } = req.params;
-        const { minDistance, maxDistance } = req.query;
+        const usage = await kakaoUsageRepository.getOrCreateToday();
 
-        const distances = await distanceService.getUnitsWithinDistance(
-        Number(instructorId),
-        Number(minDistance),
-        Number(maxDistance)
-        );
+        const remainingRoute = MAX_ROUTE_PER_DAY - usage.routeCount;
+        const remainingGeocode = MAX_GEOCODE_PER_DAY - usage.geocodeCount;
 
-        res.status(200).json({
-        instructorId: Number(instructorId),
-        minDistance: Number(minDistance),
-        maxDistance: Number(maxDistance),
-        count: distances.length,
-        distances,
+        res.json({
+        date: usage.date,
+        routeCount: usage.routeCount,
+        geocodeCount: usage.geocodeCount,
+        remainingRoute,
+        remainingGeocode,
         });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+    } catch (err) {
+        next(err);
     }
 };
 
-/**
- * 일일 배치 엔드포인트
- */
-exports.calculateDailyDistances = async (req, res) => {
+exports.runDailyBatchOnce = async (req, res, next) => {
     try {
-        const limit = req.query.limit ? Number(req.query.limit) : 200;
-        const result = await distanceService.calculateDistancesBySchedulePriority(limit);
-        res.status(200).json(result);
-    } catch (error) {
-        console.error('Daily distance batch error:', error);
-        res.status(500).json({ error: error.message });
+        const limit = Number(req.body.limit ?? 200);
+        const result = await distanceService.calculateDistancesBySchedulePriority(
+        limit,
+        );
+        res.json(result);
+    } catch (err) {
+        next(err);
     }
 };

@@ -1,4 +1,4 @@
-// web/server/src/domains/user/repositories/user.repository.js
+// domains/user/repositories/user.repository.js
 const prisma = require('../../../libs/prisma');
 
 class UserRepository {
