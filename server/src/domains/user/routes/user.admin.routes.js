@@ -2,9 +2,7 @@
 const express = require('express');
 const router = express.Router();
 
-const auth = require('../../../common/middlewares/auth');
-const requireRole = require('../../../common/middlewares/requireRole');
-const controller = require('../controllers/user.admin.controller');
+const { auth, requireRole } = require('../../common/middlewares');
 
 // 이 아래로는 전부 관리자 전용
 router.use(auth, requireRole('ADMIN'));

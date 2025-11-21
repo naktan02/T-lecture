@@ -14,7 +14,15 @@ module.exports = async (req, res, next) => {
 
     // ⭐ DB에서 유저 정보 조회 (실무 필수)
     const user = await prisma.user.findUnique({
-      where: { id: payload.id }
+      where: { id: payload.id },
+      select: {
+        id: true,
+        role: true,
+        status: true,
+        // 진짜 req.user에서 자주 쓰는 필드만
+        name: true,
+        userEmail: true,
+      },
     });
 
     if (!user) {
@@ -29,6 +37,9 @@ module.exports = async (req, res, next) => {
     next();
 
   } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: '토큰이 만료되었습니다.' });
+    }
     return res.status(401).json({ message: '유효하지 않은 토큰입니다.' });
   }
 };
