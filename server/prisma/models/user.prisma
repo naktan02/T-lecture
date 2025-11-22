@@ -15,8 +15,8 @@ enum Role {
 
 enum UserStatus {
   PENDING // 승인 대기
-  APPROVED // 승인 완료 (활동 가능)
-  REJECTED // 승인 거절
+  APPROVED // 승인 완료 (활동 증)
+  RESTING   // 휴식 중 (배정 X)
   INACTIVE // 탈퇴/정지
 }
 
