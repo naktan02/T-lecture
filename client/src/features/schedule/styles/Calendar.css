@@ -1,0 +1,40 @@
+/* 기본 캘린더 스타일 오버라이딩 */
+.react-calendar {
+  width: 100%;
+  max-width: 400px;
+  background: white;
+  border: 1px solid #a0a096;
+  border-radius: 8px;
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.125em;
+  padding: 10px;
+}
+
+/* 내가 선택한 날짜 (파란색 동그라미) */
+.selected-date {
+  background: #3b82f6 !important;
+  color: white !important;
+  border-radius: 50%;
+}
+
+/* 주말 색상 */
+.react-calendar__month-view__days__day--weekend {
+  color: #d10000;
+}
+
+/* 버튼 스타일 */
+.submit-btn {
+  margin-top: 20px;
+  width: 100%;
+  max-width: 400px;
+  padding: 12px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+.submit-btn:hover {
+  background-color: #2563eb;
+}
