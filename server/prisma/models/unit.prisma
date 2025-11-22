@@ -1,0 +1,65 @@
+enum MilitaryType {
+  Army
+  Navy
+
+  @@map("군구분__t")
+}
+
+model Unit {
+  id            Int           @id @default(autoincrement())
+  unitType      MilitaryType? @map("군구분")
+  name          String?       @map("부대명")
+  wideArea      String?       @map("광역")
+  region        String?       @map("지역")
+  addressDetail String?       @map("부대상세주소") @db.Text
+  lat           Float?        @map("위도")
+  lng           Float?        @map("경도")
+
+  educationStart DateTime? @map("교육시작일자")
+  educationEnd   DateTime? @map("교육종료일자")
+  workStartTime  DateTime? @map("근무시작시간")
+  workEndTime    DateTime? @map("근무종료시간")
+  lunchStartTime DateTime? @map("점심시작시간")
+  lunchEndTime   DateTime? @map("점심종료시간")
+
+  officerName  String? @map("간부명")
+  officerPhone String? @map("간부 전화번호")
+  officerEmail String? @map("간부 이메일 주소")
+
+  trainingLocations TrainingLocation[]
+  schedules         UnitSchedule[]
+  distances         InstructorUnitDistance[]
+
+  @@map("부대")
+}
+
+model TrainingLocation {
+  id                     Int      @id @default(autoincrement())
+  unitId                 Int      @map("부대id")
+  originalPlace          String?  @map("기존교육장소")
+  changedPlace           String?  @map("변경교육장소")
+  hasInstructorLounge    Boolean? @map("강사휴게실 여부")
+  hasWomenRestroom       Boolean? @map("여자화장실 여부")
+  hasCateredMeals        Boolean? @map("수탁급식여부")
+  hasHallLodging         Boolean? @map("회관숙박여부")
+  allowsPhoneBeforeAfter Boolean? @map("사전사후 휴대폰 불출 여부")
+  plannedCount           Int?     @map("계획인원")
+  actualCount            Int?     @map("참여인원")
+  instructorsNumbers     Int?     @map("투입강사수")
+  note                   String?  @map("특이사항")
+
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@map("교육장소")
+}
+
+model UnitSchedule {
+  id     Int       @id @default(autoincrement())
+  unitId Int       @map("부대id")
+  date   DateTime? @map("교육일")
+
+  unit        Unit                       @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  assignments InstructorUnitAssignment[]
+
+  @@map("부대일정")
+}

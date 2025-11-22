@@ -1,0 +1,8 @@
+model KakaoApiUsage {
+  id           Int      @id @default(autoincrement())
+  date         DateTime @unique @db.Date
+  routeCount   Int      @default(0)
+  geocodeCount Int      @default(0)
+
+  @@map("kakao_api_usage")
+}

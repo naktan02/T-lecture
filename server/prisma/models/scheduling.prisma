@@ -1,0 +1,54 @@
+enum AssignmentCategory {
+  Temporary
+  Confirmed
+
+  @@map("배치분류__t")
+}
+
+enum AssignmentState {
+  Active // 유효한 배정
+  Canceled // 취소된 배정
+
+  @@map("배정상태__t")
+}
+
+model InstructorAvailability {
+  id           Int       @id @default(autoincrement())
+  instructorId Int       @map("강사id")
+  availableOn  DateTime? @map("가능일") // DB가 DATE면 @db.Date 사용 가능
+
+  instructor Instructor @relation(fields: [instructorId], references: [userId])
+
+  @@unique([instructorId, availableOn], map: "강사가능일_instructor_date_unique")
+  @@index([instructorId], map: "강사가능일_instructor_idx")
+  @@map("강사가능일")
+}
+
+model InstructorUnitAssignment {
+  userId         Int
+  unitScheduleId Int
+  classification AssignmentCategory? @map("배치분류")
+  state          AssignmentState     @default(Active) @map("배정상태")
+
+  User         User         @relation(fields: [userId], references: [id])
+  UnitSchedule UnitSchedule @relation(fields: [unitScheduleId], references: [id])
+
+  messageAssignments MessageAssignment[]
+
+  @@id([unitScheduleId, userId])
+  @@unique([unitScheduleId, userId], name: "assignment_instructor_schedule_unique")
+  @@map("강사_부대_배정")
+}
+
+model InstructorUnitDistance {
+  userId   Int
+  unitId   Int      @map("부대id")
+  distance Decimal? @map("거리")
+  duration Int?     @map("걸리는시간")
+
+  instructor Instructor @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  unit       Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@id([userId, unitId])
+  @@map("강사-부대 거리")
+}

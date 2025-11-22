@@ -1,0 +1,11 @@
+// [신규] 이메일 인증 번호 관리 (최소 기능)
+model EmailVerification {
+  id         Int      @id @default(autoincrement())
+  email      String // 인증 요청한 이메일
+  code       String // 6자리 인증 코드
+  isVerified Boolean  @default(false) @map("is_verified")
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now())
+
+  @@map("email_verifications")
+}

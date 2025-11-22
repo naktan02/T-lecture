@@ -1,0 +1,111 @@
+enum UserCategory {
+  Main
+  Co
+  Assistant
+  Practicum
+
+  @@map("분류__t")
+}
+
+enum Role {
+  ADMIN // 관리자
+  INSTRUCTOR // 강사
+  USER // 일반 (혹은 승인 대기자)
+}
+
+enum UserStatus {
+  PENDING // 승인 대기
+  APPROVED // 승인 완료 (활동 증)
+  RESTING   // 휴식 중 (배정 X)
+  INACTIVE // 탈퇴/정지
+}
+
+model User {
+  id              Int           @id @default(autoincrement())
+  name            String?
+  userEmail       String?       @unique
+  password        String?
+  userphoneNumber String?       @map("userphoneNumber")
+  role            Role          @default(USER)
+  status          UserStatus    @default(PENDING)
+  category        UserCategory? @map("분류")
+
+  // Relations
+  instructor      Instructor?
+  messageReceipts MessageReceipt[]
+  unitAssignments InstructorUnitAssignment[]
+
+  @@map("user")
+}
+
+model Instructor {
+  userId         Int     @id @map("user_id")
+  teamId         Int?    @map("team_id")
+  location       String? @db.Text
+  levelId        Int?    @map("강사등급id")
+  generation     Int?    @map("기수") @db.SmallInt
+  restrictedArea String? @map("제한지역") @db.Text
+  lat            Float?  @map("위도")
+  lng            Float?  @map("경도")
+
+  // relations
+  user  User             @relation(fields: [userId], references: [id])
+  team  Team?            @relation(fields: [teamId], references: [id])
+  level InstructorLevel? @relation(fields: [levelId], references: [id])
+
+  availabilities  InstructorAvailability[]
+  virtues         InstructorVirtue[]
+  distances       InstructorUnitDistance[]
+  instructorStats InstructorStats[]
+
+  @@map("강사")
+}
+
+model Team {
+  id   Int     @id @default(autoincrement())
+  name String? @map("team_name")
+
+  instructors Instructor[]
+
+  @@map("team")
+}
+
+model InstructorLevel {
+  id   Int     @id @default(autoincrement())
+  name String? @map("강사등급")
+
+  instructors Instructor[]
+
+  @@map("강사등급")
+}
+
+model Virtue {
+  id   Int     @id @default(autoincrement())
+  name String? @map("덕목")
+
+  instructorVirtues InstructorVirtue[]
+
+  @@map("덕목")
+}
+
+model InstructorVirtue {
+  instructorId Int @map("강사id")
+  virtueId     Int @map("덕목id")
+
+  instructor Instructor @relation(fields: [instructorId], references: [userId])
+  virtue     Virtue     @relation(fields: [virtueId], references: [id])
+
+  @@id([instructorId, virtueId]) // 동일 (강사,덕목) 중복 방지
+  @@map("강사가능덕목")
+}
+
+model InstructorStats {
+  instructorId         Int     @id @map("instructor_id")
+  legacyPracticumCount Int     @default(0) @map("legacy_practicum_count")
+  autoPromotionEnabled Boolean @default(true) @map("auto_promotion_enabled")
+
+  // Relations
+  instructor Instructor @relation(fields: [instructorId], references: [userId])
+
+  @@map("instructor_stats")
+}

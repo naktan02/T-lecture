@@ -2,7 +2,8 @@
 /node_modules
 /client/node_modules
 /server/node_modules
-
+/package/*/node_modules
+**/package-lock.json
 # Build artifacts
 /client/.next
 /client/out
@@ -31,9 +32,9 @@ lerna-debug.log*
 *.sln
 *.sw?
 
-# Docker
-docker-compose.yml
-
 # Misc
 .DS_Store
 Thumbs.db
+
+mysql_data/
+server/mysql_data/
