@@ -1,4 +1,4 @@
-// server/src/infra/kakao/kakao.service.js
+// server/src/infra/kakao.service.js
 const axios = require('axios');
 
 class KakaoService {

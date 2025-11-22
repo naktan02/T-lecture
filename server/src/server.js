@@ -2,16 +2,16 @@
 require('dotenv').config();
 const express = require('express');
 const config = require('./config');                 
-const { logger } = require('./common/middlewares/auth'); 
+const { requestLogger } = require('./common/middlewares'); 
 const v1Router = require('./api/v1');        
       
 require('./jobs/distanceBatch.job');
 const app = express();
 
 app.use(express.json());
-app.use(logger);
+app.use(requestLogger);
 
-// ✅ 모든 v1 API는 /api/v1 아래로
+// 모든 v1 API는 /api/v1 아래로
 app.use('/api/v1', v1Router);
 
 // 기본 라우트

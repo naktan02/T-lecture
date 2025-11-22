@@ -1,8 +1,8 @@
 //server/src/api/v1/admin.routes.js
 const express = require('express');
 const router = express.Router();
-const adminController = require('../../user/controllers/user.admin.controller');
-const { auth, requireRole } = require('../../common/middlewares');
+const adminController = require('../controllers/user.admin.controller');
+const { auth, requireRole } = require('../../../common/middlewares');
 
 // ==========================================
 // 1. 회원 관리 (조회, 수정, 삭제)

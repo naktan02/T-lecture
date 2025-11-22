@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const authController = require('../../domains/auth/controllers/auth.controller');
+const authController = require('../controllers/auth.controller');
 
 // 이메일 인증 관련
 router.post('/code/send', authController.sendCode);

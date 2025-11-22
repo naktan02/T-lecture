@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 
-const unitController = require('../../domains/unit/controllers/unit.controller');
-const { auth, requireRole } = require('../../common/middlewares');
+const unitController = require('../controllers/unit.controller');
+const { auth, requireRole } = require('../../../common/middlewares');
 
 // 부대 관리는 관리자 전용
 router.use(auth, requireRole('ADMIN'));

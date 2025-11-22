@@ -9,7 +9,7 @@ exports.getDistance = async (req, res, next) => {
         const record = await distanceService.getDistance(instructorId, unitId);
         res.json(record);
     } catch (err) {
-        next(err);
+        res.status(500).json({ error: err.message });
     }
 };
 
@@ -26,7 +26,7 @@ exports.getUnitsWithinDistance = async (req, res, next) => {
         );
         res.json(units);
     } catch (err) {
-        next(err);
+        res.status(500).json({ error: err.message });
     }
 };
 
@@ -45,7 +45,7 @@ exports.getTodayUsage = async (req, res, next) => {
         remainingGeocode,
         });
     } catch (err) {
-        next(err);
+        res.status(500).json({ error: err.message });
     }
 };
 
@@ -57,6 +57,6 @@ exports.runDailyBatchOnce = async (req, res, next) => {
         );
         res.json(result);
     } catch (err) {
-        next(err);
+        res.status(500).json({ error: err.message });
     }
 };
