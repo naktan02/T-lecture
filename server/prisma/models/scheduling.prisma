@@ -46,8 +46,8 @@ model InstructorUnitDistance {
   distance Decimal? @map("거리")
   duration Int?     @map("걸리는시간")
 
-  instructor Instructor @relation(fields: [userId], references: [userId])
-  unit       Unit       @relation(fields: [unitId], references: [id])
+  instructor Instructor @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  unit       Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
   @@id([userId, unitId])
   @@map("강사-부대 거리")
