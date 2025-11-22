@@ -2,8 +2,8 @@
 const express = require('express');
 const router = express.Router();
 
-const distanceController = require('../../domains/distance/controllers/distance.controller');
-const { auth, requireRole } = require('../../common/middlewares');
+const distanceController = require('../controllers/distance.controller');
+const { auth, requireRole } = require('../../../common/middlewares');
 
 // ✅ (1) 강사-부대 간 이미 계산된 거리 조회
 // GET /api/v1/distance/:instructorId/:unitId

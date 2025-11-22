@@ -42,9 +42,20 @@ class DistanceRepository {
             },
             });
     }
+
     /**
-   * 특정 강사 기준, 거리 범위 안에 있는 부대들 조회
-   */
+     * 여러 부대 ID에 해당하는 거리 정보 일괄 조회
+     */
+    async findManyByUnitIds(unitIds) {
+        return prisma.instructorUnitDistance.findMany({
+            where: {
+                unitId: { in: unitIds },
+            },
+        });
+    }
+    /**
+     * 특정 강사 기준, 거리 범위 안에 있는 부대들 조회
+     */
     async findByDistanceRange(instructorId, minDistance, maxDistance) {
         return prisma.instructorUnitDistance.findMany({
         where: {
