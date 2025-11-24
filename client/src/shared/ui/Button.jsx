@@ -1,3 +1,4 @@
+//client/src/shared/ui/Button.jsx
 import React from 'react';
 
 // 외부에서 className을 받아서 기존 스타일에 '덧붙여(Overriding)' 줍니다.

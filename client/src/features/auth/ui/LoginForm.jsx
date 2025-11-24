@@ -1,3 +1,5 @@
+//client/src/features/auth/ui/LoginForm.jsx
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { InputField } from '../../../shared/ui/InputField';

@@ -1,3 +1,4 @@
+//client/src/shared/ui/InputField.jsx
 import React from 'react';
 
 export const InputField = ({ label, type = "text", value, onChange, placeholder, required = false, hasBtn, onBtnClick }) => {

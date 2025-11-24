@@ -1,3 +1,5 @@
+// client/src/features/auth/ui/RegisterForm.jsx
+
 import React, { useState } from 'react';
 import { InputField } from '../../../shared/ui/InputField';
 import { Button } from '../../../shared/ui/Button';

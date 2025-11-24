@@ -1,3 +1,5 @@
+// client/src/pages/SignupPage.jsx
+
 import React from 'react';
 // 기능(Feature) 폴더에서 실제 회원가입 폼을 가져옴
 import { RegisterForm } from '../features/auth/ui/RegisterForm'; 

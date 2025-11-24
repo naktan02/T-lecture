@@ -1,13 +1,17 @@
+// client/vite.config.js
+
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-// https://vitejs.dev/config/
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 export default defineConfig({
     plugins: [react()],
     resolve: {
         alias: {
-        // '@'를 'src' 폴더의 절대 경로로 매핑
         '@': path.resolve(__dirname, './src'),
         },
     },
