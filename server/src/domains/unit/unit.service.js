@@ -1,30 +1,31 @@
-// server/src/modules/unit/services/unit.service.js
+//server/src/domains/unit/unit.service.js
 const unitRepository = require('./unit.repository');
 
-exports.createUnit = async (data) => {
-  // 필요하면 여기서 유효성 검사 (예: 날짜 순서 체크 등)
-  // if (data.educationStart && data.educationEnd && data.educationStart > data.educationEnd) ...
-  return await unitRepository.create(data);
-};
-
-exports.getAllUnits = async () => {
-  return await unitRepository.findAll();
-};
-
-exports.getUnitById = async (id) => {
-  const unit = await unitRepository.findById(id);
-  if (!unit) {
-    throw new Error('Unit not found');
+class UnitService {
+  async createUnit(data) {
+    // validation 필요 시 추가
+    return await unitRepository.create(data);
   }
-  return unit;
-};
 
-exports.updateUnit = async (id, data) => {
-  await this.getUnitById(id); // 존재 여부 확인
-  return await unitRepository.update(id, data);
-};
+  async getAllUnits() {
+    return await unitRepository.findAll();
+  }
 
-exports.deleteUnit = async (id) => {
-  await this.getUnitById(id); // 존재 여부 확인
-  return await unitRepository.delete(id);
-};
+  async getUnitById(id) {
+    const unit = await unitRepository.findById(id);
+    if (!unit) throw new Error('Unit not found');
+    return unit;
+  }
+
+  async updateUnit(id, data) {
+    await this.getUnitById(id); // 존재 확인
+    return await unitRepository.update(id, data);
+  }
+
+  async deleteUnit(id) {
+    await this.getUnitById(id); // 존재 확인
+    return await unitRepository.delete(id);
+  }
+}
+
+module.exports = new UnitService();

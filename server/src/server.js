@@ -4,9 +4,17 @@ const express = require('express');
 const config = require('./config');                 
 const { requestLogger } = require('./common/middlewares'); 
 const v1Router = require('./api/v1');        
-      
+const cors = require('cors'); 
+
 require('./jobs/distanceBatch.job');
 const app = express();
+
+app.use(cors({
+  origin: 'http://localhost:5173',   // 프론트 도메인
+  credentials: true,                 // 쿠키 포함 허용
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 app.use(express.json());
 app.use(requestLogger);

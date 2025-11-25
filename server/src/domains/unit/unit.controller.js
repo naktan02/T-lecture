@@ -1,4 +1,4 @@
-// server/src/modules/unit/controllers/unit.controller.js
+// server/src/domains/unit/unit.controller.js
 const unitService = require('./unit.service');
 
 exports.createUnit = async (req, res) => {

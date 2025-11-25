@@ -1,7 +1,8 @@
+// server/src/domains/unit/unit.routes.js
 const express = require('express');
 const router = express.Router();
 
-const unitController = require('../controllers/unit.controller');
+const unitController = require('./unit.controller');
 const { auth, requireRole } = require('../../common/middlewares');
 
 // 부대 관리는 관리자 전용

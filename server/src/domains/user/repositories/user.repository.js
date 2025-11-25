@@ -4,10 +4,13 @@ const prisma = require('../../../libs/prisma');
 class UserRepository {
   // [공통] 이메일로 사용자 찾기 (로그인, 중복확인용)
   async findByEmail(email) {
-    return await prisma.user.findUnique({
-      where: { userEmail: email },
-      include: { instructor: true }, // 강사 정보 확인용
-    });
+      return await prisma.user.findUnique({
+        where: { userEmail: email },
+        include: { 
+          instructor: true, // 기존 코드
+          admin: true       // ✅ [추가] Admin 테이블 정보도 함께 가져오기
+        }, 
+      });
   }
 
   // [공통] ID로 사용자 찾기 (내 정보 조회, 관리자 상세 조회 공용)

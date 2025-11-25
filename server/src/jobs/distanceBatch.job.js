@@ -1,6 +1,6 @@
 // server/src/jobs/distanceBatch.job.js
 const cron = require('node-cron');
-const distanceService = require('../domains/distance/services/distance.service');
+const distanceService = require('../domains/distance/distance.service');
 
 /**
  * 매일 새벽 3시에 거리 배치 실행

@@ -1,29 +1,11 @@
-// web/server/src/domains/instructor/repositories/instructor.repository.js
+// server/src/domains/instructor/repositories/instructor.repository.js
 const prisma = require('../../libs/prisma');
 
-/**
- * [기존] 특정 기간의 근무 가능일 조회
- */
-exports.findAvailabilities = async (instructorId, startDate, endDate) => {
-  return await prisma.instructorAvailability.findMany({
-    where: {
-      instructorId: Number(instructorId),
-      availableOn: {
-        gte: startDate,
-        lte: endDate,
-      },
-    },
-    orderBy: { availableOn: 'asc' },
-  });
-};
+class InstructorRepository {
 
-/**
- * [기존] 근무 가능일 일괄 업데이트 (덮어쓰기)
- */
-exports.replaceAvailabilities = async (instructorId, startDate, endDate, newDates) => {
-  return await prisma.$transaction(async (tx) => {
-    // 1. 해당 기간의 기존 데이터 삭제
-    await tx.instructorAvailability.deleteMany({
+  /** 특정 기간의 근무 가능일 조회 */
+  async findAvailabilities(instructorId, startDate, endDate) {
+    return await prisma.instructorAvailability.findMany({
       where: {
         instructorId: Number(instructorId),
         availableOn: {
@@ -31,33 +13,60 @@ exports.replaceAvailabilities = async (instructorId, startDate, endDate, newDate
           lte: endDate,
         },
       },
+      orderBy: { availableOn: 'asc' },
     });
+  }
 
-    // 2. 새 날짜 데이터 생성
-    if (newDates.length > 0) {
-      await tx.instructorAvailability.createMany({
-        data: newDates.map((date) => ({
+  /** 근무 가능일 일괄 업데이트 (덮어쓰기) */
+  async replaceAvailabilities(instructorId, startDate, endDate, newDates) {
+    return await prisma.$transaction(async (tx) => {
+      // 기존 데이터 삭제
+      await tx.instructorAvailability.deleteMany({
+        where: {
           instructorId: Number(instructorId),
-          availableOn: new Date(date),
-        })),
+          availableOn: { gte: startDate, lte: endDate },
+        },
       });
-    }
-  });
-};
 
-
-
-
-exports.findActiveInstructors = async () => {
-  return prisma.instructor.findMany({
-    where: {
-      user: {
-        role: 'INSTRUCTOR',
-        status: 'APPROVED',
+      // 새 데이터 생성
+      if (newDates.length > 0) {
+        await tx.instructorAvailability.createMany({
+          data: newDates.map((date) => ({
+            instructorId: Number(instructorId),
+            availableOn: new Date(date),
+          })),
+        });
       }
-    },
-    include: {
-      user: true,     // 필요 시 사용자 정보 포함
-    }
-  });
-};
+    });
+  }
+
+  /** 승인된 강사 조회 */
+  async findActiveInstructors() {
+    return prisma.instructor.findMany({
+      where: {
+        user: {
+          role: 'INSTRUCTOR',
+          status: 'APPROVED',
+        }
+      },
+      include: {
+        user: true,
+      }
+    });
+  }
+
+  /** ⭐ 신규 추가: 강사 덕목(Virtue) 추가 */
+  async addVirtues(instructorId, virtueIds) {
+    if (!virtueIds || virtueIds.length === 0) return;
+
+    await prisma.instructorVirtue.createMany({
+      data: virtueIds.map((vId) => ({
+        instructorId: Number(instructorId),
+        virtueId: vId,
+      })),
+      skipDuplicates: true,
+    });
+  }
+}
+
+module.exports = new InstructorRepository();

@@ -1,4 +1,6 @@
-const authService = require('../services/auth.service');
+// server/src/domains/auth/auth.controller.js
+
+const authService = require('./auth.service');
 
 // [인증번호 발송]
 exports.sendCode = async (req, res) => {
@@ -40,8 +42,14 @@ exports.register = async (req, res) => {
 // [로그인]
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const result = await authService.login(email, password);
+    const { email, password, loginType } = req.body;
+
+    if (!email || !password || !loginType) {
+      throw new Error('이메일, 비밀번호, 로그인 타입을 모두 입력해주세요.');
+    }
+
+    // loginType: "ADMIN" | "GENERAL"
+    const result = await authService.login(email, password, loginType);
     res.status(200).json(result);
   } catch (error) {
     res.status(401).json({ error: error.message });

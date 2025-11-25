@@ -1,10 +1,11 @@
+// server/prisma/seed.js
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
 require('dotenv').config();
+
 const prisma = new PrismaClient();
 
 async function main() {
-  // [수정] 환경 변수에서 값을 가져옵니다. 없으면 기본값(안전하지 않음) 사용 방지
   const email = process.env.ADMIN_EMAIL;
   const password = process.env.ADMIN_PASSWORD;
 
@@ -22,7 +23,8 @@ async function main() {
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  await prisma.user.create({
+  // 1) user 생성
+  const user = await prisma.user.create({
     data: {
       userEmail: email,
       password: hashedPassword,
@@ -33,7 +35,16 @@ async function main() {
     },
   });
 
-  console.log(`✅ 슈퍼 관리자 계정(${email})이 생성되었습니다.`);
+  // 2) admin 테이블에도 레코드 생성 (⭐ 매우 중요)
+  await prisma.admin.create({
+    data: {
+      userId: user.id, // FK 연결
+    },
+  });
+
+  console.log(`✅ 슈퍼 관리자 계정(${email})이 정상적으로 생성되었습니다.`);
+  console.log('   ➜ user.role = ADMIN');
+  console.log('   ➜ admin 테이블 레코드 생성됨');
 }
 
 main()

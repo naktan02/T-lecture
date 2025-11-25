@@ -1,4 +1,6 @@
-const prisma = require('../../../libs/prisma');
+// server/src/domains/auth/auth.repository.js
+
+const prisma = require('../../libs/prisma');
 
 class AuthRepository {
   // 인증 코드 생성/저장
