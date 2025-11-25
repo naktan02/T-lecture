@@ -1,12 +1,12 @@
 // client/src/features/auth/ui/RegisterForm.jsx
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { InputField } from "../../../shared/ui/InputField";
 import { Button } from "../../../shared/ui/Button";
 import {
   sendVerificationCode,
   verifyEmailCode,
   registerUser,
+  getInstructorMeta,
 } from "../api/authApi";
 import { useNavigate } from "react-router-dom";
 
@@ -23,7 +23,18 @@ export const RegisterForm = () => {
     address: "", // 강사일 때만 사용
     hasCar: false, // 일단 상태만, 서버에는 아직 안 보냄
     agreed: false,
+    // 강사용 메타데이터
+    virtueIds: [], // 선택한 덕목(Virtue) id 목록
+    teamId: "",    // Team id (select)
+    category: "",  // UserCategory(enum) 문자열: 'Main' | 'Co' | 'Assistant' | 'Practicum'
   });
+
+  const [options, setOptions] = useState({
+    virtues: [],     // Virtue[] (id, name)
+    teams: [],       // Team[] (id, name)
+    categories: [],  // { id, label }[]
+  });
+  const [loadingOptions, setLoadingOptions] = useState(false);
 
   const [sendingCode, setSendingCode] = useState(false);
   const [codeVerified, setCodeVerified] = useState(false);
@@ -33,10 +44,40 @@ export const RegisterForm = () => {
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
 
+  // 강사 메타데이터 로딩
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        setLoadingOptions(true);
+        const data = await getInstructorMeta(); // { virtues, teams, categories }
+        setOptions(data);
+      } catch (e) {
+        setError(e.message || "강사 메타데이터를 불러오는데 실패했습니다.");
+      } finally {
+        setLoadingOptions(false);
+      }
+    };
+
+    fetchOptions();
+  }, []);
+
   const handleChange = (field) => (e) => {
     const value =
       e.target.type === "checkbox" ? e.target.checked : e.target.value;
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // 덕목(Virtue) 체크박스 토글
+  const toggleVirtue = (virtueId) => {
+    setForm((prev) => {
+      const exists = prev.virtueIds.includes(virtueId);
+      return {
+        ...prev,
+        virtueIds: exists
+          ? prev.virtueIds.filter((id) => id !== virtueId)
+          : [...prev.virtueIds, virtueId],
+      };
+    });
   };
 
   const handleSendCode = async () => {
@@ -90,9 +131,20 @@ export const RegisterForm = () => {
       setError("이용약관 및 개인정보 처리방침에 동의해주세요.");
       return;
     }
-    if (userType === "INSTRUCTOR" && !form.address.trim()) {
-      setError("강사 등록 시 거주지 주소는 필수입니다.");
+    if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
+      setError("필수 항목을 모두 입력해주세요.");
       return;
+    }
+
+    if (userType === "INSTRUCTOR") {
+      if (!form.address.trim()) {
+        setError("강사 등록 시 거주지 주소는 필수입니다.");
+        return;
+      }
+      if (form.virtueIds.length === 0 || !form.teamId || !form.category) {
+        setError("과목(덕목), 팀, 직책을 모두 선택해주세요.");
+        return;
+      }
     }
 
     try {
@@ -104,7 +156,15 @@ export const RegisterForm = () => {
         name: form.name,
         phoneNumber: form.phoneNumber,
         address: userType === "INSTRUCTOR" ? form.address : undefined,
-        type: userType, // "INSTRUCTOR" or "USER" → auth.service.register에서 사용
+        type: userType, // 'INSTRUCTOR' | 'USER'
+
+        // 강사일 때만 전송
+        virtueIds:
+          userType === "INSTRUCTOR" ? form.virtueIds : undefined,
+        teamId:
+          userType === "INSTRUCTOR" ? Number(form.teamId) : undefined,
+        category:
+          userType === "INSTRUCTOR" ? form.category : undefined,
       };
 
       const result = await registerUser(payload);
@@ -115,7 +175,6 @@ export const RegisterForm = () => {
         navigate("/login");
       }, 1200);
     } catch (e) {
-      // 이미 등록된 이메일인 경우 등
       setError(e.message);
     } finally {
       setSubmitting(false);
@@ -147,6 +206,7 @@ export const RegisterForm = () => {
         {/* 탭 버튼 (강사 / 일반) */}
         <div className="flex mb-8 border-b border-gray-200">
           <button
+            type="button"
             className={`flex-1 py-3 text-center font-medium transition-colors ${
               userType === "INSTRUCTOR"
                 ? "border-b-2 border-green-500 text-green-600 font-bold"
@@ -157,6 +217,7 @@ export const RegisterForm = () => {
             강사
           </button>
           <button
+            type="button"
             className={`flex-1 py-3 text-center font-medium transition-colors ${
               userType === "USER"
                 ? "border-b-2 border-green-500 text-green-600 font-bold"
@@ -191,7 +252,9 @@ export const RegisterForm = () => {
             placeholder="이메일로 받은 6자리 숫자를 입력하세요"
             value={form.code}
             onChange={handleChange("code")}
-            hasBtn={verifyingCode ? "확인중..." : codeVerified ? "인증완료" : "인증확인"}
+            hasBtn={
+              verifyingCode ? "확인중..." : codeVerified ? "인증완료" : "인증확인"
+            }
             onBtnClick={
               verifyingCode || codeVerified ? undefined : handleVerifyCode
             }
@@ -217,33 +280,103 @@ export const RegisterForm = () => {
               <h3 className="font-bold mb-4 text-sm text-gray-700">
                 강사 활동 정보
               </h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">
-                    거주지 주소 *
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full p-2 border border-gray-300 rounded text-sm bg-white"
-                    placeholder="시/군/구까지 포함하여 입력하세요"
-                    value={form.address}
-                    onChange={handleChange("address")}
-                    required
-                  />
+
+              {loadingOptions ? (
+                <p className="text-sm text-gray-500">
+                  강의 관련 옵션 불러오는 중...
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {/* 거주지 주소 */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                      거주지 주소 *
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border border-gray-300 rounded text-sm bg-white"
+                      placeholder="시/군/구까지 포함하여 입력하세요"
+                      value={form.address}
+                      onChange={handleChange("address")}
+                      required
+                    />
+                  </div>
+                  {/* 팀: select */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                      소속 팀 *
+                    </label>
+                    <select
+                      className="w-full p-2 border border-gray-300 rounded text-sm bg-white"
+                      value={form.teamId}
+                      onChange={handleChange("teamId")}
+                    >
+                      <option value="">선택하세요</option>
+                      {options.teams.map((team) => (
+                        <option key={team.id} value={team.id}>
+                          {team.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 직책(UserCategory): select */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                      직책 *
+                    </label>
+                    <select
+                      className="w-full p-2 border border-gray-300 rounded text-sm bg-white"
+                      value={form.category}
+                      onChange={handleChange("category")}
+                    >
+                      <option value="">선택하세요</option>
+                      {options.categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* 과목(덕목): 체크박스 목록 */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                      강의 가능 과목(덕목) *
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded p-2 bg-white">
+                      {options.virtues.map((v) => {
+                        const checked = form.virtueIds.includes(v.id);
+                        return (
+                          <label
+                            key={v.id}
+                            className="flex items-center gap-1 text-xs text-gray-700"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleVirtue(v.id)}
+                            />
+                            <span>{v.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {/* 자차 여부 */}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="car"
+                      className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                      checked={form.hasCar}
+                      onChange={handleChange("hasCar")}
+                    />
+                    <label htmlFor="car" className="text-sm text-gray-700">
+                      자차 보유 및 운행 가능
+                    </label>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="car"
-                    className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
-                    checked={form.hasCar}
-                    onChange={handleChange("hasCar")}
-                  />
-                  <label htmlFor="car" className="text-sm text-gray-700">
-                    자차 보유 및 운행 가능
-                  </label>
-                </div>
-              </div>
+              )}
             </div>
           )}
 

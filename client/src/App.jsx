@@ -3,9 +3,12 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Pages (껍데기) 불러오기
-import HomePage from './pages/HomePage'; 
 import LoginPage from './pages/login';   
 import SignupPage from './pages/SignupPage';
+import InstructorSchedulePage from './pages/schedule';
+import AdminPage from './pages/AdminPage';
+import InstructorPage from './pages/InstructorPage';
+
 
 function App() {
     return (
@@ -16,7 +19,9 @@ function App() {
             <Route path="/" element={<LoginPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<SignupPage />} />
-            
+            <Route path="/instructor/schedule" element={<InstructorSchedulePage />} />
+            <Route path="/admin/*" element={<AdminPage />} />
+            <Route path="/instructor/*" element={<InstructorPage />} />
             {/* 없는 주소 처리 (Redirect) */}
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

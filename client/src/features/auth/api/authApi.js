@@ -78,3 +78,11 @@ export async function registerUser(payload) {
   if (!res.ok) throw new Error(data.error || "회원가입 실패");
   return data;
 }
+
+// 강사 메타데이터 조회
+export async function getInstructorMeta() {
+  const res = await fetch(`${API_BASE_URL}/api/v1/metadata/instructor`);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "강사 메타데이터 조회 실패");
+  return data; // { subjects, teams, positions }
+}
