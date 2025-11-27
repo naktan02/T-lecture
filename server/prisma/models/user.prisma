@@ -7,10 +7,9 @@ enum UserCategory {
   @@map("분류__t")
 }
 
-enum Role {
-  ADMIN // 관리자
-  INSTRUCTOR // 강사
-  USER // 일반 (혹은 승인 대기자)
+enum AdminLevel {
+  GENERAL // 일반 관리자
+  SUPER   // 슈퍼 관리자
 }
 
 enum UserStatus {
@@ -26,7 +25,6 @@ model User {
   password        String?
   name            String?
   userphoneNumber String?    @map("userphoneNumber")
-  role            Role       @default(USER)
   status          UserStatus @default(PENDING)
 
   // Relations
@@ -41,7 +39,7 @@ model User {
 model Admin {
   id     Int @id @default(autoincrement())
   userId Int @unique @map("user_id")
-  level  Int @default(1) // 예: 1=일반관리자, 9=슈퍼관리자
+  level  AdminLevel @default(GENERAL)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
