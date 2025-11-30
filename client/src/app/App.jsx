@@ -3,12 +3,12 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Pages (껍데기) 불러오기
-import LoginPage from './pages/login';   
-import SignupPage from './pages/SignupPage';
-import InstructorSchedulePage from './pages/schedule';
-import AdminPage from './pages/AdminPage';
-import UserMainHome from './pages/userMainHome';
-import SuperAdminPage from './pages/SuperAdminPage';
+import LoginPage from '../pages/login';   
+import SignupPage from '../pages/SignupPage';
+import InstructorSchedulePage from '../pages/schedule';
+import AdminPage from '../pages/AdminPage';
+import UserMainHome from '../pages/userMainHome';
+import SuperAdminPage from '../pages/SuperAdminPage';
 
 
 function App() {

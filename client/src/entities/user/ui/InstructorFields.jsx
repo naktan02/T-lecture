@@ -1,4 +1,4 @@
-// client/src/features/user/ui/InstructorFields.jsx
+// src/entities/user/ui/InstructorFields.jsx
 
 import React from "react";
 

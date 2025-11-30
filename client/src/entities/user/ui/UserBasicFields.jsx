@@ -1,4 +1,4 @@
-// client/src/features/user/ui/UserBasicFields.jsx
+// src/entities/user/ui/UserBasicFields.jsx
 
 import React from "react";
 import { InputField } from "../../../shared/ui/InputField";

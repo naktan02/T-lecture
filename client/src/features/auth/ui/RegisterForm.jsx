@@ -10,9 +10,9 @@ import {
 import { useNavigate } from "react-router-dom";
 
 // 새로 만든 공통 컴포넌트들
-import { UserBasicFields } from "../../user/ui/UserBasicFields";
-import { InstructorFields } from "../../user/ui/InstructorFields";
-import { useInstructorMeta } from "../../../hooks/useInstructorMeta";
+import { UserBasicFields } from "../../../entities/user/ui/UserBasicFields";
+import { InstructorFields } from "../../../entities/user/ui/InstructorFields";
+import { useInstructorMeta } from "../../../entities/user/model/useInstructorMeta";
 
 export const RegisterForm = () => {
   const [userType, setUserType] = useState("INSTRUCTOR"); // INSTRUCTOR | USER

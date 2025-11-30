@@ -27,6 +27,7 @@ export const Button = ({
 
     // 3. 크기 옵션 (Size)
     const sizes = {
+        xsmall: "px-2 py-1 text-[11px]",
         small: "px-3 py-1.5 text-sm",
         medium: "px-4 py-3 text-base",
         large: "px-6 py-4 text-lg",

@@ -1,6 +1,6 @@
-// client/src/hooks/useInstructorMeta.js
+// src/entities/user/model/useInstructorMeta.js
 import { useState, useEffect } from "react";
-import { getInstructorMeta } from "../features/auth/api/authApi";
+import { getInstructorMeta } from "../../../features/auth/api/authApi";
 
 /**
  * 강사 메타데이터(팀, 직책, 덕목) 로딩 공통 훅
