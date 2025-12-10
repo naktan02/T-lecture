@@ -6,7 +6,7 @@ import {
   sendVerificationCode,
   verifyEmailCode,
   registerUser,
-} from "../api/authApi";
+} from "../authApi";
 import { useNavigate } from "react-router-dom";
 
 // 새로 만든 공통 컴포넌트들

@@ -21,9 +21,9 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<SignupPage />} />
             <Route path="/instructor/schedule" element={<InstructorSchedulePage />} />
-            <Route path="/admin/*" element={<AdminPage />} />
             <Route path="/admin/super" element={<SuperAdminPage />} />
-            <Route path="/userHome/*" element={<UserMainHome />} />
+            <Route path="/admin/*" element={<AdminPage />} />
+            <Route path="/user-main/*" element={<UserMainHome />} />
             {/* 없는 주소 처리 (Redirect) */}
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

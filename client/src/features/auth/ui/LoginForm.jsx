@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { InputField } from '../../../shared/ui/InputField';
 import { Button } from '../../../shared/ui/Button';
-import { login as loginApi } from '../api/authApi';
+import { login as loginApi } from '../authApi';
 export const LoginForm = () => {
   const navigate = useNavigate();
 
@@ -38,6 +38,14 @@ export const LoginForm = () => {
       // 토큰 / 유저 정보 저장 (필요 시 원하는 방식으로 변경 가능)
       localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('currentUser', JSON.stringify(data.user));
+
+      // 💡 [Fix] 권한 가드(useAuthGuard)를 위한 role 저장
+      const user = data.user;
+      let role = 'USER';
+      if (user.isAdmin) {
+          role = user.adminLevel === 'SUPER' ? 'SUPER_ADMIN' : 'ADMIN';
+      }
+      localStorage.setItem('userRole', role);
 
       if (loginType === 'ADMIN') {
         // ✅ 관리자 탭 로그인일 때:

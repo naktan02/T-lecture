@@ -1,16 +1,18 @@
-// client/src/pages/SignupPage.jsx
-
+// client/src/pages/SignupPage.jsx (Refactored)
 import React from 'react';
-// 기능(Feature) 폴더에서 실제 회원가입 폼을 가져옴
 import { RegisterForm } from '../features/auth/ui/RegisterForm'; 
-// 공용 레이아웃이 있다면 가져옴
 import { MainLayout } from '../shared/ui/MainLayout';
+import { useAuthGuard } from '../features/auth/model/useAuthGuard'; // 💡 Guard Hook 추가
 
 const SignupPage = () => {
+    // GUEST 설정: 로그인 상태면 메인으로 튕겨냄
+    const { shouldRender } = useAuthGuard('GUEST'); 
+
+    if (!shouldRender) return null; // 로그인 상태면 숨김
+
     return (
         <MainLayout>
         <div className="signup-page-container" style={{ padding: '50px 0' }}>
-            {/* 실제 로직이 담긴 컴포넌트 렌더링 */}
             <RegisterForm />
         </div>
         </MainLayout>
