@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>푸른나무재단 강사 파견 시스템 - 로그인</title>
+    <style>
+        /* 기본 설정 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* 로그인 카드 컨테이너 */
+        .login-container {
+            background-color: white;
+            width: 400px;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        /* 로고 및 타이틀 영역 */
+        .logo-area {
+            margin-bottom: 30px;
+        }
+
+        .logo-placeholder {
+            width: 60px;
+            height: 60px;
+            background-color: #00A651; /* 푸른나무재단 상징색 예시 */
+            border-radius: 50%;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 24px;
+        }
+
+        h1 {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        p.subtitle {
+            font-size: 14px;
+            color: #666;
+        }
+
+        /* 입력 폼 영역 */
+        .input-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #00A651;
+        }
+
+        /* 버튼 영역 */
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background-color: #00A651;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .btn-login:hover {
+            background-color: #008c44;
+        }
+
+        /* 링크 영역 (아이디 찾기 / 회원가입) */
+        .links {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .links a {
+            text-decoration: none;
+            color: #666;
+        }
+
+        .links a:hover {
+            text-decoration: underline;
+            color: #00A651;
+        }
+
+        .divider {
+            color: #ddd;
+        }
+
+        /* 상태 알림 (Toast) 예시 - 숨김 처리됨 */
+        .toast-message {
+            display: none; /* JS로 제어 시 block */
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            margin-bottom: 15px;
+            border: 1px solid #ffcdd2;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <div class="logo-area">
+            <div class="logo-placeholder">BTF</div>
+            <h1>T-lecture</h1>
+            <p class="subtitle">Instructor Dispatch Automation System</p>
+        </div>
+
+        <div class="toast-message" id="error-msg">
+            관리자 승인 대기 중인 계정입니다.
+        </div>
+
+        <form onsubmit="event.preventDefault(); alert('로그인 버튼이 클릭되었습니다.');">
+            <div class="input-group">
+                <label for="email">아이디 (이메일)</label>
+                <input type="email" id="email" placeholder="example@btf.or.kr" required>
+            </div>
+
+            <div class="input-group">
+                <label for="password">비밀번호</label>
+                <input type="password" id="password" placeholder="비밀번호를 입력하세요" required>
+            </div>
+
+            <button type="submit" class="btn-login">로그인</button>
+        </form>
+
+        <div class="links">
+            <div>
+                <a href="#">아이디 찾기</a>
+                <span class="divider">|</span>
+                <a href="#">비밀번호 찾기</a>
+            </div>
+            <a href="#" style="font-weight: bold;">회원가입</a>
+        </div>
+    </div>
+
+</body>
+</html>

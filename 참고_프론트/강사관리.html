@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>강사 관리 - 푸른나무재단</title>
+    <style>
+        /* 기본 설정 */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pretendard', 'Malgun Gothic', sans-serif; }
+        body { background-color: #f0f2f5; color: #333; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* 헤더 */
+        header {
+            background-color: #2c3e50; color: white; height: 60px; padding: 0 20px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .logo { font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 10px; }
+        .admin-menu { display: flex; gap: 20px; font-size: 14px; }
+        .admin-menu a { color: #bdc3c7; text-decoration: none; }
+        .admin-menu a:hover, .admin-menu a.active { color: white; font-weight: bold; }
+
+        /* 레이아웃 컨테이너 */
+        .container { display: flex; flex: 1; overflow: hidden; position: relative; }
+
+        /* 메인 영역 (리스트) */
+        .main-content { flex: 1; padding: 30px; overflow-y: auto; transition: margin-right 0.3s; }
+        
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .page-title { font-size: 24px; font-weight: bold; color: #333; }
+
+        /* 툴바 (필터) */
+        .toolbar {
+            background: white; padding: 15px 20px; border-radius: 8px; border: 1px solid #ddd;
+            display: flex; gap: 10px; align-items: center; margin-bottom: 15px;
+        }
+        select, input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+        .search-input { width: 200px; }
+        .btn-search {
+            padding: 8px 16px; background-color: #333; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px;
+        }
+
+        /* 강사 리스트 테이블 */
+        .table-wrapper {
+            background: white; border-radius: 8px; border: 1px solid #ddd; overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+        th { background-color: #f8f9fa; padding: 12px 15px; color: #555; font-weight: bold; border-bottom: 2px solid #eee; }
+        td { padding: 12px 15px; border-bottom: 1px solid #eee; color: #333; vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background-color: #e8f5e9; cursor: pointer; } /* 호버 시 녹색 틴트 */
+
+        /* 배지 스타일 */
+        .badge { padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+        .role-main { background: #e6fcf5; color: #0ca678; border: 1px solid #c3fae8; } /* 주강사 */
+        .role-sub { background: #e7f5ff; color: #1c7ed6; border: 1px solid #d0ebff; } /* 보조강사 */
+        .role-trainee { background: #f8f9fa; color: #868e96; border: 1px solid #dee2e6; } /* 실습 */
+
+        /* 우측 슬라이드 패널 (상세 정보) */
+        .side-panel {
+            width: 400px; background: white; border-left: 1px solid #ddd;
+            position: absolute; right: -400px; top: 0; bottom: 0;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.05);
+            display: flex; flex-direction: column;
+            transition: right 0.3s ease-in-out;
+            z-index: 100;
+        }
+        .side-panel.open { right: 0; }
+
+        .panel-header {
+            padding: 20px; border-bottom: 1px solid #eee; background: #f8f9fa;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .panel-title { font-size: 18px; font-weight: bold; }
+        .btn-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #999; }
+
+        .panel-body { padding: 20px; overflow-y: auto; flex: 1; }
+
+        /* 폼 스타일 (패널 내부) */
+        .form-section { margin-bottom: 25px; }
+        .section-title { font-size: 14px; font-weight: bold; color: #00A651; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .form-group { margin-bottom: 15px; }
+        .label { display: block; font-size: 12px; color: #666; margin-bottom: 5px; font-weight: 600; }
+        .value-text { font-size: 14px; font-weight: bold; color: #333; }
+        .input-full { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .helper-text { font-size: 11px; color: #888; margin-top: 4px; }
+
+        /* 패널 하단 버튼 */
+        .panel-footer {
+            padding: 20px; border-top: 1px solid #eee; background: #fff;
+            display: flex; gap: 10px; justify-content: flex-end;
+        }
+        .btn-save { background-color: #00A651; color: white; padding: 10px 20px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .btn-delete { background-color: white; border: 1px solid #e74c3c; color: #e74c3c; padding: 10px 15px; border-radius: 4px; cursor: pointer; }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo"><span style="color:#00A651">●</span> 관리자 페이지</div>
+        <nav class="admin-menu">
+            <a href="admin_dashboard.html">배정 관리</a>
+            <a href="location_mgmt.html">파견지 관리</a>
+            <a href="#" class="active">강사 관리</a>
+            <a href="#">통계/설정</a>
+        </nav>
+        <div style="font-size:13px;">최고관리자 님 | 로그아웃</div>
+    </header>
+
+    <div class="container">
+        <div class="main-content">
+            <div class="page-header">
+                <h2 class="page-title">👥 강사 정보 관리</h2>
+                <span style="font-size:13px; color:#666;">총 강사: <strong>152</strong>명</span>
+            </div>
+
+            <div class="toolbar">
+                <select>
+                    <option>전체 등급</option>
+                    <option>주강사</option>
+                    <option>보조강사</option>
+                </select>
+                <select>
+                    <option>전체 팀</option>
+                    <option>1팀</option>
+                    <option>2팀</option>
+                    <option>무소속</option>
+                </select>
+                <input type="text" class="search-input" placeholder="이름, 연락처 검색">
+                <button class="btn-search">검색</button>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:50px;">No</th>
+                            <th>이름</th>
+                            <th>등급 (Role)</th>
+                            <th>소속 팀</th>
+                            <th>거주지 (지역)</th>
+                            <th>자차</th>
+                            <th>최대 거리</th>
+                            <th>상태</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr onclick="openPanel('김푸른', '주강사', '1팀', '서울 마포구', true)">
+                            <td>152</td>
+                            <td><strong>김푸른</strong></td>
+                            <td><span class="badge role-main">주강사</span></td>
+                            <td>1팀</td>
+                            <td>서울 마포구</td>
+                            <td>O</td>
+                            <td>80km</td>
+                            <td style="color:#00A651; font-weight:bold;">활동중</td>
+                        </tr>
+                        <tr onclick="openPanel('이나무', '보조강사', '2팀', '경기 고양시', false)">
+                            <td>151</td>
+                            <td><strong>이나무</strong></td>
+                            <td><span class="badge role-sub">보조강사</span></td>
+                            <td>2팀</td>
+                            <td>경기 고양시</td>
+                            <td>X</td>
+                            <td>50km</td>
+                            <td style="color:#00A651; font-weight:bold;">활동중</td>
+                        </tr>
+                        <tr onclick="openPanel('박신입', '실습생', '무소속', '인천 부평구', true)">
+                            <td>150</td>
+                            <td><strong>박신입</strong></td>
+                            <td><span class="badge role-trainee">실습생</span></td>
+                            <td>무소속</td>
+                            <td>인천 부평구</td>
+                            <td>O</td>
+                            <td>60km</td>
+                            <td style="color:#f39c12; font-weight:bold;">승인완료</td>
+                        </tr>
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="detailPanel" class="side-panel">
+            <div class="panel-header">
+                <span class="panel-title">강사 상세 정보</span>
+                <button class="btn-close" onclick="closePanel()">✕</button>
+            </div>
+            
+            <div class="panel-body">
+                <div class="form-section">
+                    <div class="section-title">기본 정보 (가입 정보)</div>
+                    <div class="form-group">
+                        <span class="label">이름</span>
+                        <div class="value-text" id="pName">김푸른</div>
+                    </div>
+                    <div class="form-group">
+                        <span class="label">거주지 주소</span>
+                        <div class="value-text" id="pAddress">서울시 마포구 월드컵로...</div>
+                        <div class="helper-text">※ 주소 변경은 강사가 직접 수행해야 합니다.</div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title">관리 정보 (배정 규칙 반영)</div>
+                    <div class="form-group">
+                        <label class="label">강사 등급</label>
+                        <select id="pRole" class="input-full">
+                            <option>주강사 (Main)</option>
+                            <option>보조강사 (Assistant)</option>
+                            <option>실습생 (Trainee)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="label">소속 팀</label>
+                        <select id="pTeam" class="input-full">
+                            <option>무소속</option>
+                            <option>1팀</option>
+                            <option>2팀</option>
+                            <option>3팀</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title">배정 제한 설정</div>
+                    <div class="form-group">
+                        <label class="label">최대 이동 가능 거리 (km)</label>
+                        <input type="number" class="input-full" value="80">
+                        <div class="helper-text">※ 기본값은 60km 입니다.</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="label">파견 불가 지역 (콤마로 구분)</label>
+                        <input type="text" class="input-full" placeholder="예: 강원도 철원, 연천">
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <div class="section-title">계정 상태</div>
+                    <div class="form-group">
+                        <label class="label">활동 상태</label>
+                        <select class="input-full">
+                            <option selected>활동중</option>
+                            <option>휴식(중지)</option>
+                            <option>강제 탈퇴</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-footer">
+                <button class="btn-delete" onclick="alert('계정 삭제 처리를 진행하시겠습니까?')">계정 삭제</button>
+                <button class="btn-save" onclick="alert('수정된 정보가 저장되었습니다.\n배정 알고리즘에 즉시 반영됩니다.')">변경 내용 저장</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openPanel(name, role, team, address, hasCar) {
+            // 데이터 바인딩 시뮬레이션
+            document.getElementById('pName').innerText = name;
+            document.getElementById('pAddress').innerText = address;
+            
+            // 패널 열기
+            document.getElementById('detailPanel').classList.add('open');
+        }
+
+        function closePanel() {
+            document.getElementById('detailPanel').classList.remove('open');
+        }
+    </script>
+
+</body>
+</html>
