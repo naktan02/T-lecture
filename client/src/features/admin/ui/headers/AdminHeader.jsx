@@ -9,7 +9,6 @@ export const AdminHeader = () => {
         { label: '권한 관리', path: '/admin/super' },
         { label: '강사 배정', path: '/admin/assignments' },
         { label: '시스템 설정', path: '/admin/settings' },
-        { label: '강사배정', path: '/admin/assignments' }
     ]; 
 
     return (
