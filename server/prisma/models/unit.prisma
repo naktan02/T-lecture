@@ -48,7 +48,7 @@ model TrainingLocation {
   instructorsNumbers     Int?     @map("투입강사수")
   note                   String?  @map("특이사항")
 
-  unit Unit @relation(fields: [unitId], references: [id])
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
   @@map("교육장소")
 }
@@ -58,7 +58,7 @@ model UnitSchedule {
   unitId Int       @map("부대id")
   date   DateTime? @map("교육일")
 
-  unit        Unit                       @relation(fields: [unitId], references: [id])
+  unit        Unit                       @relation(fields: [unitId], references: [id], onDelete: Cascade)
   assignments InstructorUnitAssignment[]
 
   @@map("부대일정")

@@ -7,51 +7,61 @@ enum UserCategory {
   @@map("분류__t")
 }
 
-enum Role {
-  ADMIN // 관리자
-  INSTRUCTOR // 강사
-  USER // 일반 (혹은 승인 대기자)
+enum AdminLevel {
+  GENERAL // 일반 관리자
+  SUPER // 슈퍼 관리자
 }
 
 enum UserStatus {
   PENDING // 승인 대기
-  APPROVED // 승인 완료 (활동 가능)
-  REJECTED // 승인 거절
+  APPROVED // 승인 완료 (활동 증)
+  RESTING // 휴식 중 (배정 X)
   INACTIVE // 탈퇴/정지
 }
 
 model User {
-  id              Int           @id @default(autoincrement())
-  name            String?
-  userEmail       String?       @unique
+  id              Int        @id @default(autoincrement())
+  userEmail       String?    @unique @map("user_email")
   password        String?
-  userphoneNumber String?       @map("userphoneNumber")
-  role            Role          @default(USER)
-  status          UserStatus    @default(PENDING)
-  category        UserCategory? @map("분류")
+  name            String?
+  userphoneNumber String?    @map("userphoneNumber")
+  status          UserStatus @default(PENDING)
 
   // Relations
   instructor      Instructor?
+  admin           Admin?
   messageReceipts MessageReceipt[]
   unitAssignments InstructorUnitAssignment[]
+  refreshTokens   RefreshToken[]
 
   @@map("user")
 }
 
+model Admin {
+  id     Int        @id @default(autoincrement())
+  userId Int        @unique @map("user_id")
+  level  AdminLevel @default(GENERAL)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admins")
+}
+
 model Instructor {
-  userId         Int     @id @map("user_id")
-  teamId         Int?    @map("team_id")
-  location       String? @db.Text
-  levelId        Int?    @map("강사등급id")
-  generation     Int?    @map("기수") @db.SmallInt
-  restrictedArea String? @map("제한지역") @db.Text
-  lat            Float?  @map("위도")
-  lng            Float?  @map("경도")
+  userId           Int           @id @map("user_id")
+  category         UserCategory? @map("분류")
+  teamId           Int?          @map("team_id")
+  isTeamLeader     Boolean       @default(false) @map("팀장여부")
+  location         String?       @db.Text
+  generation       Int?          @map("기수") @db.SmallInt
+  restrictedArea   String?       @map("제한지역") @db.Text
+  lat              Float?        @map("위도")
+  lng              Float?        @map("경도")
+  profileCompleted Boolean       @default(false) @map("강사프로필완료")
 
   // relations
-  user  User             @relation(fields: [userId], references: [id])
-  team  Team?            @relation(fields: [teamId], references: [id])
-  level InstructorLevel? @relation(fields: [levelId], references: [id])
+  user User  @relation(fields: [userId], references: [id])
+  team Team? @relation(fields: [teamId], references: [id])
 
   availabilities  InstructorAvailability[]
   virtues         InstructorVirtue[]
@@ -68,15 +78,6 @@ model Team {
   instructors Instructor[]
 
   @@map("team")
-}
-
-model InstructorLevel {
-  id   Int     @id @default(autoincrement())
-  name String? @map("강사등급")
-
-  instructors Instructor[]
-
-  @@map("강사등급")
 }
 
 model Virtue {

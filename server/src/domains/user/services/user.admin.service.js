@@ -1,20 +1,27 @@
-//server/src/domains/admin/services/admin.service.js
+//server/src/domains/user/services/admin.service.js
 const adminRepository = require('../../user/repositories/user.admin.repository');
-const userRepository = require('../repositories/user.repository'); // 단일 조회/삭제 재사용
+const userRepository = require('../repositories/user.repository');
 
 class AdminService {
     /**
      * [신규] 전체 유저 목록 조회 (검색/필터 포함)
      */
     async getAllUsers(query) {
-        // query: { role, status, name }
-        const users = await adminRepository.findAll(query);
-        
-        // 비밀번호 제외하고 반환
-        return users.map(user => {
+    // query: { status, name }
+    const filters = { ...query };
+
+    // 🔹 별도로 status를 안 넘기면 기본은 APPROVED 만
+    if (!filters.status) {
+        filters.status = 'APPROVED';
+    }
+
+    const users = await adminRepository.findAll(filters);
+
+    // 비밀번호 제외
+    return users.map((user) => {
         const { password, ...rest } = user;
         return rest;
-        });
+    });
     }
 
     /**
@@ -48,13 +55,12 @@ class AdminService {
      * [신규] 유저 정보 강제 수정 (관리자 권한)
      */
     async updateUser(id, dto) {
-        const { name, phoneNumber, role, status, address } = dto;
+        const { name, phoneNumber, status, address, isTeamLeader } = dto;
 
         // 1. User 테이블 수정 데이터
         const userData = {};
         if (name !== undefined) userData.name = name;
         if (phoneNumber !== undefined) userData.userphoneNumber = phoneNumber;
-        if (role !== undefined) userData.role = role;
         if (status !== undefined) userData.status = status;
 
         // 2. Instructor 테이블 수정 데이터 (주소 등)
@@ -65,7 +71,9 @@ class AdminService {
             instructorData.lat = null;
             instructorData.lng = null;
         }
-
+        if (typeof isTeamLeader === 'boolean') {
+            instructorData.isTeamLeader = isTeamLeader;
+        }
         // 3. 업데이트 실행 (User Repo 재사용)
         const updatedUser = await userRepository.update(id, userData, instructorData);
         
@@ -93,17 +101,14 @@ class AdminService {
     /**
      * [기존] 유저 승인 처리
      */
-    async approveUser(userId, role) {
-        // role이 전달되면 역할도 같이 변경
-        const updatedUser = await adminRepository.updateUserStatus(userId, 'APPROVED', role);
-        
-        return { 
-        message: '승인 처리가 완료되었습니다.', 
-        user: {
-            id: updatedUser.id,
-            status: updatedUser.status,
-            role: updatedUser.role
-        } 
+    async approveUser(userId) {
+        const updatedUser = await adminRepository.updateUserStatus(userId, 'APPROVED');
+
+        const { password, ...rest } = updatedUser;
+
+        return {
+            message: '승인 처리가 완료되었습니다.',
+            user: rest,
         };
     }
 
@@ -158,6 +163,46 @@ class AdminService {
         count: result.count,
         };
     }
+
+    async setAdminLevel(userId, level = 'GENERAL') {
+        if (level === 'SUPER') {
+            throw new Error('슈퍼 관리자로의 승급은 불가능합니다.');
+        }
+        if (level !== 'GENERAL') {
+            throw new Error('잘못된 관리자 레벨입니다.');
+        }
+
+        // 존재 여부 확인
+        const user = await userRepository.findById(userId);
+        if (!user) throw new Error('해당 회원을 찾을 수 없습니다.');
+
+        const admin = await adminRepository.upsertAdmin(userId, level);
+
+        return {
+        message: '관리자 권한이 설정되었습니다.',
+        userId: userId,
+        adminLevel: admin.level,
+        };
+    }
+
+    // ✅ 관리자 권한 회수
+    async revokeAdminLevel(userId) {
+        const user = await userRepository.findById(userId);
+        if (!user) throw new Error('해당 회원을 찾을 수 없습니다.');
+
+        await adminRepository.removeAdmin(userId);
+
+        return {
+        message: '관리자 권한이 해제되었습니다.',
+        userId,
+        };
+    }
 }
+
+
+
+
+
+
 
 module.exports = new AdminService();

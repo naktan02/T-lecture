@@ -9,3 +9,17 @@ model EmailVerification {
 
   @@map("email_verifications")
 }
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique @db.VarChar(255)
+  userId    Int      @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  deviceId  String?
+  // User와 연결 (User가 삭제되면 토큰도 삭제됨)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceId])
+  @@map("refresh_tokens")
+}
