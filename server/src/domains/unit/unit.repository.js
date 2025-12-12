@@ -3,7 +3,7 @@ const prisma = require('../../libs/prisma');
 
 class UnitRepository {
 
-  async create(data) {
+  async                                                    create(data) {
     const { trainingLocations, schedules, ...unitData } = data;
 
     return prisma.unit.create({
