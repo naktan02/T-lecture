@@ -34,6 +34,29 @@ exports.getUnitsWithinDistance = asyncHandler(async (req, res) => {
     res.json(units);
 });
 
+exports.calculateSpecificDistance = asyncHandler(async (req, res) => {
+    const { instructorId, unitId } = req.body;
+
+    if (!instructorId || !unitId) {
+        throw new AppError('instructorId와 unitId가 필요합니다.', 400, 'VALIDATION_ERROR');
+    }
+
+    // 서비스에 이미 구현된 calculateAndSaveDistance 호출
+    const result = await distanceService.calculateAndSaveDistance(instructorId, unitId);
+    res.json(result);
+});
+
+exports.getInstructorsNearUnit = asyncHandler(async (req, res) => {
+    const unitId = Number(req.params.unitId);
+    const min = Number(req.query.min ?? 0);
+    const max = Number(req.query.max ?? 999999);
+
+    const instructors = await distanceService.getInstructorsWithinDistance(unitId, min, max);
+    res.json(instructors);
+});
+
+
+
 // ✅ (3) 카카오 API 사용량(오늘) 조회
 exports.getTodayUsage = asyncHandler(async (req, res) => {
     const usage = await distanceService.getTodayUsage();

@@ -1,21 +1,30 @@
 // src/domains/message/message.service.js
 const messageRepository = require('./message.repository');
+const { compileTemplate } = require('../../common/utils/templateHelper');
+const AppError = require('../../common/errors/AppError');
+const metadataRepository = require('../metadata/metadata.repository');
 
 class MessageService {
 
     /**
      * [Admin] 임시 배정 메시지 일괄 발송
-     * - 대상: Pending 상태이면서 아직 메시지 안 받은 사람
      */
     async sendTemporaryMessages() {
-        // 1. 대상 조회 (Raw Data)
-        const targets = await messageRepository.findTargetsForTemporaryMessage();
-        if (targets.length === 0) return { count: 0, message: '발송할 대상이 없습니다.' };
+        // 1. 템플릿 조회
+        const template = await metadataRepository.findTemplateByKey('TEMPORARY');
+        if (!template) {
+            throw new AppError('임시 배정 메시지 템플릿(TEMPORARY)이 설정되지 않았습니다.', 404, 'TEMPLATE_NOT_FOUND');
+        }
 
-        // 2. 사용자별로 배정 내역 그룹화 (한 사람이 여러 날짜 배정될 수 있음)
-        // Map<userId, { user, assignments: [] }>
+        // 2. 대상 조회
+        const targets = await messageRepository.findTargetsForTemporaryMessage();
+        if (targets.length === 0) {
+            // 배정할 대상이 없으면 404 에러 처리 (또는 200 OK에 count:0 반환 정책에 따라 변경 가능)
+            throw new AppError('발송할 대상(임시 배정 미수신자)이 없습니다.', 404, 'NO_TARGETS');
+        }
+
+        // 3. 그룹화 로직 (User ID 기준)
         const userMap = new Map();
-        
         targets.forEach(assign => {
             const userId = assign.userId;
             if (!userMap.has(userId)) {
@@ -26,32 +35,24 @@ class MessageService {
 
         const messagesToCreate = [];
 
-        // 3. 메시지 본문 생성
+        // 4. 메시지 본문 생성 (템플릿 치환)
         for (const [userId, data] of userMap) {
             const { user, assignments } = data;
-            
-            // 대표 부대 정보 (보통 같은 부대 연속 일정일 확률 높음, 첫 번째꺼 사용)
             const representative = assignments[0];
             const unit = representative.UnitSchedule.unit;
             
-            // 날짜별 스케줄 정리 (예: 12월 11일 : 정정명국) -> 이 부분은 예시 텍스트가 필요하면 로직 추가
-            // 여기서는 심플하게 날짜 리스트만 나열하거나, 상세 스케줄 텍스트화
+            // 날짜 목록 텍스트 생성
             const scheduleText = assignments.map(a => {
                 const dateStr = a.UnitSchedule.date.toISOString().split('T')[0];
                 return `- ${dateStr} (${unit.name})`; 
             }).join('\n');
 
-            const body = `
-[임시 배정 알림]
-${user.name} 강사님, 교육 일정이 임시 배정되었습니다.
-
-- 부대명: ${unit.name}
-- 지역: ${unit.region}
-- 교육일정:
-${scheduleText}
-
-* 하단의 버튼을 통해 [수락] 또는 [거절]을 선택해주세요.
-            `.trim();
+            const body = compileTemplate(template.body, {
+                userName: user.name,
+                unitName: unit.name,
+                region: unit.region,
+                scheduleText: scheduleText
+            });
 
             messagesToCreate.push({
                 type: 'Temporary',
@@ -61,20 +62,30 @@ ${scheduleText}
             });
         }
 
-        // 4. 저장 실행
+        // 5. 저장 (Repo 위임)
         const count = await messageRepository.createMessagesBulk(messagesToCreate);
         return { count, message: `${count}건의 임시 메시지가 발송되었습니다.` };
     }
 
     /**
      * [Admin] 확정 배정 메시지 일괄 발송
-     * - 대상: Accepted 상태이면서 아직 확정 메시지 안 받은 사람
-     * - 리더(TeamLeader) 여부에 따라 내용 다름
      */
     async sendConfirmedMessages() {
-        const targets = await messageRepository.findTargetsForConfirmedMessage();
-        if (targets.length === 0) return { count: 0, message: '발송할 대상이 없습니다.' };
+        // 1. 템플릿 조회
+        const leaderTemplate = await metadataRepository.findTemplateByKey('CONFIRMED_LEADER');
+        const memberTemplate = await metadataRepository.findTemplateByKey('CONFIRMED_MEMBER');
 
+        if (!leaderTemplate || !memberTemplate) {
+            throw new AppError('확정 배정 템플릿(Leader/Member)이 설정되지 않았습니다.', 404, 'TEMPLATE_NOT_FOUND');
+        }
+
+        // 2. 대상 조회
+        const targets = await messageRepository.findTargetsForConfirmedMessage();
+        if (targets.length === 0) {
+            throw new AppError('발송할 대상(확정 배정 미수신자)이 없습니다.', 404, 'NO_TARGETS');
+        }
+
+        // 3. 그룹화
         const userMap = new Map();
         targets.forEach(assign => {
             const userId = assign.userId;
@@ -86,38 +97,42 @@ ${scheduleText}
 
         const messagesToCreate = [];
 
+        // 4. 메시지 본문 생성
         for (const [userId, data] of userMap) {
             const { user, assignments } = data;
             const representative = assignments[0];
             const unit = representative.UnitSchedule.unit;
             const unitSchedule = representative.UnitSchedule;
+            const isLeader = user.instructor?.isTeamLeader;
 
-            const isLeader = user.instructor?.isTeamLeader; // 리더 여부 확인
+            // 리더용/일반용 템플릿 선택
+            const targetTemplate = isLeader ? leaderTemplate : memberTemplate;
 
-            let body = `[확정 배정 알림]\n${user.name} 강사님, 배정이 확정되었습니다.\n\n`;
-            body += `- 부대: ${unit.name}\n`;
-            body += `- 주소: ${unit.addressDetail}\n`; // 상세주소 추가
+            // 변수 준비
+            const variables = {
+                userName: user.name,
+                unitName: unit.name,
+                address: unit.addressDetail,
+                colleagues: '없음',
+                locations: ''
+            };
 
             if (isLeader) {
-                // [리더용 추가 정보]
-                // 같이 가는 동료 강사 정보 추출
+                // 동료 강사 목록
                 const colleagues = unitSchedule.assignments
-                    .filter(a => a.userId !== userId) // 본인 제외
+                    .filter(a => a.userId !== userId)
                     .map(a => `${a.User.name} (${a.User.userphoneNumber})`)
                     .join(', ');
+                if (colleagues) variables.colleagues = colleagues;
 
-                // 하위 교육장소 정보
-                const locations = unit.trainingLocations
+                // 하위 교육장소 목록
+                variables.locations = unit.trainingLocations
                     .map(loc => `[${loc.originalPlace}] 인원: ${loc.plannedCount}명`)
                     .join('\n');
-
-                body += `\n[동료 강사]\n${colleagues || '없음'}\n`;
-                body += `\n[교육장소 정보]\n${locations}\n`;
-                body += `\n책임 강사로서 인솔 부탁드립니다.`;
-            } else {
-                // [일반 강사용]
-                body += `\n교육 장소로 늦지 않게 도착 부탁드립니다.`;
             }
+
+            // 템플릿 치환
+            const body = compileTemplate(targetTemplate.body, variables);
 
             messagesToCreate.push({
                 type: 'Confirmed',
@@ -127,20 +142,17 @@ ${scheduleText}
             });
         }
 
+        // 5. 저장
         const count = await messageRepository.createMessagesBulk(messagesToCreate);
         return { count, message: `${count}건의 확정 메시지가 발송되었습니다.` };
     }
 
-    /**
-     * [Instructor] 내 메시지 조회
-     */
     async getMyMessages(userId) {
         const receipts = await messageRepository.findMyMessages(userId);
-        
-        // UI에 보여주기 편한 형태로 변환
         return receipts.map(r => ({
             messageId: r.message.id,
             type: r.message.type,
+            title: r.message.title,
             status: r.message.status,
             body: r.message.body,
             receivedAt: r.message.createdAt,
@@ -149,12 +161,33 @@ ${scheduleText}
         }));
     }
 
-    /**
-     * [Instructor] 메시지 읽음 처리
-     */
     async readMessage(userId, messageId) {
-        await messageRepository.markAsRead(userId, messageId);
-        return { success: true };
+        try {
+            // Prisma update는 조건에 맞는 레코드가 없으면 에러(P2025)를 던짐
+            await messageRepository.markAsRead(userId, messageId);
+            return { success: true };
+        } catch (error) {
+            // Prisma 에러 코드 P2025: Record to update not found
+            if (error.code === 'P2025') {
+                throw new AppError('해당 메시지를 찾을 수 없거나 권한이 없습니다.', 404, 'MESSAGE_NOT_FOUND');
+            }
+            // 그 외 에러는 상위로 전파
+            throw error;
+        }
+    }
+
+    async createNotice(title, body) {
+        if (!title || !body) {
+            throw new AppError('제목과 본문을 모두 입력해주세요.', 400, 'VALIDATION_ERROR');
+        }
+        return await messageRepository.createNotice({ title, body });
+    }
+
+    /**
+     * [All] 공지사항 목록 조회
+     */
+    async getNotices() {
+        return await messageRepository.findAllNotices();
     }
 }
 

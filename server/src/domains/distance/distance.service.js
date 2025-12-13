@@ -108,6 +108,15 @@ class DistanceService {
     return saved;
   }
 
+async getInstructorsWithinDistance(unitId, minDistance, maxDistance) {
+    return distanceRepository.findInstructorsByDistanceRange(unitId, minDistance, maxDistance);
+}
+
+
+
+
+
+
   async calculateDistancesBySchedulePriority(limit = 200) {
     const usage = await kakaoUsageRepository.getOrCreateToday();
     const remainingRouteQuota = Math.max(0, Math.min(MAX_ROUTE_PER_DAY - usage.routeCount, limit));

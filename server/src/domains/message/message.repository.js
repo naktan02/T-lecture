@@ -2,80 +2,89 @@
 const prisma = require('../../libs/prisma');
 
 class MessageRepository {
+
     /**
      * 1. 임시 메시지 발송 대상 조회
-     * - 상태: Pending (임시 배정)
-     * - 조건: 'Temporary' 타입의 메시지를 아직 받지 않은 배정 건
      */
+
+    async createNotice(data) {
+        return await prisma.message.create({
+            data: {
+                type: 'Notice',
+                title: data.title,
+                body: data.body,
+                status: 'Sent', // 공지는 작성 즉시 게시
+                createdAt: new Date(),
+            }
+        });
+    }
+
+    // [신규] 모든 공지사항 조회
+    async findAllNotices() {
+        return await prisma.message.findMany({
+            where: { type: 'Notice' },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+
     async findTargetsForTemporaryMessage() {
         return await prisma.instructorUnitAssignment.findMany({
-        where: {
-            state: 'Pending', // 임시 배정 상태
-            // 이미 Temporary 메시지가 연결된 적이 없는 건만 조회
-            messageAssignments: {
-                none: {
-                    message: { type: 'Temporary' }
+            where: {
+                state: 'Pending',
+                messageAssignments: {
+                    none: {
+                        message: { type: 'Temporary' }
+                    }
                 }
-            }
-        },
-        include: {
-            User: true, // 강사 정보
-            UnitSchedule: {
+            },
             include: {
-                unit: true, // 부대 정보
+                User: true,
+                UnitSchedule: {
+                    include: { unit: true },
+                },
             },
+            orderBy: {
+                UnitSchedule: { date: 'asc' },
             },
-        },
-        orderBy: {
-            UnitSchedule: { date: 'asc' },
-        },
         });
     }
 
     /**
      * 2. 확정 메시지 발송 대상 조회
-     * - 상태: Accepted (수락됨)
-     * - 조건: 'Confirmed' 타입의 메시지를 아직 받지 않은 배정 건
      */
     async findTargetsForConfirmedMessage() {
         return await prisma.instructorUnitAssignment.findMany({
-        where: {
-            state: 'Accepted', // 확정 상태
-            messageAssignments: {
-                none: {
-                    message: { type: 'Confirmed' }
+            where: {
+                state: 'Accepted',
+                messageAssignments: {
+                    none: {
+                        message: { type: 'Confirmed' }
+                    }
                 }
-            }
-        },
-        include: {
-            User: {
-                include: { instructor: true } // 리더 여부 확인용
             },
-            UnitSchedule: {
             include: {
-                unit: {
-                    include: { trainingLocations: true } // 하위 교육장소 정보
+                User: {
+                    include: { instructor: true }
                 },
-                // 동료 강사 정보 조회를 위해 해당 스케줄의 다른 배정 내역도 가져옴
-                assignments: {
-                    where: { state: 'Accepted' },
-                    include: { User: true }
-                }
+                UnitSchedule: {
+                    include: {
+                        unit: {
+                            include: { trainingLocations: true }
+                        },
+                        assignments: {
+                            where: { state: 'Accepted' },
+                            include: { User: true }
+                        }
+                    },
+                },
             },
-            },
-        },
         });
     }
 
     /**
      * 3. 메시지 생성 (트랜잭션)
-     * - Message 생성
-     * - MessageReceipt (수신자) 생성
-     * - MessageAssignment (배정 연결) 생성
      */
     async createMessagesBulk(messageDataList) {
-        // messageDataList = [{ type, body, userId, assignmentIds: [] }, ...]
-        
         return await prisma.$transaction(async (tx) => {
             let count = 0;
             for (const data of messageDataList) {
@@ -84,7 +93,7 @@ class MessageRepository {
                     data: {
                         type: data.type,
                         body: data.body,
-                        status: 'Sent', // 바로 발송됨으로 처리
+                        status: 'Sent',
                         createdAt: new Date(),
                     }
                 });
@@ -97,7 +106,7 @@ class MessageRepository {
                     }
                 });
 
-                // 3) 배정(Assignment) 연결 (N:M)
+                // 3) 배정(Assignment) 연결
                 if (data.assignmentIds && data.assignmentIds.length > 0) {
                     await tx.messageAssignment.createMany({
                         data: data.assignmentIds.map(unitScheduleId => ({
@@ -119,12 +128,8 @@ class MessageRepository {
     async findMyMessages(userId) {
         return await prisma.messageReceipt.findMany({
             where: { userId: Number(userId) },
-            include: {
-                message: true
-            },
-            orderBy: {
-                message: { createdAt: 'desc' }
-            }
+            include: { message: true },
+            orderBy: { message: { createdAt: 'desc' } }
         });
     }
 

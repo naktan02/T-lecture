@@ -21,7 +21,9 @@
     "db:migrate": "npm run prisma:format && npm run prisma:validate && prisma migrate dev",
     "db:studio": "prisma studio",
     "test:integration": "mocha test/assignment_integration.spec.js --timeout 10000 --exit",
-    "test:integration2": "mocha test/assignment_integration.spec2.js --timeout 10000 --exit"
+    "test:integration2": "mocha test/assignment_integration.spec2.js --timeout 10000 --exit",
+    "test:integration3": "mocha test/message_metadata_integration.spec.js --timeout 10000 --exit",
+    "test:integration4": "mocha test/distance_integration.spec.js --timeout 10000 --exit"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",

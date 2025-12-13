@@ -1,4 +1,4 @@
-// test/assignment_integration.spec.js
+//src/test/assignment_integration.spec2.js
 const request = require('supertest');
 const { expect } = require('chai');
 const { PrismaClient } = require('@prisma/client');

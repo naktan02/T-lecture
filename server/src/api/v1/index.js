@@ -25,8 +25,8 @@ router.use('/admin', adminRoutes);
 // 4. Units (부대 관리)
 router.use('/units', unitRoutes);
 
-// 5. Distances (거리 계산/조회)
-router.use('/distances', distanceRoutes);
+// 5. Distance (거리 계산/조회)
+router.use('/distance', distanceRoutes);
 
 // 6. Instructor (강사 전용 기능)
 router.use('/instructor', instructorRoutes); 

@@ -8,9 +8,10 @@ class DistanceRepository {
     async upsertDistance(instructorId, unitId, { distance, duration }) {
         return prisma.instructorUnitDistance.upsert({
         where: {
-            instructor_unit_distance_pk: {
-            instructorId,
-            unitId,
+            // ✅ [수정] Prisma 기본 복합 유니크 키 이름 사용
+            userId_unitId: {
+            userId: Number(instructorId),
+            unitId: Number(unitId),
             },
         },
         update: {
@@ -18,8 +19,8 @@ class DistanceRepository {
             duration,
         },
         create: {
-            instructorId,
-            unitId,
+            userId: Number(instructorId), // ✅ [수정] 필드명 userId 사용
+            unitId: Number(unitId),
             distance,
             duration,
         },
@@ -29,18 +30,21 @@ class DistanceRepository {
    * 강사-부대 한 쌍의 거리 정보 조회
    */
     async findOne(instructorId, unitId) {
-            return prisma.instructorUnitDistance.findUnique({
-            where: {
-                instructor_unit_distance_pk: {
-                instructorId,
-                unitId,
-                },
+        return prisma.instructorUnitDistance.findUnique({
+        where: {
+            // ✅ [수정] Prisma 기본 복합 유니크 키 이름 사용
+            userId_unitId: {
+            userId: Number(instructorId),
+            unitId: Number(unitId),
             },
-            include: {
-                unit: true,        // 필요 없으면 삭제
-                instructor: true,  // 필요 없으면 삭제
+        },
+        include: {
+            unit: true,
+            instructor: { // 강사 정보 포함
+                include: { user: true }
             },
-            });
+        },
+        });
     }
 
     /**
@@ -59,7 +63,7 @@ class DistanceRepository {
     async findByDistanceRange(instructorId, minDistance, maxDistance) {
         return prisma.instructorUnitDistance.findMany({
         where: {
-            instructorId,
+            userId: Number(instructorId), // ✅ [수정] DB 필드명은 userId
             distance: {
             gte: minDistance,
             lte: maxDistance,
@@ -71,6 +75,27 @@ class DistanceRepository {
         orderBy: {
             distance: 'asc',
         },
+        });
+    }
+
+    // 기존 findByDistanceRange와 반대되는 로직 추가
+    async findInstructorsByDistanceRange(unitId, minDistance, maxDistance) {
+        return prisma.instructorUnitDistance.findMany({
+            where: {
+                unitId,
+                distance: {
+                    gte: minDistance,
+                    lte: maxDistance,
+                },
+            },
+            include: {
+                instructor: { // 강사 정보 포함 (이름, 전화번호 등)
+                    include: { user: true }
+                },
+            },
+            orderBy: {
+                distance: 'asc',
+            },
         });
     }
 }

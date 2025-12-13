@@ -18,6 +18,7 @@ enum MessageStatus {
 model Message {
   id        Int            @id @default(autoincrement())
   type      MessageType?   @map("유형")
+  title     String?        @map("제목")
   body      String?        @map("본문")
   status    MessageStatus? @map("상태")
   createdAt DateTime?      @map("생성일시")
@@ -51,4 +52,13 @@ model MessageAssignment {
 
   @@id([messageId, unitScheduleId, userId])
   @@map("메시지_배정")
+}
+
+model MessageTemplate {
+  key       String   @id @map("템플릿키") // 예: "TEMPORARY", "CONFIRMED_LEADER", "CONFIRMED_MEMBER"
+  title     String   @map("제목")
+  body      String   @map("본문") @db.Text // 긴 글 저장을 위해 Text 타입
+  updatedAt DateTime @updatedAt @map("수정일시")
+
+  @@map("메시지_템플릿")
 }
