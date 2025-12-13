@@ -2,44 +2,12 @@
 const prisma = require('../../libs/prisma');
 
 class UnitRepository {
-
-  async                                                    create(data) {
-    const { trainingLocations, schedules, ...unitData } = data;
-
+  /**
+   * [신규] 부대 단건 DB 삽입 (Insert)
+   */
+  async insertOneUnit(data) {
     return prisma.unit.create({
-      data: {
-        ...unitData,
-        ...(trainingLocations && trainingLocations.length
-          ? { trainingLocations: { create: trainingLocations } }
-          : {}),
-        ...(schedules && schedules.length
-          ? { schedules: { create: schedules } }
-          : {}),
-      },
-      include: {
-        trainingLocations: true,
-        schedules: true,
-      },
-    });
-  }
-
-  /** 전체 부대 목록 조회 */
-  async findAll() {
-    return prisma.unit.findMany({
-      include: {
-        trainingLocations: true,
-        schedules: true,
-      },
-      orderBy: {
-        id: 'desc',
-      },
-    });
-  }
-
-  /** 특정 부대 상세 조회 */
-  async findById(id) {
-    return prisma.unit.findUnique({
-      where: { id: Number(id) },
+      data,
       include: {
         trainingLocations: true,
         schedules: true,
@@ -48,27 +16,95 @@ class UnitRepository {
   }
 
   /**
-   * 부대 정보 수정
-   * - Unit 기본 정보만 수정
-   * - 교육장소/일정 수정은 별도 로직으로 분리
+   * [신규] 부대 다건 일괄 삽입 (Bulk Insert with Transaction)
    */
-  async update(id, data) {
-    const { trainingLocations, schedules, ...unitData } = data;
+  async insertManyUnits(dataArray) {
+    return prisma.$transaction(
+      dataArray.map((data) =>
+        prisma.unit.create({
+          data,
+        })
+      )
+    );
+  }
 
-    // trainingLocations, schedules는 여기서 다루지 않고
-    // 별도 서비스/레포에서 $transaction으로 처리하는 걸 권장
-    return prisma.unit.update({
+  /**
+   * [변경] 필터 조건으로 부대 목록 및 개수 조회
+   * 이미 조립된 where 조건을 받아서 처리
+   */
+async findUnitsByFilterAndCount({ skip, take, where }) {
+    const [total, units] = await prisma.$transaction([
+      prisma.unit.count({ where }),
+      prisma.unit.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { id: 'desc' },
+        // 필요한 필드만 select 하거나 전체 반환
+      }),
+    ]);
+
+    return { total, units };
+  }
+
+  /**
+   * [변경] 부대 상세 정보(하위 데이터 포함) 조회
+   * - 기존: findUnitDetail
+   * - 변경: findUnitWithRelations (관계 데이터도 같이 가져옴을 명시)
+   */
+  async findUnitWithRelations(id) {
+    return prisma.unit.findUnique({
       where: { id: Number(id) },
-      data: unitData,
+      include: {
+        trainingLocations: true,
+        schedules: {
+          orderBy: { date: 'asc' },
+        },
+      },
     });
   }
 
-  /** 부대 삭제 */
-  async delete(id) {
+  /**
+   * [변경] 부대 데이터 업데이트
+   */
+  async updateUnitById(id, data) {
+    return prisma.unit.update({
+      where: { id: Number(id) },
+      data,
+    });
+  }
+
+  /**
+   * [변경] 부대 데이터 영구 삭제
+   */
+  async deleteUnitById(id) {
     return prisma.unit.delete({
       where: { id: Number(id) },
     });
   }
+
+  // ==========================================
+  // [신규] 하위 리소스(일정) 관리
+  // ==========================================
+
+  async insertUnitSchedule(unitId, date) {
+    return prisma.unitSchedule.create({
+      data: {
+        unitId: Number(unitId),
+        date: new Date(date),
+      },
+    });
+  }
+
+  async deleteUnitSchedule(scheduleId) {
+    return prisma.unitSchedule.delete({
+      where: { id: Number(scheduleId) },
+    });
+  }
+
+
+
+
 
   /**
    * 📌 거리 배치용: 다가오는 부대 일정 가져오기

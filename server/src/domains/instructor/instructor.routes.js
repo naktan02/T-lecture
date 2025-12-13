@@ -21,4 +21,14 @@ router.put('/availability', auth, requireRole('INSTRUCTOR'), instructorControlle
 
 // 일반 유저가 강사로 변경 시 필요 정보 입력 및 등록
 
+// 3. [신규] 내 통계 조회
+router.get('/stats', auth, requireRole('INSTRUCTOR'), instructorController.getMyStats);
+
+// 4. [신규] 강의 가능 과목 수정
+router.put('/virtues', auth, requireRole('INSTRUCTOR'), instructorController.updateVirtues);
+
+// 5. [변경] 승급 신청 (POST)
+// -> 증명서 발급(certificate) 대신 승급 신청(promotion)으로 변경
+router.post('/promotion', auth, requireRole('INSTRUCTOR'), instructorController.requestPromotion);
+
 module.exports = router;
