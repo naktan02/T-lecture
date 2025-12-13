@@ -129,6 +129,71 @@ class AssignmentDTO {
             };
         });
     }
+
+    toHierarchicalResponse(unitsWithAssignments) {
+        return unitsWithAssignments.map((unit) => {
+        // 1. 교육장소별 데이터 구성
+        const locations =
+            unit.trainingLocations && unit.trainingLocations.length > 0
+            ? unit.trainingLocations
+            : [
+                {
+                    id: 'default',
+                    originalPlace: '교육장소 미정',
+                    instructorsNumbers: 0,
+                },
+                ];
+
+        const trainingLocations = locations.map((loc) => {
+            // 2. 각 장소 안에서 '날짜별' 스케줄 구성
+            const dates = unit.schedules.map((schedule) => {
+            const dateStr = toKSTDateString(schedule.date);
+
+            // 현재 이 날짜(스케줄)에 배정된 강사들
+            const assignedInstructors = schedule.assignments.map((assign) => ({
+                id: assign.User.id,
+                name: assign.User.name,
+                phone: assign.User.userphoneNumber,
+                team: assign.User.instructor?.team?.name || '소속없음',
+                role: assign.User.instructor?.category || '강사',
+                status: assign.state, // Active | Canceled
+            }));
+
+            return {
+                date: dateStr,
+                unitScheduleId: schedule.id,
+                requiredCount: loc.instructorsNumbers || 0, // 장소별 필요 인원
+                currentCount: assignedInstructors.length,   // (참고용) 현재 부대 전체 배정 인원
+                instructors: assignedInstructors,           // 강사 스택용 리스트
+            };
+            });
+
+            return {
+            id: loc.id,
+            name: loc.originalPlace || '장소 미명',
+            dates: dates,
+            };
+        });
+
+        // 3. 부대 전체 요약 정보
+        const periodStart = unit.schedules[0]
+            ? toKSTDateString(unit.schedules[0].date)
+            : '-';
+        const periodEnd = unit.schedules[unit.schedules.length - 1]
+            ? toKSTDateString(unit.schedules[unit.schedules.length - 1].date)
+            : '-';
+
+        return {
+            unit: {
+            id: unit.id,
+            name: unit.name,
+            location: unit.region,
+            period: `${periodStart} ~ ${periodEnd}`,
+            },
+            trainingLocations: trainingLocations,
+        };
+        });
+    }
 }
 
 module.exports = new AssignmentDTO();

@@ -31,7 +31,14 @@ router.get(
     requireRole('INSTRUCTOR'),
     assignmentController.getWorkHistory
 );
-
+// 자동 배정 실행
+router.post(
+    '/auto-assign',
+    auth,
+    requireRole('ADMIN'),
+    assignmentController.autoAssign
+);
+// 배정 후보 조회
 router.get(
     '/candidates',
     auth,

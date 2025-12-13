@@ -15,7 +15,7 @@ enum AssignmentState {
 model InstructorAvailability {
   id           Int       @id @default(autoincrement())
   instructorId Int       @map("강사id")
-  availableOn  DateTime? @map("가능일") // DB가 DATE면 @db.Date 사용 가능
+  availableOn  DateTime @db.Date @map("가능일")
 
   instructor Instructor @relation(fields: [instructorId], references: [userId])
 

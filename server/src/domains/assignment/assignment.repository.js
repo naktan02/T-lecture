@@ -9,45 +9,50 @@ class AssignmentRepository {
      * [신규] 특정 기간 내 활성화된(Active) 배정 날짜 목록 조회
      * - 가능일 수정 시, 이미 배정된 날짜를 삭제하지 못하게 하기 위함
      */
-    async findUnitsWithSchedules(startDate, endDate) {
+    async findUnitsWithAssignments(startDate, endDate) {
         return await prisma.unit.findMany({
+        where: {
+            schedules: {
+            some: {
+                date: { gte: startDate, lte: endDate },
+            },
+            },
+        },
+        include: {
+            trainingLocations: true, // 카드 UI 표현용
+            schedules: {
             where: {
-                schedules: {
-                    some: {
-                        date: {
-                            gte: new Date(startDate),
-                            lte: new Date(endDate),
-                        },
-                    },
-                },
+                date: { gte: startDate, lte: endDate },
             },
+            orderBy: { date: 'asc' },
             include: {
-                // 부대 일정 (날짜 확인용)
-                schedules: {
-                    where: {
-                        date: {
-                            gte: new Date(startDate),
-                            lte: new Date(endDate),
+                assignments: {
+                where: { state: 'Active' }, // 유효한 배정만
+                include: {
+                    User: {
+                    include: {
+                        instructor: {
+                        include: {
+                            team: true, // 강사 팀 정보까지 필요
+                        },
                         },
                     },
-                    orderBy: { date: 'asc' },
-                    include: {
-                        // 현재 배정된 인원 현황만 파악 (필요하다면)
-                        assignments: {
-                            where: { state: 'Active' }
-                        }
-                    }
+                    },
                 },
-                // 위치 정보가 unit에 없으면 trainingLocations[0]을 쓸 수도 있으므로 일단 가져옴
-                // (계산용이 아니라 정보 표시용)
-                trainingLocations: true, 
+                },
             },
-            orderBy: {
-                educationStart: 'asc',
-            }
+            },
+        },
+        orderBy: { educationStart: 'asc' },
         });
     }
-
+    //배정 생성
+    async createAssignment(data, tx = prisma) {
+        // data: { unitScheduleId, userId, classification, state, role? }
+        return await tx.instructorUnitAssignment.create({
+        data,
+        });
+    }
     async updateAssignmentStatusCondition(instructorId, unitScheduleId, updateData) {
         return await prisma.instructorUnitAssignment.updateMany({
             where: {

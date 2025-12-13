@@ -105,7 +105,6 @@ class UnitRepository {
             },
         },
         include: {
-            // 부대 관련 하위 데이터는 Unit 도메인에서 책임지고 가져옴
             trainingLocations: true, 
             schedules: {
                 where: {
