@@ -2,10 +2,14 @@ const request = require('supertest');
 const { expect } = require('chai');
 const app = require('../src/server'); 
 const xlsx = require('xlsx');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-// API 응답 로그를 예쁘게 출력하는 헬퍼 함수
+// 로그 헬퍼 (성공/실패 모두 출력)
 const logResponse = (method, url, status, body) => {
   console.log(`\n👉 [${method}] ${url} (Status: ${status})`);
+  
+  // 204 (No Content)는 본문이 없으므로 제외하고, 나머지는 모두 출력
   if (status !== 204) {
     console.log('📦 Response JSON:');
     console.log(JSON.stringify(body, null, 2));
@@ -37,9 +41,9 @@ describe('📋 Unit(부대) API 통합 테스트', () => {
   });
 
   // ============================================================
-  // 1. 단건 등록 (Create)
+  // 1. 단건 등록 (Create) - ✅ TrainingLocation 상세 필드 검증 추가
   // ============================================================
-  it('1. [POST] /units - 신규 부대를 단건 등록해야 한다', (done) => {
+  it('1. [POST] /units - 신규 부대를 단건 등록하고 모든 필드를 검증해야 한다', (done) => {
     const newUnit = {
       name: 'Mocha단건부대',
       unitType: 'Army',
@@ -49,11 +53,19 @@ describe('📋 Unit(부대) API 통합 테스트', () => {
       officerName: '김단건',
       officerPhone: '010-1111-1111',
       officerEmail: 'single@mil.kr',
-      // 날짜 형식은 YYYY-MM-DD 또는 ISO String
+      
+      // 일정 및 교육장소 (중첩 데이터)
       schedules: ['2025-06-01', '2025-06-02'], 
       trainingLocations: [
-        { originalPlace: '대강당', plannedCount: 100, note: '빔프로젝터 있음' },
-        { originalPlace: '소강당', plannedCount: 50 }
+        { 
+          originalPlace: '대강당', 
+          changedPlace: '강의동 101호', // [신규 필드]
+          plannedCount: 100, 
+          instructorsNumbers: 3, // [신규 필드]
+          hasInstructorLounge: true, // [신규 필드]
+          hasWomenRestroom: false, // [신규 필드]
+          note: '빔프로젝터 있음' 
+        }
       ]
     };
 
@@ -62,22 +74,35 @@ describe('📋 Unit(부대) API 통합 테스트', () => {
       .set('Authorization', `Bearer ${adminToken}`) // 관리자 토큰 필수
       .send(newUnit)
       .expect(201)
-      .end((err, res) => {
+      .end(async (err, res) => {
         logResponse('POST', '/api/v1/units', res.status, res.body);
         if (err) return done(err);
         
-        // [검증] 응답 구조: { result: "Success", data: { ... } }
+        // [검증 1] 응답 기본 구조 확인
         expect(res.body.result).to.equal('Success');
         expect(res.body.data.name).to.equal('Mocha단건부대');
         expect(res.body.data.schedules).to.be.an('array');
         
         createdUnitId = res.body.data.id; // 다음 테스트를 위해 ID 저장
+
+        // [검증 2] DB에서 TrainingLocation 상세 필드 검증
+        const location = await prisma.trainingLocation.findFirst({
+            where: { unitId: createdUnitId }
+        });
+        
+        expect(location).to.not.be.null;
+        expect(location.originalPlace).to.equal('대강당');
+        expect(location.changedPlace).to.equal('강의동 101호'); // String 필드 검증
+        expect(location.instructorsNumbers).to.equal(3); // Number 필드 검증
+        expect(location.hasInstructorLounge).to.be.true; // Boolean true 검증
+        expect(location.hasWomenRestroom).to.be.false;  // Boolean false 검증
+
         done();
       });
   });
 
   // ============================================================
-  // 2. 엑셀 일괄 등록 (Upload)
+  // 2. 엑셀 일괄 등록 (Upload) - ✅ TrainingLocation 상세 필드 검증 추가
   // ============================================================
   it('2. [POST] /units/upload/excel - 엑셀 파일로 부대를 일괄 등록해야 한다', (done) => {
     // unit.mapper.js의 excelRowToRawUnit 함수가 기대하는 '한글 헤더' 사용
@@ -91,9 +116,14 @@ describe('📋 Unit(부대) API 통합 테스트', () => {
         '담당자명': '박육군',
         '연락처': '010-2222-3333',
         '이메일': 'army@test.com',
-        '교육일정': '2025-07-01, 2025-07-02', // 콤마로 구분된 문자열
+        '교육일정': '2025-07-01, 2025-07-02', 
         '교육장소명': '본청 대회의실',
         '계획인원': 200,
+        // [신규 필드] - unit.mapper.js에 매핑된 한글 헤더 사용
+        '투입강사수': 5, 
+        '강사휴게실여부': 'O', 
+        '수탁급식여부': true, // boolean 값도 mapper에서 처리
+        '변경교육장소명': '신규 강의실',
         '비고': '보안 서약서 필요'
       },
       { 
@@ -122,7 +152,7 @@ describe('📋 Unit(부대) API 통합 테스트', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .attach('file', excelBuffer, 'test_full_data.xlsx') // 파일 첨부
       .expect(201)
-      .end((err, res) => {
+      .end(async (err, res) => {
         logResponse('POST', '/api/v1/units/upload/excel', res.status, res.body);
         if (err) return done(err);
         
@@ -130,6 +160,13 @@ describe('📋 Unit(부대) API 통합 테스트', () => {
         expect(res.body.result).to.equal('Success');
         expect(res.body.message).to.include('2개');
         expect(res.body.data.count).to.equal(2);
+
+        // [DB 검증] 엑셀로 등록된 부대의 상세 필드가 올바르게 저장되었는지 확인
+        const unitA = await prisma.unit.findFirst({ where: { name: '엑셀부대_A' }, include: { trainingLocations: true } });
+        expect(unitA.trainingLocations[0].instructorsNumbers).to.equal(5);
+        expect(unitA.trainingLocations[0].hasInstructorLounge).to.be.true; // 'O' -> true
+        expect(unitA.trainingLocations[0].changedPlace).to.equal('신규 강의실');
+        
         done();
       });
   });
@@ -171,6 +208,8 @@ describe('📋 Unit(부대) API 통합 테스트', () => {
         expect(res.body.result).to.equal('Success');
         expect(res.body.data.id).to.equal(createdUnitId);
         expect(res.body.data.schedules).to.be.an('array');
+        // 부대 상세 조회 시 TrainingLocation의 변경된 필드도 포함됨을 간접 확인
+        expect(res.body.data.trainingLocations[0].changedPlace).to.equal('강의동 101호'); 
         done();
       });
   });
@@ -254,16 +293,23 @@ describe('📋 Unit(부대) API 통합 테스트', () => {
   });
 
   // ============================================================
-  // 9. 부대 삭제 (Delete)
+  // 9. 부대 삭제 (Delete) - [정리]
   // ============================================================
   it('9. [DELETE] /units/:id - 부대를 영구 삭제해야 한다', (done) => {
     request(app)
       .delete(`/api/v1/units/${createdUnitId}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(204) // No Content (Body 없음)
-      .end((err, res) => {
+      .end(async (err, res) => {
         logResponse('DELETE', `/api/v1/units/${createdUnitId}`, res.status, {});
         if (err) return done(err);
+        
+        // 엑셀로 만든 부대들도 정리
+        const excelUnits = await prisma.unit.findMany({ where: { name: { startsWith: '엑셀부대_' } } });
+        for (const unit of excelUnits) {
+            await prisma.unit.delete({ where: { id: unit.id } }).catch(() => {});
+        }
+
         done();
       });
   });
