@@ -1,5 +1,5 @@
 import React from 'react';
-import { SuperAdminHeader } from '../../features/admin/ui/headers/SuperAdminHeader';
+import { AdminHeader } from '../../features/admin/ui/headers/AdminHeader';
 import { ContentWrapper } from '../../shared/ui/ContentWrapper';
 import { AssignmentWorkspace } from '../../features/assignment/ui/AssignmentWorkspace';
 import { useAuthGuard } from '../../features/auth/model/useAuthGuard';
@@ -10,7 +10,7 @@ const AssignmentPage = () => {
 
     return (
         <>
-            <SuperAdminHeader />
+            <AdminHeader/>
             <ContentWrapper scrollable={false}>
                 <AssignmentWorkspace />
             </ContentWrapper>

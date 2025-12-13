@@ -25,6 +25,44 @@ class MetadataRepository {
         { id: 'Practicum', label: '실습강사' },
         ];
     }
+
+    // [신규] 다중 메시지 템플릿 조회
+    async findMessageTemplates() {
+        return prisma.messageTemplate.findMany({
+            orderBy: { key: 'asc' }, // 키 값 기준 정렬
+        });
+    }
+    /**
+     * [신규] 단일 메시지 템플릿 조회
+     */
+    async findTemplateByKey(key) {
+        return await prisma.messageTemplate.findUnique({
+            where: { key },
+        });
+    }
+    // [신규] 팀 수정
+    async updateTeam(id, name) {
+        return prisma.team.update({
+            where: { id: Number(id) },
+            data: { name },
+        });
+    }
+
+    // [신규] 덕목 수정
+    async updateVirtue(id, name) {
+        return prisma.virtue.update({
+            where: { id: Number(id) },
+            data: { name },
+        });
+    }
+
+    // [신규] 템플릿 수정
+    async updateMessageTemplate(key, title, body) {
+        return prisma.messageTemplate.update({
+            where: { key },
+            data: { title, body },
+        });
+    }
 }
 
 module.exports = new MetadataRepository();

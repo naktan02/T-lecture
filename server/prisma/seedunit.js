@@ -5,36 +5,41 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🧹 Cleaning up previous data... (기존 데이터 삭제 중)');
   
-  // [초기화] 외래키 제약조건 때문에 자식 테이블부터 순서대로 지워야 합니다.
   try {
-    // 1. 관계 테이블 삭제
-    await prisma.instructorUnitDistance.deleteMany(); // 거리 데이터
-    await prisma.instructorAvailability.deleteMany(); // 가능일 데이터
-    await prisma.instructorVirtue.deleteMany();       // 강사 덕목
+    // [순서 중요] 자식 테이블(참조하는 테이블)부터 먼저 지워야 합니다.
+    
+    // 1. 배정 데이터(InstructorUnitAssignment) 삭제
+    // 이것이 UnitSchedule과 Instructor를 모두 잡고 있어서 가장 먼저 지워야 합니다.
+    await prisma.instructorUnitAssignment.deleteMany(); 
 
-    // 2. 부대 관련 삭제
-    await prisma.unitSchedule.deleteMany();
+    // 2. 강사 관련 하위 데이터 삭제
+    await prisma.instructorUnitDistance.deleteMany();
+    await prisma.instructorAvailability.deleteMany();
+    await prisma.instructorVirtue.deleteMany();
+    
+    // 3. 부대 관련 데이터 삭제
+    await prisma.unitSchedule.deleteMany();     // 배정이 지워졌으므로 이제 삭제 가능
     await prisma.trainingLocation.deleteMany();
-    await prisma.unit.deleteMany(); // 부대 삭제
+    await prisma.unit.deleteMany();
 
-    // 3. 강사 및 유저 삭제
-    await prisma.instructor.deleteMany(); // 강사 정보 삭제
-    // 테스트용 유저(@test.com)만 골라서 삭제 (관리자 계정 등 보호)
+    // 4. 강사 및 유저 삭제
+    await prisma.instructor.deleteMany();       // 배정/덕목 등이 지워졌으므로 삭제 가능
+    
+    // 테스트용 유저(@test.com)만 골라서 삭제
     await prisma.user.deleteMany({
       where: { userEmail: { endsWith: '@test.com' } }
     });
-    
-    // (참고) Team, Virtue 등은 중복 생성되어도 큰 문제 없으므로 일단 둠 (필요시 삭제 추가)
 
   } catch (e) {
-    // 테이블이 없거나 하는 등의 에러는 무시하고 진행
-    console.log('⚠️ Cleanup warning:', e.message);
+    // 삭제 중 에러가 나면 더 진행하지 않고 멈추는 게 낫습니다.
+    console.error('⚠️ Cleanup failed. Stopping seed process.');
+    console.error(e);
+    process.exit(1); 
   }
 
   console.log('🌱 Seeding process started... (데이터 생성 시작)');
 
-  // 1. 기초 데이터 생성 (팀, 덕목)
-  // 중복 생성을 막기 위해 upsert(없으면 생성, 있으면 리턴) 사용 추천하지만, 간단히 create 사용
+  // 1. 기초 데이터 생성
   let team = await prisma.team.findFirst({ where: { name: '교육1팀' } });
   if (!team) {
       team = await prisma.team.create({ data: { name: '교육1팀' } });
@@ -45,19 +50,26 @@ async function main() {
       virtue = await prisma.virtue.create({ data: { name: '성실' } });
   }
 
-  // 2. 강사 생성 (기존 유지 - 10명)
+  // 기준 날짜: 내일
+  const startDateBase = new Date();
+  startDateBase.setDate(startDateBase.getDate() + 1);
+  startDateBase.setHours(0, 0, 0, 0);
+
+  // 2. 강사 생성 (10명)
   const instructors = [];
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1); // 내일 날짜
-  
-  // 강사들의 가용일을 좀 더 다양하게 (내일 ~ 모레)
-  const dayAfterTomorrow = new Date(tomorrow);
-  dayAfterTomorrow.setDate(tomorrow.getDate() + 1);
 
   for (let i = 1; i <= 10; i++) {
-    // Enum 값 검증: Main, Co, Assistant, Practicum 중 하나여야 함
     const category = i % 2 === 0 ? 'Main' : 'Assistant'; 
-    const isAvailableTomorrow = i % 3 !== 0; // 3명 중 2명은 내일 가능
+    
+    // 가능일 7일 생성
+    const availabilitiesData = [];
+    for (let d = 0; d < 7; d++) {
+        if (Math.random() > 0.2) { // 80% 확률로 가능
+            const date = new Date(startDateBase);
+            date.setDate(startDateBase.getDate() + d);
+            availabilitiesData.push({ availableOn: date });
+        }
+    }
 
     const user = await prisma.user.create({
       data: {
@@ -75,11 +87,8 @@ async function main() {
             virtues: {
               create: { virtueId: virtue.id },
             },
-            // 강사 가능일 등록
             availabilities: { 
-                create: isAvailableTomorrow 
-                    ? [{ availableOn: tomorrow }, { availableOn: dayAfterTomorrow }] 
-                    : [{ availableOn: dayAfterTomorrow }]
+                create: availabilitiesData
             }
           },
         },
@@ -91,26 +100,33 @@ async function main() {
         instructors.push(user.instructor);
     }
   }
-  console.log(`✅ Created ${instructors.length} instructors with availability.`);
+  console.log(`✅ Created ${instructors.length} instructors with extended availability.`);
 
-  // 3. 부대 및 일정, 교육장소 생성 (데이터 확대!)
+  // 3. 부대 생성 (20개) - 2박 3일 일정
   const units = [];
-  const regions = ['경기', '강원', '충청', '전라', '경상']; // 지역 다양화
+  const regions = ['경기', '강원', '충청', '전라', '경상']; 
   
-  // ★ 부대 개수를 20개로 늘림
   for (let i = 1; i <= 20; i++) {
     const region = regions[i % regions.length];
     
-    // ★ [핵심] 하나의 부대에 교육장소를 1개 ~ 3개 랜덤 생성
-    const locationCount = Math.floor(Math.random() * 3) + 1; // 1, 2, 3 중 하나
+    // 교육장소 1~3개 랜덤
+    const locationCount = Math.floor(Math.random() * 3) + 1; 
     const locationsToCreate = [];
 
     for (let j = 1; j <= locationCount; j++) {
         locationsToCreate.push({
-            originalPlace: `제${i}부대_${j}교육장`, // 예: 제1부대_1교육장, 제1부대_2교육장
-            instructorsNumbers: Math.floor(Math.random() * 2) + 2, // 필요 강사 2~3명
-            plannedCount: Math.floor(Math.random() * 50) + 30,     // 인원 30~80명
+            originalPlace: `제${i}부대_${j}교육장`,
+            instructorsNumbers: Math.floor(Math.random() * 2) + 2, // 2~3명
+            plannedCount: Math.floor(Math.random() * 50) + 30,
         });
+    }
+
+    // 2박 3일 스케줄 생성
+    const schedulesToCreate = [];
+    for (let d = 0; d < 3; d++) {
+        const date = new Date(startDateBase);
+        date.setDate(startDateBase.getDate() + d);
+        schedulesToCreate.push({ date: date });
     }
 
     const unit = await prisma.unit.create({
@@ -118,15 +134,13 @@ async function main() {
         name: `제${i}부대`,
         region: region,
         addressDetail: `${region} 어딘가 ${i}번지`,
+        educationStart: schedulesToCreate[0].date,
+        educationEnd: schedulesToCreate[2].date, // 3일차 종료
         
-        // 스케줄 생성 (일단 내일 날짜로 고정하여 테스트 집중)
         schedules: {
-          create: {
-            date: tomorrow, 
-          },
+          create: schedulesToCreate,
         },
 
-        // 교육장소 생성 (배열로 전달)
         trainingLocations: {
             create: locationsToCreate
         }
@@ -135,30 +149,28 @@ async function main() {
     });
     units.push(unit);
   }
-  console.log(`✅ Created ${units.length} units with multiple locations.`);
+  console.log(`✅ Created ${units.length} units with 2-night 3-day schedules.`);
 
   // 4. 거리 데이터 생성
-  // (부대가 20개로 늘어났으므로 10명 * 20부대 = 200개의 거리 데이터 생성됨)
   const distanceData = [];
   for (const instructor of instructors) {
     for (const unit of units) {
-      const randomDist = Math.floor(Math.random() * 95) + 5; // 5 ~ 100km
+      const randomDist = Math.floor(Math.random() * 95) + 5; 
       
       distanceData.push({
-        userId: instructor.userId, // Instructor PK는 userId
+        userId: instructor.userId,
         unitId: unit.id,
         distance: randomDist,
-        duration: randomDist * 1.5 * 60, // 대략적인 소요시간 (초)
+        duration: randomDist * 1.5 * 60,
       });
     }
   }
 
-  // createMany로 한 번에 넣기 (성능 최적화)
   await prisma.instructorUnitDistance.createMany({
     data: distanceData,
     skipDuplicates: true,
   });
-  console.log(`✅ Created distance data for ${instructors.length} instructors x ${units.length} units.`);
+  console.log(`✅ Created distance data.`);
 
   console.log('🏁 Seeding finished.');
 }

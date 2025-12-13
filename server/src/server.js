@@ -64,9 +64,9 @@ const errorHandler = require('./common/middlewares/errorHandler');
 app.use(errorHandler);
 
 // 서버 시작
-app.listen(config.port, () => {
+const server = app.listen(config.port, () => {
   console.log(`Server listening at http://localhost:${config.port}`);
 });
 
-// (테스트용으로 app export 해두면 나중에 좋음)
-module.exports = app;
+// ✅ 테스트를 위해 app과 server를 export 해야 합니다.
+module.exports = { app, server };

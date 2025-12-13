@@ -131,38 +131,6 @@ async findUnitsByFilterAndCount({ skip, take, where }) {
     });
   }
 
-  async findWithSchedules(startDate, endDate) {
-    return await prisma.unit.findMany({
-        where: {
-            schedules: {
-                some: {
-                    date: { gte: new Date(startDate), lte: new Date(endDate) },
-                },
-            },
-        },
-        include: {
-            // 부대 관련 하위 데이터는 Unit 도메인에서 책임지고 가져옴
-            trainingLocations: true, 
-            schedules: {
-                where: {
-                    date: { gte: new Date(startDate), lte: new Date(endDate) },
-                },
-                orderBy: { date: 'asc' },
-                include: {
-                    assignments: { where: { state: 'Active' } }
-                }
-            },
-        },
-        orderBy: { educationStart: 'asc' }
-    });
-    }
-
-
-
-
-
-
-
   /** 위/경도 갱신 */
   async updateCoords(unitId, lat, lng) {
     return prisma.unit.update({
