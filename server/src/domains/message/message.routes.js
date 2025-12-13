@@ -28,15 +28,15 @@ router.get(
 
 // 3. [관리자] 임시 배정 메시지 발송
 router.post(
-    '/temporary',
+    '/send/temporary',
     auth,
     requireRole('ADMIN'),
-    messageController.sendTemporary
+    messageController.sendTemporaryMessages
 );
 
 // 4. [관리자] 확정 배정 메시지 발송
 router.post(
-    '/confirmed',
+    '/send/confirmed',
     auth,
     requireRole('ADMIN'),
     messageController.sendConfirmed
@@ -44,7 +44,7 @@ router.post(
 
 // 5. [강사] 내 메시지함 조회
 router.get(
-    '/my',
+    '/',
     auth,
     messageController.getMyMessages
 );

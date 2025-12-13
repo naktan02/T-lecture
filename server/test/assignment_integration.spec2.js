@@ -181,7 +181,7 @@ describe('Assignment API Integration Test (Error Scenarios)', () => {
         // [에러 유발] 토큰 없이 요청
         it('1. [Instructor] Get Assignments - No Token (Should fail)', async () => {
             const res = await request(app)
-                .get('/api/v1/assignments/assignments');
+                .get('/api/v1/assignments/');
                 // .set('Authorization', ...) // 토큰 누락
 
             logIfError(res);
@@ -203,7 +203,7 @@ describe('Assignment API Integration Test (Error Scenarios)', () => {
             }).catch(() => {}); // 이미 있으면 무시
 
             const res = await request(app)
-                .post(`/api/v1/assignments/assignments/${unitScheduleId}/response`)
+                .post(`/api/v1/assignments/${unitScheduleId}/response`)
                 .set('Authorization', `Bearer ${instructorToken}`)
                 .send({ response: 'MAYBE' }); // ACCEPT/REJECT가 아님
 
@@ -217,7 +217,7 @@ describe('Assignment API Integration Test (Error Scenarios)', () => {
         it('3. [Instructor] Respond - Assignment Not Found (Should fail)', async () => {
             const fakeId = 999999;
             const res = await request(app)
-                .post(`/api/v1/assignments/assignments/${fakeId}/response`)
+                .post(`/api/v1/assignments/${fakeId}/response`)
                 .set('Authorization', `Bearer ${instructorToken}`)
                 .send({ response: 'ACCEPT' });
 
@@ -232,7 +232,7 @@ describe('Assignment API Integration Test (Error Scenarios)', () => {
         // [에러 유발] 필수 파라미터 누락
         it('1. [Admin] Cancel Assignment - Missing Parameter (Should fail)', async () => {
             const res = await request(app)
-                .patch('/api/v1/assignments/admin/cancel')
+                .patch('/api/v1/assignments/:unitScheduleId/cancel')
                 .set('Authorization', `Bearer ${adminToken}`)
                 .send({ 
                     // instructorId 누락

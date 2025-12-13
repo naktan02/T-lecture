@@ -250,7 +250,7 @@ describe('Message & Metadata API Integration Test', () => {
         it('[POST] Send Temporary - Should send to Pending assignments', async () => {
             // 현재 Pending 상태인 배정이 1개 있음
             const res = await request(app)
-                .post('/api/v1/messages/temporary')
+                .post('/api/v1/messages/send/temporary')
                 .set('Authorization', `Bearer ${adminToken}`);
 
             logResponse(res, 'Message - Send Temporary');
@@ -261,7 +261,7 @@ describe('Message & Metadata API Integration Test', () => {
         it('[POST] Send Confirmed - Error: No Accepted assignments (404)', async () => {
             // 아직 Accepted 상태인 배정이 없음 -> 404 NO_TARGETS 에러 예상
             const res = await request(app)
-                .post('/api/v1/messages/confirmed')
+                .post('/api/v1/messages/send/confirmed')
                 .set('Authorization', `Bearer ${adminToken}`);
 
             logResponse(res, 'Message - Send Confirmed (Empty)');
@@ -279,7 +279,7 @@ describe('Message & Metadata API Integration Test', () => {
 
         it('[POST] Send Confirmed - Should send to Accepted assignments', async () => {
             const res = await request(app)
-                .post('/api/v1/messages/confirmed')
+                .post('/api/v1/messages/send/confirmed')
                 .set('Authorization', `Bearer ${adminToken}`);
 
             logResponse(res, 'Message - Send Confirmed');
@@ -294,7 +294,7 @@ describe('Message & Metadata API Integration Test', () => {
     describe('4. Message API - Receipt', () => {
         it('[GET] My Messages - Should return received messages', async () => {
             const res = await request(app)
-                .get('/api/v1/messages/my')
+                .get('/api/v1/messages/')
                 .set('Authorization', `Bearer ${instructorToken}`);
 
             logResponse(res, 'Message - Get My Messages');

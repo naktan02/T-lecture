@@ -33,7 +33,7 @@ exports.getNotices = asyncHandler(async (req, res) => {
 /**
  * [Admin] 임시 배정 메시지 일괄 발송
  */
-exports.sendTemporary = asyncHandler(async (req, res) => {
+exports.sendTemporaryMessages = asyncHandler(async (req, res) => {
     logger.info('[Message] Sending temporary messages...');
     const result = await messageService.sendTemporaryMessages();
     res.json(result);

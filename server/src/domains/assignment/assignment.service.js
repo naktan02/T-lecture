@@ -105,30 +105,25 @@ class AssignmentService {
      */
     async cancelAssignment(userId, userRole, targetInstructorId, unitScheduleId) {
         // 1. 배정 정보 조회
-        const assignment = await assignmentRepository.findAssignmentByKey(targetInstructorId, unitScheduleId);
-        
+        const assignment = await assignmentRepository.findAssignmentByKey(
+            targetInstructorId,
+            unitScheduleId
+        );
+
         if (!assignment) {
-            const error = new Error('배정 정보를 찾을 수 없습니다.');
-            error.status = 404;
-            throw error;
+            throw new AppError('배정 정보를 찾을 수 없습니다.', 404, 'ASSIGNMENT_NOT_FOUND');
         }
 
         // 2. 권한 체크 (관리자거나 본인)
-        const isOwner = (Number(targetInstructorId) === Number(userId)); 
-        const isAdmin = (userRole === 'ADMIN' || userRole === 'SUPER');
+        const isOwner = Number(targetInstructorId) === Number(userId);
+        const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER';
 
         if (!isAdmin && !isOwner) {
-            const error = new Error('이 배정을 취소할 권한이 없습니다.');
-            error.status = 403; 
-            throw error;
+            throw new AppError('이 배정을 취소할 권한이 없습니다.', 403, 'FORBIDDEN');
         }
 
         // 3. 상태 업데이트 ('Canceled')
-        return await assignmentRepository.updateStatusByKey(
-            targetInstructorId, 
-            unitScheduleId, 
-            'Canceled'
-        );
+        return await assignmentRepository.updateStatusByKey(targetInstructorId, unitScheduleId, 'Canceled');
     }
     /**
      * 근무 이력 조회 (Confirmed + Past)
