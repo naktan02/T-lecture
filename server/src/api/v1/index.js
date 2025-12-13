@@ -11,6 +11,7 @@ const adminRoutes = require('../../domains/user/routes/user.admin.routes');
 const userRoutes = require('../../domains/user/routes/user.me.routes');
 const assignmentRoutes = require('../../domains/assignment/assignment.routes');
 const metadataRoutes = require('../../domains/metadata/metadata.routes');
+const messageRoutes = require('../../domains/message/message.routes');
 
 // 1. Auth (회원가입, 로그인 등)
 router.use('/auth', authRoutes);
@@ -36,7 +37,8 @@ router.use('/assignments', assignmentRoutes);
 // 8. Metadata (기타 메타데이터 조회)
 router.use('/metadata', metadataRoutes);
 
-
+// 9. Message (메시지 알림 관리)
+router.use('/messages', messageRoutes);
 
 
 module.exports = router;

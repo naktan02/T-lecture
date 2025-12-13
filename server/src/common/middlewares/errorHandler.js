@@ -23,6 +23,7 @@ module.exports = (err, req, res, next) => {
 
     res.status(statusCode).json({
         error: err.message,
+        statusCode,
         code,
         ...(isProd ? {} : { stack: err.stack }),
     });
