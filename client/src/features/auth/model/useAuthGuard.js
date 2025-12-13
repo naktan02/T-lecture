@@ -1,18 +1,29 @@
 // client/src/features/auth/model/useAuthGuard.js
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode'; 
 
 /**
  * 페이지 접근 권한을 검사하는 Hook입니다.
- * * @param {('USER'|'ADMIN'|'SUPER_ADMIN'|'GUEST')} requiredRole - 필요한 최소 권한. 
- * GUEST는 로그인 상태가 아니어야 함을 의미합니다.
- * * NOTE: 실제 보안 검사는 API 요청 시 서버에서 이루어지며, 이 Hook은 UX 개선 및 
- * 프론트엔드에서의 빠른 리디렉션을 담당합니다.
+ * @param {('USER'|'ADMIN'|'SUPER_ADMIN'|'GUEST')} requiredRole
  */
 export const useAuthGuard = (requiredRole) => {
     const navigate = useNavigate();
     
-    // 이 useEffect는 페이지 진입 시 한 번만 실행됩니다.
+    // 🟢 [Helper] 토큰 만료 여부 확인 함수
+    const isTokenExpired = (token) => {
+        if (!token) return true;
+        try {
+            const decoded = jwtDecode(token);
+            const currentTime = Date.now() / 1000;
+            // 만료 시간(exp)이 현재 시간보다 이전이면 만료됨
+            return decoded.exp < currentTime;
+        } catch (e) {
+            // 토큰 형식이 잘못되었으면 만료된 것으로 간주
+            return true;
+        }
+    };
+
     useEffect(() => {
         const token = localStorage.getItem('accessToken');
         const userRole = localStorage.getItem('userRole'); 
@@ -28,10 +39,24 @@ export const useAuthGuard = (requiredRole) => {
         }
 
         // ----------------------------------------------------
-        // 2. Protected Guard (로그인 필수)
+        // 2. Protected Guard (로그인 필수) & 토큰 만료 체크
         // ----------------------------------------------------
+        
+        // 2-1. 토큰 자체가 없는 경우
         if (!token) {
             alert('로그인이 필요합니다.');
+            navigate('/login', { replace: true });
+            return;
+        }
+
+        // 🟢 2-2. 토큰은 있지만 시간이 만료된 경우 (여기가 핵심)
+        if (isTokenExpired(token)) {
+            // 만료된 정보들 싹 지우기
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('userRole');
+            localStorage.removeItem('currentUser');
+            
+            alert('세션이 만료되었습니다. 다시 로그인해주세요.');
             navigate('/login', { replace: true });
             return;
         }
@@ -39,7 +64,7 @@ export const useAuthGuard = (requiredRole) => {
         // ----------------------------------------------------
         // 3. Role Guard (권한 검사)
         // ----------------------------------------------------
-        let hasPermission = true; // 일단 통과했다고 가정
+        let hasPermission = true;
 
         if (requiredRole === 'SUPER_ADMIN' && userRole !== 'SUPER_ADMIN') {
             hasPermission = false;
@@ -54,17 +79,28 @@ export const useAuthGuard = (requiredRole) => {
 
     }, [navigate, requiredRole]);
     
-    // UX 개선: Hook이 쫓아내기 전에 화면이 잠깐 보이는 것을 막기 위한 로직
+    // ----------------------------------------------------
+    // UX 개선: 렌더링 차단 (shouldRender)
+    // ----------------------------------------------------
     const token = localStorage.getItem('accessToken');
     const userRole = localStorage.getItem('userRole');
     let shouldRender = true;
     
+    // 토큰 만료 여부를 렌더링 시점에도 확인 (화면 깜빡임 방지)
+    const tokenExpired = isTokenExpired(token);
+
     if (requiredRole === 'GUEST' && token) {
         shouldRender = false; // 로그인 상태인데 GUEST 페이지면 숨김
-    } else if (requiredRole !== 'GUEST' && !token) {
-        shouldRender = false; // 로그인이 필요한데 토큰이 없으면 숨김
-    } else if (requiredRole === 'SUPER_ADMIN' && userRole !== 'SUPER_ADMIN') {
-        shouldRender = false; // 권한이 부족하면 숨김
+    } else if (requiredRole !== 'GUEST') {
+        // 로그인이 필요한 페이지인데, 토큰이 없거나 만료되었으면 숨김
+        if (!token || tokenExpired) {
+            shouldRender = false; 
+        }
+    } 
+    
+    // 권한 부족 체크
+    if (requiredRole === 'SUPER_ADMIN' && userRole !== 'SUPER_ADMIN') {
+        shouldRender = false;
     } else if (requiredRole === 'ADMIN' && !(userRole === 'ADMIN' || userRole === 'SUPER_ADMIN')) {
         shouldRender = false;
     }

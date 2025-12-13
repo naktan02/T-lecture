@@ -41,3 +41,4 @@ exports.updateAvailabilities = async (instructorId, year, month, newDatesStr) =>
   
   return { message: '근무 가능일이 저장되었습니다.' };
 };
+

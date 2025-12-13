@@ -6,16 +6,18 @@ enum AssignmentCategory {
 }
 
 enum AssignmentState {
-  Active // 유효한 배정
-  Canceled // 취소된 배정
+  Pending // 임시 배정 (응답 대기)
+  Accepted // 수락됨 (확정)
+  Rejected // 거절됨
+  Canceled // 관리자 취소
 
   @@map("배정상태__t")
 }
 
 model InstructorAvailability {
-  id           Int       @id @default(autoincrement())
-  instructorId Int       @map("강사id")
-  availableOn  DateTime? @map("가능일") // DB가 DATE면 @db.Date 사용 가능
+  id           Int      @id @default(autoincrement())
+  instructorId Int      @map("강사id")
+  availableOn  DateTime @map("가능일") @db.Date
 
   instructor Instructor @relation(fields: [instructorId], references: [userId])
 
@@ -28,7 +30,7 @@ model InstructorUnitAssignment {
   userId         Int
   unitScheduleId Int
   classification AssignmentCategory? @map("배치분류")
-  state          AssignmentState     @default(Active) @map("배정상태")
+  state          AssignmentState     @default(Pending) @map("배정상태")
 
   User         User         @relation(fields: [userId], references: [id])
   UnitSchedule UnitSchedule @relation(fields: [unitScheduleId], references: [id])

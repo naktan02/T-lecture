@@ -19,7 +19,8 @@
     "prisma:validate": "prisma validate",
     "db:push": "npm run prisma:format && npm run prisma:validate && prisma db push",
     "db:migrate": "npm run prisma:format && npm run prisma:validate && prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "test:integration": "mocha test/assignment_integration.spec.js --timeout 10000 --exit"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
@@ -39,7 +40,10 @@
     "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
+    "chai": "^6.2.1",
+    "mocha": "^11.7.5",
     "nodemon": "^3.1.9",
-    "prisma": "^6.19.0"
+    "prisma": "^6.19.0",
+    "supertest": "^7.1.4"
   }
 }
