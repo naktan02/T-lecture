@@ -3,9 +3,9 @@ require('dotenv').config();
 
 console.log('KAKAO_REST_API_KEY loaded?', !!process.env.KAKAO_REST_API_KEY);
 
-const kakaoService = require('../src/infra/kakao.service');
+const kakaoService = require('../../src/infra/kakao.service');
 const distanceService = require('../src/domains/distance/services/distance.service');
-const prisma = require('../src/libs/prisma');
+const prisma = require('../../src/libs/prisma');
 
 async function main() {
     try {

@@ -25,6 +25,6 @@ module.exports = (err, req, res, next) => {
         error: err.message,
         statusCode,
         code,
-        ...(isProd ? {} : { stack: err.stack }),
+        // ...(isProd ? {} : { stack: err.stack }),
     });
 };

@@ -2,7 +2,7 @@ const request = require('supertest');
 const { expect } = require('chai');
 const { PrismaClient } = require('@prisma/client');
 const jwt = require('jsonwebtoken');
-const { app, server } = require('../src/server'); // server.js 경로 확인 필요
+const { app, server } = require('../../src/server'); // server.js 경로 확인 필요
 
 const prisma = new PrismaClient();
 

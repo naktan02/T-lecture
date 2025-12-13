@@ -1,18 +1,27 @@
 // common/middlewares/auth.js
 const jwt = require('jsonwebtoken');
 const prisma = require('../../libs/prisma');
+const AppError = require('../errors/AppError'); // 너 프로젝트 경로에 맞게
 
 module.exports = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ message: '인증 토큰이 없습니다.' });
+      throw new AppError('인증 토큰이 없습니다.', 401, 'NO_AUTH_TOKEN');
     }
 
     const token = authHeader.split(' ')[1];
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
 
-    // 🔹 로그인 때 넣은 userId 사용
+    let payload;
+    try {
+      payload = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      if (err?.name === 'TokenExpiredError') {
+        throw new AppError('토큰이 만료되었습니다.', 401, 'TOKEN_EXPIRED');
+      }
+      throw new AppError('유효하지 않은 토큰입니다.', 401, 'INVALID_TOKEN');
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       select: {
@@ -20,42 +29,31 @@ module.exports = async (req, res, next) => {
         status: true,
         name: true,
         userEmail: true,
-        admin: {       // 관리자 여부 + 레벨
-          select: {
-            level: true,   // 'GENERAL' | 'SUPER'
-          },
-        },
-        instructor: {  // 강사 여부
-          select: { userId: true },
-        },
+        admin: { select: { level: true } },
+        instructor: { select: { userId: true } },
       },
     });
 
     if (!user) {
-      return res.status(401).json({ message: '존재하지 않는 사용자입니다.' });
+      throw new AppError('존재하지 않는 사용자입니다.', 401, 'USER_NOT_FOUND');
     }
 
-    // 상태 체크 (원하는 정책대로 수정 가능)
     if (user.status === 'INACTIVE') {
-      return res.status(403).json({ message: '접근이 제한된 계정입니다.' });
+      throw new AppError('접근이 제한된 계정입니다.', 403, 'ACCOUNT_INACTIVE');
     }
 
-    // 🔹 컨트롤러/미들웨어에서 편하게 쓰도록 가공
     req.user = {
       id: user.id,
       status: user.status,
       name: user.name,
       userEmail: user.userEmail,
       isAdmin: !!user.admin,
-      adminLevel: user.admin?.level || null,  // 'GENERAL' | 'SUPER' | null
+      adminLevel: user.admin?.level || null,
       isInstructor: !!user.instructor,
     };
 
     next();
   } catch (err) {
-    if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: '토큰이 만료되었습니다.' });
-    }
-    return res.status(401).json({ message: '유효하지 않은 토큰입니다.' });
+    next(err); // ✅ 전역 에러 핸들러로 보냄
   }
 };

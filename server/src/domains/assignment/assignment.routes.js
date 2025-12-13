@@ -18,7 +18,7 @@ router.get('/candidates', auth, requireRole('ADMIN'), assignmentController.getCa
 // 관리자: 자동배정 실행
 router.post('/auto-assign', auth, requireRole('ADMIN'), assignmentController.autoAssign);
 
-// 관리자: 배정 취소 (admin을 URL에 두지 않음)
+// 관리자: 배정 취소 
 router.patch('/:unitScheduleId/cancel', auth, requireRole('ADMIN'), assignmentController.cancelAssignmentByAdmin);
 
 

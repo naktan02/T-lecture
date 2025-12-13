@@ -3,6 +3,10 @@ const adminRepository = require('../repositories/user.admin.repository');
 const userRepository = require('../repositories/user.repository');
 const AppError = require('../../../common/errors/AppError');
 
+// ✅ Prisma enum(UserStatus) import 없이도 검증 가능하도록 허용값을 직접 선언
+// (스키마 기준: PENDING, APPROVED, RESTING, INACTIVE)
+const ALLOWED_USER_STATUS = ['PENDING', 'APPROVED', 'RESTING', 'INACTIVE'];
+
 function parseBool(v) {
     if (typeof v === 'boolean') return v;
     if (typeof v === 'string') return v.toLowerCase() === 'true';
@@ -42,9 +46,37 @@ function normalizeFilters(query = {}) {
     delete filters.role;
 
     return filters;
-}
+    }
 
-class AdminService {
+    function assertDtoObject(dto) {
+    if (!dto || typeof dto !== 'object' || Array.isArray(dto)) {
+        throw new AppError('요청 바디 형식이 올바르지 않습니다.', 400, 'INVALID_BODY');
+    }
+    }
+
+    function assertStringOrUndefined(value, fieldName) {
+    if (value === undefined) return;
+    if (value === null) return; // null 허용 정책이면 유지 (원치 않으면 여기서 막아도 됨)
+    if (typeof value !== 'string') {
+        throw new AppError(`${fieldName}는 문자열이어야 합니다.`, 400, 'INVALID_INPUT');
+    }
+    }
+
+    function assertValidStatusOrUndefined(status) {
+    if (status === undefined) return;
+    if (typeof status !== 'string') {
+        throw new AppError('status는 문자열이어야 합니다.', 400, 'INVALID_STATUS');
+    }
+    if (!ALLOWED_USER_STATUS.includes(status)) {
+        throw new AppError(
+        `유효하지 않은 status 입니다. allowed: ${ALLOWED_USER_STATUS.join(', ')}`,
+        400,
+        'INVALID_STATUS'
+        );
+    }
+    }
+
+    class AdminService {
     async getAllUsers(query) {
         const filters = normalizeFilters(query);
         const users = await adminRepository.findAll(filters);
@@ -72,21 +104,55 @@ class AdminService {
     }
 
     async updateUser(id, dto) {
+        assertDtoObject(dto);
+
         const { name, phoneNumber, status, address, isTeamLeader } = dto;
 
+        // ✅ 입력 검증(Prisma 500 방지)
+        assertStringOrUndefined(name, 'name');
+        assertStringOrUndefined(phoneNumber, 'phoneNumber');
+        assertStringOrUndefined(address, 'address');
+        assertValidStatusOrUndefined(status);
+
+        if (isTeamLeader !== undefined && typeof isTeamLeader !== 'boolean') {
+        throw new AppError('isTeamLeader는 boolean이어야 합니다.', 400, 'INVALID_INPUT');
+        }
+
+        // ✅ 수정할 값이 하나도 없으면 400 (원하면 200 no-op로 바꿔도 됨)
+        const hasAny =
+        name !== undefined ||
+        phoneNumber !== undefined ||
+        status !== undefined ||
+        address !== undefined ||
+        isTeamLeader !== undefined;
+
+        if (!hasAny) {
+        throw new AppError('수정할 값이 없습니다.', 400, 'NO_UPDATE_FIELDS');
+        }
+
+        // 1. 유저 정보 조회 (강사 여부 확인용)
+        const user = await userRepository.findById(id);
+        if (!user) throw new AppError('해당 회원을 찾을 수 없습니다.', 404, 'USER_NOT_FOUND');
+
+        // 2. User 테이블 수정 데이터
         const userData = {};
         if (name !== undefined) userData.name = name;
         if (phoneNumber !== undefined) userData.userphoneNumber = phoneNumber;
         if (status !== undefined) userData.status = status;
 
+        // 3. Instructor 테이블 수정 데이터 (강사일 때만)
         const instructorData = {};
+        const isInstructor = !!user.instructor;
+
+        if (isInstructor) {
         if (address !== undefined) {
-        instructorData.location = address;
-        instructorData.lat = null;
-        instructorData.lng = null;
+            instructorData.location = address;
+            instructorData.lat = null;
+            instructorData.lng = null;
         }
         if (typeof isTeamLeader === 'boolean') {
-        instructorData.isTeamLeader = isTeamLeader;
+            instructorData.isTeamLeader = isTeamLeader;
+        }
         }
 
         const updatedUser = await userRepository.update(id, userData, instructorData);

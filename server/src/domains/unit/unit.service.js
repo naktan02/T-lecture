@@ -10,8 +10,17 @@ class UnitService {
    * - Mapper(DTO)를 사용하여 데이터 정제 위임
    */
   async registerSingleUnit(rawData) {
-    const cleanData = toCreateUnitDto(rawData);
-    return await unitRepository.insertOneUnit(cleanData);
+    // ✅ 수정: try-catch로 Mapper의 일반 Error를 잡고 AppError(400)로 변환
+    try {
+        const cleanData = toCreateUnitDto(rawData);
+        return await unitRepository.insertOneUnit(cleanData);
+    } catch (e) {
+        // toCreateUnitDto의 '부대명(name)은 필수입니다.' 에러를 검사
+        if (e.message.includes('부대명(name)은 필수입니다.')) {
+            throw new AppError(e.message, 400, 'VALIDATION_ERROR');
+        }
+        throw e; // 예상치 못한 다른 에러는 그대로 던짐
+    }
   }
 
   /**

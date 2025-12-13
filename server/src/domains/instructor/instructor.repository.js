@@ -120,18 +120,19 @@ class InstructorRepository {
    * '강사 근무 가능일 수정' 시 유효성 검사를 위해 이곳에 추가했습니다.
    */
   async findActiveAssignmentsDate(instructorId, startDate, endDate) {
-    const assignments = await prisma.instructorUnitAssignment.findMany({
-        where: {
-            userId: Number(instructorId),
-            state: 'Active', // 취소되지 않은 유효 배정만
-            UnitSchedule: { 
-                date: { gte: startDate, lte: endDate } 
-            }
-        },
-        include: { UnitSchedule: true }
-    });
-    return assignments.map(a => a.UnitSchedule.date);
-  }
+        const assignments = await prisma.instructorUnitAssignment.findMany({
+            where: {
+                userId: Number(instructorId),
+                // ✅ 수정: 'Active' 대신 유효한 상태 ['Pending', 'Accepted'] 사용
+                state: { in: ['Pending', 'Accepted'] }, 
+                UnitSchedule: { 
+                    date: { gte: startDate, lte: endDate } 
+                }
+            },
+            include: { UnitSchedule: true }
+        });
+        return assignments.map(a => a.UnitSchedule.date);
+    }
 
   /**
    * [신규] 통계 데이터 계산 (Real DB Query)
@@ -140,32 +141,34 @@ class InstructorRepository {
    */
   // 1. 배정 횟수 조회 (DB Count)
   async countActiveAssignments(instructorId) {
-    return await prisma.instructorUnitAssignment.count({
-      where: {
-        userId: Number(instructorId),
-        state: 'Active',
-      },
-    });
-  }
+        return await prisma.instructorUnitAssignment.count({
+            where: {
+                userId: Number(instructorId),
+                // ✅ 수정: 통계는 확정된 'Accepted' 상태를 기준으로 합니다.
+                state: 'Accepted',
+            },
+        });
+    }
 
   // 2. 강의 시간 계산용 데이터 조회 (단순 조회)
   async findAssignmentsForCalc(instructorId) {
-    return await prisma.instructorUnitAssignment.findMany({
-      where: { 
-        userId: Number(instructorId), 
-        state: 'Active' 
-      },
-      select: {
-        UnitSchedule: {
-          select: {
-            unit: {
-              select: { workStartTime: true, workEndTime: true }
+        return await prisma.instructorUnitAssignment.findMany({
+            where: { 
+                userId: Number(instructorId), 
+                // ✅ 수정: 'Accepted' 상태 사용
+                state: 'Accepted', 
+            },
+            select: {
+                UnitSchedule: {
+                    select: {
+                        unit: {
+                            select: { workStartTime: true, workEndTime: true }
+                        }
+                    }
+                }
             }
-          }
-        }
-      }
-    });
-  }
+        });
+    }
 
   // 3. 레거시 통계 조회
   async findLegacyStats(instructorId) {
