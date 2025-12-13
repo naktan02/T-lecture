@@ -20,7 +20,8 @@
     "db:push": "npm run prisma:format && npm run prisma:validate && prisma db push",
     "db:migrate": "npm run prisma:format && npm run prisma:validate && prisma migrate dev",
     "db:studio": "prisma studio",
-    "test": "mocha tests/test/**/*.spec.js --timeout 10000 --exit"
+    "test": "mocha tests/test/**/*.spec.js --timeout 10000 --exit",
+    "test:integration": "mocha tests/test/auth.integration.spec.js --timeout 10000 --exit"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
