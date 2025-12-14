@@ -2,7 +2,7 @@ const request = require('supertest');
 const { expect } = require('chai');
 const { PrismaClient } = require('@prisma/client');
 const jwt = require('jsonwebtoken');
-const { app, server } = require('../../src/server'); // server.js 경로 확인 필요
+const { app, server } = require('../../src/server'); 
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'secret_key';
@@ -36,7 +36,6 @@ describe('User Me API Integration Test (Full Coverage)', () => {
     };
 
     before(async () => {
-        // 1. DB 정리 (FK 제약 조건 고려: Instructor 하위 테이블 먼저, User/Admin/Instructor)
         await prisma.instructorVirtue.deleteMany().catch(() => {});
         await prisma.instructorAvailability.deleteMany().catch(() => {});
         await prisma.instructorStats.deleteMany().catch(() => {});
@@ -105,7 +104,6 @@ describe('User Me API Integration Test (Full Coverage)', () => {
     });
 
     after(async () => {
-        // 혹시 탈퇴 테스트에서 삭제되지 않은 데이터 정리 (findById에서 강사 포함하여 삭제)
         await prisma.user.deleteMany({ where: { id: generalUserId } }).catch(() => {});
         await prisma.user.deleteMany({ where: { id: instructorUserId } }).catch(() => {});
         
@@ -117,6 +115,8 @@ describe('User Me API Integration Test (Full Coverage)', () => {
     // 0) AUTH 에러 (모든 엔드포인트 공통)
     // ==========================================================
     describe('0. Auth Errors (All Endpoints)', () => {
+
+      // ✅ 토큰 없음 에러
         it('[AUTH] GET /me - No Token (401)', async () => {
             const res = await request(app).get('/api/v1/users/me');
             logResponse(res, 'No Token');
@@ -124,6 +124,7 @@ describe('User Me API Integration Test (Full Coverage)', () => {
             expectErrorLike(res);
         });
 
+        // ✅ 토큰 없음 에러
         it('[AUTH] PATCH /me - Invalid Token (401)', async () => {
             const res = await request(app)
                 .patch('/api/v1/users/me')
@@ -139,6 +140,8 @@ describe('User Me API Integration Test (Full Coverage)', () => {
     // 1) GET /users/me
     // ======================
     describe('1. GET /users/me - My Profile Check', () => {
+
+      // ✅ 내 정보 조회 성공
         it('[GET] Success (General User)', async () => {
             const res = await request(app)
                 .get('/api/v1/users/me')
@@ -150,7 +153,7 @@ describe('User Me API Integration Test (Full Coverage)', () => {
             expect(res.body).to.not.have.property('password');
             expect(res.body).to.not.have.property('instructor'); 
         });
-        
+        // 내 정보 강사까지 조회 성공
         it('[GET] Success (Instructor User) - Includes Instructor Data', async () => {
             const res = await request(app)
                 .get('/api/v1/users/me')
@@ -159,15 +162,13 @@ describe('User Me API Integration Test (Full Coverage)', () => {
             logResponse(res, 'Get My Profile (Instructor)');
             expect(res.status).to.equal(200);
             expect(res.body.name).to.equal('강사유저');
-            
-            // ✅ 강사 정보 필드 검증 (instructor: true로 조회되어야 함)
             expect(res.body).to.have.property('instructor').that.is.an('object');
             expect(res.body.instructor.location).to.equal('서울시 강남구 역삼동');
             expect(res.body.instructor.category).to.equal('Main');
         });
         
+        // ✅ Auth Middleware에서 던지는 401에러
         it('[GET] Error: User Not Found (401) by Auth Middleware', async () => {
-            // 토큰은 유효하지만 DB에 존재하지 않는 ID (Auth Middleware에서 401 USER_NOT_FOUND)
             const fakeToken = jwt.sign({ userId: 99999998 }, JWT_SECRET); 
             await prisma.user.deleteMany({ where: { id: 99999998 } }).catch(() => {}); 
 
@@ -176,7 +177,6 @@ describe('User Me API Integration Test (Full Coverage)', () => {
               .set('Authorization', `Bearer ${fakeToken}`);
             
             logResponse(res, 'User Not Found by Auth');
-            // 🚨 FIX: Auth Middleware에서 던지는 401을 기대합니다. (Failure 2 해결)
             expect(res.status).to.equal(401); 
             expectErrorLike(res);
             expect(res.body.code).to.equal('USER_NOT_FOUND');
@@ -187,6 +187,8 @@ describe('User Me API Integration Test (Full Coverage)', () => {
     // 2) PATCH /users/me
     // ======================
     describe('2. PATCH /users/me - Update My Profile', () => {
+
+      // ✅ 내 정보 수정 완료
         it('[PATCH] Success (General User) - Name & Phone', async () => {
             const res = await request(app)
                 .patch('/api/v1/users/me')
@@ -197,26 +199,26 @@ describe('User Me API Integration Test (Full Coverage)', () => {
             expect(res.status).to.equal(200);
             expect(res.body.name).to.equal('변경된일반이름');
             expect(res.body.userphoneNumber).to.equal('010-9999-9999');
-            // 🚨 FIX: 서비스 코드 수정으로 이 검증 통과 예상 (Failure 1, 3 해결)
             expect(res.body).to.not.have.property('instructor'); 
         });
 
+        // ✅ 내 정보 수정 완료
         it('[PATCH] Success (Instructor User) - Address Update', async () => {
             const newAddress = '경기도 성남시 분당구';
             const res = await request(app)
                 .patch('/api/v1/users/me')
                 .set('Authorization', `Bearer ${instructorUserToken}`)
-                .send({ address: newAddress, phoneNumber: '010-2222-3333' }); // 주소와 전화번호 동시 업데이트
+                .send({ address: newAddress, phoneNumber: '010-2222-3333' }); 
 
             logResponse(res, 'Update Instructor Profile - Address Success');
             expect(res.status).to.equal(200);
             
-            // 강사 필드 검증 (location 업데이트, lat/lng 초기화)
             expect(res.body.instructor.location).to.equal(newAddress);
             expect(res.body.instructor.lat).to.be.null; 
             expect(res.body.instructor.lng).to.be.null; 
         });
         
+        // ✅ 내 정보 수정 실패 없는 필드
         it('[PATCH] Error: Empty Body (400) - No update fields', async () => {
             const res = await request(app)
                 .patch('/api/v1/users/me')
@@ -229,11 +231,12 @@ describe('User Me API Integration Test (Full Coverage)', () => {
             expect(res.body.code).to.equal('NO_UPDATE_FIELDS'); 
         });
 
+        // ✅ 내 정보 수정 실패 잘못된 타입
         it('[PATCH] Error: Invalid Type (400) - Name must be string', async () => {
             const res = await request(app)
                 .patch('/api/v1/users/me')
                 .set('Authorization', `Bearer ${generalUserToken}`)
-                .send({ name: 12345 }); // name이 숫자인 경우
+                .send({ name: 12345 }); 
 
             logResponse(res, 'Update My Profile - Invalid Type');
             expect(res.status).to.equal(400);
@@ -241,11 +244,12 @@ describe('User Me API Integration Test (Full Coverage)', () => {
             expect(res.body.code).to.equal('INVALID_NAME'); 
         });
         
+        // ✅ 내 정보 수정 실패 잘못된 타입
         it('[PATCH] Error: Invalid Address Type (400)', async () => {
-             const res = await request(app)
-                .patch('/api/v1/users/me')
-                .set('Authorization', `Bearer ${generalUserToken}`)
-                .send({ address: { street: 'no' } }); // address를 객체로 전송
+            const res = await request(app)
+              .patch('/api/v1/users/me')
+              .set('Authorization', `Bearer ${generalUserToken}`)
+              .send({ address: { street: 'no' } }); 
 
             logResponse(res, 'Update Profile - Invalid Address Type');
             expect(res.status).to.equal(400); 
@@ -258,6 +262,8 @@ describe('User Me API Integration Test (Full Coverage)', () => {
     // 3) DELETE /users/me
     // ======================
     describe('3. DELETE /users/me - Withdraw', () => {
+
+      // ✅ 내 정보 삭제 성공
         it('[DELETE] Success (200) - General User Withdraw', async () => {
             // 이 토큰은 deleteUserId를 포함 (삭제 테스트용 유저)
             const res = await request(app)
@@ -268,23 +274,22 @@ describe('User Me API Integration Test (Full Coverage)', () => {
             expect(res.status).to.equal(200);
             expect(res.body.message).to.include('회원 탈퇴가 완료되었습니다.');
 
-            // DB에서 실제로 삭제되었는지 확인
             const deleted = await prisma.user.findUnique({ where: { id: deleteUserId } });
             expect(deleted).to.be.null;
         });
 
+        // ✅ 내 정보 삭제 실패 이미 삭제된 유저
         it('[DELETE] Error: Cannot Withdraw Twice (401 or 404)', async () => {
-            // 삭제된 유저의 토큰으로 다시 시도
             const res = await request(app)
                 .delete('/api/v1/users/me')
                 .set('Authorization', `Bearer ${deleteUserToken}`); 
 
             logResponse(res, 'Withdraw - Deleted User');
-            // 토큰은 유효하지만 유저 ID가 DB에 없으므로, Auth Middleware에서 401 USER_NOT_FOUND 에러 반환
             expect(res.status).to.equal(401); 
             expectErrorLike(res);
         });
 
+        // ✅ 내 정보 삭제 실패 토큰 없음
         it('[DELETE] Error: No Token (401)', async () => {
             const res = await request(app).delete('/api/v1/users/me');
             logResponse(res, 'Withdraw - No Token');

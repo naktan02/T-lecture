@@ -2,7 +2,6 @@ const request = require('supertest');
 const { expect } = require('chai');
 const { PrismaClient } = require('@prisma/client');
 const jwt = require('jsonwebtoken');
-// 서버 파일 경로는 프로젝트 구조에 맞게 수정해주세요.
 const { app, server } = require('../../src/server'); 
 
 const prisma = new PrismaClient();
@@ -15,11 +14,11 @@ const INSTRUCTOR_B_EMAIL = 'inst_b_dist@test.com';
 
 describe('Distance API Integration Test (Full Coverage)', () => {
     let adminToken;
-    let instructorAToken; // Non-Admin 강사 토큰
-    let instructorAId; // 기준 강사
-    let instructorBId; // 비교군 강사
-    let unitAId;       // 기준 부대 (가까운 곳)
-    let unitBId;       // 비교군 부대 (먼 곳)
+    let instructorAToken;
+    let instructorAId;
+    let instructorBId;
+    let unitAId;
+    let unitBId;
 
     // ✅ [로그 헬퍼] 성공/실패 여부 상관없이 모든 JSON 응답 출력
     const logResponse = (res, label = 'TEST RESULT') => {
@@ -42,7 +41,6 @@ describe('Distance API Integration Test (Full Coverage)', () => {
     // ✅ 1. 테스트 데이터 초기화
     before(async () => {
         try {
-            // 1-1. 데이터 정리 (FK 제약 고려 순서: 자식 -> 부모)
             await prisma.messageAssignment.deleteMany();
             await prisma.messageReceipt.deleteMany();
             await prisma.message.deleteMany();
@@ -64,11 +62,8 @@ describe('Distance API Integration Test (Full Coverage)', () => {
             });
             await prisma.team.deleteMany();
 
-            // --------------------------------------------------
-            // 1-2. 기초 데이터 생성 (팀)
             const team = await prisma.team.create({ data: { name: '거리팀' } });
 
-            // 1-3. 관리자 생성 (Token 발급용)
             const adminUser = await prisma.user.create({
                 data: {
                     userEmail: ADMIN_EMAIL,
@@ -81,8 +76,6 @@ describe('Distance API Integration Test (Full Coverage)', () => {
             });
             adminToken = jwt.sign({ userId: adminUser.id }, JWT_SECRET);
 
-            // 1-4. 강사 2명 생성
-            // 강사 A (관리자 권한 테스트용 비관리자)
             const userA = await prisma.user.create({
                 data: {
                     userEmail: INSTRUCTOR_A_EMAIL,
@@ -95,9 +88,8 @@ describe('Distance API Integration Test (Full Coverage)', () => {
                 include: { instructor: true }
             });
             instructorAId = userA.instructor.userId;
-            instructorAToken = jwt.sign({ userId: instructorAId }, JWT_SECRET); // 강사 토큰 생성
+            instructorAToken = jwt.sign({ userId: instructorAId }, JWT_SECRET);
 
-            // 강사 B
             const userB = await prisma.user.create({
                 data: {
                     userEmail: INSTRUCTOR_B_EMAIL,
@@ -117,7 +109,6 @@ describe('Distance API Integration Test (Full Coverage)', () => {
             });
             instructorBId = userB.instructor.userId;
 
-            // 1-5. 부대 2개 생성
             const unitA = await prisma.unit.create({
                 data: { name: '부대A(가까움)', region: '서울', addressDetail: '서울' }
             });
@@ -128,7 +119,7 @@ describe('Distance API Integration Test (Full Coverage)', () => {
             });
             unitBId = unitB.id;
 
-            // 1-6. 거리 데이터 시딩 (InstructorUnitDistance)
+            // 거리 데이터 시딩 (InstructorUnitDistance)
             await prisma.instructorUnitDistance.createMany({
                 data: [
                     { userId: instructorAId, unitId: unitAId, distance: 5000, duration: 1200 },   
@@ -153,6 +144,7 @@ describe('Distance API Integration Test (Full Coverage)', () => {
     // 🧪 0. Common Auth Check (모든 Distance API는 ADMIN 권한 필요)
     // =================================================================
     describe('0. Auth & Role Check', () => {
+        // 토큰 없음 에러
         it('[GET] /usage/today - Error: No Token (401)', async () => {
             const res = await request(app)
                 .get('/api/v1/distance/usage/today')
@@ -163,6 +155,7 @@ describe('Distance API Integration Test (Full Coverage)', () => {
             expectErrorShape(res);
         });
 
+        // 관리자 토큰 없음 에러
         it('[GET] /usage/today - Error: Non-Admin Token (403)', async () => {
             const res = await request(app)
                 .get('/api/v1/distance/usage/today')
@@ -179,6 +172,7 @@ describe('Distance API Integration Test (Full Coverage)', () => {
     // 🧪 1. Usage API Test (GET /usage/today)
     // =================================================================
     describe('1. Kakao Usage API (GET /usage/today)', () => {
+        // 오늘 api 할당량 조회 성공
         it('[GET] /usage/today - Success: Should return initialized stats', async () => {
             const res = await request(app)
                 .get('/api/v1/distance/usage/today')
@@ -194,6 +188,7 @@ describe('Distance API Integration Test (Full Coverage)', () => {
     // =================================================================
     // 🧪 2. Single Distance Check (GET /:instId/:unitId)
     // =================================================================
+    // 
     describe('2. Single Distance Check (GET /:instId/:unitId)', () => {
         it('[GET] Success: Should return correct distance record', async () => {
             const res = await request(app)
@@ -206,9 +201,10 @@ describe('Distance API Integration Test (Full Coverage)', () => {
             expect(Number(res.body.distance)).to.equal(5000); 
         });
 
+        // ✅ Error: Not Found (404) - No distance record
         it('[GET] Error: Not Found (404) - No distance record', async () => {
             const res = await request(app)
-                .get(`/api/v1/distance/${instructorBId}/${unitBId}`) // B와 B 사이는 데이터 없음
+                .get(`/api/v1/distance/${instructorBId}/${unitBId}`) 
                 .set('Authorization', `Bearer ${adminToken}`);
 
             logResponse(res, 'Get Single Distance (404 Not Found)'); 
@@ -217,6 +213,7 @@ describe('Distance API Integration Test (Full Coverage)', () => {
             expect(res.body.code).to.equal('DISTANCE_NOT_FOUND');
         });
 
+        // ✅ Error: Invalid ID (400) - Non-numeric ID
         it('[GET] Error: Invalid ID (400) - Non-numeric ID', async () => {
             const res = await request(app)
                 .get(`/api/v1/distance/invalid_id/${unitAId}`)
@@ -233,6 +230,7 @@ describe('Distance API Integration Test (Full Coverage)', () => {
     // 🧪 3. Filter Units by Distance (GET /instructor/:instId/within)
     // =================================================================
     describe('3. Get Units Within Distance (GET /instructor/:instId/within)', () => {
+        // ✅ Success
         it('[GET] Success: Should return only nearby units (Max 10km)', async () => {
             const res = await request(app)
                 .get(`/api/v1/distance/instructor/${instructorAId}/within`)
@@ -246,6 +244,7 @@ describe('Distance API Integration Test (Full Coverage)', () => {
             expect(res.body[0].unitId).to.equal(unitAId);
         });
 
+        // ✅ Error: Invalid Range (400) - min > max
         it('[GET] Error: Invalid Range (400) - min > max', async () => {
             const res = await request(app)
                 .get(`/api/v1/distance/instructor/${instructorAId}/within`)
@@ -258,6 +257,7 @@ describe('Distance API Integration Test (Full Coverage)', () => {
             expect(res.body.error).to.include('올바르지 않습니다');
         });
 
+        // ✅ Error: Invalid ID (400) - Non-numeric instructorId
         it('[GET] Error: Invalid ID (400) - Non-numeric instructorId', async () => {
             const res = await request(app)
                 .get(`/api/v1/distance/instructor/abc/within`)
@@ -274,7 +274,9 @@ describe('Distance API Integration Test (Full Coverage)', () => {
     // =================================================================
     // 🧪 4. Filter Instructors by Distance (GET /unit/:unitId/nearby-instructors)
     // =================================================================
+
     describe('4. Get Instructors Near Unit (GET /unit/:unitId/nearby-instructors)', () => {
+        // ✅ Success
         it('[GET] Success: Should return only nearby instructors', async () => {
             const res = await request(app)
                 .get(`/api/v1/distance/unit/${unitAId}/nearby-instructors`)
@@ -288,6 +290,7 @@ describe('Distance API Integration Test (Full Coverage)', () => {
             expect(res.body[0].userId).to.equal(instructorAId);
         });
 
+        // ✅ Error: Invalid ID (400) - Non-numeric unitId
         it('[GET] Error: Invalid ID (400) - Non-numeric unitId', async () => {
             const res = await request(app)
                 .get(`/api/v1/distance/unit/xyz/nearby-instructors`)
@@ -298,7 +301,8 @@ describe('Distance API Integration Test (Full Coverage)', () => {
             expect(res.status).to.equal(400);
             expectErrorShape(res);
         });
-        
+
+        // ✅ Error: Invalid Range (400) - Negative min
         it('[GET] Error: Invalid Range (400) - Negative min', async () => {
             const res = await request(app)
                 .get(`/api/v1/distance/unit/${unitAId}/nearby-instructors`)
@@ -316,7 +320,7 @@ describe('Distance API Integration Test (Full Coverage)', () => {
     // 🧪 5. Manual Calculation (POST /calculate)
     // =================================================================
     describe('5. Manual Calculation (POST /calculate)', () => {
-        // 실제 Kakao API 호출을 막기 위해, 데이터 검증 에러만 테스트
+        // ✅ Error: Missing Body Fields (400)
         it('[POST] Error: Missing Body Fields (400)', async () => {
             const res = await request(app)
                 .post('/api/v1/distance/calculate')
@@ -336,7 +340,7 @@ describe('Distance API Integration Test (Full Coverage)', () => {
     // 🧪 6. Manual Batch Run (POST /batch/run)
     // =================================================================
     describe('6. Manual Batch Run (POST /batch/run)', () => {
-        // 실제 Kakao API 호출을 막기 위해, 데이터 검증 에러만 테스트
+        // ✅ Error: Invalid Limit (40  0) - Non-positive limit
         it('[POST] Error: Invalid Limit (400) - Non-positive limit', async () => {
             const res = await request(app)
                 .post('/api/v1/distance/batch/run')

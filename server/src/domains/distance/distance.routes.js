@@ -12,7 +12,7 @@ router.get('/usage/today', auth, requireRole('ADMIN'), distanceController.getTod
 // 수동 배치 실행
 router.post('/batch/run', auth, requireRole('ADMIN'), distanceController.runDailyBatchOnce);
 
-// [신규] 2. 특정 거리 수동 재계산
+// 특정 거리 수동 재계산
 router.post('/calculate', auth, requireRole('ADMIN'), distanceController.calculateSpecificDistance);
 
 // 특정 강사 기준, 거리 범위 안의 부대 리스트

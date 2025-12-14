@@ -2,16 +2,16 @@ const request = require('supertest');
 const { expect } = require('chai');
 const { PrismaClient } = require('@prisma/client');
 const jwt = require('jsonwebtoken');
-const { app, server } = require('../../src/server'); // server.js 경로 확인 필요
+const { app, server } = require('../../src/server'); 
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'secret_key';
 const ADMIN_EMAIL = 'metadata_admin_test@test.com';
-const NON_ADMIN_EMAIL = 'non_admin_meta@test.com'; // 비관리자 토큰 생성용
+const NON_ADMIN_EMAIL = 'non_admin_meta@test.com'; 
 
 describe('Metadata API Integration Test (All Routes)', () => {
     let adminToken;
-    let nonAdminToken; // 비관리자 강사 토큰
+    let nonAdminToken; 
     let teamId;
     let virtueId;
 
@@ -33,10 +33,9 @@ describe('Metadata API Integration Test (All Routes)', () => {
         expect(res.body.error || res.body.message || res.body.code).to.exist;
     };
 
-    // ✅ 1. 테스트 데이터 초기화 및 시딩
+    // ✅ 테스트 데이터 초기화 및 시딩
     before(async () => {
         try {
-            // 1-1. DB 정리 (FK 제약 조건 고려: 자식 -> 부모 순서)
             await prisma.messageAssignment.deleteMany(); 
             await prisma.messageReceipt.deleteMany(); 
             await prisma.message.deleteMany(); 
@@ -118,8 +117,8 @@ describe('Metadata API Integration Test (All Routes)', () => {
     // =================================================================
     // 🧪 1. Public 조회 API (인증 불필요)
     // =================================================================
-    
     describe('1. Public Read APIs (No Auth)', () => {
+        // 통합 메타데이터 조회 성공
         it('[GET] /instructor - 통합 메타데이터 조회 (Success)', async () => {
             const res = await request(app).get('/api/v1/metadata/instructor');
             
@@ -131,6 +130,7 @@ describe('Metadata API Integration Test (All Routes)', () => {
             expect(res.body).to.have.property('categories').that.is.an('array');
         });
 
+        // 팀 목록 조회 성공
         it('[GET] /teams - 팀 목록 조회 (Success)', async () => {
             const res = await request(app).get('/api/v1/metadata/teams');
             
@@ -141,6 +141,7 @@ describe('Metadata API Integration Test (All Routes)', () => {
             expect(res.body.some(t => t.name === '초기테스트팀')).to.be.true;
         });
 
+        // 덕목 목록 조회 성공
         it('[GET] /virtues - 덕목 목록 조회 (Success)', async () => {
             const res = await request(app).get('/api/v1/metadata/virtues');
             
@@ -158,6 +159,7 @@ describe('Metadata API Integration Test (All Routes)', () => {
     // =================================================================
 
     describe('2. Protected Read API (GET /templates)', () => {
+        // 관리자 권한으로 템플릿 목록 조회 성공
         it('[GET] /templates - Success (Admin)', async () => {
             const res = await request(app)
                 .get('/api/v1/metadata/templates')
@@ -170,6 +172,7 @@ describe('Metadata API Integration Test (All Routes)', () => {
             expect(res.body[0].key).to.equal('TEMPORARY');
         });
 
+        // 토큰 없이 템플릿 목록 조회 실패
         it('[GET] /templates - Error: No Token (401)', async () => {
             const res = await request(app).get('/api/v1/metadata/templates');
             
@@ -178,7 +181,8 @@ describe('Metadata API Integration Test (All Routes)', () => {
             expect(res.status).to.equal(401);
             expectErrorShape(res);
         });
-        
+
+        // 비관리자 권한으로 템플릿 목록 조회 실패
         it('[GET] /templates - Error: Non-Admin Token (403)', async () => {
             const res = await request(app)
                 .get('/api/v1/metadata/templates')
@@ -197,6 +201,7 @@ describe('Metadata API Integration Test (All Routes)', () => {
     // =================================================================
 
     describe('3. Team Update API (PUT /teams/:id)', () => {
+        // 관리자 권한으로 팀 수정 성공
         it('[PUT] Success (Admin)', async () => {
             const res = await request(app)
                 .put(`/api/v1/metadata/teams/${teamId}`)
@@ -209,6 +214,7 @@ describe('Metadata API Integration Test (All Routes)', () => {
             expect(res.body.name).to.equal('수정된팀이름');
         });
 
+        // 토큰 없이 팀 수정 실패
         it('[PUT] Error: No Token (401)', async () => {
             const res = await request(app)
                 .put(`/api/v1/metadata/teams/${teamId}`)
@@ -220,6 +226,7 @@ describe('Metadata API Integration Test (All Routes)', () => {
             expectErrorShape(res);
         });
 
+        // 비관리자 권한으로 팀 수정 실패
         it('[PUT] Error: Non-Admin Token (403)', async () => {
             const res = await request(app)
                 .put(`/api/v1/metadata/teams/${teamId}`)
@@ -232,6 +239,7 @@ describe('Metadata API Integration Test (All Routes)', () => {
             expectErrorShape(res);
         });
 
+        // 팀 이름 없이 팀 수정 실패
         it('[PUT] Error: Missing Name (400)', async () => {
             const res = await request(app)
                 .put(`/api/v1/metadata/teams/${teamId}`)
@@ -245,6 +253,7 @@ describe('Metadata API Integration Test (All Routes)', () => {
             expect(res.body.error).to.include('팀 이름(name)이 필요합니다.');
         });
 
+        // 존재하지 않는 팀 ID로 팀 수정 실패
         it('[PUT] Error: Not Found ID (404)', async () => {
             const res = await request(app)
                 .put('/api/v1/metadata/teams/99999')
@@ -255,7 +264,6 @@ describe('Metadata API Integration Test (All Routes)', () => {
             
             expect(res.status).to.equal(404);
             expect(res.body.code).to.equal('NOT_FOUND');
-            // 변경: '해당 팀을 찾을 수 없습니다.' -> '대상을 찾을 수 없습니다.'
             expect(res.body.error).to.include('대상을 찾을 수 없습니다.'); 
         });
     });
@@ -265,6 +273,7 @@ describe('Metadata API Integration Test (All Routes)', () => {
     // =================================================================
 
     describe('4. Virtue Update API (PUT /virtues/:id)', () => {
+        // 관리자 권한으로 덕목 수정 성공
         it('[PUT] Success (Admin)', async () => {
             const res = await request(app)
                 .put(`/api/v1/metadata/virtues/${virtueId}`)
@@ -277,6 +286,7 @@ describe('Metadata API Integration Test (All Routes)', () => {
             expect(res.body.name).to.equal('수정된덕목');
         });
 
+        // 토큰 없이 덕목 수정 실패
         it('[PUT] Error: No Token (401)', async () => {
             const res = await request(app)
                 .put(`/api/v1/metadata/virtues/${virtueId}`)
@@ -287,7 +297,8 @@ describe('Metadata API Integration Test (All Routes)', () => {
             expect(res.status).to.equal(401);
             expectErrorShape(res);
         });
-        
+
+        // 비관리자 권한으로 덕목 수정 실패
         it('[PUT] Error: Non-Admin Token (403)', async () => {
             const res = await request(app)
                 .put(`/api/v1/metadata/virtues/${virtueId}`)
@@ -300,11 +311,12 @@ describe('Metadata API Integration Test (All Routes)', () => {
             expectErrorShape(res);
         });
 
+        // 덕목 이름 없이 덕목 수정 실패
         it('[PUT] Error: Missing Name (400)', async () => {
             const res = await request(app)
                 .put(`/api/v1/metadata/virtues/${virtueId}`)
                 .set('Authorization', `Bearer ${adminToken}`)
-                .send({}); // name 없음
+                .send({});
             
             logResponse(res, 'Update Virtue (400 Missing Name)');
             
@@ -313,6 +325,7 @@ describe('Metadata API Integration Test (All Routes)', () => {
             expect(res.body.error).to.include('덕목 이름(name)이 필요합니다.');
         });
 
+        // 존재하지 않는 덕목 ID로 덕목 수정 실패
         it('[PUT] Error: Not Found ID (404)', async () => {
             const res = await request(app)
                 .put('/api/v1/metadata/virtues/99999')
@@ -323,7 +336,6 @@ describe('Metadata API Integration Test (All Routes)', () => {
             
             expect(res.status).to.equal(404);
             expect(res.body.code).to.equal('NOT_FOUND');
-            // 변경: '해당 덕목을 찾을 수 없습니다.' -> '대상을 찾을 수 없습니다.'
             expect(res.body.error).to.include('대상을 찾을 수 없습니다.');
         });
     });
@@ -333,6 +345,7 @@ describe('Metadata API Integration Test (All Routes)', () => {
     // =================================================================
 
     describe('5. Template Update API (PUT /templates/:key)', () => {
+        // 관리자 권한으로 템플릿 수정 성공
         it('[PUT] Success (Admin)', async () => {
             const res = await request(app)
                 .put('/api/v1/metadata/templates/TEMPORARY')
@@ -345,6 +358,7 @@ describe('Metadata API Integration Test (All Routes)', () => {
             expect(res.body.title).to.equal('변경타이틀');
         });
 
+        // 토큰 없이 템플릿 수정 실패
         it('[PUT] Error: No Token (401)', async () => {
             const res = await request(app)
                 .put('/api/v1/metadata/templates/TEMPORARY')
@@ -355,7 +369,8 @@ describe('Metadata API Integration Test (All Routes)', () => {
             expect(res.status).to.equal(401);
             expectErrorShape(res);
         });
-        
+
+        // 비관리자 권한으로 템플릿 수정 실패
         it('[PUT] Error: Non-Admin Token (403)', async () => {
             const res = await request(app)
                 .put('/api/v1/metadata/templates/TEMPORARY')
@@ -368,11 +383,12 @@ describe('Metadata API Integration Test (All Routes)', () => {
             expectErrorShape(res);
         });
 
+        // 템플릿 제목 또는 본문 없이 템플릿 수정 실패
         it('[PUT] Error: Missing Title or Body (400)', async () => {
             const res = await request(app)
                 .put('/api/v1/metadata/templates/TEMPORARY')
                 .set('Authorization', `Bearer ${adminToken}`)
-                .send({ title: '타이틀만보냄' }); // body 누락
+                .send({ title: '타이틀만보냄' }); 
             
             logResponse(res, 'Update Template (400 Missing Body)');
             
@@ -381,6 +397,7 @@ describe('Metadata API Integration Test (All Routes)', () => {
             expect(res.body.error).to.include('템플릿 제목(title)과 본문(body)이 모두 필요합니다.');
         });
 
+        // 존재하지 않는 템플릿 키로 템플릿 수정 실패
         it('[PUT] Error: Not Found Key (404)', async () => {
             const res = await request(app)
                 .put('/api/v1/metadata/templates/INVALID_KEY')
@@ -391,7 +408,6 @@ describe('Metadata API Integration Test (All Routes)', () => {
             
             expect(res.status).to.equal(404);
             expect(res.body.code).to.equal('NOT_FOUND');
-            // 변경: '해당 템플릿을 찾을 수 없습니다.' -> '대상을 찾을 수 없습니다.'
             expect(res.body.error).to.include('대상을 찾을 수 없습니다.');
         });
     });
