@@ -14,7 +14,7 @@ router.get('/notices', auth, messageController.getNotices);
 router.post('/send/temporary', auth, requireRole('ADMIN'), messageController.sendTemporaryMessages);
 
 // 확정 배정 메시지 발송
-router.post('/send/confirmed', auth, requireRole('ADMIN'), messageController.sendConfirmedMessages);
+router.post('/send/confirmed', auth, requireRole('ADMIN'), messageController.sendConfirmed);
 
 // 내 메시지함 조회
 router.get('/', auth, messageController.getMyMessages);
