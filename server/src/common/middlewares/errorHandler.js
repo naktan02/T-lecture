@@ -2,13 +2,24 @@
 const logger = require('../../config/logger');
 const { mapPrismaError } = require('../errors/prismaErrorMapper');
 
+
+const defaultCodeByStatus = (statusCode) => {
+  if (statusCode === 400) return 'BAD_REQUEST';
+  if (statusCode === 401) return 'UNAUTHORIZED';
+  if (statusCode === 403) return 'FORBIDDEN';
+  if (statusCode === 404) return 'NOT_FOUND';
+  if (statusCode === 409) return 'CONFLICT';
+  return 'INTERNAL_ERROR';
+};
+
+
 module.exports = (err, req, res, next) => {
 
     const mapped = mapPrismaError(err);
     if (mapped) err = mapped;
 
     const statusCode = Number(err.statusCode || err.status || 500);
-    const code = err.code || 'INTERNAL_ERROR';
+    const code = err.code || defaultCodeByStatus(statusCode);
 
     const logPayload = {
         code,

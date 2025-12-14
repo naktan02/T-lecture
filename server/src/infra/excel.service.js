@@ -2,9 +2,7 @@
 const xlsx = require('xlsx');
 
 class ExcelService {
-  /**
-   * 엑셀 파일 버퍼를 JSON 배열로 변환 (공통 기능)
-   */
+  // 엑셀 파일 버퍼를 JSON 배열로 변환 (공통 기능)
   bufferToJson(fileBuffer) {
     if (!fileBuffer) {
       throw new Error('파일 데이터가 없습니다.');
@@ -14,7 +12,6 @@ class ExcelService {
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
 
-    // 헤더가 있는 JSON 형태로 변환
     const rawRows = xlsx.utils.sheet_to_json(sheet);
 
     if (rawRows.length === 0) {

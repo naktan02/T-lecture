@@ -12,16 +12,26 @@ const app = express();
 
 const isProd = process.env.NODE_ENV === 'production';
 
-// 실서비스에서 사용하게 될 프론트 주소들
-// 나중에 도메인 정해지면 여기에 추가만 하면 됨.
-const allowedOriginsProd = [
-  'http://localhost:5173',   // 예시: 실제 프론트 도메인
-];
+const parseOrigins = (value) =>
+  (value || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
 
-// 개발 환경용(지금 네가 쓰는 주소)
-const allowedOriginsDev = ['http://localhost:5173'];
+// ✅ NODE_ENV에 따라 env 변수 하나만 선택
+const allowedOrigins = isProd
+  ? parseOrigins(process.env.CORS_ORIGINS_PROD)
+  : parseOrigins(process.env.CORS_ORIGINS_DEV);
 
-const allowedOrigins = isProd ? allowedOriginsProd : allowedOriginsDev;
+// ✅ 운영인데 PROD 오리진이 비어있으면 즉시 실패(안전)
+if (isProd && allowedOrigins.length === 0) {
+  throw new Error('CORS_ORIGINS_PROD must be set in production');
+}
+
+// ✅ 개발인데 DEV 오리진도 비어있으면 기본값 제공(선택)
+if (!isProd && allowedOrigins.length === 0) {
+  allowedOrigins.push('http://localhost:5173');
+}
 
 app.use(
   cors({
@@ -68,5 +78,4 @@ const server = app.listen(config.port, () => {
   console.log(`Server listening at http://localhost:${config.port}`);
 });
 
-// ✅ 테스트를 위해 app과 server를 export 해야 합니다.
 module.exports = { app, server };

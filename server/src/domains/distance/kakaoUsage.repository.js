@@ -2,6 +2,7 @@
 const prisma = require('../../libs/prisma');
 
 class KakaoUsageRepository {
+    // 오늘 날짜만 반환
     _todayDateOnly() {
         const now = new Date();
         return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
@@ -10,14 +11,12 @@ class KakaoUsageRepository {
     async getOrCreateToday() {
         const today = this._todayDateOnly();
 
-        // 1) 먼저 조회
         let usage = await prisma.kakaoApiUsage.findUnique({
         where: { date: today },   // date는 @unique
         });
 
         if (usage) return usage;
 
-        // 2) 없으면 생성 시도
         try {
         usage = await prisma.kakaoApiUsage.create({
             data: {
@@ -28,7 +27,6 @@ class KakaoUsageRepository {
         });
         return usage;
         } catch (e) {
-        // 3) 동시성 / 중복으로 UNIQUE 에러(P2002) 난 경우 → 다시 조회해서 반환
         if (e.code === 'P2002') {
             return prisma.kakaoApiUsage.findUnique({
             where: { date: today },
@@ -38,16 +36,18 @@ class KakaoUsageRepository {
         }
     }
 
+    // routeCount 증가
     async incrementRouteCount(by = 1) {
         const usage = await this.getOrCreateToday();
         return prisma.kakaoApiUsage.update({
-        where: { id: usage.id },      // ✅ PK(id) 기준으로 업데이트
+        where: { id: usage.id },
         data: {
             routeCount: { increment: by },
         },
         });
     }
 
+    // geocodeCount 증가
     async incrementGeocodeCount(by = 1) {
         const usage = await this.getOrCreateToday();
         return prisma.kakaoApiUsage.update({

@@ -6,7 +6,7 @@ const prisma = require('../../libs/prisma');
  */
 class AssignmentRepository {
     /**
-     * [신규] 특정 기간 내 활성화된(Active) 배정 날짜 목록 조회
+     * 특정 기간 내 활성화된(Active) 배정 날짜 목록 조회
      * - 가능일 수정 시, 이미 배정된 날짜를 삭제하지 못하게 하기 위함
      */
     async findScheduleCandidates(startDate, endDate) {
@@ -54,6 +54,7 @@ class AssignmentRepository {
             }
         });
     }
+    // 자동 배정 결과를 DB에 일괄 생성
     async createAssignmentsBulk(matchResults) {
         const summary = { requested: matchResults.length, created: 0, skipped: 0 };
 
@@ -64,13 +65,13 @@ class AssignmentRepository {
                         data: {
                             unitScheduleId: match.unitScheduleId,
                             userId: match.instructorId,
-                            classification: 'Temporary', // 기존 분류 유지
-                            state: 'Pending',            // [핵심] 초기 상태는 Pending
+                            classification: 'Temporary',
+                            state: 'Pending',        
                         },
                     });
                     summary.created += 1;
                 } catch (e) {
-                    if (e.code === 'P2002') { // 중복 배정 시 스킵
+                    if (e.code === 'P2002') { 
                         summary.skipped += 1;
                         continue;
                     }
@@ -80,7 +81,7 @@ class AssignmentRepository {
         });
         return summary;
     }
-
+    // 배정 상태 업데이트
     async updateAssignmentStatusCondition(instructorId, unitScheduleId, updateData) {
         return await prisma.instructorUnitAssignment.updateMany({
             where: {
@@ -93,12 +94,11 @@ class AssignmentRepository {
             data: updateData
         });
     }
-
+    // 특정 기간 내 활성화된 배정 날짜 목록 조회
     async findActiveAssignmentsDate(instructorId, startDate, endDate) {
         const assignments = await prisma.instructorUnitAssignment.findMany({
             where: {
                 userId: Number(instructorId),
-                // 취소(Canceled)나 거절(Rejected)된 것은 제외하고 날짜 점유로 인정
                 state: { in: ['Pending', 'Accepted'] }, 
                 UnitSchedule: {
                     date: { gte: startDate, lte: endDate },
@@ -111,11 +111,7 @@ class AssignmentRepository {
 
         return assignments.map((a) => a.UnitSchedule.date);
     }
-
-
-    /**
-     * ID로 배정 정보 단건 조회 (Prisma)
-     */
+    // ID로 배정 정보 단건 조회
     async findAssignmentByKey(instructorId, unitScheduleId) {
         return await prisma.instructorUnitAssignment.findUnique({
             where: {
@@ -129,10 +125,8 @@ class AssignmentRepository {
             },
         });
     }
-    // findAssignments (Service에서 호출하는 검색 메서드 예시)
+    // 특정 강사의 모든 배정 목록을 조회
     async findAllByInstructorId(instructorId, whereCondition) {
-        // Service에서 넘겨준 where 조건(state, UnitSchedule 등)을 그대로 사용
-        // 실제 구현 시 where 객체 구조를 Prisma에 맞게 조정 필요할 수 있음
         return await prisma.instructorUnitAssignment.findMany({
         where: {
             userId: Number(instructorId),

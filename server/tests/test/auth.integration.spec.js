@@ -10,7 +10,6 @@ const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'secret_key';
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh_secret';
 
-// ⚠️ auth 라우터 mount가 다르면 여기만 수정
 const BASE = '/api/v1/auth';
 
 describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
@@ -28,6 +27,7 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
   // 로그인 후 토큰/쿠키 검증용
   let approvedUserId;
   let approvedAccessToken;
+  let refreshTokenValue; 
 
   // ✅ 성공/에러 모두 JSON 출력
   const logResponse = (res, label) => {
@@ -48,13 +48,10 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
   };
 
   before(async () => {
-    // ✅ 0) 이메일 발송 함수 "직접" 덮어쓰기 (sinon 필요 없음)
-    // 경로가 프로젝트마다 다를 수 있음: 너가 쓰는 emailService 실제 경로로 맞춰줘
     emailService = require('../../src/infra/email.service');
     originalSendVerificationCode = emailService.sendVerificationCode;
-    emailService.sendVerificationCode = async () => true; // ✅ no-op
+    emailService.sendVerificationCode = async () => true; 
 
-    // ✅ 1) DB 정리 (FK 안전하게)
     await prisma.emailVerification.deleteMany({
       where: { email: { in: [EMAIL_OK, EMAIL_DUP, EMAIL_RESET] } },
     });
@@ -73,7 +70,6 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
       where: { userEmail: { in: [EMAIL_OK, EMAIL_DUP, EMAIL_RESET] } },
     });
 
-    // ✅ 2) 로그인 테스트용 APPROVED 유저 seed
     const hashed = await bcrypt.hash('pw1234!', 10);
 
     const u = await prisma.user.create({
@@ -87,7 +83,6 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
     });
     approvedUserId = u.id;
 
-    // ✅ 3) 중복 이메일 유저
     await prisma.user.create({
       data: {
         userEmail: EMAIL_DUP,
@@ -98,7 +93,6 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
       },
     });
 
-    // ✅ 4) 비번 재설정 유저
     await prisma.user.create({
       data: {
         userEmail: EMAIL_RESET,
@@ -111,7 +105,6 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
   });
 
   after(async () => {
-    // ✅ 덮어쓴 함수 원복
     if (emailService && originalSendVerificationCode) {
       emailService.sendVerificationCode = originalSendVerificationCode;
     }
@@ -122,6 +115,8 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
   // =========================================================
   // 1) 인증코드 발송/검증
   // =========================================================
+
+  // 인증코드 발송 성공
   it('[POST] /code/send - Success (200)', async () => {
     const res = await agent.post(`${BASE}/code/send`).send({ email: EMAIL_OK });
 
@@ -135,6 +130,7 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
     expect(latest).to.exist;
   });
 
+  // 인증코드 발송 실패
   it('[POST] /code/send - Missing email (400)', async () => {
     const res = await agent.post(`${BASE}/code/send`).send({});
     logResponse(res, 'Send Code Missing Email');
@@ -142,6 +138,7 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
     expectErrorShape(res);
   });
 
+  // 인증코드 검증 성공
   it('[POST] /code/verify - Success (200)', async () => {
     await prisma.emailVerification.create({
       data: {
@@ -160,6 +157,7 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
     expect(res.status).to.equal(200);
   });
 
+  // 인증코드 검증 실패
   it('[POST] /code/verify - Wrong code (400)', async () => {
     await prisma.emailVerification.create({
       data: {
@@ -182,6 +180,8 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
   // =========================================================
   // 2) 회원가입
   // =========================================================
+
+  // 회원가입 실패
   it('[POST] /register - Email not verified (400)', async () => {
     const res = await agent.post(`${BASE}/register`).send({
       email: 'new_user@test.com',
@@ -196,6 +196,7 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
     expectErrorShape(res);
   });
 
+  // 이메일 중복 회원가입 실패
   it('[POST] /register - Duplicate email (400/409)', async () => {
     await prisma.emailVerification.create({
       data: {
@@ -219,6 +220,7 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
     expectErrorShape(res);
   });
 
+  // 회원가입 성공
   it('[POST] /register - Success (201)', async () => {
     const newEmail = 'new_ok@test.com';
 
@@ -243,7 +245,6 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
     expect(res.status).to.equal(201);
     expect(res.body).to.be.an('object');
 
-    // cleanup
     await prisma.user.deleteMany({ where: { userEmail: newEmail } });
     await prisma.emailVerification.deleteMany({ where: { email: newEmail } });
   });
@@ -251,6 +252,8 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
   // =========================================================
   // 3) 로그인 / 리프레시 / 로그아웃
   // =========================================================
+
+  // 이메일/비밀번호 미입력 로그인 실패
   it('[POST] /login - Missing email/password (400)', async () => {
     const res = await agent.post(`${BASE}/login`).send({ email: EMAIL_OK });
     logResponse(res, 'Login Missing Password');
@@ -258,6 +261,7 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
     expectErrorShape(res);
   });
 
+  // 잘못된 비밀번호 로그인 실패
   it('[POST] /login - Wrong password (401/400)', async () => {
     const res = await agent.post(`${BASE}/login`).send({
       email: EMAIL_OK,
@@ -271,6 +275,7 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
     expectErrorShape(res);
   });
 
+  // 로그인 성공
   it('[POST] /login - Success (200) + sets refreshToken cookie', async () => {
     const res = await agent.post(`${BASE}/login`).send({
       email: EMAIL_OK,
@@ -289,15 +294,16 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
     const setCookie = res.headers['set-cookie'] || [];
     expect(setCookie.join(' ')).to.include('refreshToken=');
 
-    // (선택) refresh 토큰이 jwt 형식인지 확인
     const cookieLine = setCookie.find((c) => c.startsWith('refreshToken='));
     if (cookieLine) {
       const refreshToken = cookieLine.split(';')[0].split('=')[1];
+      refreshTokenValue = refreshToken;
       const payload = jwt.verify(refreshToken, REFRESH_SECRET);
       expect(payload.userId).to.equal(approvedUserId);
     }
   });
 
+  // 리프레시 토큰 미입력 리프레시 실패
   it('[POST] /refresh - Missing cookie (401)', async () => {
     const res = await request(app).post(`${BASE}/refresh`).send({});
     logResponse(res, 'Refresh Missing Cookie');
@@ -305,13 +311,19 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
     expectErrorShape(res);
   });
 
+  // 리프레시 토큰 입력 리프레시 성공
   it('[POST] /refresh - Success (200)', async () => {
-    const res = await agent.post(`${BASE}/refresh`).send({});
+    const res = await request(app) 
+      .post(`${BASE}/refresh`)
+      .set('Cookie', `refreshToken=${refreshTokenValue}`)
+      .send({});
+      
     logResponse(res, 'Refresh Success');
     expect(res.status).to.equal(200);
     expect(res.body).to.have.property('accessToken');
   });
 
+  // 로그아웃 실패
   it('[POST] /logout - No Token (401)', async () => {
     const res = await request(app).post(`${BASE}/logout`).send({});
     logResponse(res, 'Logout No Token');
@@ -319,6 +331,7 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
     expectErrorShape(res);
   });
 
+  // 로그아웃 성공
   it('[POST] /logout - Success (200) clears cookie', async () => {
     const res = await agent
       .post(`${BASE}/logout`)
@@ -335,11 +348,12 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
   // =========================================================
   // 4) 비밀번호 재설정
   // =========================================================
+
+  // 이메일/코드/새비밀번호 미입력 비밀번호 재설정 실패
   it('[POST] /reset-password - Missing fields (400)', async () => {
     const res = await request(app).post(`${BASE}/reset-password`).send({
       email: EMAIL_RESET,
       code: '123456',
-      // newPassword 누락
     });
 
     logResponse(res, 'Reset Password Missing Fields');
@@ -347,6 +361,7 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
     expectErrorShape(res);
   });
 
+  // 이메일/코드/새비밀번호 입력 비밀번호 재설정 성공
   it('[POST] /reset-password - Success (200) then login with new password', async () => {
     await prisma.emailVerification.create({
       data: {

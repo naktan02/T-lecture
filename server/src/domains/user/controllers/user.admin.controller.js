@@ -2,20 +2,18 @@
 const adminService = require('../services/user.admin.service');
 const asyncHandler = require('../../../common/middlewares/asyncHandler');
 const logger = require('../../../config/logger');
-const AppError = require('../../../common/errors/AppError'); // ✅ 경로 확인 필요
+const AppError = require('../../../common/errors/AppError');
 
 // ✅ :userId 파라미터를 안전하게 숫자로 변환 + 검증
 function parseUserIdParam(req) {
   const raw = req.params?.userId;
 
-  // raw가 없거나 빈 문자열이면 바로 400
   if (raw === undefined || raw === null || String(raw).trim() === '') {
     throw new AppError('userId 파라미터가 올바르지 않습니다.', 400, 'INVALID_USER_ID');
   }
 
   const userId = Number(raw);
 
-  // NaN, 소수, 0/음수 방지
   if (!Number.isInteger(userId) || userId <= 0) {
     throw new AppError('userId 파라미터가 올바르지 않습니다.', 400, 'INVALID_USER_ID');
   }
@@ -23,24 +21,28 @@ function parseUserIdParam(req) {
   return userId;
 }
 
+// ✅ 전체 사용자 조회
 exports.getUsers = asyncHandler(async (req, res) => {
   const users = await adminService.getAllUsers(req.query);
   res.json(users);
 });
 
+// ✅ 대기 사용자 조회
 exports.getPendingUsers = asyncHandler(async (req, res) => {
   const users = await adminService.getPendingUsers();
   res.json(users);
 });
 
+// ✅ 사용자 ID로 조회
 exports.getUserById = asyncHandler(async (req, res) => {
-  const userId = parseUserIdParam(req); // ✅ 핵심
+  const userId = parseUserIdParam(req); 
   const user = await adminService.getUserById(userId);
   res.json(user);
 });
 
+// ✅ 사용자 ID로 수정
 exports.updateUser = asyncHandler(async (req, res) => {
-  const userId = parseUserIdParam(req); // ✅ 핵심
+  const userId = parseUserIdParam(req); 
   const updatedUser = await adminService.updateUser(userId, req.body);
 
   logger.info('[admin.updateUser]', {
@@ -52,8 +54,9 @@ exports.updateUser = asyncHandler(async (req, res) => {
   res.json(updatedUser);
 });
 
+// ✅ 사용자 ID로 삭제
 exports.deleteUser = asyncHandler(async (req, res) => {
-  const userId = parseUserIdParam(req); // ✅ 핵심
+  const userId = parseUserIdParam(req); 
   const result = await adminService.deleteUser(userId);
 
   logger.info('[admin.deleteUser]', {
@@ -64,8 +67,9 @@ exports.deleteUser = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
+// ✅ 사용자 ID로 승인
 exports.approveUser = asyncHandler(async (req, res) => {
-  const userId = parseUserIdParam(req); // ✅ 핵심
+  const userId = parseUserIdParam(req); 
   const result = await adminService.approveUser(userId);
 
   logger.info('[admin.approveUser]', {
@@ -76,6 +80,7 @@ exports.approveUser = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
+// ✅ 사용자 ID로 승인 (일괄)
 exports.approveUsersBulk = asyncHandler(async (req, res) => {
   const { userIds } = req.body;
   const result = await adminService.approveUsersBulk(userIds);
@@ -88,8 +93,9 @@ exports.approveUsersBulk = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
+// ✅ 사용자 ID로 거부
 exports.rejectUser = asyncHandler(async (req, res) => {
-  const userId = parseUserIdParam(req); // ✅ 핵심
+  const userId = parseUserIdParam(req); 
   const result = await adminService.rejectUser(userId);
 
   logger.info('[admin.rejectUser]', {
@@ -100,6 +106,7 @@ exports.rejectUser = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
+// ✅ 사용자 ID로 거부 (일괄)
 exports.rejectUsersBulk = asyncHandler(async (req, res) => {
   const { userIds } = req.body;
   const result = await adminService.rejectUsersBulk(userIds);
@@ -112,8 +119,9 @@ exports.rejectUsersBulk = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
+// ✅ 관리자 레벨 설정
 exports.setAdminLevel = asyncHandler(async (req, res) => {
-  const userId = parseUserIdParam(req); // ✅ 핵심
+  const userId = parseUserIdParam(req); 
   const { level } = req.body;
 
   const result = await adminService.setAdminLevel(userId, level);
@@ -127,8 +135,9 @@ exports.setAdminLevel = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
+// ✅ 관리자 레벨 회수
 exports.revokeAdminLevel = asyncHandler(async (req, res) => {
-  const userId = parseUserIdParam(req); // ✅ 핵심
+  const userId = parseUserIdParam(req); 
   const result = await adminService.revokeAdminLevel(userId);
 
   logger.info('[admin.revokeAdminLevel]', {

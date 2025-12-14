@@ -3,23 +3,20 @@ const prisma = require('../../libs/prisma');
 
 class MessageRepository {
 
-    /**
-     * 1. 임시 메시지 발송 대상 조회
-     */
-
+    // 공지사항 생성
     async createNotice(data) {
         return await prisma.message.create({
             data: {
                 type: 'Notice',
                 title: data.title,
                 body: data.body,
-                status: 'Sent', // 공지는 작성 즉시 게시
+                status: 'Sent',
                 createdAt: new Date(),
             }
         });
     }
 
-    // [신규] 모든 공지사항 조회
+    // 모든 공지사항 조회
     async findAllNotices() {
         return await prisma.message.findMany({
             where: { type: 'Notice' },
@@ -27,6 +24,7 @@ class MessageRepository {
         });
     }
 
+    // 임시 메시지 발송 대상 조회
     async findTargetsForTemporaryMessage() {
         return await prisma.instructorUnitAssignment.findMany({
             where: {
@@ -49,9 +47,7 @@ class MessageRepository {
         });
     }
 
-    /**
-     * 2. 확정 메시지 발송 대상 조회
-     */
+    // 확정 메시지 발송 대상 조회
     async findTargetsForConfirmedMessage() {
         return await prisma.instructorUnitAssignment.findMany({
             where: {
@@ -81,14 +77,12 @@ class MessageRepository {
         });
     }
 
-    /**
-     * 3. 메시지 생성 (트랜잭션)
-     */
+    // 임시, 확정 메시지 생성
     async createMessagesBulk(messageDataList) {
         return await prisma.$transaction(async (tx) => {
             let count = 0;
             for (const data of messageDataList) {
-                // 1) 메시지 본체 생성
+                // 메시지 본체 생성
                 const message = await tx.message.create({
                     data: {
                         type: data.type,
@@ -122,9 +116,7 @@ class MessageRepository {
         });
     }
 
-    /**
-     * 4. 내 메시지 목록 조회
-     */
+    // 내 메시지 목록 조회
     async findMyMessages(userId) {
         return await prisma.messageReceipt.findMany({
             where: { userId: Number(userId) },
@@ -133,9 +125,7 @@ class MessageRepository {
         });
     }
 
-    /**
-     * 5. 메시지 읽음 처리
-     */
+    // 메시지 읽음 처리
     async markAsRead(userId, messageId) {
         return await prisma.messageReceipt.update({
             where: {

@@ -2,14 +2,16 @@ const request = require('supertest');
 const { expect } = require('chai');
 const { PrismaClient } = require('@prisma/client');
 const jwt = require('jsonwebtoken');
-const { app, server } = require('../../src/server'); // server.js 경로 확인 필요
+const { app, server } = require('../../src/server'); 
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'secret_key';
 const ADMIN_EMAIL = 'metadata_admin_test@test.com';
+const NON_ADMIN_EMAIL = 'non_admin_meta@test.com'; 
 
 describe('Metadata API Integration Test (All Routes)', () => {
     let adminToken;
+    let nonAdminToken; 
     let teamId;
     let virtueId;
 
@@ -20,45 +22,45 @@ describe('Metadata API Integration Test (All Routes)', () => {
         if (res.body) {
             console.log('Response Body:', JSON.stringify(res.body, null, 2));
         }
+        const authHeader = res.req.headers?.authorization;
+        if (authHeader) console.log('Auth Header:', authHeader.substring(0, 30) + '...');
         console.log('--------------------------------------------------\n');
     };
 
-    // ✅ 1. 테스트 데이터 초기화 및 시딩
-before(async () => {
+    const expectErrorShape = (res) => {
+        expect(res.status).to.be.at.least(400);
+        expect(res.body).to.be.an('object');
+        expect(res.body.error || res.body.message || res.body.code).to.exist;
+    };
+
+    // ✅ 테스트 데이터 초기화 및 시딩
+    before(async () => {
         try {
-            // 1-1. DB 정리 (FK 제약 조건 고려: 자식 -> 부모 순서)
-            
-            // 🟢 [FK P2003 해결 핵심] Message 관련 테이블 먼저 삭제
             await prisma.messageAssignment.deleteMany(); 
             await prisma.messageReceipt.deleteMany(); 
             await prisma.message.deleteMany(); 
-            await prisma.messageTemplate.deleteMany(); // 메타데이터도 여기서 삭제
+            await prisma.messageTemplate.deleteMany();
 
-            // Assignment 및 Distance 관련 테이블 삭제
-            await prisma.instructorUnitAssignment.deleteMany(); // 이제 안전하게 삭제됨
+            await prisma.instructorUnitAssignment.deleteMany(); 
             await prisma.instructorUnitDistance.deleteMany();
             
-            // Instructor 관련 테이블 삭제
             await prisma.instructorVirtue.deleteMany();
             await prisma.instructorAvailability.deleteMany();
             await prisma.instructorStats.deleteMany();
             await prisma.instructor.deleteMany(); 
 
-            // Unit 관련 테이블 삭제
             await prisma.unitSchedule.deleteMany();
             await prisma.trainingLocation.deleteMany();
             await prisma.unit.deleteMany();
 
-            // 유저/관리자 정리
             await prisma.admin.deleteMany();
-            await prisma.user.deleteMany({ where: { userEmail: ADMIN_EMAIL } });
+            await prisma.user.deleteMany({ where: { userEmail: { in: [ADMIN_EMAIL, NON_ADMIN_EMAIL] } } });
 
-            // 나머지 메타데이터 테이블 정리
             await prisma.team.deleteMany();
             await prisma.virtue.deleteMany();
 
             // ---------------------------------------------------------
-            // 1-2. 데이터 시딩 (이후 코드는 동일)
+            // 1-2. 데이터 시딩
             
             // (1) 팀 생성
             const team = await prisma.team.create({ data: { name: '초기테스트팀' } });
@@ -79,11 +81,26 @@ before(async () => {
                     userEmail: ADMIN_EMAIL,
                     password: 'hash',
                     name: '관리자',
+                    userphoneNumber: '010-0000-0000',
                     status: 'APPROVED',
                     admin: { create: { level: 'SUPER' } }
                 }
             });
             adminToken = jwt.sign({ userId: adminUser.id }, JWT_SECRET);
+
+            // (5) 비관리자 계정 생성 (권한 테스트용)
+            const nonAdminUser = await prisma.user.create({
+                data: {
+                    userEmail: NON_ADMIN_EMAIL,
+                    password: 'hash',
+                    name: '비관리자',
+                    userphoneNumber: '010-9999-9999',
+                    status: 'APPROVED',
+                    instructor: { create: { teamId: team.id, category: 'Main', location: '서울' } }
+                }
+            });
+            nonAdminToken = jwt.sign({ userId: nonAdminUser.id }, JWT_SECRET);
+
 
             console.log('✅ Metadata Test Data Seeded');
         } catch (error) {
@@ -96,175 +113,302 @@ before(async () => {
         if (server) server.close();
         await prisma.$disconnect();
     });
+
     // =================================================================
     // 🧪 1. Public 조회 API (인증 불필요)
     // =================================================================
-    
-    it('[GET] /api/v1/metadata/instructor - 통합 메타데이터 조회 (Success)', async () => {
-        const res = await request(app).get('/api/v1/metadata/instructor');
-        
-        logResponse(res, 'Get Instructor Meta');
-        
-        expect(res.status).to.equal(200);
-        expect(res.body).to.have.property('virtues');
-        expect(res.body).to.have.property('teams');
-        expect(res.body).to.have.property('categories');
+    describe('1. Public Read APIs (No Auth)', () => {
+        // 통합 메타데이터 조회 성공
+        it('[GET] /instructor - 통합 메타데이터 조회 (Success)', async () => {
+            const res = await request(app).get('/api/v1/metadata/instructor');
+            
+            logResponse(res, 'Get Instructor Meta');
+            
+            expect(res.status).to.equal(200);
+            expect(res.body).to.have.property('virtues').that.is.an('array');
+            expect(res.body).to.have.property('teams').that.is.an('array');
+            expect(res.body).to.have.property('categories').that.is.an('array');
+        });
+
+        // 팀 목록 조회 성공
+        it('[GET] /teams - 팀 목록 조회 (Success)', async () => {
+            const res = await request(app).get('/api/v1/metadata/teams');
+            
+            logResponse(res, 'Get Teams');
+            
+            expect(res.status).to.equal(200);
+            expect(res.body).to.be.an('array');
+            expect(res.body.some(t => t.name === '초기테스트팀')).to.be.true;
+        });
+
+        // 덕목 목록 조회 성공
+        it('[GET] /virtues - 덕목 목록 조회 (Success)', async () => {
+            const res = await request(app).get('/api/v1/metadata/virtues');
+            
+            logResponse(res, 'Get Virtues');
+            
+            expect(res.status).to.equal(200);
+            expect(res.body).to.be.an('array');
+            expect(res.body.some(v => v.name === '초기테스트덕목')).to.be.true;
+        });
     });
 
-    it('[GET] /api/v1/metadata/teams - 팀 목록 조회 (Success)', async () => {
-        const res = await request(app).get('/api/v1/metadata/teams');
-        
-        logResponse(res, 'Get Teams');
-        
-        expect(res.status).to.equal(200);
-        expect(res.body).to.be.an('array');
-        expect(res.body[0].name).to.equal('초기테스트팀');
-    });
-
-    it('[GET] /api/v1/metadata/virtues - 덕목 목록 조회 (Success)', async () => {
-        const res = await request(app).get('/api/v1/metadata/virtues');
-        
-        logResponse(res, 'Get Virtues');
-        
-        expect(res.status).to.equal(200);
-        expect(res.body).to.be.an('array');
-        expect(res.body[0].name).to.equal('초기테스트덕목');
-    });
 
     // =================================================================
     // 🧪 2. Protected 조회 API (관리자 전용)
     // =================================================================
 
-    it('[GET] /api/v1/metadata/templates - 템플릿 목록 조회 (Success)', async () => {
-        const res = await request(app)
-            .get('/api/v1/metadata/templates')
-            .set('Authorization', `Bearer ${adminToken}`);
-        
-        logResponse(res, 'Get Templates');
-        
-        expect(res.status).to.equal(200);
-        expect(res.body).to.be.an('array');
-        expect(res.body[0].key).to.equal('TEMPORARY');
+    describe('2. Protected Read API (GET /templates)', () => {
+        // 관리자 권한으로 템플릿 목록 조회 성공
+        it('[GET] /templates - Success (Admin)', async () => {
+            const res = await request(app)
+                .get('/api/v1/metadata/templates')
+                .set('Authorization', `Bearer ${adminToken}`);
+            
+            logResponse(res, 'Get Templates (Admin Success)');
+            
+            expect(res.status).to.equal(200);
+            expect(res.body).to.be.an('array');
+            expect(res.body[0].key).to.equal('TEMPORARY');
+        });
+
+        // 토큰 없이 템플릿 목록 조회 실패
+        it('[GET] /templates - Error: No Token (401)', async () => {
+            const res = await request(app).get('/api/v1/metadata/templates');
+            
+            logResponse(res, 'Get Templates (401 No Token)');
+            
+            expect(res.status).to.equal(401);
+            expectErrorShape(res);
+        });
+
+        // 비관리자 권한으로 템플릿 목록 조회 실패
+        it('[GET] /templates - Error: Non-Admin Token (403)', async () => {
+            const res = await request(app)
+                .get('/api/v1/metadata/templates')
+                .set('Authorization', `Bearer ${nonAdminToken}`);
+            
+            logResponse(res, 'Get Templates (403 Non-Admin)');
+            
+            expect(res.status).to.equal(403);
+            expectErrorShape(res);
+            expect(res.body.error).to.include('관리자만 접근할 수 있습니다.');
+        });
     });
 
     // =================================================================
     // 🧪 3. 수정 API - 팀 (Team)
     // =================================================================
 
-    it('[PUT] /api/v1/metadata/teams/:id - 팀 수정 (Success)', async () => {
-        const res = await request(app)
-            .put(`/api/v1/metadata/teams/${teamId}`)
-            .set('Authorization', `Bearer ${adminToken}`)
-            .send({ name: '수정된팀이름' });
-        
-        logResponse(res, 'Update Team (Success)');
-        
-        expect(res.status).to.equal(200);
-        expect(res.body.name).to.equal('수정된팀이름');
-    });
+    describe('3. Team Update API (PUT /teams/:id)', () => {
+        // 관리자 권한으로 팀 수정 성공
+        it('[PUT] Success (Admin)', async () => {
+            const res = await request(app)
+                .put(`/api/v1/metadata/teams/${teamId}`)
+                .set('Authorization', `Bearer ${adminToken}`)
+                .send({ name: '수정된팀이름' });
+            
+            logResponse(res, 'Update Team (Success)');
+            
+            expect(res.status).to.equal(200);
+            expect(res.body.name).to.equal('수정된팀이름');
+        });
 
-    it('[PUT] /api/v1/metadata/teams/:id - 필수값 누락 (Error 400)', async () => {
-        // name 필드 없이 요청
-        const res = await request(app)
-            .put(`/api/v1/metadata/teams/${teamId}`)
-            .set('Authorization', `Bearer ${adminToken}`)
-            .send({}); 
-        
-        logResponse(res, 'Update Team (400 Bad Request)');
-        
-        expect(res.status).to.equal(400);
-        expect(res.body.code).to.equal('VALIDATION_ERROR');
-    });
+        // 토큰 없이 팀 수정 실패
+        it('[PUT] Error: No Token (401)', async () => {
+            const res = await request(app)
+                .put(`/api/v1/metadata/teams/${teamId}`)
+                .send({ name: 'Fail' });
+            
+            logResponse(res, 'Update Team (401 No Token)');
+            
+            expect(res.status).to.equal(401);
+            expectErrorShape(res);
+        });
 
-    it('[PUT] /api/v1/metadata/teams/:id - 존재하지 않는 ID (Error 404)', async () => {
-        const res = await request(app)
-            .put('/api/v1/metadata/teams/99999')
-            .set('Authorization', `Bearer ${adminToken}`)
-            .send({ name: 'Fail' });
-        
-        logResponse(res, 'Update Team (404 Not Found)');
-        
-        expect(res.status).to.equal(404);
-        expect(res.body.code).to.equal('NOT_FOUND');
+        // 비관리자 권한으로 팀 수정 실패
+        it('[PUT] Error: Non-Admin Token (403)', async () => {
+            const res = await request(app)
+                .put(`/api/v1/metadata/teams/${teamId}`)
+                .set('Authorization', `Bearer ${nonAdminToken}`)
+                .send({ name: 'Fail' });
+            
+            logResponse(res, 'Update Team (403 Non-Admin)');
+            
+            expect(res.status).to.equal(403);
+            expectErrorShape(res);
+        });
+
+        // 팀 이름 없이 팀 수정 실패
+        it('[PUT] Error: Missing Name (400)', async () => {
+            const res = await request(app)
+                .put(`/api/v1/metadata/teams/${teamId}`)
+                .set('Authorization', `Bearer ${adminToken}`)
+                .send({}); 
+            
+            logResponse(res, 'Update Team (400 Missing Name)');
+            
+            expect(res.status).to.equal(400);
+            expect(res.body.code).to.equal('VALIDATION_ERROR');
+            expect(res.body.error).to.include('팀 이름(name)이 필요합니다.');
+        });
+
+        // 존재하지 않는 팀 ID로 팀 수정 실패
+        it('[PUT] Error: Not Found ID (404)', async () => {
+            const res = await request(app)
+                .put('/api/v1/metadata/teams/99999')
+                .set('Authorization', `Bearer ${adminToken}`)
+                .send({ name: 'Fail' });
+            
+            logResponse(res, 'Update Team (404 Not Found)');
+            
+            expect(res.status).to.equal(404);
+            expect(res.body.code).to.equal('NOT_FOUND');
+            expect(res.body.error).to.include('대상을 찾을 수 없습니다.'); 
+        });
     });
 
     // =================================================================
     // 🧪 4. 수정 API - 덕목 (Virtue)
     // =================================================================
 
-    it('[PUT] /api/v1/metadata/virtues/:id - 덕목 수정 (Success)', async () => {
-        const res = await request(app)
-            .put(`/api/v1/metadata/virtues/${virtueId}`)
-            .set('Authorization', `Bearer ${adminToken}`)
-            .send({ name: '수정된덕목' });
-        
-        logResponse(res, 'Update Virtue (Success)');
-        
-        expect(res.status).to.equal(200);
-        expect(res.body.name).to.equal('수정된덕목');
-    });
+    describe('4. Virtue Update API (PUT /virtues/:id)', () => {
+        // 관리자 권한으로 덕목 수정 성공
+        it('[PUT] Success (Admin)', async () => {
+            const res = await request(app)
+                .put(`/api/v1/metadata/virtues/${virtueId}`)
+                .set('Authorization', `Bearer ${adminToken}`)
+                .send({ name: '수정된덕목' });
+            
+            logResponse(res, 'Update Virtue (Success)');
+            
+            expect(res.status).to.equal(200);
+            expect(res.body.name).to.equal('수정된덕목');
+        });
 
-    it('[PUT] /api/v1/metadata/virtues/:id - 필수값 누락 (Error 400)', async () => {
-        const res = await request(app)
-            .put(`/api/v1/metadata/virtues/${virtueId}`)
-            .set('Authorization', `Bearer ${adminToken}`)
-            .send({}); // name 없음
-        
-        logResponse(res, 'Update Virtue (400 Bad Request)');
-        
-        expect(res.status).to.equal(400);
-        expect(res.body.code).to.equal('VALIDATION_ERROR');
-    });
+        // 토큰 없이 덕목 수정 실패
+        it('[PUT] Error: No Token (401)', async () => {
+            const res = await request(app)
+                .put(`/api/v1/metadata/virtues/${virtueId}`)
+                .send({ name: 'Fail' });
+            
+            logResponse(res, 'Update Virtue (401 No Token)');
+            
+            expect(res.status).to.equal(401);
+            expectErrorShape(res);
+        });
 
-    it('[PUT] /api/v1/metadata/virtues/:id - 존재하지 않는 ID (Error 404)', async () => {
-        const res = await request(app)
-            .put('/api/v1/metadata/virtues/99999')
-            .set('Authorization', `Bearer ${adminToken}`)
-            .send({ name: 'Fail' });
-        
-        logResponse(res, 'Update Virtue (404 Not Found)');
-        
-        expect(res.status).to.equal(404);
-        expect(res.body.code).to.equal('NOT_FOUND');
+        // 비관리자 권한으로 덕목 수정 실패
+        it('[PUT] Error: Non-Admin Token (403)', async () => {
+            const res = await request(app)
+                .put(`/api/v1/metadata/virtues/${virtueId}`)
+                .set('Authorization', `Bearer ${nonAdminToken}`)
+                .send({ name: 'Fail' });
+            
+            logResponse(res, 'Update Virtue (403 Non-Admin)');
+            
+            expect(res.status).to.equal(403);
+            expectErrorShape(res);
+        });
+
+        // 덕목 이름 없이 덕목 수정 실패
+        it('[PUT] Error: Missing Name (400)', async () => {
+            const res = await request(app)
+                .put(`/api/v1/metadata/virtues/${virtueId}`)
+                .set('Authorization', `Bearer ${adminToken}`)
+                .send({});
+            
+            logResponse(res, 'Update Virtue (400 Missing Name)');
+            
+            expect(res.status).to.equal(400);
+            expect(res.body.code).to.equal('VALIDATION_ERROR');
+            expect(res.body.error).to.include('덕목 이름(name)이 필요합니다.');
+        });
+
+        // 존재하지 않는 덕목 ID로 덕목 수정 실패
+        it('[PUT] Error: Not Found ID (404)', async () => {
+            const res = await request(app)
+                .put('/api/v1/metadata/virtues/99999')
+                .set('Authorization', `Bearer ${adminToken}`)
+                .send({ name: 'Fail' });
+            
+            logResponse(res, 'Update Virtue (404 Not Found)');
+            
+            expect(res.status).to.equal(404);
+            expect(res.body.code).to.equal('NOT_FOUND');
+            expect(res.body.error).to.include('대상을 찾을 수 없습니다.');
+        });
     });
 
     // =================================================================
     // 🧪 5. 수정 API - 템플릿 (Template)
     // =================================================================
 
-    it('[PUT] /api/v1/metadata/templates/:key - 템플릿 수정 (Success)', async () => {
-        const res = await request(app)
-            .put('/api/v1/metadata/templates/TEMPORARY')
-            .set('Authorization', `Bearer ${adminToken}`)
-            .send({ title: '변경타이틀', body: '변경본문' });
-        
-        logResponse(res, 'Update Template (Success)');
-        
-        expect(res.status).to.equal(200);
-        expect(res.body.title).to.equal('변경타이틀');
-    });
+    describe('5. Template Update API (PUT /templates/:key)', () => {
+        // 관리자 권한으로 템플릿 수정 성공
+        it('[PUT] Success (Admin)', async () => {
+            const res = await request(app)
+                .put('/api/v1/metadata/templates/TEMPORARY')
+                .set('Authorization', `Bearer ${adminToken}`)
+                .send({ title: '변경타이틀', body: '변경본문' });
+            
+            logResponse(res, 'Update Template (Success)');
+            
+            expect(res.status).to.equal(200);
+            expect(res.body.title).to.equal('변경타이틀');
+        });
 
-    it('[PUT] /api/v1/metadata/templates/:key - 필수값 누락 (Error 400)', async () => {
-        const res = await request(app)
-            .put('/api/v1/metadata/templates/TEMPORARY')
-            .set('Authorization', `Bearer ${adminToken}`)
-            .send({ title: '타이틀만보냄' }); // body 누락
-        
-        logResponse(res, 'Update Template (400 Bad Request)');
-        
-        expect(res.status).to.equal(400);
-        expect(res.body.code).to.equal('VALIDATION_ERROR');
-    });
+        // 토큰 없이 템플릿 수정 실패
+        it('[PUT] Error: No Token (401)', async () => {
+            const res = await request(app)
+                .put('/api/v1/metadata/templates/TEMPORARY')
+                .send({ title: 'Fail', body: 'Fail' });
+            
+            logResponse(res, 'Update Template (401 No Token)');
+            
+            expect(res.status).to.equal(401);
+            expectErrorShape(res);
+        });
 
-    it('[PUT] /api/v1/metadata/templates/:key - 존재하지 않는 Key (Error 404)', async () => {
-        const res = await request(app)
-            .put('/api/v1/metadata/templates/INVALID_KEY')
-            .set('Authorization', `Bearer ${adminToken}`)
-            .send({ title: 'Fail', body: 'Fail' });
-        
-        logResponse(res, 'Update Template (404 Not Found)');
-        
-        expect(res.status).to.equal(404);
-        expect(res.body.code).to.equal('NOT_FOUND');
+        // 비관리자 권한으로 템플릿 수정 실패
+        it('[PUT] Error: Non-Admin Token (403)', async () => {
+            const res = await request(app)
+                .put('/api/v1/metadata/templates/TEMPORARY')
+                .set('Authorization', `Bearer ${nonAdminToken}`)
+                .send({ title: 'Fail', body: 'Fail' });
+            
+            logResponse(res, 'Update Template (403 Non-Admin)');
+            
+            expect(res.status).to.equal(403);
+            expectErrorShape(res);
+        });
+
+        // 템플릿 제목 또는 본문 없이 템플릿 수정 실패
+        it('[PUT] Error: Missing Title or Body (400)', async () => {
+            const res = await request(app)
+                .put('/api/v1/metadata/templates/TEMPORARY')
+                .set('Authorization', `Bearer ${adminToken}`)
+                .send({ title: '타이틀만보냄' }); 
+            
+            logResponse(res, 'Update Template (400 Missing Body)');
+            
+            expect(res.status).to.equal(400);
+            expect(res.body.code).to.equal('VALIDATION_ERROR');
+            expect(res.body.error).to.include('템플릿 제목(title)과 본문(body)이 모두 필요합니다.');
+        });
+
+        // 존재하지 않는 템플릿 키로 템플릿 수정 실패
+        it('[PUT] Error: Not Found Key (404)', async () => {
+            const res = await request(app)
+                .put('/api/v1/metadata/templates/INVALID_KEY')
+                .set('Authorization', `Bearer ${adminToken}`)
+                .send({ title: 'Fail', body: 'Fail' });
+            
+            logResponse(res, 'Update Template (404 Not Found)');
+            
+            expect(res.status).to.equal(404);
+            expect(res.body.code).to.equal('NOT_FOUND');
+            expect(res.body.error).to.include('대상을 찾을 수 없습니다.');
+        });
     });
 });

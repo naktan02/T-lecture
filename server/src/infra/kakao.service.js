@@ -10,6 +10,7 @@ class KakaoService {
     this.baseUrl = 'https://apis-navi.kakaomobility.com/v1';
   }
 
+  // 출발-도착지 사이의 거리 계산
   async getRouteDistance(originLat, originLng, destLat, destLng) {
     try {
       const response = await axios.get(`${this.baseUrl}/directions`, {
@@ -40,6 +41,7 @@ class KakaoService {
     }
   }
 
+  // 주소를 좌표로 변환
   async addressToCoordinates(address) {
     try {
       const response = await axios.get(

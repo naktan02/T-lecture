@@ -89,7 +89,6 @@ exports.autoAssign = asyncHandler(async (req, res) => {
 
 // [배정 취소]
 exports.cancelAssignmentByAdmin = asyncHandler(async (req, res) => {
-    // ✅ 수정: unitScheduleId는 req.params에서, instructorId는 req.body에서 가져옵니다.
     const unitScheduleId = Number(req.params.unitScheduleId); 
     const instructorId = Number(req.body.instructorId);
 
@@ -97,8 +96,6 @@ exports.cancelAssignmentByAdmin = asyncHandler(async (req, res) => {
     if (!Number.isFinite(unitScheduleId) || !Number.isFinite(instructorId)) {
         throw new AppError('unitScheduleId와 instructorId가 필요합니다.', 400, 'VALIDATION_ERROR');
     }
-
-    // Service 호출 (Service가 Number를 받도록 명시적으로 Number() 변환)
     const result = await assignmentService.cancelAssignment(
         req.user.id, 
         req.user.role || 'ADMIN', 

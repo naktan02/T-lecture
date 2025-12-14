@@ -38,10 +38,10 @@ class AuthRepository {
     });
   }
 
-  // [신규] 리프레시 토큰 저장 (기존 토큰 삭제 후 저장)
+  //  리프레시 토큰 저장 (기존 토큰 삭제 후 저장)
   async saveRefreshToken(userId, token, expiresAt, deviceId) {
     if (deviceId) {
-      // 1. 기기 ID가 있으면 -> 해당 기기의 기존 토큰만 삭제 (교체)
+      // 1. 기기 ID가 있으면 -> 해당 기기의 기존 토큰만 삭제
       await prisma.refreshToken.deleteMany({
           where: { 
               userId,
@@ -62,14 +62,14 @@ class AuthRepository {
     });
   }
 
-  // [신규] 리프레시 토큰 조회
+  // 리프레시 토큰 조회
   async findRefreshToken(userId, token) {
     return await prisma.refreshToken.findFirst({
       where: { userId, token },
     });
   }
 
-  // [신규] 리프레시 토큰 삭제 (로그아웃)
+  // 리프레시 토큰 삭제 (로그아웃)
   async deleteRefreshToken(userId, deviceId) {
     const whereCondition = { userId };
     // 기기 ID가 넘어왔으면 조건에 추가 -> 내 기기만 삭제됨

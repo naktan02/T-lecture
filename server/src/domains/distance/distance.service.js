@@ -12,6 +12,7 @@ const MAX_ROUTE_PER_DAY = 9000;
 const MAX_GEOCODE_PER_DAY = 900;
 
 class DistanceService {
+  // 카카오 API 사용량(오늘) 조회
   async getTodayUsage() {
     const usage = await kakaoUsageRepository.getOrCreateToday();
 
@@ -26,9 +27,7 @@ class DistanceService {
     };
   }
 
-  /**
-   * 길찾기 쿼터 확인 + 사용량 증가
-   */
+  // 길찾기 쿼터 확인 + 사용량 증가
   async _ensureRouteQuotaOrThrow(need = 1) {
     const usage = await kakaoUsageRepository.getOrCreateToday();
     if (usage.routeCount + need > MAX_ROUTE_PER_DAY) {
@@ -37,9 +36,7 @@ class DistanceService {
     await kakaoUsageRepository.incrementRouteCount(need);
   }
 
-  /**
-   * 지오코드(주소→좌표) 쿼터 확인 + 사용량 증가
-   */
+  // 지오코드(주소→좌표) 쿼터 확인 + 사용량 증가
   async _ensureGeocodeQuotaOrThrow(need = 1) {
     const usage = await kakaoUsageRepository.getOrCreateToday();
     if (usage.geocodeCount + need > MAX_GEOCODE_PER_DAY) {
@@ -48,6 +45,7 @@ class DistanceService {
     await kakaoUsageRepository.incrementGeocodeCount(need);
   }
 
+  // 특정 좌표간 거리 계산
   async calculateDistance(originLat, originLng, destLat, destLng) {
     await this._ensureRouteQuotaOrThrow(1);
 
@@ -55,6 +53,7 @@ class DistanceService {
     return { distance: route.distance, duration: route.duration, route };
   }
 
+  // 강사 좌표 조회
   async _getOrCreateInstructorCoords(instructor) {
     if (instructor.lat != null && instructor.lng != null) {
       return { lat: instructor.lat, lng: instructor.lng };
@@ -71,6 +70,7 @@ class DistanceService {
     return { lat: updated.lat, lng: updated.lng };
   }
 
+  // 부대 좌표 조회
   async _getOrCreateUnitCoords(unit) {
     if (unit.lat != null && unit.lng != null) {
       return { lat: unit.lat, lng: unit.lng };
@@ -87,6 +87,7 @@ class DistanceService {
     return { lat: updated.lat, lng: updated.lng };
   }
 
+  // 특정 강사-부대 간 거리 계산 및 저장
   async calculateAndSaveDistance(instructorId, unitId) {
     const instructor = await instructorRepository.findById(instructorId);
     if (!instructor) throw new AppError('Instructor not found', 404, 'INSTRUCTOR_NOT_FOUND');
@@ -108,6 +109,7 @@ class DistanceService {
     return saved;
   }
 
+  // 특정 부대 기준으로 거리 범위 내 강사 리스트 조회
 async getInstructorsWithinDistance(unitId, minDistance, maxDistance) {
     return distanceRepository.findInstructorsByDistanceRange(unitId, minDistance, maxDistance);
 }

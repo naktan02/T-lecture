@@ -11,17 +11,17 @@ const INSTRUCTOR_EMAIL = 'assign_inst@test.com';
 
 describe('Assignment API Integration Test', () => {
     let adminToken, instructorToken, instructorId, unitScheduleId;
-    let pastScheduleId; // 이력 테스트용 과거 스케줄 ID
+    let pastScheduleId;
     
     // 날짜 설정
     const today = new Date();
     const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
     const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
     
-    const startDateStr = yesterday.toISOString().split('T')[0]; // 필터링 시작일 (어제)
+    const startDateStr = yesterday.toISOString().split('T')[0]; 
     const endDateStr = new Date(new Date().setDate(tomorrow.getDate() + 1)).toISOString().split('T')[0]; // 필터링 종료일 (모레)
     
-    // ✅ 수정된 logResponse: 성공 여부와 관계없이 JSON 본문 출력
+    // logResponse: 성공 여부와 관계없이 JSON 본문 출력
     const logResponse = (res, label) => {
         console.log(`\n📦 [${label}] ${res.req.method} ${res.req.path} (${res.status})`);
         if (res.body) {
@@ -32,7 +32,7 @@ describe('Assignment API Integration Test', () => {
     };
 
     before(async () => {
-        // 1. DB 정리 (FK 제약 방지 핵심)
+        // DB 정리
         await prisma.messageAssignment.deleteMany();
         await prisma.messageReceipt.deleteMany();
         await prisma.message.deleteMany();
@@ -45,7 +45,7 @@ describe('Assignment API Integration Test', () => {
         await prisma.instructor.deleteMany();
         await prisma.user.deleteMany({ where: { userEmail: { in: [ADMIN_EMAIL, INSTRUCTOR_EMAIL] } } });
         
-        // 2. 데이터 시딩
+        // 데이터 시딩
         const adminUser = await prisma.user.create({
             data: { userEmail: ADMIN_EMAIL, password: 'hash', name: 'Admin', status: 'APPROVED', admin: { create: { level: 'SUPER' } } }
         });
@@ -57,7 +57,6 @@ describe('Assignment API Integration Test', () => {
                 instructor: { 
                     create: { 
                         location: 'Seoul',
-                        // 내일 근무 가능일 설정
                         availabilities: { create: [{ availableOn: tomorrow }] } 
                     } 
                 } 
@@ -72,13 +71,13 @@ describe('Assignment API Integration Test', () => {
             data: {
                 name: 'UnitFuture', region: 'Seoul', addressDetail: 'Addr',
                 trainingLocations: { create: [{ originalPlace: 'Loc1', instructorsNumbers: 1 }] },
-                schedules: { create: [{ date: tomorrow }] } // 내일 스케줄
+                schedules: { create: [{ date: tomorrow }] }
             },
             include: { schedules: true }
         });
         unitScheduleId = unit.schedules[0].id;
         
-        // [과거] 이력 테스트용 데이터 (어제 날짜)
+        // [과거] 이력 테스트용 데이터
         const pastUnit = await prisma.unit.create({
             data: {
                 name: 'UnitPast', region: 'Busan', addressDetail: 'Addr',
@@ -88,12 +87,12 @@ describe('Assignment API Integration Test', () => {
         });
         pastScheduleId = pastUnit.schedules[0].id;
         
-        // 과거 배정 생성 및 Accepted 처리 (이력에 포함되어야 함)
+        // 과거 배정 생성 및 Accepted 처리
         await prisma.instructorUnitAssignment.create({
             data: { userId: instructorId, unitScheduleId: pastScheduleId, state: 'Accepted', classification: 'Confirmed' }
         });
 
-        // 거리 정보 (필수)
+        // 거리 정보
         await prisma.instructorUnitDistance.create({
             data: { userId: instructorId, unitId: unit.id, distance: 10, duration: 60 }
         });
@@ -107,57 +106,62 @@ describe('Assignment API Integration Test', () => {
     });
 
     // =================================================================
-    // 🧪 API 1, 2, 5: 자동 배정 및 응답 (기존 테스트)
+    // 🧪 API 자동 배정 및 응답
     // =================================================================
     
+    // 자동 배정 성공
     it('[POST] /auto-assign - Run Algorithm (Success)', async () => {
         const res = await request(app)
             .post('/api/v1/assignments/auto-assign')
             .set('Authorization', `Bearer ${adminToken}`)
             .send({ startDate: startDateStr, endDate: endDateStr });
             
-        logResponse(res, 'Auto Assign'); // ✅ 로그 출력
+        logResponse(res, 'Auto Assign'); 
         expect(res.status).to.equal(200);
         expect(res.body.summary.created).to.be.greaterThan(0);
     });
-
+    
+    // 내 배정 조회 성공
     it('[GET] / - Check My Assignment (Success)', async () => {
         const res = await request(app)
             .get('/api/v1/assignments/')
             .set('Authorization', `Bearer ${instructorToken}`);
             
-        logResponse(res, 'Check My Assignment'); // ✅ 로그 출력
+        logResponse(res, 'Check My Assignment'); 
         expect(res.status).to.equal(200);
         expect(res.body.find(a => a.unitScheduleId === unitScheduleId)).to.exist;
     });
 
+    // 배정 수락 성공
     it('[POST] /:id/response - Accept Assignment (Success)', async () => {
         const res = await request(app)
             .post(`/api/v1/assignments/${unitScheduleId}/response`)
             .set('Authorization', `Bearer ${instructorToken}`)
             .send({ response: 'ACCEPT' });
             
-        logResponse(res, 'Respond Accept'); // ✅ 로그 출력
+        logResponse(res, 'Respond Accept'); 
         expect(res.status).to.equal(200);
     });
 
+    // 자동 배정 실패
     it('[POST] /auto-assign - Invalid Dates (Error 400)', async () => {
         const res = await request(app)
             .post('/api/v1/assignments/auto-assign')
             .set('Authorization', `Bearer ${adminToken}`)
-            .send({ startDate: endDateStr, endDate: startDateStr }); // 시작 > 종료
+            .send({ startDate: endDateStr, endDate: startDateStr }); 
             
-        logResponse(res, 'Auto Assign Invalid Date'); // 에러 로그 출력
+        logResponse(res, 'Auto Assign Invalid Date'); 
         expect(res.status).to.equal(400);
     });
 
+    // 배정 수락 실패
     it('[POST] /response - Already Accepted (Error 409)', async () => {
         const res = await request(app)
             .post(`/api/v1/assignments/${unitScheduleId}/response`)
             .set('Authorization', `Bearer ${instructorToken}`)
             .send({ response: 'MAYBE' });
             
-        logResponse(res, 'Respond Already Accepted (409)'); // 에러 로그 출력
+        logResponse(res, 'Respond Already Accepted (409)'); 
         expect(res.status).to.equal(409); 
     });
     
@@ -165,15 +169,15 @@ describe('Assignment API Integration Test', () => {
     // 🧪 API 3: /history (근무 이력 조회)
     // =================================================================
 
+    // 근무 이력 조회 성공
     it('[GET] /history - Get Work History (Success)', async () => {
         const res = await request(app)
             .get('/api/v1/assignments/history')
             .set('Authorization', `Bearer ${instructorToken}`);
             
-        logResponse(res, 'Get Work History'); // ✅ 로그 출력
+        logResponse(res, 'Get Work History'); 
         expect(res.status).to.equal(200);
         expect(res.body).to.be.an('array');
-        // 과거 배정(pastScheduleId)이 이력에 포함되었는지 확인
         expect(res.body.find(a => a.unitScheduleId === pastScheduleId)).to.exist;
     });
     
@@ -181,25 +185,27 @@ describe('Assignment API Integration Test', () => {
     // 🧪 API 4: /candidates (배정 후보 조회)
     // =================================================================
     
+    // 배정 후보 조회 성공
     it('[GET] /candidates - Get Candidates (Success)', async () => {
         const res = await request(app)
             .get('/api/v1/assignments/candidates')
             .set('Authorization', `Bearer ${adminToken}`)
             .query({ startDate: startDateStr, endDate: endDateStr });
             
-        logResponse(res, 'Get Candidates'); // ✅ 로그 출력
+        logResponse(res, 'Get Candidates'); 
         expect(res.status).to.equal(200);
         expect(res.body).to.have.property('unassignedUnits');
         expect(res.body).to.have.property('availableInstructors');
     });
     
+    // 배정 후보 조회 실패
     it('[GET] /candidates - Missing Date (Error 400)', async () => {
         const res = await request(app)
             .get('/api/v1/assignments/candidates')
             .set('Authorization', `Bearer ${adminToken}`)
-            .query({ startDate: startDateStr }); // endDate 누락
+            .query({ startDate: startDateStr }); 
             
-        logResponse(res, 'Get Candidates 400'); // 에러 로그 출력
+        logResponse(res, 'Get Candidates 400'); 
         expect(res.status).to.equal(400);
         expect(res.body.error).to.include('조회 기간이 필요합니다');
     });
@@ -208,6 +214,7 @@ describe('Assignment API Integration Test', () => {
     // 🧪 API 6: /:unitScheduleId/cancel (배정 취소)
     // =================================================================
     
+    // 배정 취소 성공
     it('[PATCH] /:unitScheduleId/cancel - Admin Cancel (Success)', async () => {
         // 취소할 대상: 미래 배정 (unitScheduleId)
         const res = await request(app)
@@ -215,23 +222,23 @@ describe('Assignment API Integration Test', () => {
             .set('Authorization', `Bearer ${adminToken}`)
             .send({ instructorId: instructorId });
             
-        logResponse(res, 'Admin Cancel Success'); // ✅ 로그 출력
+        logResponse(res, 'Admin Cancel Success'); 
         expect(res.status).to.equal(200);
         
-        // DB에서 상태가 'Canceled'인지 확인
         const canceled = await prisma.instructorUnitAssignment.findUnique({
             where: { unitScheduleId_userId: { userId: instructorId, unitScheduleId } }
         });
         expect(canceled.state).to.equal('Canceled');
     });
     
+    // 배정 취소 실패
     it('[PATCH] /:unitScheduleId/cancel - Missing Instructor ID (Error 400)', async () => {
         const res = await request(app)
             .patch(`/api/v1/assignments/${unitScheduleId}/cancel`)
             .set('Authorization', `Bearer ${adminToken}`)
-            .send({ unitScheduleId: unitScheduleId }); // instructorId 누락
+            .send({ unitScheduleId: unitScheduleId }); 
             
-        logResponse(res, 'Admin Cancel 400'); // 에러 로그 출력
+        logResponse(res, 'Admin Cancel 400'); 
         expect(res.status).to.equal(400);
         expect(res.body.error).to.include('instructorId가 필요합니다');
     });

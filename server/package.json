@@ -25,9 +25,11 @@
     "test:integration1": "mocha tests/test/user.admin.integration.spec.js --timeout 10000 --exit",
     "test:integration2": "mocha tests/test/user.me.integration.spec.js --timeout 10000 --exit",
     "test:integration3": "mocha tests/test/assignment_integration.spec.js --timeout 10000 --exit",
-    "test:integration4": "mocha tests/test/distance_integration.spec.js --timeout 10000 --exit",
+    "test:integration4": "mocha tests/test/message.integration.spec.js --timeout 10000 --exit",
     "test:integration5": "mocha tests/test/unit.integration.spec.js --timeout 10000 --exit",
-    "test:integration6": "mocha tests/test/assignment_integration.spec.js --timeout 10000 --exit"
+    "test:integration6": "mocha tests/test/metadata.integration.spec.js --timeout 10000 --exit",
+    "test:integration8": "mocha tests/test/distance_integration.spec.js --timeout 10000 --exit",
+    "test:integration9": "mocha tests/test/instructor.integration.spec.js --timeout 10000 --exit"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",

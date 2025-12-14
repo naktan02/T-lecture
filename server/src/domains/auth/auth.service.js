@@ -7,16 +7,15 @@ const instructorRepository = require('../instructor/instructor.repository');
 const authRepository = require('./auth.repository');
 const userRepository = require('../user/repositories/user.repository');
 const emailService = require('../../infra/email.service');
-const AppError = require('../../common/errors/AppError'); // ✅ 추가
+const AppError = require('../../common/errors/AppError'); 
 
 const SALT_ROUNDS = 10;
 const JWT_SECRET = process.env.JWT_SECRET || 'secret_key';
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh_secret';
 
 class AuthService {
-  /**
-   * 1. 인증번호 발송
-   */
+
+  // 이메일 인증 코드 생성/저장 후 이메일로 발송
   async sendVerificationCode(email) {
     const code = crypto.randomInt(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 3 * 60 * 1000); // 3분 유효
@@ -27,9 +26,7 @@ class AuthService {
     return { message: '인증번호가 발송되었습니다. (유효시간 3분)' };
   }
 
-  /**
-   * 2. 인증번호 검증
-   */
+  // 인증번호 검증
   async verifyCode(email, code) {
     const record = await authRepository.findLatestVerification(email);
 
@@ -47,9 +44,7 @@ class AuthService {
     return { message: '이메일 인증이 완료되었습니다.' };
   }
 
-  /**
-   * 3. 회원가입
-   */
+  // 회원가입
   async register(dto) {
     const {
       email, password, name, phoneNumber, address, type, virtueIds, teamId, category,
@@ -111,9 +106,7 @@ class AuthService {
     };
   }
 
-  /**
-   * 4. 로그인
-   */
+  // 로그인
   async login(email, password, loginType, deviceId) {
     const user = await userRepository.findByEmail(email);
     if (!user) {
@@ -128,8 +121,7 @@ class AuthService {
     if (user.status !== 'APPROVED') {
       throw new AppError('승인되지 않은 사용자입니다.', 403, 'USER_NOT_APPROVED');
     }
-    if (loginType === 'ADMIN' && user.role === 'USER') { // role 필드가 있는지 확인 필요 (User 모델 구조에 따라)
-        // 기존 코드 유지하되, 필요시 admin 테이블 존재 여부로 체크 추천
+    if (loginType === 'ADMIN' && user.role === 'USER') {
     }
 
     const payload = { userId: user.id };
@@ -157,7 +149,7 @@ class AuthService {
       },
     };
   }
-
+  // 만료되지 않은 Refresh Token을 검증하고, DB에 저장된 토큰인지 확인하여 새로운 Access Token을 발급
   async refreshAccessToken(incomingRefreshToken) {
     if (!incomingRefreshToken) throw new AppError('리프레시 토큰이 없습니다.', 401, 'TOKEN_MISSING');
 
@@ -177,6 +169,7 @@ class AuthService {
     return { accessToken: newAccessToken };
   }
 
+  // 사용자 ID와 기기 ID를 기반으로 DB에 저장된 Refresh Token을 무효화(삭제)합니다.
   async logout(userId, deviceId) {
     if (userId) {
         await authRepository.deleteRefreshToken(userId, deviceId);
@@ -184,6 +177,7 @@ class AuthService {
     return { message: '로그아웃 되었습니다.' };
   }
 
+  // 인증번호 검증 후, 사용자 비밀번호를 새 비밀번호로 업데이트합니다.
   async resetPassword(email, code, newPassword) {
     const user = await userRepository.findByEmail(email);
     if (!user) throw new AppError('가입되지 않은 이메일입니다.', 404, 'USER_NOT_FOUND');

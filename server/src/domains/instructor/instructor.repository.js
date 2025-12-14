@@ -3,10 +3,7 @@ const prisma = require('../../libs/prisma');
 
 class InstructorRepository {
 
-  /**
-   * [기존 유지] 특정 기간의 근무 가능일 조회
-   * - 캘린더에 표시하기 위해 특정 월(startDate ~ endDate)의 가능일을 가져옵니다.
-   */
+  // 정 기간의 근무 가능일 조회
   async findAvailabilities(instructorId, startDate, endDate) {
     return await prisma.instructorAvailability.findMany({
       where: {
@@ -20,11 +17,7 @@ class InstructorRepository {
     });
   }
 
-  /**
-   * [기존 유지] 근무 가능일 일괄 업데이트 (덮어쓰기)
-   * - 기존 날짜를 모두 지우고(deleteMany) 새로운 날짜를 넣는(createMany) 방식을 사용합니다.
-   * - 중간에 에러가 나면 안 되므로 트랜잭션($transaction)으로 묶었습니다.
-   */
+  // 근무 가능일 일괄 업데이트
   async replaceAvailabilities(instructorId, startDate, endDate, newDates) {
     return await prisma.$transaction(async (tx) => {
       // 1. 해당 기간의 기존 설정 삭제
@@ -47,10 +40,7 @@ class InstructorRepository {
     });
   }
 
-  /**
-   * [기존 유지] 승인된 강사 조회
-   * - 거리 계산 배치 로직 등에서 사용
-   */
+  // 승인된 강사 조회
   async findActiveInstructors() {
     return prisma.instructor.findMany({
       where: {
@@ -64,10 +54,7 @@ class InstructorRepository {
     });
   }
 
-  /**
-   * [기존 유지] 강사 덕목(Virtue) 추가
-   * - 회원가입 시 강사 정보를 생성할 때 사용됨
-   */
+  // 강사 덕목(Virtue/ 과목) 추가
   async addVirtues(instructorId, virtueIds) {
     if (!virtueIds || virtueIds.length === 0) return;
 
@@ -80,10 +67,7 @@ class InstructorRepository {
     });
   }
   
-  /**
-   * [기존 유지] 기간 내 가용 강사 조회
-   * - 배정 후보 추천(AssignmentService)에서 사용됨
-   */
+  // 기간 내 가용 강사 조회
   async findAvailableInPeriod(startDate, endDate) {
     return await prisma.instructor.findMany({
       where: {

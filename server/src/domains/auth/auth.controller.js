@@ -4,6 +4,7 @@ const asyncHandler = require('../../common/middlewares/asyncHandler');
 const AppError = require('../../common/errors/AppError');
 const logger = require('../../config/logger');
 
+// 쿠키 옵션
 function getRefreshCookieOptions() {
   return {
     httpOnly: true,
@@ -12,7 +13,7 @@ function getRefreshCookieOptions() {
     path: '/',
   };
 }
-
+// 이메일 인증 코드를 발송합니다.
 exports.sendCode = asyncHandler(async (req, res) => {
   const { email } = req.body || {};
   if (!email) throw new AppError('email이 필요합니다.', 400, 'VALIDATION_ERROR');
@@ -21,6 +22,7 @@ exports.sendCode = asyncHandler(async (req, res) => {
   res.status(200).json(result);
 });
 
+// 이메일 인증 코드를 검증합니다.
 exports.verifyCode = asyncHandler(async (req, res) => {
   const { email, code } = req.body || {};
   if (!email || !code) throw new AppError('email, code가 필요합니다.', 400, 'VALIDATION_ERROR');
@@ -29,11 +31,13 @@ exports.verifyCode = asyncHandler(async (req, res) => {
   res.status(200).json(result);
 });
 
+// 회원가입
 exports.register = asyncHandler(async (req, res) => {
   const result = await authService.register(req.body);
   res.status(201).json(result);
 });
 
+// 로그인
 exports.login = asyncHandler(async (req, res) => {
   const { email, password, loginType, deviceId } = req.body || {};
   if (!email || !password) throw new AppError('email/password가 필요합니다.', 400, 'VALIDATION_ERROR');
@@ -56,9 +60,8 @@ exports.login = asyncHandler(async (req, res) => {
   });
 });
 
+// 토큰 재발급
 exports.refresh = asyncHandler(async (req, res) => {
-    // asyncHandler가 에러를 잡으므로 try-catch 불필요하지만, 
-    // 쿠키 삭제 로직을 위해 catch 유지 또는 에러 핸들러 위임 고려
     try {
         const refreshToken = req.cookies?.refreshToken;
         if (!refreshToken) throw new AppError('refreshToken이 없습니다.', 401, 'UNAUTHORIZED');
@@ -72,6 +75,7 @@ exports.refresh = asyncHandler(async (req, res) => {
     }
 });
 
+// 사용자 로그아웃을 처리, Refresh Token을 삭제하고 쿠키를 제거
 exports.logout = asyncHandler(async (req, res) => {
   const { deviceId } = req.body || {};
   const userId = req.user?.id ?? null;
@@ -83,6 +87,7 @@ exports.logout = asyncHandler(async (req, res) => {
   res.status(200).json({ message: '로그아웃되었습니다.' });
 });
 
+// 사용자 비밀번호 재설정
 exports.resetPassword = asyncHandler(async (req, res) => {
   const { email, code, newPassword } = req.body || {};
   if (!email || !code || !newPassword) {

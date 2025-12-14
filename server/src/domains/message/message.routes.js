@@ -4,56 +4,22 @@ const router = express.Router();
 const messageController = require('./message.controller');
 const { auth, requireRole } = require('../../common/middlewares');
 
-// --- 공지사항 (Notices) ---
+// 공지사항 작성
+router.post('/notices', auth, requireRole('ADMIN'), messageController.createNotice);
 
-// 1. [관리자] 공지사항 작성
-// POST /api/v1/messages/notices
-router.post(
-    '/notices',
-    auth,
-    requireRole('ADMIN'),
-    messageController.createNotice
-);
+// 공지사항 조회
+router.get('/notices', auth, messageController.getNotices);
 
-// 2. [전체] 공지사항 조회 (로그인한 사용자 누구나)
-// GET /api/v1/messages/notices
-router.get(
-    '/notices',
-    auth,
-    messageController.getNotices
-);
+// 임시 배정 메시지 발송
+router.post('/send/temporary', auth, requireRole('ADMIN'), messageController.sendTemporaryMessages);
 
+// 확정 배정 메시지 발송
+router.post('/send/confirmed', auth, requireRole('ADMIN'), messageController.sendConfirmed);
 
-// --- 알림/메시지 (Notifications) ---
+// 내 메시지함 조회
+router.get('/', auth, messageController.getMyMessages);
 
-// 3. [관리자] 임시 배정 메시지 발송
-router.post(
-    '/send/temporary',
-    auth,
-    requireRole('ADMIN'),
-    messageController.sendTemporaryMessages
-);
-
-// 4. [관리자] 확정 배정 메시지 발송
-router.post(
-    '/send/confirmed',
-    auth,
-    requireRole('ADMIN'),
-    messageController.sendConfirmed
-);
-
-// 5. [강사] 내 메시지함 조회
-router.get(
-    '/',
-    auth,
-    messageController.getMyMessages
-);
-
-// 6. [강사] 메시지 읽음 처리
-router.patch(
-    '/:messageId/read',
-    auth,
-    messageController.readMessage
-);
+// 메시지 읽음 처리
+router.patch('/:messageId/read', auth, messageController.readMessage);
 
 module.exports = router;

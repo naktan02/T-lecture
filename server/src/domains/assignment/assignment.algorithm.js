@@ -47,7 +47,7 @@ class AssignmentAlgorithm {
                 assignments.push({
                 unitScheduleId: schedule.id,
                 instructorId: instructorId,
-                role: 'Main', // 기본 역할 (추후 로직 고도화 가능)
+                role: 'Main', 
                 });
 
                 assignedSet.add(key);

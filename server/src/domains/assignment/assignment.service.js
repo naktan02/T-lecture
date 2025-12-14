@@ -49,14 +49,8 @@ class AssignmentService {
             throw new AppError('배정 가능한 매칭 결과가 없습니다.', 404, 'NO_MATCHES');
         }
 
-        // 3) DB 저장 (Repository에 위임)
-        // - 트랜잭션, 중복 처리 로직을 완전히 리포지토리로 분리했습니다.
         const summary = await assignmentRepository.createAssignmentsBulk(matchResults);
-
-        // 4) 최신 데이터 재조회 (화면 갱신용)
         const updatedUnits = await assignmentRepository.findScheduleCandidates(start, end);
-
-        // 5) 결과 반환
         return {
             summary,
             data: assignmentDTO.toHierarchicalResponse(updatedUnits),
@@ -66,14 +60,12 @@ class AssignmentService {
      * 임시 배정 응답 (수락/거절)
      */
     async respondToAssignment(instructorId, unitScheduleId, response) {
-        // 복합키로 조회
         const assignment = await assignmentRepository.findAssignmentByKey(instructorId, unitScheduleId);
 
         if (!assignment) {
             throw new AppError('해당 배정 정보를 찾을 수 없습니다.', 404, 'NOT_FOUND');
         }
 
-        // [변경] 이미 처리된 상태인지 체크
         if (assignment.state === 'Accepted') {
             throw new AppError('이미 확정된 배정입니다.', 409, 'ALREADY_CONFIRMED');
         }
@@ -82,7 +74,6 @@ class AssignmentService {
         }
 
         let newState;
-        // [변경] 응답에 따른 상태 결정
         if (response === 'ACCEPT') {
             newState = 'Accepted';
         } else if (response === 'REJECT') {
@@ -91,7 +82,6 @@ class AssignmentService {
             throw new AppError('잘못된 응답입니다. (ACCEPT 또는 REJECT)', 400, 'VALIDATION_ERROR');
         }
 
-        // 상태 업데이트 실행
         await assignmentRepository.updateStatusByKey(instructorId, unitScheduleId, newState);
 
         return {
@@ -133,7 +123,7 @@ class AssignmentService {
         today.setHours(0, 0, 0, 0);
 
         return await assignmentRepository.findAllByInstructorId(instructorId, {
-            state: 'Accepted', // [변경] 확정된 것만 이력으로 인정
+            state: 'Accepted',
             UnitSchedule: { date: { lt: today } },
         });
     }
@@ -146,7 +136,7 @@ class AssignmentService {
         today.setHours(0, 0, 0, 0);
 
         return await assignmentRepository.findAllByInstructorId(instructorId, {
-            state: { in: ['Pending', 'Accepted'] }, // [변경] 임시 배정과 확정 배정 모두 노출
+            state: { in: ['Pending', 'Accepted'] },
             UnitSchedule: { date: { gte: today } },
         });
     }

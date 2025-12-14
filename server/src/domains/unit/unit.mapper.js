@@ -11,10 +11,8 @@ const toBoolOrUndef = (v) => {
   return undefined;
 };
 
-/**
- * [DTO] 부대 생성용 데이터 변환 (CreateUnitDto 역할)
- * - 단건 등록, 엑셀 등록 모두 이 함수를 통과하여 데이터 정합성을 맞춤
- */
+// 부대 생성용 데이터 변환 (CreateUnitDto 역할)
+// - 단건 등록, 엑셀 등록 모두 이 함수를 통과하여 데이터 정합성을 맞춤
 function toCreateUnitDto(rawData = {}) {
   // 필수값 검증 (Service 로직 단순화)
   if (!isNonEmptyString(rawData.name)) {
@@ -67,9 +65,7 @@ function toCreateUnitDto(rawData = {}) {
   };
 }
 
-/**
- * [Mapper] 엑셀 Row(한글) -> API Raw Data 변환
- */
+// 엑셀 Row(한글) -> API Raw Data 변환
 function excelRowToRawUnit(row = {}) {
   // 콤마로 구분된 일정 문자열 처리
   const schedules = isNonEmptyString(row['교육일정'])

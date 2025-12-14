@@ -1,18 +1,16 @@
 // src/libs/prisma.js
+require('dotenv').config();
+
 const { PrismaClient } = require('@prisma/client');
 const config = require('../config');
 
-const databaseUrl = config.databaseUrl; 
-
-
 if (!process.env.DATABASE_URL) {
-    process.env.DATABASE_URL = databaseUrl;
+    process.env.DATABASE_URL = config.databaseUrl;
 }
-
 
 const prisma = new PrismaClient({
     datasources: {
-        db: { url: databaseUrl }, 
+        db: { url: process.env.DATABASE_URL },
     },
 });
 

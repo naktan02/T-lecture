@@ -1,16 +1,45 @@
 -- CreateTable
+CREATE TABLE `email_verifications` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `email` VARCHAR(191) NOT NULL,
+    `code` VARCHAR(191) NOT NULL,
+    `is_verified` BOOLEAN NOT NULL DEFAULT false,
+    `expires_at` DATETIME(3) NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `refresh_tokens` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `token` VARCHAR(255) NOT NULL,
+    `user_id` INTEGER NOT NULL,
+    `expires_at` DATETIME(3) NOT NULL,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `deviceId` VARCHAR(191) NULL,
+
+    UNIQUE INDEX `refresh_tokens_token_key`(`token`),
+    UNIQUE INDEX `refresh_tokens_user_id_deviceId_key`(`user_id`, `deviceId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `kakao_api_usage` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
     `date` DATE NOT NULL,
     `routeCount` INTEGER NOT NULL DEFAULT 0,
     `geocodeCount` INTEGER NOT NULL DEFAULT 0,
 
-    PRIMARY KEY (`date`)
+    UNIQUE INDEX `kakao_api_usage_date_key`(`date`),
+    PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
 CREATE TABLE `메시지` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `유형` ENUM('Notice', 'Temporary', 'Confirmed') NULL,
+    `제목` VARCHAR(191) NULL,
     `본문` VARCHAR(191) NULL,
     `상태` ENUM('Pending', 'Sent', 'Canceled') NULL,
     `생성일시` DATETIME(3) NULL,
@@ -38,10 +67,20 @@ CREATE TABLE `메시지_배정` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `메시지_템플릿` (
+    `템플릿키` VARCHAR(191) NOT NULL,
+    `제목` VARCHAR(191) NOT NULL,
+    `본문` TEXT NOT NULL,
+    `수정일시` DATETIME(3) NOT NULL,
+
+    PRIMARY KEY (`템플릿키`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `강사가능일` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `강사id` INTEGER NOT NULL,
-    `가능일` DATETIME(3) NULL,
+    `가능일` DATE NOT NULL,
 
     INDEX `강사가능일_instructor_idx`(`강사id`),
     UNIQUE INDEX `강사가능일_instructor_date_unique`(`강사id`, `가능일`),
@@ -53,7 +92,7 @@ CREATE TABLE `강사_부대_배정` (
     `userId` INTEGER NOT NULL,
     `unitScheduleId` INTEGER NOT NULL,
     `배치분류` ENUM('Temporary', 'Confirmed') NULL,
-    `배정상태` ENUM('Active', 'Canceled') NOT NULL DEFAULT 'Active',
+    `배정상태` ENUM('Pending', 'Accepted', 'Rejected', 'Canceled') NOT NULL DEFAULT 'Pending',
 
     UNIQUE INDEX `강사_부대_배정_unitScheduleId_userId_key`(`unitScheduleId`, `userId`),
     PRIMARY KEY (`unitScheduleId`, `userId`)
@@ -123,25 +162,38 @@ CREATE TABLE `부대일정` (
 -- CreateTable
 CREATE TABLE `user` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `name` VARCHAR(191) NULL,
-    `userEmail` VARCHAR(191) NULL,
+    `user_email` VARCHAR(191) NULL,
     `password` VARCHAR(191) NULL,
+    `name` VARCHAR(191) NULL,
     `userphoneNumber` VARCHAR(191) NULL,
-    `분류` ENUM('Main', 'Co', 'Assistant', 'Practicum') NULL,
+    `status` ENUM('PENDING', 'APPROVED', 'RESTING', 'INACTIVE') NOT NULL DEFAULT 'PENDING',
 
+    UNIQUE INDEX `user_user_email_key`(`user_email`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `admins` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `user_id` INTEGER NOT NULL,
+    `level` ENUM('GENERAL', 'SUPER') NOT NULL DEFAULT 'GENERAL',
+
+    UNIQUE INDEX `admins_user_id_key`(`user_id`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
 CREATE TABLE `강사` (
     `user_id` INTEGER NOT NULL,
+    `분류` ENUM('Main', 'Co', 'Assistant', 'Practicum') NULL,
     `team_id` INTEGER NULL,
+    `팀장여부` BOOLEAN NOT NULL DEFAULT false,
     `location` TEXT NULL,
-    `강사등급id` INTEGER NULL,
     `기수` SMALLINT NULL,
     `제한지역` TEXT NULL,
     `위도` DOUBLE NULL,
     `경도` DOUBLE NULL,
+    `강사프로필완료` BOOLEAN NOT NULL DEFAULT false,
 
     PRIMARY KEY (`user_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -150,14 +202,6 @@ CREATE TABLE `강사` (
 CREATE TABLE `team` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `team_name` VARCHAR(191) NULL,
-
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `강사등급` (
-    `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `강사등급` VARCHAR(191) NULL,
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -188,6 +232,9 @@ CREATE TABLE `instructor_stats` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- AddForeignKey
+ALTER TABLE `refresh_tokens` ADD CONSTRAINT `refresh_tokens_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `메시지 수신자` ADD CONSTRAINT `메시지 수신자_메시지id_fkey` FOREIGN KEY (`메시지id`) REFERENCES `메시지`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -209,25 +256,25 @@ ALTER TABLE `강사_부대_배정` ADD CONSTRAINT `강사_부대_배정_userId_f
 ALTER TABLE `강사_부대_배정` ADD CONSTRAINT `강사_부대_배정_unitScheduleId_fkey` FOREIGN KEY (`unitScheduleId`) REFERENCES `부대일정`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `강사-부대 거리` ADD CONSTRAINT `강사-부대 거리_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `강사`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `강사-부대 거리` ADD CONSTRAINT `강사-부대 거리_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `강사`(`user_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `강사-부대 거리` ADD CONSTRAINT `강사-부대 거리_부대id_fkey` FOREIGN KEY (`부대id`) REFERENCES `부대`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `강사-부대 거리` ADD CONSTRAINT `강사-부대 거리_부대id_fkey` FOREIGN KEY (`부대id`) REFERENCES `부대`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `교육장소` ADD CONSTRAINT `교육장소_부대id_fkey` FOREIGN KEY (`부대id`) REFERENCES `부대`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `교육장소` ADD CONSTRAINT `교육장소_부대id_fkey` FOREIGN KEY (`부대id`) REFERENCES `부대`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `부대일정` ADD CONSTRAINT `부대일정_부대id_fkey` FOREIGN KEY (`부대id`) REFERENCES `부대`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `부대일정` ADD CONSTRAINT `부대일정_부대id_fkey` FOREIGN KEY (`부대id`) REFERENCES `부대`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `admins` ADD CONSTRAINT `admins_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `강사` ADD CONSTRAINT `강사_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `강사` ADD CONSTRAINT `강사_team_id_fkey` FOREIGN KEY (`team_id`) REFERENCES `team`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `강사` ADD CONSTRAINT `강사_강사등급id_fkey` FOREIGN KEY (`강사등급id`) REFERENCES `강사등급`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `강사가능덕목` ADD CONSTRAINT `강사가능덕목_강사id_fkey` FOREIGN KEY (`강사id`) REFERENCES `강사`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE;

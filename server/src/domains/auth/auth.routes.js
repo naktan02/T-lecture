@@ -6,15 +6,22 @@ const authController = require('./auth.controller');
 const { auth } = require('../../common/middlewares');
 
 
-// 이메일 인증 관련
+// 이메일 인증 코드 발송
 router.post('/code/send', authController.sendCode);
+
+// 이메일 인증 코드 검증
 router.post('/code/verify', authController.verifyCode);
 
-// 회원가입 및 로그인
+// 회원가입
 router.post('/register', authController.register);
+
+// 로그인
 router.post('/login', authController.login);
 
-router.post('/refresh', authController.refresh); // Access Token 갱신
+// 토큰 재발급
+router.post('/refresh', authController.refresh); 
+
+// 로그아웃
 router.post('/logout', auth, authController.logout);  
 
 

@@ -2,7 +2,7 @@ const request = require('supertest');
 const { expect } = require('chai');
 const { PrismaClient } = require('@prisma/client');
 const jwt = require('jsonwebtoken');
-const { app, server } = require('../../src/server'); // 경로 확인 완료
+const { app, server } = require('../../src/server'); 
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'secret_key';
@@ -27,24 +27,19 @@ describe('Message API Integration Test (All 6 Routes)', () => {
     // ✅ 1. 테스트 데이터 초기화 및 시딩
     before(async () => {
         try {
-            await prisma.messageReceipt.deleteMany();      // 있다면
-            await prisma.message.deleteMany();             // 있다면
-            await prisma.instructorUnitAssignment.deleteMany(); // 있다면
-            await prisma.instructorUnitDistance.deleteMany();   // 있다면
-            await prisma.instructorAvailability.deleteMany();   // 있다면
-            await prisma.instructorVirtue.deleteMany();         // 있다면
-            await prisma.instructorStats.deleteMany();          // 있다면
-
-            // 너가 이미 지우던 것들
+            await prisma.messageReceipt.deleteMany();      
+            await prisma.message.deleteMany();             
+            await prisma.instructorUnitAssignment.deleteMany(); 
+            await prisma.instructorUnitDistance.deleteMany();   
+            await prisma.instructorAvailability.deleteMany();   
+            await prisma.instructorVirtue.deleteMany();         
+            await prisma.instructorStats.deleteMany();        
             await prisma.unitSchedule.deleteMany();
             await prisma.unit.deleteMany();
-
-            // ✅ 이제 부모 삭제
             await prisma.instructor.deleteMany();
-            await prisma.admin.deleteMany();               // user/admin 관계 있으면
+            await prisma.admin.deleteMany();               
             await prisma.user.deleteMany();
             await prisma.messageTemplate.deleteMany();
-            // 1-2. 템플릿 생성 (발송 테스트 필수)
             await prisma.messageTemplate.createMany({
                 data: [
                     { key: 'TEMPORARY', title: '임시 배정', body: '임시: {{unitName}}' },
@@ -53,7 +48,6 @@ describe('Message API Integration Test (All 6 Routes)', () => {
                 ]
             });
             
-            // 1-3. 유저 생성
             const admin = await prisma.user.create({
                 data: { userEmail: ADMIN_EMAIL, password: 'hash', name: 'Admin', status: 'APPROVED', admin: { create: { level: 'SUPER' } } }
             });
@@ -66,14 +60,12 @@ describe('Message API Integration Test (All 6 Routes)', () => {
             instructorId = inst.instructor.userId;
             instructorToken = jwt.sign({ userId: inst.id }, JWT_SECRET);
             
-            // 1-4. 부대/일정 생성 (발송 테스트용)
             const unit = await prisma.unit.create({
                 data: { name: '테스트부대', region: '경기', addressDetail: '경기', schedules: { create: [{ date: new Date() }] } },
                 include: { schedules: true }
             });
             unitScheduleId = unit.schedules[0].id;
             
-            // 1-5. 임시 배정 생성 (Pending 상태)
             await prisma.instructorUnitAssignment.create({
                 data: { userId: instructorId, unitScheduleId: unitScheduleId, state: 'Pending', classification: 'Temporary' }
             });
@@ -94,6 +86,7 @@ describe('Message API Integration Test (All 6 Routes)', () => {
     // 🧪 1. POST /notices (공지 작성)
     // =================================================================
     
+    // 공지 발송 완료
     it('[POST] /notices - Create Notice (Success, 201)', async () => {
         const res = await request(app)
             .post('/api/v1/messages/notices')
@@ -104,6 +97,7 @@ describe('Message API Integration Test (All 6 Routes)', () => {
         expect(res.body.title).to.equal('긴급 공지');
     });
 
+    // 공지 발송 실패
     it('[POST] /notices - Missing Body (Error 400)', async () => {
         const res = await request(app)
             .post('/api/v1/messages/notices')
@@ -118,10 +112,11 @@ describe('Message API Integration Test (All 6 Routes)', () => {
     // 🧪 2. GET /notices (공지 조회)
     // =================================================================
 
+    // 공지 조회 성공
     it('[GET] /notices - Get Notice List (Success)', async () => {
         const res = await request(app)
             .get('/api/v1/messages/notices')
-            .set('Authorization', `Bearer ${instructorToken}`); // 강사도 조회 가능
+            .set('Authorization', `Bearer ${instructorToken}`);
         logResponse(res, 'Get Notices');
         expect(res.status).to.equal(200);
         expect(res.body).to.be.an('array');
@@ -131,9 +126,8 @@ describe('Message API Integration Test (All 6 Routes)', () => {
     // =================================================================
     // 🧪 3. POST /send/temporary (임시 배정 발송)
     // =================================================================
-    
+    // 임시 배정 발송 성공
     it('[POST] /send/temporary - Send Temporary Message (Success)', async () => {
-        // DB에 Pending 상태의 배정이 있으므로 발송 성공 예상
         const res = await request(app)
             .post('/api/v1/messages/send/temporary')
             .set('Authorization', `Bearer ${adminToken}`);
@@ -141,15 +135,14 @@ describe('Message API Integration Test (All 6 Routes)', () => {
         expect(res.status).to.equal(200);
         expect(res.body.count).to.be.greaterThan(0);
         
-        // 다음 테스트를 위해 배정 상태를 Accepted로 변경
         await prisma.instructorUnitAssignment.update({
             where: { unitScheduleId_userId: { userId: instructorId, unitScheduleId } },
             data: { state: 'Accepted', classification: 'Confirmed' }
         });
     });
 
+    // 임시 배정 발송 실패
     it('[POST] /send/temporary - No Target (Error 404)', async () => {
-        // 이미 발송되었고 상태가 Accepted로 변경되어 발송 대상이 없으므로 404 예상
         const res = await request(app)
             .post('/api/v1/messages/send/temporary')
             .set('Authorization', `Bearer ${adminToken}`);
@@ -161,9 +154,8 @@ describe('Message API Integration Test (All 6 Routes)', () => {
     // =================================================================
     // 🧪 4. POST /send/confirmed (확정 배정 발송)
     // =================================================================
-
+    // 확정 배정 발송 성공
     it('[POST] /send/confirmed - Send Confirmed Message (Success)', async () => {
-        // 이전 테스트에서 Accepted로 변경되었으므로 발송 성공 예상
         const res = await request(app)
             .post('/api/v1/messages/send/confirmed')
             .set('Authorization', `Bearer ${adminToken}`);
@@ -172,8 +164,8 @@ describe('Message API Integration Test (All 6 Routes)', () => {
         expect(res.body.count).to.be.greaterThan(0);
     });
     
+    // 확정 배정 발송 실패
     it('[POST] /send/confirmed - No Target (Error 404)', async () => {
-        // 이미 발송되어 대상이 없으므로 404 예상
         const res = await request(app)
             .post('/api/v1/messages/send/confirmed')
             .set('Authorization', `Bearer ${adminToken}`);
@@ -185,11 +177,9 @@ describe('Message API Integration Test (All 6 Routes)', () => {
     // =================================================================
     // 🧪 5. GET / (내 메시지함 조회)
     // =================================================================
-    
+    // 내 메시지함 조회 성공
     it('[GET] / - Get My Messages (Success)', async () => {
-        // 템플릿 발송, 공지 발송 등으로 DB에 메시지가 쌓인 상태
         const res = await request(app)
-            // ✅ URL 수정: /my 대신 루트('/') 사용
             .get('/api/v1/messages/') 
             .set('Authorization', `Bearer ${instructorToken}`);
         
@@ -197,16 +187,14 @@ describe('Message API Integration Test (All 6 Routes)', () => {
         
         expect(res.status).to.equal(200);
         expect(res.body).to.be.an('array');
-        expect(res.body.length).to.be.at.least(2); // 공지 + 임시/확정
-        
-        // 읽음 테스트를 위해 메시지 ID 저장
+        expect(res.body.length).to.be.at.least(2); 
         sentMessageId = res.body[0].messageId;
     });
 
     // =================================================================
     // 🧪 6. PATCH /:messageId/read (읽음 처리)
     // =================================================================
-
+    // 읽음 처리 성공
     it('[PATCH] /:id/read - Mark as Read (Success)', async () => {
         const res = await request(app)
             .patch(`/api/v1/messages/${sentMessageId}/read`)
@@ -214,10 +202,9 @@ describe('Message API Integration Test (All 6 Routes)', () => {
         
         logResponse(res, 'Read Message');
         expect(res.status).to.equal(200);
-        
-        // DB에서 읽음 시간 확인 가능 (간접 검증)
     });
 
+    // 읽음 처리 실패
     it('[PATCH] /:id/read - Not Found (Error 404)', async () => {
         const res = await request(app)
             .patch(`/api/v1/messages/999999/read`)
