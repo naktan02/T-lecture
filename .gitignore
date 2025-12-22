@@ -3,6 +3,7 @@
 /client/node_modules
 /server/node_modules
 /package/*/node_modules
+**/package-lock.json
 # Build artifacts
 /client/.next
 /client/out
@@ -37,5 +38,3 @@ Thumbs.db
 
 mysql_data/
 server/mysql_data/
-postgres_data/
-server/postgres_data/

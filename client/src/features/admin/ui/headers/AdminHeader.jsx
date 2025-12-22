@@ -8,6 +8,7 @@ export const AdminHeader = () => {
     const links = [
         { label: '권한 관리', path: '/admin/super' },
         { label: '강사 배정', path: '/admin/assignments' },
+        { label: '부대 관리', path: '/admin/units' },
     ]; 
 
     return (
