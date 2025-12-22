@@ -104,26 +104,42 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
     setSchedules(schedules.filter((_, i) => i !== index));
   };
 
-  // --- 저장 핸들러 (수정됨) ---
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Submit triggered!"); // ✅ 이제 이 로그가 보일 것입니다.
 
-    const makeTime = (t) => t ? toIsoDateTime(new Date().toISOString().split('T')[0], t) : null;
-    
+    // 데이터 변환 로직 (내부 함수 혹은 외부 함수 사용)
+    const makeDateTime = (timeStr) => {
+        if (!timeStr) return null;
+        try {
+            const now = new Date();
+            const [h, m] = timeStr.split(':').map(Number);
+            now.setHours(h, m, 0, 0);
+            return now.toISOString();
+        } catch { return null; }
+    };
+    const makeDate = (dateStr) => (dateStr ? new Date(dateStr).toISOString() : null);
+
     const payload = {
       ...formData,
-      workStartTime: makeTime(formData.workStartTime),
-      workEndTime: makeTime(formData.workEndTime),
-      lunchStartTime: makeTime(formData.lunchStartTime),
-      lunchEndTime: makeTime(formData.lunchEndTime),
+      educationStart: makeDate(formData.educationStart),
+      educationEnd: makeDate(formData.educationEnd),
+      workStartTime: makeDateTime(formData.workStartTime),
+      workEndTime: makeDateTime(formData.workEndTime),
+      lunchStartTime: makeDateTime(formData.lunchStartTime),
+      lunchEndTime: makeDateTime(formData.lunchEndTime),
       trainingLocations: locations,
-      schedules: schedules.map(s => ({ ...s, date: toIsoDateTime(s.date) })),
+      schedules: schedules.map(s => ({ ...s, date: makeDate(s.date) })),
     };
 
-    // ✅ [수정] unit -> initialUnit 으로 변경
-    if (initialUnit) onSave({ id: initialUnit.id, data: payload });
-    else onSave(payload);
-    onClose();
+    try {
+        if (initialUnit) await onSave({ id: initialUnit.id, data: payload });
+        else await onSave(payload);
+        onClose();
+    } catch (err) {
+        console.error(err);
+        alert("저장 실패");
+    }
   };
 
   if (!isOpen) return null;
@@ -283,13 +299,20 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
           </form>
         </div>
 
-        {/* Footer (수정됨) */}
+        {/* Footer */}
         <div className="px-6 py-4 border-t bg-white flex justify-between items-center shrink-0">
-           {/* ✅ [수정] unit -> initialUnit 으로 변경 */}
-           {initialUnit && <button type="button" onClick={() => {if(window.confirm('삭제하시겠습니까?')) onDelete(initialUnit.id)}} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded">부대 삭제</button>}
+           {initialUnit && <button type="button" onClick={() => {if(window.confirm('삭제?')) onDelete(initialUnit.id)}} className="text-red-500">삭제</button>}
            <div className="flex gap-2 ml-auto">
              <Button variant="outline" onClick={onClose}>취소</Button>
-             <Button variant="primary" type="submit" form="unit-form">저장</Button>
+             
+             {/* ✅ [수정] 표준 button 태그로 변경하여 form 연결 확실하게 보장 */}
+             <button
+               type="submit"
+               form="unit-form" // ✅ form ID와 일치
+               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors"
+             >
+               저장
+             </button>
            </div>
         </div>
 
