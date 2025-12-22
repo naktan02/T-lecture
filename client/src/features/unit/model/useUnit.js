@@ -2,21 +2,24 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { unitApi } from "../api/unitApi";
 import { useState } from 'react';
 
-export const useUnit = () => {
+// ✅ [수정] searchParams를 인자로 받아야 합니다.
+export const useUnit = (searchParams = {}) => {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
-  const [limit] = useState(20); // 페이지당 20개
+  const [limit] = useState(20); 
 
   const { data: response, isLoading, isError, error } = useQuery({
+    // ✅ 이제 searchParams가 정의되었으므로 에러가 나지 않습니다.
     queryKey: ["units", page, limit, searchParams],
     queryFn: () => unitApi.getUnitList({ page, limit, ...searchParams }),
-    keepPreviousData: true, // v5에서는 placeholderData: keepPreviousData 로 변경 권장
+    keepPreviousData: true, 
   });
 
-  // ✅ 안전한 데이터 접근 (렌더링 에러 방지 1차)
+  // 데이터 접근 안전장치
   const units = Array.isArray(response?.data?.data) ? response.data.data : [];
   const meta = response?.data?.meta || { total: 0, lastPage: 1 };
 
+  // ... (이하 Mutation 코드는 기존과 동일함) ...
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
       return Promise.all([
@@ -60,12 +63,10 @@ export const useUnit = () => {
     onError: (err) => alert(err.message || "등록 실패"),
   });
 
-  // ✅ [추가] 다중 삭제 Mutation
   const deleteManyMutation = useMutation({
     mutationFn: unitApi.deleteUnits,
     onSuccess: (res) => {
       queryClient.invalidateQueries(["units"]);
-      // 성공 메시지는 컴포넌트에서 처리하거나 여기서 alert
       return res; 
     },
     onError: (err) => alert("삭제 중 오류가 발생했습니다: " + err.message),
@@ -78,11 +79,11 @@ export const useUnit = () => {
     setPage,
     isLoading,
     isError,
-    // ...
-    deleteUnits: deleteManyMutation.mutateAsync, // 비동기 처리를 위해 Async 반환
-    registerUnit: useMutation({ mutationFn: unitApi.registerUnit, onSuccess: () => queryClient.invalidateQueries(["units"]) }).mutateAsync,
-    updateUnit: useMutation({ mutationFn: ({id, data}) => Promise.all([unitApi.updateUnitBasic(id, data), unitApi.updateUnitOfficer(id, data)]), onSuccess: () => queryClient.invalidateQueries(["units"]) }).mutate,
-    deleteUnit: useMutation({ mutationFn: unitApi.deleteUnit, onSuccess: () => queryClient.invalidateQueries(["units"]) }).mutate,
-    uploadExcel: useMutation({ mutationFn: unitApi.uploadExcel, onSuccess: () => queryClient.invalidateQueries(["units"]) }).mutateAsync,
+    // Actions
+    deleteUnits: deleteManyMutation.mutateAsync,
+    registerUnit: registerMutation.mutateAsync,
+    updateUnit: updateMutation.mutate,
+    deleteUnit: deleteMutation.mutate,
+    uploadExcel: uploadExcelMutation.mutateAsync,
   };
 };
