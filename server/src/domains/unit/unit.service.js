@@ -88,6 +88,20 @@ class UnitService {
       updateData.lng = null;
     }
 
+    if (rawData.officerName !== undefined) updateData.officerName = rawData.officerName;
+    if (rawData.officerPhone !== undefined) updateData.officerPhone = rawData.officerPhone;
+    if (rawData.officerEmail !== undefined) updateData.officerEmail = rawData.officerEmail;
+
+    const toDate = (val) => (val ? new Date(val) : null);
+    
+    if (rawData.educationStart !== undefined) updateData.educationStart = toDate(rawData.educationStart);
+    if (rawData.educationEnd !== undefined) updateData.educationEnd = toDate(rawData.educationEnd);
+    
+    if (rawData.workStartTime !== undefined) updateData.workStartTime = toDate(rawData.workStartTime);
+    if (rawData.workEndTime !== undefined) updateData.workEndTime = toDate(rawData.workEndTime);
+    if (rawData.lunchStartTime !== undefined) updateData.lunchStartTime = toDate(rawData.lunchStartTime);
+    if (rawData.lunchEndTime !== undefined) updateData.lunchEndTime = toDate(rawData.lunchEndTime);
+
     return await unitRepository.updateUnitById(id, updateData);
   }
 
