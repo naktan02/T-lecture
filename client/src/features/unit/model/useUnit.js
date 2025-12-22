@@ -8,17 +8,13 @@ export const useUnit = () => {
   const [limit] = useState(20); // 페이지당 20개
 
   const { data: response, isLoading, isError, error } = useQuery({
-    // ✅ queryKey에 searchParams 포함 (검색 조건 변경 시 자동 재요청)
-    queryKey: ["units", page, limit, searchParams], 
-    queryFn: () => unitApi.getUnitList({ 
-      page, 
-      limit, 
-      ...searchParams // ✅ API 호출 시 필터 전달
-    }),
-    keepPreviousData: true,
+    queryKey: ["units", page, limit, searchParams],
+    queryFn: () => unitApi.getUnitList({ page, limit, ...searchParams }),
+    keepPreviousData: true, // v5에서는 placeholderData: keepPreviousData 로 변경 권장
   });
 
-  const units = response?.data?.data || [];
+  // ✅ 안전한 데이터 접근 (렌더링 에러 방지 1차)
+  const units = Array.isArray(response?.data?.data) ? response.data.data : [];
   const meta = response?.data?.meta || { total: 0, lastPage: 1 };
 
   const updateMutation = useMutation({
@@ -64,17 +60,29 @@ export const useUnit = () => {
     onError: (err) => alert(err.message || "등록 실패"),
   });
 
+  // ✅ [추가] 다중 삭제 Mutation
+  const deleteManyMutation = useMutation({
+    mutationFn: unitApi.deleteUnits,
+    onSuccess: (res) => {
+      queryClient.invalidateQueries(["units"]);
+      // 성공 메시지는 컴포넌트에서 처리하거나 여기서 alert
+      return res; 
+    },
+    onError: (err) => alert("삭제 중 오류가 발생했습니다: " + err.message),
+  });
+
   return {
     units,
-    meta,     // 페이징 정보 노출
-    page,     // 현재 페이지
-    setPage,  // 페이지 변경 함수
+    meta,
+    page,
+    setPage,
     isLoading,
     isError,
-    errorMessage: error?.message,
-    updateUnit: updateMutation.mutate,
-    deleteUnit: deleteMutation.mutate,
-    uploadExcel: uploadExcelMutation.mutateAsync,
-    registerUnit: registerMutation.mutateAsync,
+    // ...
+    deleteUnits: deleteManyMutation.mutateAsync, // 비동기 처리를 위해 Async 반환
+    registerUnit: useMutation({ mutationFn: unitApi.registerUnit, onSuccess: () => queryClient.invalidateQueries(["units"]) }).mutateAsync,
+    updateUnit: useMutation({ mutationFn: ({id, data}) => Promise.all([unitApi.updateUnitBasic(id, data), unitApi.updateUnitOfficer(id, data)]), onSuccess: () => queryClient.invalidateQueries(["units"]) }).mutate,
+    deleteUnit: useMutation({ mutationFn: unitApi.deleteUnit, onSuccess: () => queryClient.invalidateQueries(["units"]) }).mutate,
+    uploadExcel: useMutation({ mutationFn: unitApi.uploadExcel, onSuccess: () => queryClient.invalidateQueries(["units"]) }).mutateAsync,
   };
 };

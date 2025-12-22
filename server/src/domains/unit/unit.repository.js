@@ -67,6 +67,17 @@ class UnitRepository {
     });
   }
 
+  // ✅ [추가] 부대 다중 삭제
+  async deleteManyUnits(ids) {
+    return prisma.unit.deleteMany({
+      where: {
+        id: {
+          in: ids.map(id => Number(id))
+        }
+      }
+    });
+  }
+
   // 부대 일정 추가
   async insertUnitSchedule(unitId, date) {
     // date는 'YYYY-MM-DD' 형태라고 가정

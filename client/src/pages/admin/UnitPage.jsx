@@ -1,38 +1,61 @@
-import React, { useState } from 'react'; // useMemo 제거
+import React, { useState } from 'react';
 import { AdminHeader } from '../../features/admin/ui/headers/AdminHeader';
 import { useUnit } from '../../features/unit/model/useUnit';
 import { UnitToolbar } from '../../features/unit/ui/UnitToolbar';
 import { UnitList } from '../../features/unit/ui/UnitList';
 import { UnitDetailDrawer } from '../../features/unit/ui/UnitDetailDrawer';
+import { Button } from '../../shared/ui/Button';
 
 const UnitPage = () => {
-  // ✅ 검색 조건 State 추가
-  const [searchParams, setSearchParams] = useState({
-    keyword: '',
-    startDate: '',
-    endDate: ''
-  });
-
-  // ✅ useUnit에 검색 조건 전달 (필터링은 서버에서 처리)
-  const { 
-    units, 
-    meta, 
-    page, 
-    setPage, 
-    isLoading, 
-    registerUnit, 
-    updateUnit, 
-    deleteUnit, 
-    uploadExcel 
-  } = useUnit(searchParams);
-
+  const [searchParams, setSearchParams] = useState({ keyword: '', startDate: '', endDate: '' });
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState(null);
+  
+  // ✅ 다중 선택 상태 관리
+  const [selectedIds, setSelectedIds] = useState([]);
 
-  // ✅ 툴바에서 검색 버튼 클릭 시 호출
+  const { 
+    units, meta, page, setPage, isLoading, 
+    registerUnit, updateUnit, deleteUnit, deleteUnits, uploadExcel 
+  } = useUnit(searchParams);
+
+  // 검색 핸들러
   const handleSearch = (newParams) => {
     setSearchParams(newParams);
-    setPage(1); // 검색 조건 변경 시 1페이지로 초기화
+    setPage(1);
+    setSelectedIds([]); // 검색 시 선택 초기화
+  };
+
+  // ✅ 개별 선택 토글
+  const handleToggleSelect = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  // ✅ 전체 선택 토글
+  const handleToggleAll = (isChecked) => {
+    if (isChecked) {
+      // 현재 페이지의 모든 ID 선택
+      const allIds = units.map(u => u.id);
+      setSelectedIds(allIds);
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  // ✅ 선택 삭제 핸들러
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    if (window.confirm(`선택한 ${selectedIds.length}개 부대를 삭제하시겠습니까?`)) {
+      try {
+        await deleteUnits(selectedIds);
+        setSelectedIds([]);
+        alert("삭제되었습니다.");
+      } catch (e) {
+        console.error(e);
+      }
+    }
   };
 
   return (
@@ -41,22 +64,41 @@ const UnitPage = () => {
       
       <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-6 flex flex-col min-h-0">
         
-        <div className="shrink-0">
-          <UnitToolbar 
-            onSearch={handleSearch} // ✅ 핸들러 연결
-            onUploadExcel={uploadExcel}
-            onCreate={() => { setSelectedUnit(null); setIsDrawerOpen(true); }} 
-            totalCount={meta?.total || 0}
-          />
+        {/* 툴바 영역 */}
+        <div className="shrink-0 flex flex-col md:flex-row justify-between items-end gap-4 mb-4">
+          <div className="w-full">
+            <UnitToolbar 
+              onSearch={handleSearch} 
+              onUploadExcel={uploadExcel}
+              onCreate={() => { setSelectedUnit(null); setIsDrawerOpen(true); }} 
+              totalCount={meta?.total || 0}
+            />
+          </div>
         </div>
 
+        {/* ✅ 선택 삭제 버튼 (선택된 항목이 있을 때만 표시) */}
+        {selectedIds.length > 0 && (
+          <div className="shrink-0 mb-2 flex justify-between items-center bg-blue-50 p-2 px-4 rounded border border-blue-100 text-blue-800 text-sm">
+            <span>{selectedIds.length}개 항목이 선택됨</span>
+            <button 
+              onClick={handleDeleteSelected}
+              className="px-3 py-1 bg-white border border-red-200 text-red-600 rounded hover:bg-red-50 font-medium text-xs"
+            >
+              선택 삭제 🗑️
+            </button>
+          </div>
+        )}
+
+        {/* 리스트 영역 */}
         <div className="flex-1 min-h-0 bg-white rounded-xl shadow-sm border border-gray-200 relative">
-          {/* 로딩 표시 추가 */}
           {isLoading ? (
-            <div className="flex justify-center items-center h-full">로딩 중...</div>
+            <div className="flex justify-center items-center h-full text-gray-500">데이터를 불러오는 중입니다...</div>
           ) : (
             <UnitList 
-              units={units} // ✅ 필터링된 서버 데이터 바로 사용
+              units={units} 
+              selectedIds={selectedIds}
+              onToggleSelect={handleToggleSelect}
+              onToggleAll={handleToggleAll}
               onUnitClick={(u) => { setSelectedUnit(u); setIsDrawerOpen(true); }} 
             />
           )}
@@ -71,7 +113,7 @@ const UnitPage = () => {
           >
             이전
           </button>
-          <span>{page} / {meta.lastPage || 1}</span>
+          <span className="text-sm text-gray-600">Page {page} / {meta.lastPage || 1}</span>
           <button 
             onClick={() => setPage(p => p+1)} 
             disabled={page >= (meta.lastPage || 1)} 
@@ -80,7 +122,6 @@ const UnitPage = () => {
             다음
           </button>
         </div>
-
       </main>
 
       <UnitDetailDrawer 

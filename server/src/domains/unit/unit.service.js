@@ -193,6 +193,14 @@ class UnitService {
   async removeUnitPermanently(id) {
     return await unitRepository.deleteUnitById(id);
   }
+
+  // ✅ [추가] 부대 일괄 삭제
+  async removeMultipleUnits(ids) {
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      throw new AppError('삭제할 부대 ID 목록이 없습니다.', 400, 'VALIDATION_ERROR');
+    }
+    return await unitRepository.deleteManyUnits(ids);
+  }
 }
 
 module.exports = new UnitService();

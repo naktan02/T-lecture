@@ -95,3 +95,14 @@ exports.deleteUnit = asyncHandler(async (req, res) => {
   await unitService.removeUnitPermanently(req.params.id);
   res.status(204).send();
 });
+
+// ✅ [추가] 부대 일괄 삭제
+exports.deleteMultipleUnits = asyncHandler(async (req, res) => {
+  const { ids } = req.body;
+  const result = await unitService.removeMultipleUnits(ids);
+  
+  res.status(200).json({
+    result: "Success",
+    message: `${result.count}개의 부대가 삭제되었습니다.`
+  });
+});

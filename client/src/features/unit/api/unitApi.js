@@ -60,4 +60,17 @@ export const unitApi = {
     await apiClient(`/api/v1/units/${id}`, { method: "DELETE" });
   },
 
+  // 6. 단건 삭제
+  deleteUnit: async (id) => {
+    await apiClient(`/api/v1/units/${id}`, { method: "DELETE" });
+  },
+
+  // ✅ [추가] 다중 삭제
+  deleteUnits: async (ids) => {
+    const response = await apiClient(`/api/v1/units/batch/delete`, {
+      method: "DELETE",
+      body: JSON.stringify({ ids }),
+    });
+    return response.json();
+  },
 };
