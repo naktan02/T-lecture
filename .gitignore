@@ -7,6 +7,7 @@
 # Build artifacts
 /client/.next
 /client/out
+package-lock.json
 
 # Logs
 logs
