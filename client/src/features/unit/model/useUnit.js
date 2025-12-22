@@ -8,9 +8,14 @@ export const useUnit = () => {
   const [limit] = useState(20); // 페이지당 20개
 
   const { data: response, isLoading, isError, error } = useQuery({
-    queryKey: ["units", page, limit], // 키에 page 포함
-    queryFn: () => unitApi.getUnitList({ page, limit }),
-    keepPreviousData: true, // 로딩 중 깜빡임 방지
+    // ✅ queryKey에 searchParams 포함 (검색 조건 변경 시 자동 재요청)
+    queryKey: ["units", page, limit, searchParams], 
+    queryFn: () => unitApi.getUnitList({ 
+      page, 
+      limit, 
+      ...searchParams // ✅ API 호출 시 필터 전달
+    }),
+    keepPreviousData: true,
   });
 
   const units = response?.data?.data || [];

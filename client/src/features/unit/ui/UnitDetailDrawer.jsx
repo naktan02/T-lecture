@@ -1,7 +1,7 @@
 // client/src/features/unit/ui/UnitDetailDrawer.jsx
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query'; // ✅ useQuery 추가
-import { unitApi } from '../api/unitApi';         // ✅ API import 확인
+import { useQuery } from '@tanstack/react-query';
+import { unitApi } from '../api/unitApi';
 import { Button } from '../../../shared/ui/Button';
 import { InputField } from '../../../shared/ui/InputField';
 
@@ -23,23 +23,20 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
   const [locations, setLocations] = useState([]);
   const [schedules, setSchedules] = useState([]);
 
-  // ✅ [수정] 상세 데이터 Fetching
-  // 리스트에서 받은 unit 정보(initialUnit)에는 locations/schedules가 없으므로 API로 다시 가져옴
+  // 상세 데이터 Fetching
   const { data: detailData } = useQuery({
     queryKey: ['unitDetail', initialUnit?.id],
     queryFn: () => unitApi.getUnit(initialUnit.id),
-    enabled: !!initialUnit?.id && isOpen, // ID가 있고 Drawer가 열렸을 때만 실행
-    staleTime: 0, // 항상 최신 데이터 조회
+    enabled: !!initialUnit?.id && isOpen, 
+    staleTime: 0,
   });
 
-  // ✅ [수정] 데이터 초기화 로직 개선
   useEffect(() => {
     if (isOpen) {
-      // 1. 표시할 소스 결정: 상세 데이터가 로드되면 그것을 쓰고, 아니면 리스트에서 받은 초기값 사용
+      // 리스트에서 받은 정보(initialUnit) 혹은 상세 조회된 정보(detailData.data) 사용
       const targetUnit = detailData?.data || initialUnit;
 
       if (targetUnit) {
-        // 기본 정보
         setFormData({
           name: targetUnit.name || '',
           unitType: targetUnit.unitType || 'Army',
@@ -57,17 +54,17 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
           lunchEndTime: toTimeValue(targetUnit.lunchEndTime),
         });
 
-        // 하위 데이터 (상세 조회 성공 시에만 존재)
+        // 상세 정보가 로드된 경우에만 하위 데이터 설정
         setLocations(targetUnit.trainingLocations || []);
         setSchedules(targetUnit.schedules || []);
       } else {
-        // 신규 등록 모드
+        // 신규 등록
         setFormData({ unitType: 'Army', name: '', /* 초기값들 */ });
         setLocations([]);
         setSchedules([]);
       }
     }
-  }, [isOpen, initialUnit, detailData]); // detailData가 로드되면 다시 실행됨
+  }, [isOpen, initialUnit, detailData]);
 
   const handleBasicChange = (e) => {
     const { name, value } = e.target;
@@ -77,7 +74,7 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
   // --- 교육장소 핸들러 ---
   const addLocation = () => {
     setLocations([...locations, { 
-      id: null, // 신규
+      id: null, 
       originalPlace: '', changedPlace: '', 
       hasInstructorLounge: false, hasWomenRestroom: false, 
       hasCateredMeals: false, hasHallLodging: false, 
@@ -100,34 +97,31 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
   };
   const updateSchedule = (index, value) => {
     const newSchs = [...schedules];
-    newSchs[index].date = value; // YYYY-MM-DD string
+    newSchs[index].date = value;
     setSchedules(newSchs);
   };
   const removeSchedule = (index) => {
     setSchedules(schedules.filter((_, i) => i !== index));
   };
 
-  // --- 저장 ---
+  // --- 저장 핸들러 (수정됨) ---
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // 시간 결합 로직
     const makeTime = (t) => t ? toIsoDateTime(new Date().toISOString().split('T')[0], t) : null;
     
     const payload = {
       ...formData,
-      // 시간 필드는 임의의 날짜에 시간만 붙여서 보냄 (백엔드에서 시간만 쓸 경우)
-      // 혹은 educationStart 등 기준 날짜가 있다면 그것을 사용
       workStartTime: makeTime(formData.workStartTime),
       workEndTime: makeTime(formData.workEndTime),
       lunchStartTime: makeTime(formData.lunchStartTime),
       lunchEndTime: makeTime(formData.lunchEndTime),
-      
       trainingLocations: locations,
-      schedules: schedules.map(s => ({ ...s, date: toIsoDateTime(s.date) })), // 날짜 -> ISO
+      schedules: schedules.map(s => ({ ...s, date: toIsoDateTime(s.date) })),
     };
 
-    if (unit) onSave({ id: unit.id, data: payload });
+    // ✅ [수정] unit -> initialUnit 으로 변경
+    if (initialUnit) onSave({ id: initialUnit.id, data: payload });
     else onSave(payload);
     onClose();
   };
@@ -139,9 +133,10 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40" onClick={onClose} />
       <div className="fixed inset-y-0 right-0 z-50 w-full md:w-[700px] bg-white shadow-2xl flex flex-col h-full">
         
-        {/* Header */}
+        {/* Header (수정됨) */}
         <div className="px-6 py-4 border-b flex justify-between items-center bg-white shrink-0">
-          <h2 className="text-xl font-bold text-gray-800">{unit ? unit.name : '신규 부대 등록'}</h2>
+          {/* ✅ [수정] unit -> initialUnit 으로 변경 */}
+          <h2 className="text-xl font-bold text-gray-800">{initialUnit ? formData.name : '신규 부대 등록'}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
         </div>
 
@@ -163,7 +158,7 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
           ))}
         </div>
 
-        {/* Scrollable Body */}
+        {/* Body */}
         <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
           <form id="unit-form" onSubmit={handleSubmit} className="space-y-6">
             
@@ -190,7 +185,7 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
                     </div>
                   </div>
                 </section>
-
+                {/* ... (운영 시간, 담당자 정보 섹션은 그대로 유지) ... */}
                 <section className="bg-white p-5 rounded-xl border shadow-sm">
                   <h3 className="font-bold mb-4">⏰ 운영 시간</h3>
                   <div className="grid grid-cols-2 gap-4">
@@ -198,6 +193,8 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
                     <InputField type="date" label="교육 종료" name="educationEnd" value={formData.educationEnd} onChange={handleBasicChange} />
                     <InputField type="time" label="근무 시작" name="workStartTime" value={formData.workStartTime} onChange={handleBasicChange} />
                     <InputField type="time" label="근무 종료" name="workEndTime" value={formData.workEndTime} onChange={handleBasicChange} />
+                    <InputField type="time" label="점심 시작" name="lunchStartTime" value={formData.lunchStartTime} onChange={handleBasicChange} />
+                    <InputField type="time" label="점심 종료" name="lunchEndTime" value={formData.lunchEndTime} onChange={handleBasicChange} />
                   </div>
                 </section>
 
@@ -214,30 +211,27 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
               </div>
             )}
 
-            {/* 2. 교육 장소 탭 */}
+            {/* 2. 교육 장소 탭 (이전 코드와 동일, 생략 없이 사용) */}
             {activeTab === 'location' && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                    <span className="text-sm text-gray-500">총 {locations.length}개의 교육장소</span>
                    <Button type="button" size="small" onClick={addLocation}>+ 장소 추가</Button>
                 </div>
-                
                 {locations.map((loc, idx) => (
                   <div key={idx} className="bg-white p-5 rounded-xl border shadow-sm relative group">
                     <button type="button" onClick={() => removeLocation(idx)} className="absolute top-4 right-4 text-red-400 hover:text-red-600">삭제</button>
                     <h4 className="font-bold mb-3 text-gray-700">장소 #{idx + 1}</h4>
-                    
                     <div className="grid grid-cols-2 gap-3 mb-3">
                       <InputField label="기존 장소명" value={loc.originalPlace} onChange={(e) => updateLocation(idx, 'originalPlace', e.target.value)} />
                       <InputField label="변경 장소명" value={loc.changedPlace} onChange={(e) => updateLocation(idx, 'changedPlace', e.target.value)} />
                     </div>
-                    
+                    {/* ... (기타 필드 생략 없이 사용) ... */}
                     <div className="grid grid-cols-3 gap-3 mb-3">
                       <InputField type="number" label="계획인원" value={loc.plannedCount} onChange={(e) => updateLocation(idx, 'plannedCount', e.target.value)} />
                       <InputField type="number" label="참여인원" value={loc.actualCount} onChange={(e) => updateLocation(idx, 'actualCount', e.target.value)} />
                       <InputField type="number" label="강사 수" value={loc.instructorsNumbers} onChange={(e) => updateLocation(idx, 'instructorsNumbers', e.target.value)} />
                     </div>
-
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-700 bg-gray-50 p-3 rounded">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" checked={loc.hasInstructorLounge} onChange={(e) => updateLocation(idx, 'hasInstructorLounge', e.target.checked)} /> 강사대기실
@@ -252,7 +246,6 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
                         <input type="checkbox" checked={loc.allowsPhoneBeforeAfter} onChange={(e) => updateLocation(idx, 'allowsPhoneBeforeAfter', e.target.checked)} /> 휴대폰 불출
                       </label>
                     </div>
-                    
                     <div className="mt-3">
                        <InputField label="특이사항" value={loc.note || ''} onChange={(e) => updateLocation(idx, 'note', e.target.value)} />
                     </div>
@@ -261,14 +254,13 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
               </div>
             )}
 
-            {/* 3. 일정 탭 */}
+            {/* 3. 일정 탭 (이전 코드와 동일, 생략 없이 사용) */}
             {activeTab === 'schedule' && (
                <div className="space-y-4">
                  <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-500">총 {schedules.length}일의 교육 일정</span>
                     <Button type="button" size="small" onClick={addSchedule}>+ 날짜 추가</Button>
                  </div>
-                 
                  <div className="bg-white rounded-xl border shadow-sm divide-y">
                    {schedules.map((sch, idx) => (
                      <div key={idx} className="p-4 flex items-center gap-4">
@@ -284,7 +276,6 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
                        <button type="button" onClick={() => removeSchedule(idx)} className="text-red-500 hover:bg-red-50 px-3 py-1 rounded">삭제</button>
                      </div>
                    ))}
-                   {schedules.length === 0 && <div className="p-8 text-center text-gray-400">등록된 일정이 없습니다.</div>}
                  </div>
                </div>
             )}
@@ -292,12 +283,13 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
           </form>
         </div>
 
-        {/* Footer */}
+        {/* Footer (수정됨) */}
         <div className="px-6 py-4 border-t bg-white flex justify-between items-center shrink-0">
-           {unit && <button type="button" onClick={() => {if(window.confirm('삭제하시겠습니까?')) onDelete(unit.id)}} className="text-red-500">부대 삭제</button>}
+           {/* ✅ [수정] unit -> initialUnit 으로 변경 */}
+           {initialUnit && <button type="button" onClick={() => {if(window.confirm('삭제하시겠습니까?')) onDelete(initialUnit.id)}} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded">부대 삭제</button>}
            <div className="flex gap-2 ml-auto">
              <Button variant="outline" onClick={onClose}>취소</Button>
-             <Button variant="primary" type="submit" form="unit-form">저장 ({activeTab === 'basic' ? '기본' : activeTab === 'location' ? '장소' : '일정'})</Button>
+             <Button variant="primary" type="submit" form="unit-form">저장</Button>
            </div>
         </div>
 
