@@ -187,10 +187,8 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// ✅ 수정: 스키마에 존재하는 군구분(Army, Navy)에 맞춰 한글 목록 제한
+// ✅ 스키마의 Enum(Army, Navy)에 매핑하기 위한 설정
 const UNIT_TYPES = ['육군', '해군'];
-
-// ✅ 한글 -> Prisma Enum 매핑
 const UNIT_TYPE_MAP = {
   '육군': 'Army',
   '해군': 'Navy'
@@ -198,79 +196,144 @@ const UNIT_TYPE_MAP = {
 
 const REGIONS = ['경기', '강원', '충북', '충남', '경북', '경남', '전북', '전남'];
 const REGION_CITIES = {
-  '경기': ['양주시', '파주시', '연천군', '포천시', '가평군'],
-  '강원': ['철원군', '화천군', '양구군', '인제군', '고성군'],
+  '경기': ['양주시', '파주시', '연천군', '포천시', '가평군', '동두천시'],
+  '강원': ['철원군', '화천군', '양구군', '인제군', '고성군', '춘천시'],
+  '충북': ['충주시', '제천시', '괴산군'],
+  '충남': ['계룡시', '논산시', '금산군'],
+  '경북': ['포항시', '경주시', '영천시'],
+  '경남': ['창원시', '진주시', '사천시'],
+  '전북': ['전주시', '익산시', '군산시'],
+  '전남': ['목포시', '여수시', '순천시'],
 };
 
 // 랜덤 헬퍼 함수
 const sample = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const randomNum = (min, max) => Math.floor(Math.random() * (max - min + 1) + min);
+const randomBool = () => Math.random() > 0.5;
+
+// 날짜 생성 헬퍼
+const addDays = (date, days) => {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+};
+
+// 시간 생성 헬퍼 (날짜는 오늘로 고정하고 시간만 설정)
+const createTime = (hour, minute) => {
+  const d = new Date();
+  d.setHours(hour, minute, 0, 0);
+  return d;
+};
 
 async function main() {
-  console.log('🌱 부대 데이터 시딩 시작 (기존 스키마 유지)...');
+  console.log('🌱 부대 데이터 시딩 시작 (모든 필드 포함)...');
 
-  // 기존 데이터 삭제
-  await prisma.unit.deleteMany();
+  // 1. 기존 데이터 삭제 (순서 중요: 자식 -> 부모)
+  // Cascade 설정이 되어 있다면 부대만 지워도 되지만, 안전하게 명시적 삭제 권장
+  try {
+    await prisma.instructorUnitAssignment.deleteMany(); // 배정 정보 삭제 (참조 관계)
+    await prisma.unitSchedule.deleteMany();
+    await prisma.trainingLocation.deleteMany();
+    await prisma.unit.deleteMany();
+    console.log('🧹 기존 데이터 삭제 완료');
+  } catch (e) {
+    console.log('⚠️ 삭제 중 오류 발생 (무시하고 진행):', e.message);
+  }
 
-  const units = [];
+  const unitsData = [];
 
   for (let i = 1; i <= 50; i++) {
     const typeKorean = sample(UNIT_TYPES);
     const wideArea = sample(Object.keys(REGION_CITIES));
     const region = sample(REGION_CITIES[wideArea] || ['시/군']);
     
-    // 부대명 생성
+    // 1) 부대명 생성
     let name = '';
     if (typeKorean === '육군') name = `제${randomNum(1, 99)}보병사단`;
     else if (typeKorean === '해군') name = `제${randomNum(1, 3)}함대사령부`;
     name += ` (${randomNum(100, 999)}부대)`;
 
-    // 랜덤 날짜 생성 (교육 기간 등)
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() + randomNum(1, 30));
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + 2); // 2박 3일
+    // 2) 교육 기간 설정 (시작일: 오늘 ~ 30일 뒤, 종료일: 시작일 + 2~5일)
+    const educationStart = addDays(new Date(), randomNum(1, 30));
+    const educationEnd = addDays(educationStart, randomNum(2, 5));
 
-    // 랜덤 시간 생성 (근무 시간 등) - 임의의 날짜에 시간만 설정
-    const setTime = (h, m) => {
-        const d = new Date();
-        d.setHours(h, m, 0, 0);
-        return d;
-    };
+    // 3) 교육장소 데이터 생성 (1~3개)
+    const locationCount = randomNum(1, 3);
+    const trainingLocations = [];
+    for (let j = 1; j <= locationCount; j++) {
+      trainingLocations.push({
+        originalPlace: `제${j}교육장`,
+        changedPlace: randomBool() ? `제${j}대강당` : null, // 가끔 변경됨
+        hasInstructorLounge: randomBool(),
+        hasWomenRestroom: randomBool(),
+        hasCateredMeals: randomBool(),
+        hasHallLodging: randomBool(),
+        allowsPhoneBeforeAfter: randomBool(),
+        plannedCount: randomNum(30, 100),
+        actualCount: randomNum(25, 95),
+        instructorsNumbers: randomNum(2, 5),
+        note: randomBool() ? '프로젝터 점검 필요' : '',
+      });
+    }
 
-    units.push({
+    // 4) 일정 데이터 생성 (기간 내 랜덤 2~3일)
+    const schedules = [];
+    const scheduleCount = randomNum(2, 3);
+    for (let k = 0; k < scheduleCount; k++) {
+        // 교육 기간 내의 날짜로 생성
+        schedules.push({
+            date: addDays(educationStart, k)
+        });
+    }
+
+    // 5) 부대 데이터 객체 생성
+    unitsData.push({
+      // 기본 정보
       name: name,
       unitType: UNIT_TYPE_MAP[typeKorean], // Army or Navy
       wideArea: wideArea,
       region: region,
       addressDetail: `${wideArea} ${region} ${sample(['평화로', '통일로', '충성로'])} ${randomNum(10, 500)}길 ${randomNum(1, 100)}`,
-      
+      lat: 36.0 + (Math.random() * 2), // 대략적인 위도
+      lng: 127.0 + (Math.random() * 2), // 대략적인 경도
+
+      // 기간 및 시간 정보
+      educationStart: educationStart,
+      educationEnd: educationEnd,
+      workStartTime: createTime(9, 0),   // 09:00
+      workEndTime: createTime(18, 0),    // 18:00
+      lunchStartTime: createTime(12, 0), // 12:00
+      lunchEndTime: createTime(13, 0),   // 13:00
+
       // 담당자 정보
       officerName: sample(['김철수', '이영희', '박민수', '최성호', '정지훈']) + sample([' 대위', ' 중사', ' 상사']),
       officerPhone: `010-${randomNum(2000, 9999)}-${randomNum(2000, 9999)}`,
       officerEmail: `officer${i}@mil.kr`,
 
-      // 위치 정보
-      lat: 37.0 + (Math.random() * 2),
-      lng: 127.0 + (Math.random() * 2),
-
-      // 추가된 필드 데이터
-      educationStart: startDate,
-      educationEnd: endDate,
-      workStartTime: setTime(9, 0),
-      workEndTime: setTime(18, 0),
-      lunchStartTime: setTime(12, 0),
-      lunchEndTime: setTime(13, 0),
+      // 관계 데이터 (Nested Write)
+      trainingLocations: {
+        create: trainingLocations
+      },
+      schedules: {
+        create: schedules
+      }
     });
   }
 
-  await prisma.unit.createMany({ data: units });
-  console.log(`✅ ${units.length}개의 부대 데이터가 생성되었습니다. (Army/Navy Only)`);
+  // 데이터 삽입 (createMany는 nested write를 지원하지 않으므로, 반복문으로 create 실행)
+  // 또는 $transaction 사용
+  console.log(`💾 ${unitsData.length}개 부대 데이터 저장 중...`);
+  
+  await prisma.$transaction(
+    unitsData.map(unit => prisma.unit.create({ data: unit }))
+  );
+
+  console.log(`✅ 모든 부대 데이터 시딩 완료!`);
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('❌ 시딩 실패:', e);
     process.exit(1);
   })
   .finally(async () => {
