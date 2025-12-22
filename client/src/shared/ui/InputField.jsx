@@ -1,7 +1,7 @@
+//client/src/shared/ui/InputField.jsx
 import React from 'react';
 
-// ✅ name prop 추가
-export const InputField = ({ label, type = "text", name, value, onChange, placeholder, required = false, hasBtn, onBtnClick }) => {
+export const InputField = ({ label, type = "text", value, onChange, placeholder, required = false, hasBtn, onBtnClick }) => {
     return (
         <div className="mb-4">
         {label && (
@@ -12,7 +12,6 @@ export const InputField = ({ label, type = "text", name, value, onChange, placeh
         <div className="flex gap-2">
             <input 
             type={type}
-            name={name} // ✅ input 요소에 name 속성 전달
             value={value}
             onChange={onChange}
             placeholder={placeholder}

@@ -38,7 +38,4 @@ router.delete('/:id/schedules/:scheduleId', unitController.removeSchedule);
 // 부대 삭제
 router.delete('/:id', unitController.deleteUnit);
 
-// ✅ [추가] 부대 일괄 삭제 (body에 { ids: [...] } 전달)
-router.delete('/batch/delete', unitController.deleteMultipleUnits);
-
 module.exports = router;

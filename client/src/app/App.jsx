@@ -11,7 +11,6 @@ import AdminPage from '../pages/admin/AdminPage';
 import UserMainHome from '../pages/user/UserMainPage';
 import SuperAdminPage from '../pages/admin/SuperAdminPage';
 import AssignmentPage from '../pages/admin/AssignmentPage';
-import UnitPage from '../pages/admin/UnitPage';
 
 
 function App() {
@@ -35,8 +34,6 @@ function App() {
 
                     {/* Fallback */}
                     <Route path="*" element={<Navigate to="/login" replace />} />
-
-                    <Route path="/admin/units" element={<UnitPage />} />
                 </Routes>
             </BrowserRouter>
         </QueryClientProvider>

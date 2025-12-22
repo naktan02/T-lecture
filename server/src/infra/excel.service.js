@@ -1,3 +1,4 @@
+// server/src/infra/excel.service.js
 const xlsx = require('xlsx');
 
 class ExcelService {
@@ -7,13 +8,11 @@ class ExcelService {
       throw new Error('파일 데이터가 없습니다.');
     }
 
-    // ✅ [수정] cellDates: true 옵션 추가 (날짜 형식을 올바르게 읽기 위함)
-    const workbook = xlsx.read(fileBuffer, { type: 'buffer', cellDates: true });
+    const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
 
-    // defval: '' 옵션을 주어 빈 셀도 처리되도록 함
-    const rawRows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+    const rawRows = xlsx.utils.sheet_to_json(sheet);
 
     if (rawRows.length === 0) {
       throw new Error('엑셀 파일에 데이터가 없습니다.');
