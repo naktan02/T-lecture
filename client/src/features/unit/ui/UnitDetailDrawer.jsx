@@ -1,8 +1,9 @@
 // client/src/features/unit/ui/UnitDetailDrawer.jsx
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query'; // ✅ useQuery 추가
+import { unitApi } from '../api/unitApi';         // ✅ API import 확인
 import { Button } from '../../../shared/ui/Button';
 import { InputField } from '../../../shared/ui/InputField';
-import { SelectField } from '../../../shared/ui/SelectField'; // SelectField가 없다면 InputField로 대체 가능
 
 // 헬퍼 함수들
 const toDateValue = (str) => (str ? new Date(str).toISOString().split('T')[0] : '');
@@ -16,41 +17,57 @@ const toIsoDateTime = (dateStr, timeStr = '00:00') => {
   return new Date(`${dateStr}T${timeStr}:00`).toISOString();
 };
 
-export const UnitDetailDrawer = ({ isOpen, onClose, unit, onSave, onDelete }) => {
-  const [activeTab, setActiveTab] = useState('basic'); // basic, location, schedule
+export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, onDelete }) => {
+  const [activeTab, setActiveTab] = useState('basic');
   const [formData, setFormData] = useState({});
   const [locations, setLocations] = useState([]);
   const [schedules, setSchedules] = useState([]);
 
+  // ✅ [수정] 상세 데이터 Fetching
+  // 리스트에서 받은 unit 정보(initialUnit)에는 locations/schedules가 없으므로 API로 다시 가져옴
+  const { data: detailData } = useQuery({
+    queryKey: ['unitDetail', initialUnit?.id],
+    queryFn: () => unitApi.getUnit(initialUnit.id),
+    enabled: !!initialUnit?.id && isOpen, // ID가 있고 Drawer가 열렸을 때만 실행
+    staleTime: 0, // 항상 최신 데이터 조회
+  });
+
+  // ✅ [수정] 데이터 초기화 로직 개선
   useEffect(() => {
-    if (isOpen && unit) {
-      // 1. 기본 정보 초기화
-      setFormData({
-        name: unit.name || '',
-        unitType: unit.unitType || 'Army',
-        region: unit.region || '',
-        wideArea: unit.wideArea || '',
-        addressDetail: unit.addressDetail || '',
-        officerName: unit.officerName || '',
-        officerPhone: unit.officerPhone || '',
-        officerEmail: unit.officerEmail || '',
-        educationStart: toDateValue(unit.educationStart),
-        educationEnd: toDateValue(unit.educationEnd),
-        workStartTime: toTimeValue(unit.workStartTime),
-        workEndTime: toTimeValue(unit.workEndTime),
-        lunchStartTime: toTimeValue(unit.lunchStartTime),
-        lunchEndTime: toTimeValue(unit.lunchEndTime),
-      });
-      // 2. 하위 데이터 초기화
-      setLocations(unit.trainingLocations || []);
-      setSchedules(unit.schedules || []);
-    } else if (isOpen && !unit) {
-      // 신규 등록
-      setFormData({ unitType: 'Army', name: '', /*...*/ });
-      setLocations([]);
-      setSchedules([]);
+    if (isOpen) {
+      // 1. 표시할 소스 결정: 상세 데이터가 로드되면 그것을 쓰고, 아니면 리스트에서 받은 초기값 사용
+      const targetUnit = detailData?.data || initialUnit;
+
+      if (targetUnit) {
+        // 기본 정보
+        setFormData({
+          name: targetUnit.name || '',
+          unitType: targetUnit.unitType || 'Army',
+          region: targetUnit.region || '',
+          wideArea: targetUnit.wideArea || '',
+          addressDetail: targetUnit.addressDetail || '',
+          officerName: targetUnit.officerName || '',
+          officerPhone: targetUnit.officerPhone || '',
+          officerEmail: targetUnit.officerEmail || '',
+          educationStart: toDateValue(targetUnit.educationStart),
+          educationEnd: toDateValue(targetUnit.educationEnd),
+          workStartTime: toTimeValue(targetUnit.workStartTime),
+          workEndTime: toTimeValue(targetUnit.workEndTime),
+          lunchStartTime: toTimeValue(targetUnit.lunchStartTime),
+          lunchEndTime: toTimeValue(targetUnit.lunchEndTime),
+        });
+
+        // 하위 데이터 (상세 조회 성공 시에만 존재)
+        setLocations(targetUnit.trainingLocations || []);
+        setSchedules(targetUnit.schedules || []);
+      } else {
+        // 신규 등록 모드
+        setFormData({ unitType: 'Army', name: '', /* 초기값들 */ });
+        setLocations([]);
+        setSchedules([]);
+      }
     }
-  }, [unit, isOpen]);
+  }, [isOpen, initialUnit, detailData]); // detailData가 로드되면 다시 실행됨
 
   const handleBasicChange = (e) => {
     const { name, value } = e.target;

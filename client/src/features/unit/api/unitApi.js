@@ -1,9 +1,16 @@
 import { apiClient } from "../../../shared/apiClient";
 
 export const unitApi = {
+  // ✅ [추가] 부대 상세 정보 조회 (하위 데이터 포함)
+  getUnit: async (id) => {
+    const response = await apiClient(`/api/v1/units/${id}`);
+    return response.json();
+  },
+
   // 1. 목록 조회 (경로 수정: unit -> units)
-  getUnitList: async () => {
-    const response = await apiClient("/api/v1/units");
+  getUnitList: async (params = {}) => { // params 추가
+    const queryString = new URLSearchParams(params).toString();
+    const response = await apiClient(`/api/v1/units?${queryString}`);
     return response.json();
   },
   
@@ -53,10 +60,4 @@ export const unitApi = {
     await apiClient(`/api/v1/units/${id}`, { method: "DELETE" });
   },
 
-  // 목록 조회
-  getUnitList: async (params = {}) => { // params 추가
-    const queryString = new URLSearchParams(params).toString();
-    const response = await apiClient(`/api/v1/units?${queryString}`);
-    return response.json();
-  },
 };
