@@ -4,7 +4,8 @@ function buildDatabaseConfig() {
         throw new Error('DATABASE_URL is missing');
     }
     return {
-        url: process.env.DATABASE_URL
+        url: process.env.DATABASE_URL,
+        directUrl: process.env.DIRECT_URL
     };
 }
 
