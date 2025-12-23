@@ -23,12 +23,42 @@ interface CommonHeaderProps {
 export const CommonHeader: React.FC<CommonHeaderProps> = ({ title, userLabel, links = [] }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, isAdmin, isSuperAdmin } = useAuth();
 
   const handleLogout = async (): Promise<void> => {
     if (window.confirm('정말 로그아웃 하시겠습니까?')) {
       logout();
     }
+  };
+
+  const isInAdminPage = location.pathname.startsWith('/admin');
+
+  // 모드 전환 버튼 렌더링 로직
+  const renderModeSwitch = () => {
+    // 1. 관리자 페이지에 있을 때 -> '사용자 모드로 이동'
+    if (isInAdminPage) {
+      return (
+        <button
+          onClick={() => navigate('/user-main')}
+          className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded-md text-sm transition duration-150"
+        >
+          사용자 모드로 이동
+        </button>
+      );
+    }
+
+    // 2. 일반 페이지에 있는데 관리자 권한이 있을 때 -> '관리자 모드로 이동'
+    if (isAdmin) {
+      return (
+        <button
+          onClick={() => navigate(isSuperAdmin ? '/admin/super' : '/admin')}
+          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-md text-sm transition duration-150"
+        >
+          관리자 모드로 이동
+        </button>
+      );
+    }
+    return null;
   };
 
   return (
@@ -57,37 +87,7 @@ export const CommonHeader: React.FC<CommonHeaderProps> = ({ title, userLabel, li
 
       {/* 2. 오른쪽: 유저 정보 및 로그아웃 */}
       <div className="flex items-center space-x-4">
-        {(() => {
-          const role = localStorage.getItem('userRole');
-          const isSuper = role === 'SUPER_ADMIN';
-          const isAdmin = role === 'ADMIN';
-          const isInAdminPage = location.pathname.startsWith('/admin');
-
-          // 1. 관리자 페이지에 있을 때 -> '사용자 모드로 이동'
-          if (isInAdminPage) {
-            return (
-              <button
-                onClick={() => navigate('/user-main')}
-                className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded-md text-sm transition duration-150"
-              >
-                사용자 모드로 이동
-              </button>
-            );
-          }
-
-          // 2. 일반 페이지에 있는데 관리자 권한이 있을 때 -> '관리자 모드로 이동'
-          if (isSuper || isAdmin) {
-            return (
-              <button
-                onClick={() => navigate(isSuper ? '/admin/super' : '/admin')}
-                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-md text-sm transition duration-150"
-              >
-                관리자 모드로 이동
-              </button>
-            );
-          }
-          return null;
-        })()}
+        {renderModeSwitch()}
 
         <span className="text-sm font-medium border border-gray-600 rounded px-2 py-1 bg-gray-700">
           {userLabel}

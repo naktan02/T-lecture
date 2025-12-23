@@ -1,6 +1,6 @@
 // src/entities/user/ui/UserBasicFields.tsx
 import { ChangeEvent } from 'react';
-import { InputField } from '../../../shared/ui/InputField';
+import { InputField } from '../../../shared/ui';
 
 interface UserBasicForm {
   name: string;

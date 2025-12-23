@@ -3,8 +3,7 @@ import { ChangeEvent } from 'react';
 
 import { useSuperAdmin } from '../model/useSuperAdmin';
 import { UserListSection } from '../../../entities/user/ui/UserListSection';
-import { Button } from '../../../shared/ui/Button';
-import { InputField } from '../../../shared/ui/InputField';
+import { Button, InputField } from '../../../shared/ui';
 
 export const SuperAdminDashboard: React.FC = () => {
   const {

@@ -1,25 +1,13 @@
 // src/entities/user/ui/UserListSection.tsx
 import { ReactNode, MouseEvent } from 'react';
-
-interface AdminInfo {
-  level: string;
-}
-
-interface User {
-  id: number;
-  name?: string;
-  userEmail?: string;
-  status: string;
-  instructor?: unknown;
-  admin?: AdminInfo | null;
-}
+import type { UserListItem } from '../../../shared/types';
 
 interface UserListSectionProps {
   title: string;
-  users: User[];
+  users: UserListItem[];
   emptyMessage: string;
-  renderActions?: (user: User) => ReactNode;
-  onRowClick?: (user: User) => void;
+  renderActions?: (user: UserListItem) => ReactNode;
+  onRowClick?: (user: UserListItem) => void;
   height?: string;
 }
 

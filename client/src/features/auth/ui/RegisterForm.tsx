@@ -1,6 +1,6 @@
 // src/features/auth/ui/RegisterForm.tsx
 import { useState, ChangeEvent, FormEvent } from 'react';
-import { Button } from '../../../shared/ui/Button';
+import { Button } from '../../../shared/ui';
 import { sendVerificationCode, verifyEmailCode, registerUser } from '../authApi';
 import { useNavigate } from 'react-router-dom';
 

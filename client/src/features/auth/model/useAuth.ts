@@ -18,6 +18,11 @@ type UserRoleType = 'SUPER_ADMIN' | 'ADMIN' | 'USER';
 export const useAuth = () => {
   const navigate = useNavigate();
 
+  // 현재 저장된 role 가져오기
+  const userRole = localStorage.getItem('userRole') as UserRoleType | null;
+  const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+  const isSuperAdmin = userRole === 'SUPER_ADMIN';
+
   const loginMutation = useMutation({
     mutationFn: loginApi,
     onSuccess: (data: LoginResponse, variables: LoginPayload) => {
@@ -48,6 +53,10 @@ export const useAuth = () => {
     logout: logoutMutation.mutate,
     isLoading: loginMutation.isPending,
     error: loginMutation.error,
+    // 추가된 role 관련 헬퍼
+    userRole,
+    isAdmin,
+    isSuperAdmin,
   };
 };
 

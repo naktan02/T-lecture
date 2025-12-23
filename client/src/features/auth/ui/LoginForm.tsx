@@ -1,10 +1,9 @@
 // src/features/auth/ui/LoginForm.tsx
 import { useState, ChangeEvent, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { InputField } from '../../../shared/ui/InputField';
-import { Button } from '../../../shared/ui/Button';
+import { InputField, Button } from '../../../shared/ui';
 import { useAuth } from '../model/useAuth';
-import { USER_ROLES } from '../../../shared/constants/roles';
+import { USER_ROLES } from '../../../shared/constants';
 
 interface FormData {
   email: string;

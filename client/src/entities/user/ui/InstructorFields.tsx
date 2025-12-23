@@ -1,7 +1,6 @@
 // src/entities/user/ui/InstructorFields.tsx
 import React, { ChangeEvent } from 'react';
-import { InputField } from '../../../shared/ui/InputField';
-import { SelectField } from '../../../shared/ui/SelectField';
+import { InputField, SelectField } from '../../../shared/ui';
 import { InstructorMetaResponse } from '../../../features/auth/authApi';
 
 // InstructorMetaResponse를 InstructorOptions로 사용

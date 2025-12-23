@@ -2,8 +2,7 @@
 
 import { useState, useRef, ChangeEvent, MouseEvent } from 'react';
 import { useAssignment } from '../model/useAssignment';
-import { Button } from '../../../shared/ui/Button';
-import { MiniCalendar } from '../../../shared/ui/MiniCalendar';
+import { Button, MiniCalendar } from '../../../shared/ui';
 import { AssignmentDetailModal, AssignmentGroupDetailModal } from './AssignmentDetailModal';
 
 interface SelectedItem {
