@@ -10,6 +10,7 @@ interface ExcelRow {
 
 interface ScheduleData {
   date: Date | string;
+  isExcluded?: boolean;
 }
 
 class UnitService {
@@ -189,31 +190,26 @@ class UnitService {
   // --- 헬퍼 (JS에서 이식) ---
 
   /**
-   * 교육 기간에서 일정 자동 계산
+   * 교육 기간에서 일정 자동 계산 (isExcluded 포함)
    */
   _calculateSchedules(
     start: string | Date | undefined,
     end: string | Date | undefined,
-    excludedDates: ScheduleData[] | undefined,
+    excludedDateStrings: string[] = [],
   ): ScheduleData[] {
     if (!start || !end) return [];
     const startDate = new Date(start);
     const endDate = new Date(end);
-    const excludedSet = new Set(
-      (excludedDates || [])
-        .map((d) => {
-          const v = d.date;
-          const dateObj = new Date(v);
-          return !isNaN(dateObj.getTime()) ? dateObj.toISOString().split('T')[0] : null;
-        })
-        .filter(Boolean),
-    );
+    const excludedSet = new Set(excludedDateStrings);
 
     const schedules: ScheduleData[] = [];
     const current = new Date(startDate);
     while (current <= endDate) {
       const dateStr = current.toISOString().split('T')[0];
-      if (!excludedSet.has(dateStr)) schedules.push({ date: new Date(current) });
+      schedules.push({
+        date: new Date(current),
+        isExcluded: excludedSet.has(dateStr),
+      });
       current.setDate(current.getDate() + 1);
     }
     return schedules;

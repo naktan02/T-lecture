@@ -18,9 +18,6 @@ model Unit {
   educationStart DateTime? @map("교육시작일자")
   educationEnd   DateTime? @map("교육종료일자")
 
-  // ✅ 1:N 관계로 변경 (여러 날짜 저장 가능)
-  excludedDates UnitExcludedDate[]
-
   workStartTime  DateTime? @map("근무시작시간")
   workEndTime    DateTime? @map("근무종료시간")
   lunchStartTime DateTime? @map("점심시작시간")
@@ -35,17 +32,6 @@ model Unit {
   distances         InstructorUnitDistance[]
 
   @@map("부대")
-}
-
-// ✅ 신규 테이블
-model UnitExcludedDate {
-  id     Int      @id @default(autoincrement())
-  unitId Int      @map("부대id")
-  date   DateTime @map("날짜")
-
-  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
-
-  @@map("부대_교육불가일자")
 }
 
 model TrainingLocation {
@@ -69,12 +55,14 @@ model TrainingLocation {
 }
 
 model UnitSchedule {
-  id     Int       @id @default(autoincrement())
-  unitId Int       @map("부대id")
-  date   DateTime? @map("교육일")
+  id         Int       @id @default(autoincrement())
+  unitId     Int       @map("부대id")
+  date       DateTime? @map("교육일")
+  isExcluded Boolean   @default(false) @map("교육불가")
 
   unit        Unit                       @relation(fields: [unitId], references: [id], onDelete: Cascade)
   assignments InstructorUnitAssignment[]
 
   @@map("부대일정")
 }
+
