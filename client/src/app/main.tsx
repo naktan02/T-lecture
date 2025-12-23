@@ -4,7 +4,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles/globals.css';
 import '../features/schedule/styles/Calendar.css';
-import ErrorBoundary from '../shared/ui/ErrorBoundary';
+import { ErrorBoundary } from '../shared/ui';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

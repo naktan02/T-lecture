@@ -1,11 +1,9 @@
 // src/features/assignment/ui/AssignmentDetailModal.tsx
 
 import { useMemo, useState, ReactNode } from 'react';
-import { DetailModal } from '../../../shared/ui/DetailModal';
-import { MiniCalendar } from '../../../shared/ui/MiniCalendar';
-import { Button } from '../../../shared/ui/Button';
+import { DetailModal, MiniCalendar, Button } from '../../../shared/ui';
 import { InstructorSelectionPopup } from './InstructorSelectionPopup';
-import { logger } from '../../../shared/utils/logger';
+import { logger } from '../../../shared/utils';
 
 // --- Types ---
 interface FieldConfig {

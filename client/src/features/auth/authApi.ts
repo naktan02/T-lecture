@@ -1,6 +1,6 @@
 // client/src/features/auth/authApi.ts
 import { apiClient } from '../../shared/apiClient';
-import { getDeviceId } from '../../shared/utils/deviceId';
+import { getDeviceId } from '../../shared/utils';
 
 // 타입 정의
 export interface LoginPayload {

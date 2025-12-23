@@ -7,7 +7,7 @@ import {
   UnitSchedule,
   Instructor,
 } from '../assignmentApi';
-import { logger } from '../../../shared/utils/logger';
+import { logger } from '../../../shared/utils';
 
 interface DateRange {
   startDate: Date;

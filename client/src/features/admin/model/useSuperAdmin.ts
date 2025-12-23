@@ -10,7 +10,7 @@ import {
   User,
   UserActionResponse,
 } from '../adminApi';
-import type { AdminLevel } from '../../../shared/constants/roles';
+import type { AdminLevel } from '../../../shared/constants';
 
 interface AdminInfo {
   userId: number;

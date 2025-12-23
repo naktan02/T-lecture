@@ -2,8 +2,7 @@
 import React, { useEffect, useMemo, useState, ChangeEvent, FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { unitApi, UnitData } from '../api/unitApi';
-import { Button } from '../../../shared/ui/Button';
-import { InputField } from '../../../shared/ui/InputField';
+import { Button, InputField } from '../../../shared/ui';
 
 /**
  * ✅ 포인트

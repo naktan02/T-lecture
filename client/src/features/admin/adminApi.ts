@@ -1,6 +1,6 @@
 // client/src/features/admin/adminApi.ts
 import { apiClient } from '../../shared/apiClient';
-import type { AdminLevel } from '../../shared/constants/roles';
+import type { AdminLevel } from '../../shared/constants';
 
 // 타입 정의
 export interface User {

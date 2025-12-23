@@ -1,6 +1,6 @@
 // src/features/assignment/ui/InstructorSelectionPopup.tsx
 import { useState, ChangeEvent } from 'react';
-import { Button } from '../../../shared/ui/Button';
+import { Button } from '../../../shared/ui';
 
 interface Target {
   date: string;

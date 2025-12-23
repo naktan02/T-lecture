@@ -1,6 +1,6 @@
 // client/src/features/unit/ui/UnitToolbar.tsx
 import React, { useRef, useState, ChangeEvent, KeyboardEvent, ReactElement } from 'react';
-import { Button } from '../../../shared/ui/Button';
+import { Button } from '../../../shared/ui';
 
 interface SearchFilters {
   keyword: string;
