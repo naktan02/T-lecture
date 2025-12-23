@@ -5,7 +5,7 @@ import { unitApi } from '../api/unitApi';
 import { Button } from '../../../shared/ui/Button';
 import { InputField } from '../../../shared/ui/InputField';
 
-// [헬퍼] 날짜/시간 포맷팅
+// [헬퍼] 날짜/시간 변환
 const toDateValue = (str) => {
   if (!str) return '';
   try { return new Date(str).toISOString().split('T')[0]; } catch { return ''; }
@@ -26,12 +26,12 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
   const [activeTab, setActiveTab] = useState('basic');
   const [formData, setFormData] = useState(INITIAL_FORM);
   
-  // ✅ 모든 데이터를 동일하게 state로 관리 (일관성 유지)
+  // ✅ 모든 하위 데이터는 state로 관리
   const [locations, setLocations] = useState([]);
   const [excludedDates, setExcludedDates] = useState([]);
   const [schedules, setSchedules] = useState([]); 
 
-  // 상세 데이터 조회
+  // 1. 상세 데이터 API 조회
   const { data: detailData, isSuccess } = useQuery({
     queryKey: ['unitDetail', initialUnit?.id],
     queryFn: () => unitApi.getUnit(initialUnit.id),
@@ -39,19 +39,29 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
     staleTime: 0, 
   });
 
-  // 데이터 바인딩 (통일된 로직)
+  // 2. 데이터 바인딩 로직 (여기가 가장 중요)
   useEffect(() => {
     if (isOpen) {
       if (initialUnit) {
         // [수정 모드]
-        // 1. 데이터 소스 결정 (API 응답 우선, 없으면 목록 데이터)
+        
+        // (1) 서버에서 받은 최신 데이터 추출
+        // Axios 응답 구조: { data: { result: 'Success', data: { ...realUnitData... } } }
+        // 따라서 detailData.data.data가 진짜 데이터일 확률이 높음
         let target = initialUnit;
+        
         if (isSuccess && detailData) {
-          // axios 응답 구조 대응 (data.data 또는 data)
-          target = detailData.data?.data || detailData.data || detailData;
+          if (detailData.data && detailData.data.data) {
+            target = detailData.data.data; // 컨트롤러가 감싼 구조
+          } else if (detailData.data) {
+            target = detailData.data; // 그 외 구조
+          }
         }
 
-        // 2. 기본 정보 바인딩
+        // 디버깅용 로그: F12 콘솔에서 schedules가 있는지 확인해보세요
+        // console.log("Binding Unit Data:", target); 
+
+        // (2) 폼 데이터 설정
         setFormData({
           name: target.name || '',
           unitType: target.unitType || 'Army',
@@ -69,17 +79,10 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
           lunchEndTime: toTimeValue(target.lunchEndTime),
         });
 
-        // 3. 하위 데이터 바인딩 (모두 동일한 패턴으로 처리)
+        // (3) 하위 데이터 설정
+        setLocations(Array.isArray(target.trainingLocations) ? target.trainingLocations : []);
         
-        // 교육장소
-        if (target.trainingLocations && Array.isArray(target.trainingLocations)) {
-          setLocations(target.trainingLocations);
-        } else {
-          setLocations([]);
-        }
-        
-        // 불가일자
-        if (target.excludedDates && Array.isArray(target.excludedDates)) {
+        if (Array.isArray(target.excludedDates)) {
           setExcludedDates(target.excludedDates.map(d => ({ 
             id: d.id, 
             date: toDateValue(d.date) 
@@ -88,8 +91,8 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
           setExcludedDates([]);
         }
 
-        // ✅ 일정 (Schedules) - 이제 장소 정보와 똑같이 처리됩니다.
-        if (target.schedules && Array.isArray(target.schedules)) {
+        // ✅ [핵심] 일정 데이터 바인딩
+        if (Array.isArray(target.schedules)) {
           setSchedules(target.schedules.map(s => ({
             id: s.id,
             date: toDateValue(s.date)
@@ -99,7 +102,7 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
         }
 
       } else {
-        // [신규 등록 모드] 초기화
+        // [신규 등록 모드]
         setFormData({ ...INITIAL_FORM });
         setLocations([]);
         setExcludedDates([]);
@@ -124,7 +127,7 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
   const handleSubmit = async (e) => {
     e.preventDefault();
     const required = ['name', 'educationStart', 'educationEnd', 'workStartTime', 'workEndTime', 'officerName'];
-    if (required.some(f => !formData[f])) return alert("필수 항목을 입력해주세요.");
+    if (required.some(f => !formData[f])) return alert("필수 항목을 모두 입력해주세요.");
 
     const makeTime = (t) => { if(!t) return null; const d=new Date(); const [h,m]=t.split(':'); d.setHours(h,m,0,0); return d.toISOString(); };
     const makeDate = (d) => d ? new Date(d).toISOString() : null;
@@ -137,16 +140,9 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
       workEndTime: makeTime(formData.workEndTime),
       lunchStartTime: makeTime(formData.lunchStartTime),
       lunchEndTime: makeTime(formData.lunchEndTime),
-      
-      trainingLocations: locations, // Repository에서 ID 처리
-      
-      excludedDates: excludedDates.filter(d => d.date).map(d => ({ 
-        id: d.id, 
-        date: makeDate(d.date) 
-      })),
-      
-      // 일정은 서버 자동 생성이므로 빈 배열 전송 (필요시 수동 편집 가능하도록 변경 가능)
-      schedules: [], 
+      trainingLocations: locations,
+      excludedDates: excludedDates.filter(d => d.date).map(d => ({ id: d.id, date: makeDate(d.date) })),
+      schedules: [], // 서버 자동 생성이므로 빈 배열 전송
     };
 
     try {
@@ -155,7 +151,7 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
       onClose();
     } catch (err) {
       console.error(err);
-      alert("저장 중 오류가 발생했습니다.");
+      alert("저장 실패");
     }
   };
 
@@ -165,13 +161,11 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
     <>
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40" onClick={onClose} />
       <div className="fixed inset-y-0 right-0 z-50 w-full md:w-[800px] bg-white shadow-2xl flex flex-col h-full">
-        {/* Header */}
         <div className="px-6 py-4 border-b flex justify-between items-center bg-white shrink-0">
           <h2 className="text-xl font-bold">{initialUnit ? '부대 정보 수정' : '신규 부대 등록'}</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
         </div>
 
-        {/* Tabs */}
         <div className="flex border-b bg-gray-50 shrink-0">
           {['basic', 'location', 'schedule'].map(tab => (
             <button key={tab} type="button" onClick={() => setActiveTab(tab)} className={`flex-1 py-3 font-medium border-b-2 ${activeTab===tab?'border-blue-600 text-blue-600':'border-transparent text-gray-500'}`}>
@@ -180,40 +174,31 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
           ))}
         </div>
 
-        {/* Body */}
         <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
           <form id="unit-form" onSubmit={handleSubmit} className="space-y-6">
-            
-            {/* 1. 기본 정보 */}
             {activeTab === 'basic' && (
               <div className="space-y-6">
                 <section className="bg-white p-5 rounded-xl border shadow-sm">
                   <h3 className="font-bold mb-4">🏢 기본 정보</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <InputField label="부대명 *" name="name" value={formData.name} onChange={handleChange} required />
-                    <div><label className="text-sm font-medium">군 구분 *</label><select name="unitType" value={formData.unitType} onChange={handleChange} className="w-full mt-1 p-2 border rounded"><option value="Army">육군</option><option value="Navy">해군</option><option value="AirForce">공군</option><option value="Marine">해병대</option></select></div>
+                    <div><label className="text-sm font-medium">군 구분 *</label><select name="unitType" value={formData.unitType} onChange={handleChange} className="w-full mt-1 p-2 border rounded-lg"><option value="Army">육군</option><option value="Navy">해군</option></select></div>
                     <InputField label="광역" name="wideArea" value={formData.wideArea} onChange={handleChange} />
                     <InputField label="지역" name="region" value={formData.region} onChange={handleChange} />
                     <div className="col-span-2"><InputField label="상세주소" name="addressDetail" value={formData.addressDetail} onChange={handleChange} /></div>
                   </div>
                 </section>
-
                 <section className="bg-white p-5 rounded-xl border shadow-sm">
-                  <h3 className="font-bold mb-4">⏰ 일정 및 시간</h3>
+                  <h3 className="font-bold mb-4">⏰ 일정 관리</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <InputField type="date" label="교육 시작 *" name="educationStart" value={formData.educationStart} onChange={handleChange} required />
                     <InputField type="date" label="교육 종료 *" name="educationEnd" value={formData.educationEnd} onChange={handleChange} required />
-                    
-                    <div className="col-span-2 bg-red-50 p-4 rounded border border-red-100">
-                        <div className="flex justify-between items-center mb-2"><label className="text-sm font-bold text-red-600">🚫 교육 불가 일자</label><Button type="button" size="small" onClick={addExcludedDate} variant="outline" className="text-xs bg-white">+ 추가</Button></div>
+                    <div className="col-span-2 bg-red-50 p-4 rounded-lg border border-red-100">
+                        <div className="flex justify-between items-center mb-2"><label className="text-sm font-bold text-red-600">🚫 교육 불가 일자</label><Button type="button" size="small" onClick={addExcludedDate} variant="outline" className="bg-white text-xs">+ 추가</Button></div>
                         {excludedDates.map((item, idx) => (
-                            <div key={idx} className="flex gap-2 mb-2 items-center">
-                              <input type="date" className="border p-2 rounded text-sm bg-white" value={item.date} onChange={(e)=>updateExcludedDate(idx,e.target.value)} />
-                              <button type="button" onClick={()=>removeExcludedDate(idx)} className="text-red-500 px-2">✕</button>
-                            </div>
+                            <div key={idx} className="flex gap-2 mb-2 items-center"><input type="date" className="border p-2 rounded text-sm bg-white" value={item.date} onChange={(e)=>updateExcludedDate(idx,e.target.value)} /><button type="button" onClick={()=>removeExcludedDate(idx)} className="text-red-500 px-2">✕</button></div>
                         ))}
                     </div>
-
                     <div className="col-span-2 border-t my-2" />
                     <InputField type="time" label="근무 시작 *" name="workStartTime" value={formData.workStartTime} onChange={handleChange} required />
                     <InputField type="time" label="근무 종료 *" name="workEndTime" value={formData.workEndTime} onChange={handleChange} required />
@@ -221,7 +206,6 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
                     <InputField type="time" label="점심 종료" name="lunchEndTime" value={formData.lunchEndTime} onChange={handleChange} />
                   </div>
                 </section>
-
                 <section className="bg-white p-5 rounded-xl border shadow-sm">
                   <h3 className="font-bold mb-4">📞 담당자</h3>
                   <div className="grid grid-cols-2 gap-4">
@@ -233,10 +217,9 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
               </div>
             )}
 
-            {/* 2. 교육 장소 */}
             {activeTab === 'location' && (
               <div className="space-y-4">
-                <div className="flex justify-between mb-4"><Button type="button" onClick={addLocation} size="small">+ 추가</Button></div>
+                <div className="flex justify-between mb-4"><Button type="button" onClick={addLocation} size="small">+ 장소 추가</Button></div>
                 {locations.map((loc, idx) => (
                   <div key={idx} className="bg-white p-5 rounded-xl border shadow-sm relative">
                     <button type="button" onClick={() => removeLocation(idx)} className="absolute top-4 right-4 text-red-500 font-bold">삭제</button>
@@ -257,7 +240,6 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
               </div>
             )}
 
-            {/* 3. 일정 (데이터 그대로 표시) */}
             {activeTab === 'schedule' && (
                <div className="space-y-4">
                  {schedules.length > 0 ? (
