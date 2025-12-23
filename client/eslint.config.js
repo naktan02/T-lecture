@@ -1,59 +1,57 @@
 // client/eslint.config.js
-import js from "@eslint/js";
-import globals from "globals";
-import reactPlugin from "eslint-plugin-react";
-import reactHooksPlugin from "eslint-plugin-react-hooks";
-import reactRefreshPlugin from "eslint-plugin-react-refresh";
-import prettier from "eslint-config-prettier";
+import js from '@eslint/js';
+import globals from 'globals';
+import reactPlugin from 'eslint-plugin-react';
+import reactHooksPlugin from 'eslint-plugin-react-hooks';
+import reactRefreshPlugin from 'eslint-plugin-react-refresh';
+import prettier from 'eslint-config-prettier';
 
 export default [
-    // 기본 추천 룰
-    js.configs.recommended,
+  // 무시할 것들 (앞에 둬도 됨)
+  {
+    ignores: ['dist/**', 'build/**', 'node_modules/**'],
+  },
 
-    // React/JSX 파일 대상
-    {
-        files: ["**/*.{js,jsx}"],
-        languageOptions: {
-        ecmaVersion: "latest",
-        sourceType: "module",
-        globals: {
-            ...globals.browser, // window, document 등
-            ...globals.es2021,
-        },
-        parserOptions: {
-            ecmaFeatures: { jsx: true },
-        },
-        },
-        settings: {
-        react: { version: "detect" },
-        },
-        plugins: {
-        react: reactPlugin,
-        "react-hooks": reactHooksPlugin,
-        "react-refresh": reactRefreshPlugin,
-        },
-        rules: {
-        // React 기본 권장
-        ...reactPlugin.configs.recommended.rules,
+  js.configs.recommended,
 
-        // Hooks 규칙(중요)
-        ...reactHooksPlugin.configs.recommended.rules,
-        "react/prop-types": "off",
-        // Vite + React Refresh에서 유용
-        "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
-
-        // JSX 사용하면 React import 강제 X(React 17+)
-        "react/react-in-jsx-scope": "off",
-
-        // 개발 편의(원하면 error로 올려도 됨)
-        "no-console": "warn",
-        "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
-        "eqeqeq": ["error", "always"],
-        },
+  {
+    files: ['**/*.{js,jsx,ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        ...globals.es2021,
+      },
+      parserOptions: {
+        ecmaFeatures: { jsx: true },
+      },
     },
-    prettier,
-    // 제외할 것들
-    {
-        ignores: ["dist/**", "build/**", "node_modules/**"],
+    settings: {
+      react: { version: 'detect' },
     },
+    plugins: {
+      react: reactPlugin,
+      'react-hooks': reactHooksPlugin,
+      'react-refresh': reactRefreshPlugin,
+    },
+    rules: {
+      ...reactPlugin.configs.recommended.rules,
+      // React 17+이면 이걸로 대체/추가도 가능(선택)
+      // ...reactPlugin.configs["recommended-jsx-runtime"].rules,
+
+      ...reactHooksPlugin.configs.recommended.rules,
+
+      'react/prop-types': 'off',
+      'react/react-in-jsx-scope': 'off',
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+
+      'no-console': 'warn',
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      eqeqeq: ['error', 'always'],
+    },
+  },
+
+  // ✅ Prettier는 가장 마지막(포맷 충돌 룰 끄기)
+  prettier,
 ];

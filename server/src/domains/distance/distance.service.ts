@@ -4,7 +4,6 @@ import kakaoUsageRepository from './kakaoUsage.repository';
 
 import distanceRepository from './distance.repository';
 import instructorRepository from '../instructor/instructor.repository';
-// @ts-ignore - JS 파일, unit 도메인 마이그레이션 후 제거 예정
 import unitRepository from '../unit/unit.repository';
 
 import AppError from '../../common/errors/AppError';

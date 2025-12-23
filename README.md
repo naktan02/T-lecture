@@ -57,7 +57,10 @@ npm run db:migrate # 후에 엔터
 npx prisma migrate reset # yes 나오면 y
 ```
 
------
+```bash
+npx tsx prisma/seed.ts
+```
+
 
 ## ▶️ 프로젝트 실행 (Running the Project)
 
@@ -80,3 +83,4 @@ npm run dev
 # T-lecture/ 폴더로 이동 (cd ..)
 npm run dev:client
 ```
+

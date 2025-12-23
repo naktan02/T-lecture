@@ -54,7 +54,7 @@ app.use(
 );
 
 // preflight(OPTIONS) 허용
-app.options('*', (req, res) => {
+app.options('*', (_req: Request, res: Response) => {
   res.sendStatus(200);
 });
 
@@ -66,7 +66,7 @@ app.use(cookieParser());
 app.use('/api/v1', v1Router);
 
 // 기본 라우트
-app.get('/', (req, res) => {
+app.get('/', (_req: Request, res: Response) => {
   res.send('Hello T-LECTURE!');
 });
 app.use(errorHandler);

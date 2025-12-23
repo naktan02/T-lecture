@@ -57,12 +57,7 @@ function normalizeError(err: unknown): {
   };
 }
 
-export const errorHandler = (
-  err: unknown,
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const errorHandler = (err: unknown, req: Request, res: Response, next: NextFunction) => {
   const mapped = mapPrismaError(err);
   const normalized = normalizeError(mapped ?? err);
 
@@ -87,7 +82,7 @@ export const errorHandler = (
   res.status(normalized.statusCode).json({
     error: safeMessage,
     code: normalized.code,
-    statusCode: normalized.statusCode
+    statusCode: normalized.statusCode,
   });
 };
 

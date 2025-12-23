@@ -6,11 +6,4 @@ import auth from './auth';
 import * as adminMiddleware from './admin.middleware';
 import requireRole from './requireRole';
 
-export {
-  requestLogger,
-  errorHandler,
-  asyncHandler,
-  auth,
-  adminMiddleware,
-  requireRole,
-};
+export { requestLogger, errorHandler, asyncHandler, auth, adminMiddleware, requireRole };
