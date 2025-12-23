@@ -2,50 +2,39 @@
 const js = require("@eslint/js");
 const globals = require("globals");
 const prettier = require("eslint-config-prettier");
+const tseslint = require("typescript-eslint");
 
-module.exports = [
-    js.configs.recommended,
-    prettier,
-    // ✅ 서버 소스 코드
-    {
-        files: ["src/**/*.js", "jobs/**/*.js", "infra/**/*.js", "server.js"],
-        languageOptions: {
-        ecmaVersion: "latest",
-        sourceType: "commonjs",
-        globals: { ...globals.node, ...globals.es2021 },
-        },
-        rules: {
-        "no-console": "warn",
-        "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
-        eqeqeq: ["error", "always"],
-        "no-empty": "error",
-        },
+module.exports = tseslint.config(
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  prettier,
+  {
+    // ✅ 모든 파일(설정 파일 포함)에 Node.js 전역 변수 적용
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
     },
-
-    // ✅ prisma seed는 console 허용
-    {
-        files: ["prisma/**/*.js"],
-        languageOptions: {
-        ecmaVersion: "latest",
-        sourceType: "commonjs",
-        globals: {
-            ...globals.node,
-            ...globals.es2021,
-        },
-        },
-        rules: {
-        "no-console": "off", // seed는 console 허용
-        },
+    rules: {
+      "no-console": "warn",
+      "eqeqeq": ["error", "always"],
+      "@typescript-eslint/no-require-imports": "off",
+      "no-undef": "off",
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
     },
-
-    // ✅ (옵션) 테스트는 일단 제외(추천)
-    {
-        ignores: [
-        "node_modules/**",
-        "dist/**",
-        "build/**",
-        "coverage/**",
-        "tests/**",
-        ],
+  },
+  {
+    // ✅ 서버 소스 코드 전용 설정
+    files: ["src/**/*.{js,ts}", "jobs/**/*.{js,ts}", "infra/**/*.{js,ts}", "server.{js,ts}"],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        project: true, // tsconfig.json을 기반으로 타입 정보를 분석하도록 설정
+      },
     },
-];
+  },
+  {
+    // ✅ 무시할 경로
+    ignores: ["node_modules/**", "dist/**", "build/**", "coverage/**", "tests/**"],
+  }
+);
