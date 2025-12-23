@@ -1,5 +1,6 @@
 // server/src/domains/unit/unit.mapper.js
 
+// 엑셀 헤더(한글) -> DB 필드명 매핑
 const HEADER_MAP = {
   '부대명': 'name',
   '군구분': 'unitType',
@@ -11,13 +12,14 @@ const HEADER_MAP = {
   '이메일': 'officerEmail',
   '교육시작일자': 'educationStart',
   '교육종료일자': 'educationEnd',
-  '교육불가일자': 'excludedDatesString', // 임시 필드명
+  '교육불가일자': 'excludedDatesString', // 임시 필드
   '근무시작시간': 'workStartTime',
   '근무종료시간': 'workEndTime',
   '점심시작시간': 'lunchStartTime',
   '점심종료시간': 'lunchEndTime',
 };
 
+// 날짜 파싱 헬퍼
 const parseDate = (val) => {
   if (!val) return null;
   if (val instanceof Date) return val;
@@ -25,6 +27,7 @@ const parseDate = (val) => {
   return isNaN(d.getTime()) ? null : d;
 };
 
+// 불리언 파싱 헬퍼
 const checkBool = (val) => {
   if (val === true || String(val).toUpperCase() === 'TRUE' || String(val).toUpperCase() === 'O') return true;
   return false;
@@ -33,16 +36,16 @@ const checkBool = (val) => {
 const excelRowToRawUnit = (row) => {
   const data = {};
   
-  // 1. 기본 매핑
+  // 1. 기본 필드 매핑
   Object.keys(HEADER_MAP).forEach(kor => {
     if (row[kor] !== undefined) data[HEADER_MAP[kor]] = row[kor];
   });
 
-  // 2. 군구분 변환
+  // 2. 군구분 영문 변환
   const typeMap = { '육군': 'Army', '해군': 'Navy', '공군': 'AirForce', '해병대': 'Marine' };
   if (typeMap[data.unitType]) data.unitType = typeMap[data.unitType];
 
-  // 3. 날짜 변환
+  // 3. 날짜/시간 필드 변환
   ['educationStart', 'educationEnd', 'workStartTime', 'workEndTime', 'lunchStartTime', 'lunchEndTime'].forEach(f => {
     if (data[f]) data[f] = parseDate(data[f]);
   });
@@ -55,31 +58,29 @@ const excelRowToRawUnit = (row) => {
     hasCateredMeals: checkBool(row['수탁급식여부']), hasHallLodging: checkBool(row['회관숙박여부']),
     allowsPhoneBeforeAfter: checkBool(row['휴대폰불출여부']), note: row['비고']
   };
-  // 데이터가 있는 경우만 배열에 추가
+  // 장소 정보가 의미 있게 존재하는 경우에만 추가
   data.trainingLocations = (loc.originalPlace || loc.plannedCount > 0) ? [loc] : [];
 
-  // 5. 불가일자 파싱 (콤마 구분 문자열 -> 날짜 객체 배열)
-  const excludedDatesList = [];
+  // 5. 불가일자 처리 (콤마 구분 문자열 -> Date 객체 배열)
+  const excludedDateObjects = [];
   if (data.excludedDatesString) {
     String(data.excludedDatesString).split(',').forEach(s => {
       const d = parseDate(s.trim());
-      if (d) excludedDatesList.push(d);
+      if (d) excludedDateObjects.push(d);
     });
   }
-  // DB 저장용 구조로 변환 ({ create: [...] })
-  data.excludedDates = { 
-    create: excludedDatesList.map(d => ({ date: d })) 
-  };
-  delete data.excludedDatesString; // 임시 필드 삭제
+  // 서비스/레포지토리로 넘길 때는 객체 배열 형태 ({ date: Date })
+  data.excludedDates = excludedDateObjects.map(d => ({ date: d }));
+  delete data.excludedDatesString; // 임시 필드 제거
 
-  // 6. [핵심] 일정 자동 계산 로직
+  // 6. [핵심] 일정(Schedules) 자동 계산
   const schedules = [];
   if (data.educationStart && data.educationEnd) {
     const current = new Date(data.educationStart);
     const end = new Date(data.educationEnd);
     
-    // 불가일자 문자열 리스트 (비교용)
-    const excludedStrs = excludedDatesList.map(d => d.toISOString().split('T')[0]);
+    // 불가일 비교를 위해 문자열 리스트 생성
+    const excludedStrs = excludedDateObjects.map(d => d.toISOString().split('T')[0]);
 
     while (current <= end) {
       const dateStr = current.toISOString().split('T')[0];
@@ -90,7 +91,7 @@ const excelRowToRawUnit = (row) => {
       current.setDate(current.getDate() + 1);
     }
   }
-  data.schedules = { create: schedules };
+  data.schedules = schedules; // { date: Date } 객체 배열
 
   return data;
 };
