@@ -5,9 +5,19 @@ import { unitApi } from '../api/unitApi';
 import { Button } from '../../../shared/ui/Button';
 import { InputField } from '../../../shared/ui/InputField';
 
-// 헬퍼
-const toDateValue = (str) => { if (!str) return ''; try { return new Date(str).toISOString().split('T')[0]; } catch { return ''; } };
-const toTimeValue = (str) => { if (!str) return ''; try { const d = new Date(str); return d.toTimeString().slice(0, 5); } catch { return ''; } };
+// 날짜/시간 변환 헬퍼 (UI 표시용)
+const toDateValue = (str) => {
+  if (!str) return '';
+  try { return new Date(str).toISOString().split('T')[0]; } catch { return ''; }
+};
+const toTimeValue = (str) => {
+  if (!str) return '';
+  try {
+    const d = new Date(str);
+    // 1970-01-01 데이터 등에서 시간만 추출 (HH:mm)
+    return d.toTimeString().slice(0, 5);
+  } catch { return ''; }
+};
 
 const INITIAL_FORM = {
   name: '', unitType: 'Army', region: '', wideArea: '', addressDetail: '',
@@ -21,9 +31,9 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [locations, setLocations] = useState([]);
   const [schedules, setSchedules] = useState([]);
-  const [excludedDates, setExcludedDates] = useState([]);
+  const [excludedDates, setExcludedDates] = useState([]); // [{ id, date }]
 
-  // 상세 데이터 Fetching
+  // 상세 데이터 조회 (수정 모드일 때 최신 데이터 불러오기)
   const { data: detailData, isSuccess } = useQuery({
     queryKey: ['unitDetail', initialUnit?.id],
     queryFn: () => unitApi.getUnit(initialUnit.id),
@@ -34,8 +44,7 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
   useEffect(() => {
     if (isOpen) {
       if (initialUnit) {
-        // [수정 모드]
-        // API 데이터가 있으면(isSuccess) 그것을 쓰고, 없으면 리스트 데이터 사용
+        // [수정 모드] API 데이터가 있으면 우선 사용
         const target = (isSuccess && detailData?.data) ? detailData.data : initialUnit;
         
         setFormData({
@@ -58,21 +67,21 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
         // 하위 데이터 바인딩
         if (target.trainingLocations) setLocations(target.trainingLocations);
         
-        // ✅ [문제 해결] 불가일자 매핑 확인
+        // 불가일자 바인딩 (UI용 객체 배열로 변환)
         if (target.excludedDates && Array.isArray(target.excludedDates)) {
           setExcludedDates(target.excludedDates.map(d => ({ 
-            id: d.id, // 기존 ID가 있으면 유지
+            id: d.id, 
             date: toDateValue(d.date) 
           })));
         } else {
           setExcludedDates([]);
         }
 
-        // 스케줄은 서버 자동 계산이므로 보여주기용으로만 바인딩 (수정은 불가일자/기간으로 제어)
+        // 일정 바인딩 (서버 자동 계산이지만, UI 표시를 위해 저장해둠)
         if (target.schedules) setSchedules(target.schedules);
 
       } else {
-        // [신규 모드]
+        // [신규 등록 모드] 초기화
         setFormData({ ...INITIAL_FORM });
         setLocations([]);
         setSchedules([]);
@@ -84,11 +93,12 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
 
   const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
-  // --- Handlers ---
+  // --- Handlers: ExcludedDates ---
   const addExcludedDate = () => setExcludedDates([...excludedDates, { id: null, date: '' }]);
   const updateExcludedDate = (i, v) => { const n = [...excludedDates]; n[i].date = v; setExcludedDates(n); };
   const removeExcludedDate = (i) => setExcludedDates(excludedDates.filter((_, idx) => idx !== i));
 
+  // --- Handlers: Locations ---
   const addLocation = () => setLocations([...locations, { 
     id: null, originalPlace: '', changedPlace: '', plannedCount: 0, instructorsNumbers: 0,
     hasInstructorLounge: false, hasWomenRestroom: false, hasCateredMeals: false, hasHallLodging: false, allowsPhoneBeforeAfter: false, note: ''
@@ -96,16 +106,29 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
   const updateLocation = (i, f, v) => { const n = [...locations]; n[i][f] = v; setLocations(n); };
   const removeLocation = (i) => setLocations(locations.filter((_, idx) => idx !== i));
 
+  // --- Handlers: Schedules ---
+  const addSchedule = () => setSchedules([...schedules, { id: null, date: toDateValue(new Date()) }]);
+  const updateSchedule = (i, v) => { const n = [...schedules]; n[i].date = v; setSchedules(n); };
+  const removeSchedule = (i) => setSchedules(schedules.filter((_, idx) => idx !== i));
+
+  // ✅ [핵심 수정] 저장 핸들러
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 필수값 검증
+    // 1. 필수값 체크
     const required = ['name', 'educationStart', 'educationEnd', 'workStartTime', 'workEndTime', 'officerName'];
     if (required.some(f => !formData[f])) {
-      return alert("필수 항목(부대명, 교육기간, 시간, 담당자)을 모두 입력해주세요.");
+      return alert("필수 항목(부대명, 교육기간, 근무시간, 담당자)을 모두 입력해주세요.");
     }
 
-    const makeTime = (t) => { if(!t) return null; const d=new Date(); const [h,m]=t.split(':'); d.setHours(h,m,0,0); return d.toISOString(); };
+    // 2. 데이터 변환 (서버 전송용)
+    const makeTime = (t) => { 
+      if(!t) return null; 
+      const d=new Date(); 
+      const [h,m]=t.split(':'); 
+      d.setHours(h,m,0,0); 
+      return d.toISOString(); 
+    };
     const makeDate = (d) => d ? new Date(d).toISOString() : null;
 
     const payload = {
@@ -117,28 +140,39 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
       lunchStartTime: makeTime(formData.lunchStartTime),
       lunchEndTime: makeTime(formData.lunchEndTime),
       
-      trainingLocations: locations,
+      // 하위 데이터 가공 (id 필드는 서버 Repository에서 처리하므로 여기서 그대로 보내도 무방하나, 
+      // 깔끔한 처리를 위해 필요한 필드만 매핑해서 보냅니다)
       
-      // ✅ 불가일자 데이터 전송 (빈 값 필터링)
-      excludedDates: excludedDates.filter(d => d.date).map(d => ({ 
-        id: d.id, 
-        date: makeDate(d.date) 
+      trainingLocations: locations, // Repository에서 id 처리함
+      
+      excludedDates: excludedDates
+        .filter(d => d.date) // 빈 날짜 제거
+        .map(d => ({ 
+          id: d.id, // 기존 ID 유지
+          date: makeDate(d.date) 
+        })),
+        
+      // 일정은 서버 자동 계산 로직이 있다면 빈 배열로 보내도 되지만, 
+      // 만약 수동 수정을 허용한다면 아래처럼 보내야 합니다.
+      // 현재 Service 코드에 '자동 계산'이 포함되어 있다면 아래 schedules는 무시될 수 있습니다.
+      schedules: schedules.map(s => ({ 
+        id: s.id, 
+        date: makeDate(s.date) 
       })),
-      
-      // 스케줄은 서버에서 자동 계산하므로 굳이 보내지 않음 (빈 배열)
-      schedules: [], 
     };
 
     try {
       if (initialUnit) {
+        // 수정
         await onSave({ id: initialUnit.id, data: payload });
       } else {
+        // 신규
         await onSave(payload);
       }
       onClose();
     } catch (err) {
-      console.error("Save failed:", err);
-      alert("저장에 실패했습니다. 관리자에게 문의하세요.");
+      console.error("Save Failed:", err);
+      alert("저장 중 오류가 발생했습니다. (서버 로그 확인 필요)");
     }
   };
 
@@ -148,22 +182,26 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
     <>
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40" onClick={onClose} />
       <div className="fixed inset-y-0 right-0 z-50 w-full md:w-[800px] bg-white shadow-2xl flex flex-col h-full">
+        {/* Header */}
         <div className="px-6 py-4 border-b flex justify-between items-center bg-white shrink-0">
           <h2 className="text-xl font-bold">{initialUnit ? '부대 정보 수정' : '신규 부대 등록'}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
         </div>
 
+        {/* Tabs */}
         <div className="flex border-b bg-gray-50 shrink-0">
           {['basic', 'location', 'schedule'].map(tab => (
-            <button key={tab} type="button" onClick={() => setActiveTab(tab)} className={`flex-1 py-3 font-medium border-b-2 ${activeTab===tab?'border-blue-600 text-blue-600':'border-transparent text-gray-500'}`}>
-              {tab === 'basic' ? '기본 정보' : tab === 'location' ? `교육장소 (${locations.length})` : '일정 (자동계산)'}
+            <button key={tab} type="button" onClick={() => setActiveTab(tab)} className={`flex-1 py-3 font-medium border-b-2 ${activeTab === tab ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>
+              {tab === 'basic' ? '기본 정보' : tab === 'location' ? `교육장소 (${locations.length})` : `일정 (${schedules.length})`}
             </button>
           ))}
         </div>
 
+        {/* Body */}
         <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
           <form id="unit-form" onSubmit={handleSubmit} className="space-y-6">
             
+            {/* 1. 기본 정보 탭 */}
             {activeTab === 'basic' && (
               <div className="space-y-6">
                 <section className="bg-white p-5 rounded-xl border shadow-sm">
@@ -171,8 +209,10 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
                   <div className="grid grid-cols-2 gap-4">
                     <InputField label="부대명 *" name="name" value={formData.name} onChange={handleChange} required />
                     <div>
-                      <label className="text-sm font-medium">군 구분 *</label>
-                      <select name="unitType" value={formData.unitType} onChange={handleChange} className="w-full mt-1 p-2 border rounded"><option value="Army">육군</option><option value="Navy">해군</option><option value="AirForce">공군</option><option value="Marine">해병대</option></select>
+                      <label className="text-sm font-medium text-gray-700">군 구분 *</label>
+                      <select name="unitType" value={formData.unitType} onChange={handleChange} className="w-full mt-1 p-2 border rounded-lg">
+                        <option value="Army">육군</option><option value="Navy">해군</option><option value="AirForce">공군</option><option value="Marine">해병대</option>
+                      </select>
                     </div>
                     <InputField label="광역" name="wideArea" value={formData.wideArea} onChange={handleChange} />
                     <InputField label="지역" name="region" value={formData.region} onChange={handleChange} />
@@ -186,10 +226,10 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
                     <InputField type="date" label="교육 시작 *" name="educationStart" value={formData.educationStart} onChange={handleChange} required />
                     <InputField type="date" label="교육 종료 *" name="educationEnd" value={formData.educationEnd} onChange={handleChange} required />
                     
-                    {/* 불가일자 관리 UI */}
+                    {/* 불가일자 UI */}
                     <div className="col-span-2 bg-red-50 p-4 rounded-lg border border-red-100">
                       <div className="flex justify-between items-center mb-3">
-                        <label className="text-sm font-bold text-red-600">🚫 교육 불가 일자 (공휴일 등)</label>
+                        <label className="text-sm font-bold text-red-600">🚫 교육 불가 일자</label>
                         <Button type="button" size="small" onClick={addExcludedDate} variant="outline" className="text-xs">+ 날짜 추가</Button>
                       </div>
                       <div className="space-y-2">
@@ -199,15 +239,14 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
                             <button type="button" onClick={() => removeExcludedDate(idx)} className="text-red-500 hover:bg-red-100 p-1 rounded">✕</button>
                           </div>
                         ))}
-                        {excludedDates.length === 0 && <p className="text-xs text-gray-400">등록된 불가 일자가 없습니다.</p>}
                       </div>
                     </div>
 
-                    <div className="col-span-2 border-t my-2" />
+                    <div className="col-span-2 border-t my-2"></div>
                     <InputField type="time" label="근무 시작 *" name="workStartTime" value={formData.workStartTime} onChange={handleChange} required />
                     <InputField type="time" label="근무 종료 *" name="workEndTime" value={formData.workEndTime} onChange={handleChange} required />
-                    <InputField type="time" label="점심 시작 *" name="lunchStartTime" value={formData.lunchStartTime} onChange={handleChange} required />
-                    <InputField type="time" label="점심 종료 *" name="lunchEndTime" value={formData.lunchEndTime} onChange={handleChange} required />
+                    <InputField type="time" label="점심 시작" name="lunchStartTime" value={formData.lunchStartTime} onChange={handleChange} />
+                    <InputField type="time" label="점심 종료" name="lunchEndTime" value={formData.lunchEndTime} onChange={handleChange} />
                   </div>
                 </section>
 
@@ -222,6 +261,7 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
               </div>
             )}
 
+            {/* 2. 교육 장소 탭 (모든 필드) */}
             {activeTab === 'location' && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-4">
@@ -229,7 +269,7 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
                   <Button type="button" onClick={addLocation} size="small">+ 장소 추가</Button>
                 </div>
                 {locations.map((loc, idx) => (
-                  <div key={idx} className="bg-white p-5 rounded-xl border shadow-sm relative group">
+                  <div key={idx} className="bg-white p-5 rounded-xl border shadow-sm relative">
                     <button type="button" onClick={() => removeLocation(idx)} className="absolute top-4 right-4 text-red-400 hover:text-red-600 font-bold">삭제</button>
                     <h4 className="font-bold mb-3 text-gray-800 border-b pb-2">장소 #{idx + 1}</h4>
                     
@@ -254,27 +294,30 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
               </div>
             )}
 
+            {/* 3. 일정 탭 */}
             {activeTab === 'schedule' && (
                <div className="space-y-4">
                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-sm font-bold text-gray-700">총 {schedules.length}일 (자동 계산됨)</span>
+                    <span className="text-sm font-bold text-gray-700">총 {schedules.length}일</span>
+                    <Button type="button" onClick={addSchedule} size="small">+ 날짜 추가</Button>
                  </div>
                  <div className="bg-white rounded-xl border border-gray-200 divide-y">
                    {schedules.map((sch, idx) => (
                      <div key={idx} className="p-3 flex items-center gap-3">
                        <span className="text-gray-400 text-sm font-mono w-6">{idx + 1}.</span>
-                       {/* 보여주기 전용 (수정 불가) */}
-                       <div className="flex-1 font-medium text-gray-700">{toDateValue(sch.date)}</div>
+                       <input type="date" className="border p-2 rounded flex-1" value={toDateValue(sch.date)} onChange={(e) => updateSchedule(idx, e.target.value)} />
+                       <button type="button" onClick={() => removeSchedule(idx)} className="text-red-500 hover:bg-red-50 px-2 rounded">삭제</button>
                      </div>
                    ))}
-                   {schedules.length === 0 && <div className="p-6 text-center text-gray-400">일정이 없습니다. 기간을 설정해주세요.</div>}
+                   {schedules.length === 0 && <div className="p-6 text-center text-gray-400">일정이 없습니다.</div>}
                  </div>
-                 <p className="text-sm text-gray-500 mt-2 text-center">※ 일정은 '기본 정보' 탭의 기간 및 불가일자에 따라 자동 생성됩니다.</p>
+                 <p className="text-xs text-gray-500 mt-2 text-center">※ 엑셀 업로드를 한 경우, 서버에서 일정이 자동 계산될 수 있습니다.</p>
                </div>
             )}
           </form>
         </div>
 
+        {/* Footer */}
         <div className="px-6 py-4 border-t bg-white flex justify-between items-center shrink-0">
            {initialUnit && <button type="button" onClick={() => {if(confirm('정말 삭제하시겠습니까?')) onDelete(initialUnit.id)}} className="text-red-500 font-medium">삭제</button>}
            <div className="flex gap-2 ml-auto">
