@@ -17,6 +17,9 @@ model Unit {
 
   educationStart DateTime? @map("교육시작일자")
   educationEnd   DateTime? @map("교육종료일자")
+
+  excludedDates  UnitExcludedDate[]
+  
   workStartTime  DateTime? @map("근무시작시간")
   workEndTime    DateTime? @map("근무종료시간")
   lunchStartTime DateTime? @map("점심시작시간")
@@ -31,6 +34,16 @@ model Unit {
   distances         InstructorUnitDistance[]
 
   @@map("부대")
+}
+
+model UnitExcludedDate {
+  id     Int      @id @default(autoincrement())
+  unitId Int      @map("부대id")
+  date   DateTime @map("날짜")
+
+  unit   Unit     @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@map("부대_교육불가일자")
 }
 
 model TrainingLocation {
