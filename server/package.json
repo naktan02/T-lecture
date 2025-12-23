@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "description": "T-LECTURE Backend Server",
-  "main": "src/server.js",
+  "main": "dist/server.js",
   "engines": {
     "node": "20.x"
   },
@@ -70,11 +70,9 @@
     "eslint-config-prettier": "^10.1.8",
     "globals": "^16.5.0",
     "mocha": "^11.7.5",
-    "nodemon": "^3.1.9",
     "prettier": "^3.7.4",
     "prisma": "^6.19.0",
     "supertest": "^7.1.4",
-    "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.50.1"
