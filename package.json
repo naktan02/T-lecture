@@ -7,6 +7,10 @@
   ],
   "scripts": {
     "dev:client": "npm run dev --prefix client",
-    "dev:server": "npm run dev --prefix server"
+    "dev:server": "npm run dev --prefix server",
+    "db:up": "docker-compose --env-file server/.env up -d",
+    "db:down": "docker-compose down",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   }
 }

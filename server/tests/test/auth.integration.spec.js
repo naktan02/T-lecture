@@ -27,7 +27,7 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
   // 로그인 후 토큰/쿠키 검증용
   let approvedUserId;
   let approvedAccessToken;
-  let refreshTokenValue; 
+  let refreshTokenValue;
 
   // ✅ 성공/에러 모두 JSON 출력
   const logResponse = (res, label) => {
@@ -50,7 +50,7 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
   before(async () => {
     emailService = require('../../src/infra/email.service');
     originalSendVerificationCode = emailService.sendVerificationCode;
-    emailService.sendVerificationCode = async () => true; 
+    emailService.sendVerificationCode = async () => true;
 
     await prisma.emailVerification.deleteMany({
       where: { email: { in: [EMAIL_OK, EMAIL_DUP, EMAIL_RESET] } },
@@ -61,7 +61,8 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
 
     // 혹시 남아있으면 FK 때문에 user 삭제가 막힐 수 있는 것들 방어
     if (prisma.instructorVirtue) await prisma.instructorVirtue.deleteMany().catch(() => {});
-    if (prisma.instructorAvailability) await prisma.instructorAvailability.deleteMany().catch(() => {});
+    if (prisma.instructorAvailability)
+      await prisma.instructorAvailability.deleteMany().catch(() => {});
     if (prisma.instructorStats) await prisma.instructorStats.deleteMany().catch(() => {});
     if (prisma.instructor) await prisma.instructor.deleteMany().catch(() => {});
     if (prisma.admin) await prisma.admin.deleteMany().catch(() => {});
@@ -149,9 +150,7 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
       },
     });
 
-    const res = await agent
-      .post(`${BASE}/code/verify`)
-      .send({ email: EMAIL_OK, code: '123456' });
+    const res = await agent.post(`${BASE}/code/verify`).send({ email: EMAIL_OK, code: '123456' });
 
     logResponse(res, 'Verify Code Success');
     expect(res.status).to.equal(200);
@@ -168,9 +167,7 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
       },
     });
 
-    const res = await agent
-      .post(`${BASE}/code/verify`)
-      .send({ email: EMAIL_OK, code: '000000' });
+    const res = await agent.post(`${BASE}/code/verify`).send({ email: EMAIL_OK, code: '000000' });
 
     logResponse(res, 'Verify Code Wrong');
     expect(res.status).to.equal(400);
@@ -313,11 +310,11 @@ describe('Auth API Integration Test (Full Coverage, No Sinon)', () => {
 
   // 리프레시 토큰 입력 리프레시 성공
   it('[POST] /refresh - Success (200)', async () => {
-    const res = await request(app) 
+    const res = await request(app)
       .post(`${BASE}/refresh`)
       .set('Cookie', `refreshToken=${refreshTokenValue}`)
       .send({});
-      
+
     logResponse(res, 'Refresh Success');
     expect(res.status).to.equal(200);
     expect(res.body).to.have.property('accessToken');

@@ -1,11 +1,12 @@
-version: '3.8'
 services:
-  mysql:
-    image: mysql:8.0
+  db:
+    image: postgres:15-alpine
+    container_name: t-lecture-db
     ports:
-      - "3306:3306"
+      - '5432:5432'
     environment:
-      MYSQL_ROOT_PASSWORD: "1234"
-      MYSQL_DATABASE: "Project"
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: Project
     volumes:
-      - ./mysql_data:/var/lib/mysql
+      - ./postgres_data:/var/lib/postgresql/data

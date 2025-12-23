@@ -7,9 +7,8 @@
 # Build artifacts
 /client/.next
 /client/out
-/package-lock.json
-package-lock.json
-
+/server/dist
+/client/dist
 # Logs
 logs
 *.log
@@ -40,3 +39,17 @@ Thumbs.db
 
 mysql_data/
 server/mysql_data/
+postgres_data/
+server/postgres_data/
+
+# TypeScript
+*.tsbuildinfo
+
+# ESLint
+.eslintcache
+
+# Test coverage
+coverage/
+
+# Turborepo (if used)
+.turbo
