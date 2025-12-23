@@ -9,7 +9,7 @@
   },
   "prisma": {
     "schema": "./prisma",
-    "seed": "node prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts"
   },
   "scripts": {
     "dev": "tsx watch src/server.ts",
