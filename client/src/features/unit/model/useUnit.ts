@@ -1,6 +1,6 @@
 // client/src/features/unit/model/useUnit.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { unitApi } from '../api/unitApi';
+import { unitApi, UnitData } from '../api/unitApi';
 import { useState, Dispatch, SetStateAction } from 'react';
 
 interface SearchParams {
@@ -38,7 +38,7 @@ interface UseUnitReturn {
   isLoading: boolean;
   isError: boolean;
   deleteUnits: (ids: (number | string)[]) => Promise<unknown>;
-  registerUnit: (data: unknown) => Promise<unknown>;
+  registerUnit: (data: UnitData) => Promise<unknown>;
   updateUnit: (params: { id: number | string; data: unknown }) => void;
   deleteUnit: (id: number | string) => void;
   uploadExcel: (file: File) => Promise<unknown>;

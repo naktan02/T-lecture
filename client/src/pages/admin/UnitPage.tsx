@@ -10,6 +10,7 @@ interface SearchParams {
   keyword: string;
   startDate: string;
   endDate: string;
+  [key: string]: unknown;
 }
 
 interface Unit {
@@ -161,7 +162,8 @@ const UnitPage = (): ReactElement => {
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         unit={selectedUnit}
-        onSave={selectedUnit ? updateUnit : registerUnit}
+        onRegister={registerUnit}
+        onUpdate={updateUnit}
         onDelete={deleteUnit}
       />
     </div>

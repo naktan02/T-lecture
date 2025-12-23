@@ -6,6 +6,7 @@ interface SearchFilters {
   keyword: string;
   startDate: string;
   endDate: string;
+  [key: string]: unknown;
 }
 
 interface UnitToolbarProps {

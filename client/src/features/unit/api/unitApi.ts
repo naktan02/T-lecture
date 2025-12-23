@@ -10,7 +10,7 @@ interface UnitListParams {
   [key: string]: unknown;
 }
 
-interface UnitData {
+export interface UnitData {
   name: string;
   unitType?: string;
   wideArea?: string;
@@ -19,12 +19,12 @@ interface UnitData {
   officerName?: string;
   officerPhone?: string;
   officerEmail?: string;
-  educationStart?: string;
-  educationEnd?: string;
-  workStartTime?: string;
-  workEndTime?: string;
-  lunchStartTime?: string;
-  lunchEndTime?: string;
+  educationStart?: string | null;
+  educationEnd?: string | null;
+  workStartTime?: string | null;
+  workEndTime?: string | null;
+  lunchStartTime?: string | null;
+  lunchEndTime?: string | null;
   trainingLocations?: unknown[];
   excludedDates?: unknown[];
   schedules?: unknown[];

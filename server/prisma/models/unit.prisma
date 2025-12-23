@@ -17,9 +17,9 @@ model Unit {
 
   educationStart DateTime? @map("교육시작일자")
   educationEnd   DateTime? @map("교육종료일자")
-  
+
   // ✅ 1:N 관계로 변경 (여러 날짜 저장 가능)
-  excludedDates  UnitExcludedDate[]
+  excludedDates UnitExcludedDate[]
 
   workStartTime  DateTime? @map("근무시작시간")
   workEndTime    DateTime? @map("근무종료시간")
@@ -43,7 +43,7 @@ model UnitExcludedDate {
   unitId Int      @map("부대id")
   date   DateTime @map("날짜")
 
-  unit   Unit     @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
   @@map("부대_교육불가일자")
 }

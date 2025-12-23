@@ -1,7 +1,7 @@
 // client/src/features/unit/ui/UnitDetailDrawer.tsx
 import React, { useEffect, useMemo, useState, ChangeEvent, FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { unitApi } from '../api/unitApi';
+import { unitApi, UnitData } from '../api/unitApi';
 import { Button } from '../../../shared/ui/Button';
 import { InputField } from '../../../shared/ui/InputField';
 
@@ -101,7 +101,9 @@ interface UnitDetailDrawerProps {
 
   // 프로젝트마다 시그니처 다를 수 있어서 “호출부와 동일하게” 최대한 유연하게 두되
   // payload 자체는 아래에서 깔끔하게 만든다.
-  onSave: (data: unknown) => Promise<unknown> | void;
+  // 신규 등록과 수정을 각각 처리
+  onRegister: (data: UnitData) => Promise<unknown> | void;
+  onUpdate: (params: { id: number | string; data: unknown }) => void;
   onDelete: (id: number) => void;
 }
 
@@ -180,7 +182,8 @@ export const UnitDetailDrawer = ({
   isOpen,
   onClose,
   unit: initialUnit,
-  onSave,
+  onRegister,
+  onUpdate,
   onDelete,
 }: UnitDetailDrawerProps) => {
   const [activeTab, setActiveTab] = useState<'basic' | 'location' | 'schedule'>('basic');
@@ -246,19 +249,21 @@ export const UnitDetailDrawer = ({
     // locations
     if (Array.isArray(target.trainingLocations)) {
       // 서버가 number로 주더라도 UI에서는 string으로 정규화
-      const normalized = target.trainingLocations.map((loc: any): TrainingLocation => ({
-        id: loc?.id ?? null,
-        originalPlace: String(loc?.originalPlace ?? ''),
-        changedPlace: String(loc?.changedPlace ?? ''),
-        plannedCount: String(loc?.plannedCount ?? '0'),
-        instructorsNumbers: String(loc?.instructorsNumbers ?? '0'),
-        hasInstructorLounge: Boolean(loc?.hasInstructorLounge),
-        hasWomenRestroom: Boolean(loc?.hasWomenRestroom),
-        hasCateredMeals: Boolean(loc?.hasCateredMeals),
-        hasHallLodging: Boolean(loc?.hasHallLodging),
-        allowsPhoneBeforeAfter: Boolean(loc?.allowsPhoneBeforeAfter),
-        note: String(loc?.note ?? ''),
-      }));
+      const normalized = target.trainingLocations.map(
+        (loc: any): TrainingLocation => ({
+          id: loc?.id ?? null,
+          originalPlace: String(loc?.originalPlace ?? ''),
+          changedPlace: String(loc?.changedPlace ?? ''),
+          plannedCount: String(loc?.plannedCount ?? '0'),
+          instructorsNumbers: String(loc?.instructorsNumbers ?? '0'),
+          hasInstructorLounge: Boolean(loc?.hasInstructorLounge),
+          hasWomenRestroom: Boolean(loc?.hasWomenRestroom),
+          hasCateredMeals: Boolean(loc?.hasCateredMeals),
+          hasHallLodging: Boolean(loc?.hasHallLodging),
+          allowsPhoneBeforeAfter: Boolean(loc?.allowsPhoneBeforeAfter),
+          note: String(loc?.note ?? ''),
+        }),
+      );
       setLocations(normalized);
     } else {
       setLocations([]);
@@ -372,9 +377,9 @@ export const UnitDetailDrawer = ({
 
     try {
       if (initialUnit) {
-        await onSave({ id: initialUnit.id, data: payload });
+        onUpdate({ id: initialUnit.id, data: payload });
       } else {
-        await onSave(payload);
+        await onRegister(payload);
       }
       onClose();
     } catch (err) {
@@ -673,7 +678,10 @@ export const UnitDetailDrawer = ({
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {schedules.map((sch, idx) => (
-                        <div key={idx} className="bg-white border p-3 rounded text-center shadow-sm">
+                        <div
+                          key={idx}
+                          className="bg-white border p-3 rounded text-center shadow-sm"
+                        >
                           <div className="text-xs text-gray-400 mb-1">{idx + 1}일차</div>
                           <div className="font-bold">{sch.date}</div>
                         </div>
@@ -683,7 +691,9 @@ export const UnitDetailDrawer = ({
                 ) : (
                   <div className="p-10 text-center text-gray-400 border border-dashed rounded bg-gray-50">
                     <p className="mb-2">등록된 일정이 없습니다.</p>
-                    <p className="text-xs">상세 데이터를 불러오는 중이거나, 일정이 생성되지 않았습니다.</p>
+                    <p className="text-xs">
+                      상세 데이터를 불러오는 중이거나, 일정이 생성되지 않았습니다.
+                    </p>
                   </div>
                 )}
               </div>
