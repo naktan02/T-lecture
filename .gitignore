@@ -6,7 +6,8 @@
 # Build artifacts
 /client/.next
 /client/out
-
+/server/dist
+/client/dist
 # Logs
 logs
 *.log
