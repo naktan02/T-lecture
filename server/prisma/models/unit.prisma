@@ -17,9 +17,10 @@ model Unit {
 
   educationStart DateTime? @map("교육시작일자")
   educationEnd   DateTime? @map("교육종료일자")
-
-  excludedDates  UnitExcludedDate[]
   
+  // ✅ 1:N 관계로 변경 (여러 날짜 저장 가능)
+  excludedDates  UnitExcludedDate[]
+
   workStartTime  DateTime? @map("근무시작시간")
   workEndTime    DateTime? @map("근무종료시간")
   lunchStartTime DateTime? @map("점심시작시간")
@@ -36,6 +37,7 @@ model Unit {
   @@map("부대")
 }
 
+// ✅ 신규 테이블
 model UnitExcludedDate {
   id     Int      @id @default(autoincrement())
   unitId Int      @map("부대id")
