@@ -63,9 +63,6 @@ class UserMeService {
         instructorData.lng = null;
         }
 
-        if (!isInstructor && address !== undefined) {
-        }
-
         const updatedUser = await userRepository.update(userId, userData, instructorData);
 
         const { password, ...result } = updatedUser;

@@ -55,7 +55,7 @@ class DistanceService {
 
   // 강사 좌표 조회
   async _getOrCreateInstructorCoords(instructor) {
-    if (instructor.lat != null && instructor.lng != null) {
+    if (instructor.lat !== null && instructor.lng !== null) {
       return { lat: instructor.lat, lng: instructor.lng };
     }
 
@@ -72,7 +72,7 @@ class DistanceService {
 
   // 부대 좌표 조회
   async _getOrCreateUnitCoords(unit) {
-    if (unit.lat != null && unit.lng != null) {
+    if (unit.lat !== null && unit.lng !== null) {
       return { lat: unit.lat, lng: unit.lng };
     }
 

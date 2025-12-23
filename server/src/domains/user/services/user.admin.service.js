@@ -36,13 +36,12 @@ function normalizeFilters(query = {}) {
     } else if (role === 'INSTRUCTOR') {
         filters.onlyInstructors = true;
         delete filters.onlyAdmins;
-    } else if (role === 'ALL' || role === '') {
-    }
     if (filters.onlyAdmins !== undefined) filters.onlyAdmins = parseBool(filters.onlyAdmins);
     if (filters.onlyInstructors !== undefined) filters.onlyInstructors = parseBool(filters.onlyInstructors);
     delete filters.role;
 
     return filters;
+    }
 }
 // dto 검증
 function assertDtoObject(dto) {

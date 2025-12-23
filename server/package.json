@@ -20,6 +20,8 @@
     "db:push": "npm run prisma:format && npm run prisma:validate && prisma db push",
     "db:migrate": "npm run prisma:format && npm run prisma:validate && prisma migrate dev",
     "db:studio": "prisma studio",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "test": "mocha tests/test/**/*.spec.js --timeout 10000 --exit",
     "test:integration": "mocha tests/test/auth.integration.spec.js --timeout 10000 --exit",
     "test:integration1": "mocha tests/test/user.admin.integration.spec.js --timeout 10000 --exit",
@@ -46,14 +48,19 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.10",
     "readline-sync": "^1.4.10",
-    "xlsx": "^0.18.5",
     "winston": "^3.19.0",
-    "winston-daily-rotate-file": "^5.0.0"
+    "winston-daily-rotate-file": "^5.0.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "chai": "^6.2.1",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.5.0",
     "mocha": "^11.7.5",
     "nodemon": "^3.1.9",
+    "prettier": "^3.7.4",
     "prisma": "^6.19.0",
     "supertest": "^7.1.4"
   }

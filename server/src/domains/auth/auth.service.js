@@ -121,8 +121,6 @@ class AuthService {
     if (user.status !== 'APPROVED') {
       throw new AppError('승인되지 않은 사용자입니다.', 403, 'USER_NOT_APPROVED');
     }
-    if (loginType === 'ADMIN' && user.role === 'USER') {
-    }
 
     const payload = { userId: user.id };
     const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
