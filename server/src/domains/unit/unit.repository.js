@@ -1,168 +1,112 @@
 // server/src/domains/unit/unit.repository.js
 const prisma = require('../../libs/prisma');
 
+// [안전한 타입 변환 헬퍼]
+const safeInt = (val) => {
+  if (val === undefined || val === null || val === '') return null;
+  const num = Number(val);
+  return isNaN(num) ? 0 : num;
+};
+
+const safeBool = (val) => {
+  if (val === true || val === 'true' || val === 'TRUE' || String(val).toUpperCase() === 'O') return true;
+  return false;
+};
+
 class UnitRepository {
-  /**
-   * [헬퍼 함수] 교육장소 데이터 타입 변환 (String -> Int/Boolean)
-   * DB 스키마와 타입을 일치시키기 위해 필수적인 과정입니다.
-   */
-  _transformLocation(loc) {
-    // id와 unitId는 로직에서 별도로 처리하므로 데이터 객체에서는 제외
-    const { id, unitId, ...rest } = loc;
-    
-    return {
-      ...rest,
-      // 숫자로 변환 (값이 없거나 이상하면 0 또는 null 처리)
-      plannedCount: rest.plannedCount ? Number(rest.plannedCount) : 0,
-      instructorsNumbers: rest.instructorsNumbers ? Number(rest.instructorsNumbers) : 0,
-      
-      // 불리언(True/False) 변환 확실하게
-      hasInstructorLounge: Boolean(rest.hasInstructorLounge),
-      hasWomenRestroom: Boolean(rest.hasWomenRestroom),
-      hasCateredMeals: Boolean(rest.hasCateredMeals),
-      hasHallLodging: Boolean(rest.hasHallLodging),
-      allowsPhoneBeforeAfter: Boolean(rest.allowsPhoneBeforeAfter),
-    };
-  }
-
-  /**
-   * [헬퍼 함수] 날짜 객체 변환 (String -> Date)
-   */
-  _transformDateObj(obj) {
-    const { id, unitId, ...rest } = obj;
-    return {
-      ...rest,
-      date: new Date(rest.date) // 문자열 날짜를 Date 객체로 변환
-    };
-  }
-
-  // =================================================================
-  // 1. 조회 관련 기능 (기존 기능 유지)
-  // =================================================================
-
+  // 1. 목록 조회
   async findMany(where, skip, take) {
     return prisma.unit.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { id: 'desc' },
-      include: {
-        trainingLocations: true, // 목록 조회 시 교육장소 정보 포함
-      }
+      where, skip, take, orderBy: { id: 'desc' },
+      include: { trainingLocations: true }
     });
   }
 
-  async count(where) {
-    return prisma.unit.count({ where });
-  }
+  // 2. 개수 조회
+  async count(where) { return prisma.unit.count({ where }); }
 
+  // 3. 상세 조회 (✅ 일정, 불가일자 포함 필수)
   async findUnitById(id) {
     return prisma.unit.findUnique({
       where: { id: Number(id) },
       include: {
         trainingLocations: true,
-        schedules: { orderBy: { date: 'asc' } },
-        excludedDates: { orderBy: { date: 'asc' } },
+        schedules: { orderBy: { date: 'asc' } }, // ✅ 일정 포함
+        excludedDates: { orderBy: { date: 'asc' } }, // ✅ 불가일자 포함
       },
     });
   }
 
-  // =================================================================
-  // 2. 등록(Create) 기능
-  // =================================================================
-
+  // 4. 통합 등록
   async createUnitWithNested(unitData, locations, schedules, excludedDates) {
     return prisma.unit.create({
       data: {
         ...unitData,
-        // 하위 데이터 각각에 대해 타입 변환 수행 후 저장
         trainingLocations: { 
-          create: (locations || []).map(loc => this._transformLocation(loc)) 
+          create: (locations || []).map(loc => {
+            const data = this._mapLocationData(loc);
+            delete data.unitId; 
+            return data;
+          })
         },
-        schedules: { 
-          create: (schedules || []).map(sch => this._transformDateObj(sch)) 
-        },
-        excludedDates: { 
-          create: (excludedDates || []).map(ex => this._transformDateObj(ex)) 
-        },
+        schedules: { create: (schedules || []).map(s => ({ date: new Date(s.date) })) },
+        excludedDates: { create: (excludedDates || []).map(d => ({ date: new Date(d.date) })) },
       },
       include: { trainingLocations: true, schedules: true, excludedDates: true }
     });
   }
 
-  // =================================================================
-  // 3. 수정(Update) 기능
-  // =================================================================
-
+  // 5. 통합 수정
   async updateUnitWithNested(id, unitData, locations, schedules, excludedDates) {
     return prisma.$transaction(async (tx) => {
       const unitId = Number(id);
 
-      // (1) 부대 기본 정보 업데이트
-      await tx.unit.update({
-        where: { id: unitId },
-        data: unitData,
-      });
+      // (1) 기본 정보
+      await tx.unit.update({ where: { id: unitId }, data: unitData });
 
-      // (2) 교육장소 처리 (ID 기반 스마트 업데이트)
+      // (2) 교육장소 (ID 기반 스마트 업데이트)
       if (locations) {
-        // DB에 있는 기존 ID 목록 조회
         const existing = await tx.trainingLocation.findMany({ where: { unitId }, select: { id: true } });
         const existingIds = existing.map(e => e.id);
-        
-        // 요청받은 ID 목록
         const incomingIds = locations.filter(l => l.id).map(l => Number(l.id));
 
-        // 삭제: DB에는 있는데 요청엔 없는 ID
+        // 삭제
         const toDelete = existingIds.filter(dbId => !incomingIds.includes(dbId));
         if (toDelete.length > 0) {
           await tx.trainingLocation.deleteMany({ where: { id: { in: toDelete } } });
         }
 
-        // 생성 및 수정
+        // 생성/수정
         for (const loc of locations) {
-          const data = this._transformLocation(loc); // 타입 변환 적용
-          data.unitId = unitId; // FK 연결
-
+          const data = this._mapLocationData(loc, unitId);
           if (loc.id && existingIds.includes(Number(loc.id))) {
-            // ID가 있고 DB에도 존재하면 -> 수정
             await tx.trainingLocation.update({ where: { id: Number(loc.id) }, data });
           } else {
-            // ID가 없거나 DB에 없으면 -> 신규 생성
             await tx.trainingLocation.create({ data });
           }
         }
       }
 
-      // (3) 일정 처리 (전체 삭제 후 재생성 방식 권장 - 자동 계산 로직 때문)
+      // (3) 일정 (전체 교체)
       if (schedules) {
-        // 기존 일정 삭제
         await tx.unitSchedule.deleteMany({ where: { unitId } });
-        // 새 일정 일괄 등록
         if (schedules.length > 0) {
           await tx.unitSchedule.createMany({
-            data: schedules.map(s => ({
-              unitId,
-              date: new Date(s.date)
-            }))
+            data: schedules.map(s => ({ unitId, date: new Date(s.date) }))
           });
         }
       }
 
-      // (4) 불가일자 처리 (전체 삭제 후 재생성)
+      // (4) 불가일자 (전체 교체)
       if (excludedDates) {
         await tx.unitExcludedDate.deleteMany({ where: { unitId } });
         if (excludedDates.length > 0) {
           await tx.unitExcludedDate.createMany({
-            data: excludedDates.map(d => ({
-              unitId,
-              date: new Date(d.date)
-            }))
+            data: excludedDates.map(d => ({ unitId, date: new Date(d.date) }))
           });
         }
       }
 
-      // 결과 반환
       return tx.unit.findUnique({
         where: { id: unitId },
         include: { trainingLocations: true, schedules: true, excludedDates: true }
@@ -170,16 +114,12 @@ class UnitRepository {
     });
   }
 
-  // =================================================================
-  // 4. 기타 기능 (엑셀, 삭제) - 기존 코드 유지
-  // =================================================================
-
+  // 6. 엑셀 등 기타
   async insertManyUnits(unitsData) {
     return prisma.$transaction(
       unitsData.map(unit => prisma.unit.create({
         data: {
           ...unit,
-          // 엑셀 매퍼에서 넘어온 데이터도 동일하게 구조가 잡혀있어야 함
           trainingLocations: { create: unit.trainingLocations },
           schedules: { create: unit.schedules },
           excludedDates: { create: unit.excludedDates }
@@ -187,15 +127,24 @@ class UnitRepository {
       }))
     );
   }
+  async deleteUnitById(id) { return prisma.unit.delete({ where: { id: Number(id) } }); }
+  async deleteManyUnits(ids) { return prisma.unit.deleteMany({ where: { id: { in: ids.map(Number) } } }); }
 
-  async deleteUnitById(id) {
-    return prisma.unit.delete({ where: { id: Number(id) } });
-  }
-
-  async deleteManyUnits(ids) {
-    return prisma.unit.deleteMany({
-      where: { id: { in: ids.map(Number) } }
-    });
+  // [데이터 매핑 헬퍼]
+  _mapLocationData(loc, unitId) {
+    return {
+      unitId,
+      originalPlace: loc.originalPlace || null,
+      changedPlace: loc.changedPlace || null,
+      plannedCount: safeInt(loc.plannedCount),
+      instructorsNumbers: safeInt(loc.instructorsNumbers),
+      hasInstructorLounge: safeBool(loc.hasInstructorLounge),
+      hasWomenRestroom: safeBool(loc.hasWomenRestroom),
+      hasCateredMeals: safeBool(loc.hasCateredMeals),
+      hasHallLodging: safeBool(loc.hasHallLodging),
+      allowsPhoneBeforeAfter: safeBool(loc.allowsPhoneBeforeAfter),
+      note: loc.note || null,
+    };
   }
 }
 
