@@ -1,8 +1,8 @@
 // server/eslint.config.cjs
-const js = require("@eslint/js");
-const globals = require("globals");
-const prettier = require("eslint-config-prettier");
-const tseslint = require("typescript-eslint");
+const js = require('@eslint/js');
+const globals = require('globals');
+const prettier = require('eslint-config-prettier');
+const tseslint = require('typescript-eslint');
 
 module.exports = tseslint.config(
   js.configs.recommended,
@@ -16,25 +16,27 @@ module.exports = tseslint.config(
       },
     },
     rules: {
-      "no-console": "warn",
-      "eqeqeq": ["error", "always"],
-      "@typescript-eslint/no-require-imports": "off",
-      "no-undef": "off",
-      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      'no-console': 'warn',
+      eqeqeq: ['error', 'always'],
+      '@typescript-eslint/no-require-imports': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn',
+      'no-undef': 'off',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     },
   },
   {
     // ✅ 서버 소스 코드 전용 설정
-    files: ["src/**/*.{js,ts}", "jobs/**/*.{js,ts}", "infra/**/*.{js,ts}", "server.{js,ts}"],
+    files: ['src/**/*.{js,ts}', 'jobs/**/*.{js,ts}', 'infra/**/*.{js,ts}', 'server.{js,ts}'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
-        project: true, // tsconfig.json을 기반으로 타입 정보를 분석하도록 설정
+        project: ['./tsconfig.json'],
+        tsconfigRootDir: __dirname,
       },
     },
   },
   {
     // ✅ 무시할 경로
-    ignores: ["node_modules/**", "dist/**", "build/**", "coverage/**", "tests/**"],
-  }
+    ignores: ['node_modules/**', 'dist/**', 'build/**', 'coverage/**', 'tests/**'],
+  },
 );

@@ -6,10 +6,10 @@ export class AppError extends Error {
   public readonly isAppError: boolean;
 
   constructor(
-    message: string, 
-    statusCode: number = 500, 
-    code: string = 'INTERNAL_ERROR', 
-    meta: any = null
+    message: string,
+    statusCode: number = 500,
+    code: string = 'INTERNAL_ERROR',
+    meta: any = null,
   ) {
     super(message);
     this.name = 'AppError';

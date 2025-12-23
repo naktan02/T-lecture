@@ -18,10 +18,10 @@ router.post('/register', authController.register);
 router.post('/login', authController.login);
 
 // 토큰 재발급
-router.post('/refresh', authController.refresh); 
+router.post('/refresh', authController.refresh);
 
 // 로그아웃
-router.post('/logout', auth, authController.logout);  
+router.post('/logout', auth, authController.logout);
 
 // 비밀번호 재설정
 router.post('/reset-password', authController.resetPassword);
