@@ -5,19 +5,9 @@ import { unitApi } from '../api/unitApi';
 import { Button } from '../../../shared/ui/Button';
 import { InputField } from '../../../shared/ui/InputField';
 
-// 안전한 날짜/시간 변환 헬퍼
-const toDateValue = (str) => { 
-  if (!str) return ''; 
-  try { return new Date(str).toISOString().split('T')[0]; } catch { return ''; } 
-};
-const toTimeValue = (str) => { 
-  if (!str) return ''; 
-  try { 
-    const d = new Date(str); 
-    // 서버가 1970년 데이터로 줄 경우 시간만 추출
-    return d.toTimeString().slice(0, 5); 
-  } catch { return ''; } 
-};
+// 헬퍼
+const toDateValue = (str) => { if (!str) return ''; try { return new Date(str).toISOString().split('T')[0]; } catch { return ''; } };
+const toTimeValue = (str) => { if (!str) return ''; try { const d = new Date(str); return d.toTimeString().slice(0, 5); } catch { return ''; } };
 
 const INITIAL_FORM = {
   name: '', unitType: 'Army', region: '', wideArea: '', addressDetail: '',
@@ -33,20 +23,19 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
   const [schedules, setSchedules] = useState([]);
   const [excludedDates, setExcludedDates] = useState([]);
 
-  // 상세 데이터 조회 (수정 모드일 때만)
+  // 상세 데이터 Fetching
   const { data: detailData, isSuccess } = useQuery({
     queryKey: ['unitDetail', initialUnit?.id],
     queryFn: () => unitApi.getUnit(initialUnit.id),
     enabled: !!initialUnit?.id && isOpen,
-    staleTime: 0, // 항상 최신 데이터 불러오기
+    staleTime: 0,
   });
 
-  // 데이터 초기화 및 바인딩
   useEffect(() => {
     if (isOpen) {
       if (initialUnit) {
         // [수정 모드]
-        // API 응답이 있으면 사용하고, 없으면 리스트의 기본 정보라도 우선 표시
+        // API 데이터가 있으면(isSuccess) 그것을 쓰고, 없으면 리스트 데이터 사용
         const target = (isSuccess && detailData?.data) ? detailData.data : initialUnit;
         
         setFormData({
@@ -66,22 +55,24 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
           lunchEndTime: toTimeValue(target.lunchEndTime),
         });
 
-        // 하위 데이터는 상세 조회 성공 시에만 바인딩 (리스트 데이터엔 없음)
+        // 하위 데이터 바인딩
         if (target.trainingLocations) setLocations(target.trainingLocations);
-        if (target.schedules) setSchedules(target.schedules);
         
-        // 불가일자 매핑
+        // ✅ [문제 해결] 불가일자 매핑 확인
         if (target.excludedDates && Array.isArray(target.excludedDates)) {
           setExcludedDates(target.excludedDates.map(d => ({ 
-            id: d.id, // 기존 데이터면 ID 유지
+            id: d.id, // 기존 ID가 있으면 유지
             date: toDateValue(d.date) 
           })));
         } else {
           setExcludedDates([]);
         }
 
+        // 스케줄은 서버 자동 계산이므로 보여주기용으로만 바인딩 (수정은 불가일자/기간으로 제어)
+        if (target.schedules) setSchedules(target.schedules);
+
       } else {
-        // [신규 등록 모드]
+        // [신규 모드]
         setFormData({ ...INITIAL_FORM });
         setLocations([]);
         setSchedules([]);
@@ -93,31 +84,18 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
 
   const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
-  // --- Handlers: Excluded Dates ---
+  // --- Handlers ---
   const addExcludedDate = () => setExcludedDates([...excludedDates, { id: null, date: '' }]);
-  const updateExcludedDate = (idx, val) => {
-    const newArr = [...excludedDates]; newArr[idx].date = val; setExcludedDates(newArr);
-  };
-  const removeExcludedDate = (idx) => setExcludedDates(excludedDates.filter((_, i) => i !== idx));
+  const updateExcludedDate = (i, v) => { const n = [...excludedDates]; n[i].date = v; setExcludedDates(n); };
+  const removeExcludedDate = (i) => setExcludedDates(excludedDates.filter((_, idx) => idx !== i));
 
-  // --- Handlers: Locations ---
   const addLocation = () => setLocations([...locations, { 
     id: null, originalPlace: '', changedPlace: '', plannedCount: 0, instructorsNumbers: 0,
     hasInstructorLounge: false, hasWomenRestroom: false, hasCateredMeals: false, hasHallLodging: false, allowsPhoneBeforeAfter: false, note: ''
   }]);
-  const updateLocation = (idx, field, val) => {
-    const newLocs = [...locations]; newLocs[idx][field] = val; setLocations(newLocs);
-  };
-  const removeLocation = (idx) => setLocations(locations.filter((_, i) => i !== idx));
+  const updateLocation = (i, f, v) => { const n = [...locations]; n[i][f] = v; setLocations(n); };
+  const removeLocation = (i) => setLocations(locations.filter((_, idx) => idx !== i));
 
-  // --- Handlers: Schedules ---
-  const addSchedule = () => setSchedules([...schedules, { id: null, date: toDateValue(new Date()) }]);
-  const updateSchedule = (idx, val) => {
-    const newSchs = [...schedules]; newSchs[idx].date = val; setSchedules(newSchs);
-  };
-  const removeSchedule = (idx) => setSchedules(schedules.filter((_, i) => i !== idx));
-
-  // --- Submit ---
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -139,16 +117,16 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
       lunchStartTime: makeTime(formData.lunchStartTime),
       lunchEndTime: makeTime(formData.lunchEndTime),
       
-      // 하위 데이터 전송
-      trainingLocations: locations, // id가 null이면 서버에서 처리
+      trainingLocations: locations,
+      
+      // ✅ 불가일자 데이터 전송 (빈 값 필터링)
       excludedDates: excludedDates.filter(d => d.date).map(d => ({ 
-        id: d.id, // 기존 ID 유지
+        id: d.id, 
         date: makeDate(d.date) 
       })),
-      schedules: schedules.map(s => ({ 
-        id: s.id, 
-        date: makeDate(s.date) 
-      })),
+      
+      // 스케줄은 서버에서 자동 계산하므로 굳이 보내지 않음 (빈 배열)
+      schedules: [], 
     };
 
     try {
@@ -159,8 +137,8 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
       }
       onClose();
     } catch (err) {
-      console.error("Save Error:", err);
-      alert("저장에 실패했습니다. 콘솔 로그를 확인해주세요.");
+      console.error("Save failed:", err);
+      alert("저장에 실패했습니다. 관리자에게 문의하세요.");
     }
   };
 
@@ -170,17 +148,15 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
     <>
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40" onClick={onClose} />
       <div className="fixed inset-y-0 right-0 z-50 w-full md:w-[800px] bg-white shadow-2xl flex flex-col h-full">
-        {/* Header */}
         <div className="px-6 py-4 border-b flex justify-between items-center bg-white shrink-0">
           <h2 className="text-xl font-bold">{initialUnit ? '부대 정보 수정' : '신규 부대 등록'}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
         </div>
 
-        {/* Tabs */}
         <div className="flex border-b bg-gray-50 shrink-0">
           {['basic', 'location', 'schedule'].map(tab => (
-            <button key={tab} type="button" onClick={() => setActiveTab(tab)} className={`flex-1 py-3 font-medium border-b-2 ${activeTab === tab ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>
-              {tab === 'basic' ? '기본 정보' : tab === 'location' ? `교육장소 (${locations.length})` : `일정 (${schedules.length})`}
+            <button key={tab} type="button" onClick={() => setActiveTab(tab)} className={`flex-1 py-3 font-medium border-b-2 ${activeTab===tab?'border-blue-600 text-blue-600':'border-transparent text-gray-500'}`}>
+              {tab === 'basic' ? '기본 정보' : tab === 'location' ? `교육장소 (${locations.length})` : '일정 (자동계산)'}
             </button>
           ))}
         </div>
@@ -188,7 +164,6 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
         <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
           <form id="unit-form" onSubmit={handleSubmit} className="space-y-6">
             
-            {/* --- 1. 기본 정보 탭 --- */}
             {activeTab === 'basic' && (
               <div className="space-y-6">
                 <section className="bg-white p-5 rounded-xl border shadow-sm">
@@ -196,10 +171,8 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
                   <div className="grid grid-cols-2 gap-4">
                     <InputField label="부대명 *" name="name" value={formData.name} onChange={handleChange} required />
                     <div>
-                      <label className="text-sm font-medium text-gray-700">군 구분 *</label>
-                      <select name="unitType" value={formData.unitType} onChange={handleChange} className="w-full mt-1 p-2 border rounded-lg">
-                        <option value="Army">육군</option><option value="Navy">해군</option><option value="AirForce">공군</option><option value="Marine">해병대</option>
-                      </select>
+                      <label className="text-sm font-medium">군 구분 *</label>
+                      <select name="unitType" value={formData.unitType} onChange={handleChange} className="w-full mt-1 p-2 border rounded"><option value="Army">육군</option><option value="Navy">해군</option><option value="AirForce">공군</option><option value="Marine">해병대</option></select>
                     </div>
                     <InputField label="광역" name="wideArea" value={formData.wideArea} onChange={handleChange} />
                     <InputField label="지역" name="region" value={formData.region} onChange={handleChange} />
@@ -208,7 +181,7 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
                 </section>
 
                 <section className="bg-white p-5 rounded-xl border shadow-sm">
-                  <h3 className="font-bold mb-4">⏰ 일정 및 시간</h3>
+                  <h3 className="font-bold mb-4">⏰ 일정 관리</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <InputField type="date" label="교육 시작 *" name="educationStart" value={formData.educationStart} onChange={handleChange} required />
                     <InputField type="date" label="교육 종료 *" name="educationEnd" value={formData.educationEnd} onChange={handleChange} required />
@@ -230,7 +203,7 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
                       </div>
                     </div>
 
-                    <div className="col-span-2 border-t my-2"></div>
+                    <div className="col-span-2 border-t my-2" />
                     <InputField type="time" label="근무 시작 *" name="workStartTime" value={formData.workStartTime} onChange={handleChange} required />
                     <InputField type="time" label="근무 종료 *" name="workEndTime" value={formData.workEndTime} onChange={handleChange} required />
                     <InputField type="time" label="점심 시작 *" name="lunchStartTime" value={formData.lunchStartTime} onChange={handleChange} required />
@@ -239,7 +212,7 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
                 </section>
 
                 <section className="bg-white p-5 rounded-xl border shadow-sm">
-                  <h3 className="font-bold mb-4">📞 담당자</h3>
+                  <h3 className="font-bold mb-4">📞 담당자 정보</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <InputField label="이름 *" name="officerName" value={formData.officerName} onChange={handleChange} required />
                     <InputField label="연락처 *" name="officerPhone" value={formData.officerPhone} onChange={handleChange} required />
@@ -249,14 +222,12 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
               </div>
             )}
 
-            {/* --- 2. 교육 장소 탭 (모든 필드 구현) --- */}
             {activeTab === 'location' && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-sm font-bold text-gray-700">총 {locations.length}개</span>
                   <Button type="button" onClick={addLocation} size="small">+ 장소 추가</Button>
                 </div>
-                
                 {locations.map((loc, idx) => (
                   <div key={idx} className="bg-white p-5 rounded-xl border shadow-sm relative group">
                     <button type="button" onClick={() => removeLocation(idx)} className="absolute top-4 right-4 text-red-400 hover:text-red-600 font-bold">삭제</button>
@@ -277,29 +248,28 @@ export const UnitDetailDrawer = ({ isOpen, onClose, unit: initialUnit, onSave, o
                       <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={loc.allowsPhoneBeforeAfter} onChange={(e) => updateLocation(idx, 'allowsPhoneBeforeAfter', e.target.checked)} /> 휴대폰 불출</label>
                     </div>
                     
-                    <InputField label="특이사항(비고)" value={loc.note} onChange={(e) => updateLocation(idx, 'note', e.target.value)} placeholder="특이사항을 입력하세요" />
+                    <InputField label="특이사항(비고)" value={loc.note} onChange={(e) => updateLocation(idx, 'note', e.target.value)} />
                   </div>
                 ))}
               </div>
             )}
 
-            {/* --- 3. 일정 탭 --- */}
             {activeTab === 'schedule' && (
                <div className="space-y-4">
                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-sm font-bold text-gray-700">총 {schedules.length}일</span>
-                    <Button type="button" onClick={addSchedule} size="small">+ 날짜 추가</Button>
+                    <span className="text-sm font-bold text-gray-700">총 {schedules.length}일 (자동 계산됨)</span>
                  </div>
                  <div className="bg-white rounded-xl border border-gray-200 divide-y">
                    {schedules.map((sch, idx) => (
                      <div key={idx} className="p-3 flex items-center gap-3">
                        <span className="text-gray-400 text-sm font-mono w-6">{idx + 1}.</span>
-                       <input type="date" className="border p-2 rounded flex-1" value={toDateValue(sch.date)} onChange={(e) => updateSchedule(idx, e.target.value)} />
-                       <button type="button" onClick={() => removeSchedule(idx)} className="text-red-500 hover:bg-red-50 px-2 rounded">삭제</button>
+                       {/* 보여주기 전용 (수정 불가) */}
+                       <div className="flex-1 font-medium text-gray-700">{toDateValue(sch.date)}</div>
                      </div>
                    ))}
-                   {schedules.length === 0 && <div className="p-6 text-center text-gray-400">등록된 일정이 없습니다.</div>}
+                   {schedules.length === 0 && <div className="p-6 text-center text-gray-400">일정이 없습니다. 기간을 설정해주세요.</div>}
                  </div>
+                 <p className="text-sm text-gray-500 mt-2 text-center">※ 일정은 '기본 정보' 탭의 기간 및 불가일자에 따라 자동 생성됩니다.</p>
                </div>
             )}
           </form>

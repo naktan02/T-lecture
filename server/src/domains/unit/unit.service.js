@@ -25,26 +25,36 @@ class UnitService {
     return unit;
   }
 
-  // 3. 신규 등록
+  // 3. 신규 등록 (일정 자동 계산 적용)
   async registerSingleUnit(rawData) {
     const unitData = this._extractBasicInfo(rawData);
+    const excludedDates = rawData.excludedDates || [];
+    
+    // ✅ [추가] 일정 자동 계산
+    const schedules = this._calculateSchedules(unitData.educationStart, unitData.educationEnd, excludedDates);
+
     return await unitRepository.createUnitWithNested(
       unitData,
       rawData.trainingLocations || [],
-      rawData.schedules || [],
-      rawData.excludedDates || []
+      schedules, // 자동 계산된 일정 전달
+      excludedDates
     );
   }
 
-  // 4. 정보 수정
+  // 4. 정보 수정 (일정 자동 계산 적용)
   async modifyUnitBasicInfo(id, rawData) {
     const unitData = this._extractBasicInfo(rawData);
+    const excludedDates = rawData.excludedDates || [];
+
+    // ✅ [추가] 일정 자동 계산 (수정 시에도 기간/불가일이 바뀌면 일정 재계산)
+    const schedules = this._calculateSchedules(unitData.educationStart, unitData.educationEnd, excludedDates);
+
     return await unitRepository.updateUnitWithNested(
       id,
       unitData,
-      rawData.trainingLocations,
-      rawData.schedules,
-      rawData.excludedDates
+      rawData.trainingLocations || [],
+      schedules, // 자동 계산된 일정 전달
+      excludedDates
     );
   }
 
@@ -61,7 +71,39 @@ class UnitService {
     return await unitRepository.deleteManyUnits(ids);
   }
 
-  // Helper
+  // --- Helpers ---
+
+  // ✅ [신규] 일정 자동 계산 로직
+  _calculateSchedules(start, end, excludedDates) {
+    if (!start || !end) return [];
+    
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    
+    // 불가일자 문자열 리스트 (YYYY-MM-DD)
+    const excludedSet = new Set(
+      (excludedDates || []).map(d => {
+        const dateObj = d.date ? new Date(d.date) : new Date(d); // 객체({date:..}) or 날짜값 처리
+        return !isNaN(dateObj) ? dateObj.toISOString().split('T')[0] : null;
+      }).filter(Boolean)
+    );
+
+    const schedules = [];
+    let current = new Date(startDate);
+
+    // 시작일부터 종료일까지 하루씩 증가
+    while (current <= endDate) {
+      const dateStr = current.toISOString().split('T')[0];
+      
+      // 불가일에 포함되지 않으면 일정 추가
+      if (!excludedSet.has(dateStr)) {
+        schedules.push({ date: new Date(current) });
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    return schedules;
+  }
+
   _extractBasicInfo(rawData) {
     const updateData = {};
     const allow = ['name', 'unitType', 'wideArea', 'region', 'addressDetail', 'officerName', 'officerPhone', 'officerEmail', 'lat', 'lng'];

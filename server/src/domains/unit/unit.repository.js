@@ -2,136 +2,102 @@
 const prisma = require('../../libs/prisma');
 
 class UnitRepository {
-  /**
-   * 1. 목록 조회
-   */
+  // 1. 목록 조회
   async findMany(where, skip, take) {
     return prisma.unit.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { id: 'desc' },
-      include: {
-        trainingLocations: true, // 목록에 표시할 정보
-      }
+      where, skip, take, orderBy: { id: 'desc' },
+      include: { trainingLocations: true }
     });
   }
 
-  /**
-   * 2. 전체 개수 조회
-   */
-  async count(where) {
-    return prisma.unit.count({ where });
-  }
+  // 2. 개수 조회
+  async count(where) { return prisma.unit.count({ where }); }
 
-  /**
-   * 3. 상세 조회
-   */
+  // 3. 상세 조회 (✅ excludedDates 포함 확인)
   async findUnitById(id) {
     return prisma.unit.findUnique({
       where: { id: Number(id) },
       include: {
         trainingLocations: true,
         schedules: { orderBy: { date: 'asc' } },
-        excludedDates: { orderBy: { date: 'asc' } },
+        excludedDates: { orderBy: { date: 'asc' } }, 
       },
     });
   }
 
-  /**
-   * 4. 통합 등록 (신규) - ID 제거 로직 추가
-   */
+  // 4. 등록 (ID 제거 로직 포함)
   async createUnitWithNested(unitData, locations, schedules, excludedDates) {
-    // 중첩 데이터 생성 시 id 필드가 있으면 오류가 발생하므로 제거하고 매핑
-    const cleanLocations = (locations || []).map(({ id, unitId, ...rest }) => ({
-      ...rest,
-      plannedCount: Number(rest.plannedCount || 0),
-      instructorsNumbers: Number(rest.instructorsNumbers || 0),
-      hasInstructorLounge: Boolean(rest.hasInstructorLounge),
-      hasWomenRestroom: Boolean(rest.hasWomenRestroom),
-      hasCateredMeals: Boolean(rest.hasCateredMeals),
-      hasHallLodging: Boolean(rest.hasHallLodging),
-      allowsPhoneBeforeAfter: Boolean(rest.allowsPhoneBeforeAfter),
-    }));
-
-    const cleanSchedules = (schedules || []).map(({ id, unitId, ...rest }) => ({
-      ...rest,
-      date: new Date(rest.date)
-    }));
-
-    const cleanExcluded = (excludedDates || []).map(({ id, unitId, ...rest }) => ({
-      ...rest,
-      date: new Date(rest.date)
+    // id 제거 헬퍼
+    const clean = (arr) => (arr || []).map(({ id, unitId, ...rest }) => ({
+        ...rest,
+        // 숫자형 변환 안전장치
+        plannedCount: rest.plannedCount ? Number(rest.plannedCount) : 0,
+        instructorsNumbers: rest.instructorsNumbers ? Number(rest.instructorsNumbers) : 0
     }));
 
     return prisma.unit.create({
       data: {
         ...unitData,
-        trainingLocations: { create: cleanLocations },
-        schedules: { create: cleanSchedules },
-        excludedDates: { create: cleanExcluded },
+        trainingLocations: { create: clean(locations) },
+        schedules: { create: clean(schedules) },
+        excludedDates: { create: clean(excludedDates) },
       },
       include: { trainingLocations: true, schedules: true, excludedDates: true }
     });
   }
 
-  /**
-   * 5. 통합 수정
-   */
+  // 5. 수정 (✅ ID 충돌 방지 로직 강화)
   async updateUnitWithNested(id, unitData, locations, schedules, excludedDates) {
     return prisma.$transaction(async (tx) => {
       const unitId = Number(id);
 
-      // (1) 기본 정보 업데이트
-      await tx.unit.update({
-        where: { id: unitId },
-        data: unitData,
-      });
+      // (1) 기본 정보
+      await tx.unit.update({ where: { id: unitId }, data: unitData });
 
-      // (2) 불가일자 (전체 삭제 후 재생성)
+      // (2) 불가일자 (전체 삭제 후 재생성 - 가장 안전)
       if (excludedDates) {
         await tx.unitExcludedDate.deleteMany({ where: { unitId } });
         if (excludedDates.length > 0) {
-          const cleanExcluded = excludedDates.map(({ id, ...rest }) => ({
-            unitId,
-            date: new Date(rest.date)
-          }));
-          await tx.unitExcludedDate.createMany({ data: cleanExcluded });
+          await tx.unitExcludedDate.createMany({
+            data: excludedDates.map(d => ({ unitId, date: new Date(d.date) }))
+          });
         }
       }
 
-      // (3) 일정 (ID가 있으면 업데이트, 없으면 생성, 목록에 없으면 삭제)
+      // (3) 일정 (전체 삭제 후 재생성 - 자동 계산 로직이므로 이게 더 적합)
       if (schedules) {
-        const keepIds = schedules.filter(s => s.id).map(s => Number(s.id));
-        await tx.unitSchedule.deleteMany({
-          where: { unitId, id: { notIn: keepIds } }
-        });
-
-        for (const sch of schedules) {
-          const dateVal = new Date(sch.date);
-          if (sch.id) {
-            await tx.unitSchedule.update({ where: { id: Number(sch.id) }, data: { date: dateVal } });
-          } else {
-            await tx.unitSchedule.create({ data: { unitId, date: dateVal } });
-          }
+        await tx.unitSchedule.deleteMany({ where: { unitId } });
+        if (schedules.length > 0) {
+          await tx.unitSchedule.createMany({
+            data: schedules.map(s => ({ unitId, date: new Date(s.date) }))
+          });
         }
       }
 
-      // (4) 교육장소
+      // (4) 교육장소 (기존 ID 유지하면서 업데이트)
       if (locations) {
-        const keepLocIds = locations.filter(l => l.id).map(l => Number(l.id));
-        await tx.trainingLocation.deleteMany({
-          where: { unitId, id: { notIn: keepLocIds } }
-        });
+        // 현재 DB에 있는 ID 목록
+        const currentLocs = await tx.trainingLocation.findMany({ where: { unitId }, select: { id: true } });
+        const currentIds = currentLocs.map(l => l.id);
+        
+        // 요청받은 ID 목록
+        const incomingIds = locations.filter(l => l.id).map(l => Number(l.id));
 
+        // 삭제할 ID (DB에는 있는데 요청엔 없는 것)
+        const toDelete = currentIds.filter(cid => !incomingIds.includes(cid));
+        if (toDelete.length > 0) {
+          await tx.trainingLocation.deleteMany({ where: { id: { in: toDelete } } });
+        }
+
+        // Upsert (ID 있으면 update, 없으면 create)
         for (const loc of locations) {
-          const { id: locId, unitId: _, ...rest } = loc; // id와 unitId 제외하고 데이터 추출
-          
+          const { id: locId, unitId: _, ...rest } = loc; // id, unitId 제외
           const data = {
             ...rest,
-            unitId, // FK 명시
+            unitId,
             plannedCount: Number(rest.plannedCount || 0),
             instructorsNumbers: Number(rest.instructorsNumbers || 0),
+            // Boolean 변환
             hasInstructorLounge: Boolean(rest.hasInstructorLounge),
             hasWomenRestroom: Boolean(rest.hasWomenRestroom),
             hasCateredMeals: Boolean(rest.hasCateredMeals),
@@ -139,7 +105,7 @@ class UnitRepository {
             allowsPhoneBeforeAfter: Boolean(rest.allowsPhoneBeforeAfter),
           };
 
-          if (locId) {
+          if (locId && currentIds.includes(Number(locId))) {
             await tx.trainingLocation.update({ where: { id: Number(locId) }, data });
           } else {
             await tx.trainingLocation.create({ data });
@@ -154,15 +120,12 @@ class UnitRepository {
     });
   }
 
-  /**
-   * 6. 엑셀 일괄 저장
-   */
+  // 6. 엑셀 등록
   async insertManyUnits(unitsData) {
     return prisma.$transaction(
       unitsData.map(unit => prisma.unit.create({
         data: {
           ...unit,
-          // 엑셀 매퍼에서 이미 구조를 잡아둠
           trainingLocations: { create: unit.trainingLocations },
           schedules: { create: unit.schedules },
           excludedDates: { create: unit.excludedDates }
