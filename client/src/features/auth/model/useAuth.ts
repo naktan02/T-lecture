@@ -2,8 +2,8 @@
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate, NavigateFunction } from 'react-router-dom';
 import { login as loginApi, logout as logoutApi, LoginPayload, LoginResponse } from '../authApi';
-import { USER_ROLES, ADMIN_LEVELS } from '../../../shared/constants/roles';
-import { logger } from '../../../shared/utils/logger';
+import { USER_ROLES, ADMIN_LEVELS } from '../../../shared/constants';
+import { logger } from '../../../shared/utils';
 
 interface User {
   id: number;

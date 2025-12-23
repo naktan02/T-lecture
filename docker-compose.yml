@@ -3,10 +3,13 @@ services:
     image: postgres:15-alpine
     container_name: t-lecture-db
     ports:
-      - '5432:5432'
+      - "5432:5432"
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: 1234
       POSTGRES_DB: Project
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data
+      - tlecture_pgdata:/var/lib/postgresql/data
+
+volumes:
+  tlecture_pgdata:

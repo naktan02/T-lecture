@@ -1,6 +1,6 @@
 // src/pages/admin/SuperAdminPage.tsx
 import { SuperAdminHeader } from '../../features/admin/ui/headers/SuperAdminHeader';
-import { ContentWrapper } from '../../shared/ui/ContentWrapper';
+import { ContentWrapper } from '../../shared/ui';
 import { SuperAdminDashboard } from '../../features/admin/ui/SuperAdminDashboard';
 import { useAuthGuard } from '../../features/auth/model/useAuthGuard';
 

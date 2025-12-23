@@ -1,6 +1,6 @@
 // src/features/admin/ui/headers/SuperAdminHeader.tsx
 import React from 'react';
-import { CommonHeader } from '../../../../shared/ui/CommonHeader';
+import { CommonHeader } from '../../../../shared/ui';
 import { useCurrentUser } from '../../../auth/model/useCurrentUser';
 
 interface NavLink {

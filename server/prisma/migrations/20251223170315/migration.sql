@@ -149,6 +149,15 @@ CREATE TABLE "부대" (
 );
 
 -- CreateTable
+CREATE TABLE "부대_교육불가일자" (
+    "id" SERIAL NOT NULL,
+    "부대id" INTEGER NOT NULL,
+    "날짜" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "부대_교육불가일자_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "교육장소" (
     "id" SERIAL NOT NULL,
     "부대id" INTEGER NOT NULL,
@@ -302,6 +311,9 @@ ALTER TABLE "강사-부대 거리" ADD CONSTRAINT "강사-부대 거리_userId_f
 
 -- AddForeignKey
 ALTER TABLE "강사-부대 거리" ADD CONSTRAINT "강사-부대 거리_부대id_fkey" FOREIGN KEY ("부대id") REFERENCES "부대"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "부대_교육불가일자" ADD CONSTRAINT "부대_교육불가일자_부대id_fkey" FOREIGN KEY ("부대id") REFERENCES "부대"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "교육장소" ADD CONSTRAINT "교육장소_부대id_fkey" FOREIGN KEY ("부대id") REFERENCES "부대"("id") ON DELETE CASCADE ON UPDATE CASCADE;

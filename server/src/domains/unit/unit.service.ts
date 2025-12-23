@@ -8,8 +8,16 @@ interface ExcelRow {
   [key: string]: any;
 }
 
+interface ScheduleData {
+  date: Date | string;
+}
+
 class UnitService {
-  // 부대 단건 등록
+  // --- 등록 ---
+
+  /**
+   * 부대 단건 등록
+   */
   async registerSingleUnit(rawData: any) {
     try {
       const cleanData = toCreateUnitDto(rawData);
@@ -22,13 +30,17 @@ class UnitService {
     }
   }
 
-  // 엑셀 파일 처리 및 일괄 등록
+  /**
+   * 엑셀 파일 처리 및 일괄 등록
+   */
   async processExcelDataAndRegisterUnits(rawRows: ExcelRow[]) {
     const rawDataList = rawRows.map(excelRowToRawUnit);
     return await this.registerMultipleUnits(rawDataList);
   }
 
-  // 일괄 등록 (내부 로직)
+  /**
+   * 일괄 등록 (내부 로직)
+   */
   async registerMultipleUnits(dataArray: any[]) {
     if (!Array.isArray(dataArray) || dataArray.length === 0) {
       throw new AppError('등록할 데이터가 없습니다.', 400, 'VALIDATION_ERROR');
@@ -46,7 +58,11 @@ class UnitService {
     }
   }
 
-  // 목록 조회
+  // --- 조회 ---
+
+  /**
+   * 목록 조회
+   */
   async searchUnitList(query: any) {
     const paging = buildPaging(query);
     const where = buildUnitWhere(query);
@@ -68,7 +84,9 @@ class UnitService {
     };
   }
 
-  // 부대 상세 정보 조회
+  /**
+   * 부대 상세 정보 조회
+   */
   async getUnitDetailWithSchedules(id: number | string) {
     const unit = await unitRepository.findUnitWithRelations(id);
     if (!unit) {
@@ -77,7 +95,11 @@ class UnitService {
     return unit;
   }
 
-  // 부대 기본 정보 수정
+  // --- 수정 ---
+
+  /**
+   * 부대 기본 정보 수정
+   */
   async modifyUnitBasicInfo(id: number | string, rawData: any) {
     const updateData: Record<string, any> = {};
 
@@ -95,7 +117,9 @@ class UnitService {
     return await unitRepository.updateUnitById(id, updateData);
   }
 
-  // 부대 담당자 정보 수정
+  /**
+   * 부대 담당자 정보 수정
+   */
   async modifyUnitContactInfo(id: number | string, rawData: any) {
     const updateData = {
       officerName: rawData.officerName,
@@ -105,7 +129,11 @@ class UnitService {
     return await unitRepository.updateUnitById(id, updateData);
   }
 
-  // 부대 일정 추가
+  // --- 일정 관리 ---
+
+  /**
+   * 부대 일정 추가
+   */
   async addScheduleToUnit(unitId: number | string, dateStr: string) {
     const unit = await unitRepository.findUnitWithRelations(unitId);
     if (!unit) {
@@ -128,7 +156,9 @@ class UnitService {
     return await unitRepository.insertUnitSchedule(unitId, dateOnly);
   }
 
-  // 특정 교육 일정 삭제
+  /**
+   * 특정 교육 일정 삭제
+   */
   async removeScheduleFromUnit(scheduleId: number | string) {
     if (!scheduleId || isNaN(Number(scheduleId))) {
       throw new AppError('유효하지 않은 일정 ID입니다.', 400, 'VALIDATION_ERROR');
@@ -137,9 +167,56 @@ class UnitService {
     return await unitRepository.deleteUnitSchedule(scheduleId);
   }
 
-  // 부대 영구 삭제
+  // --- 삭제 ---
+
+  /**
+   * 부대 영구 삭제
+   */
   async removeUnitPermanently(id: number | string) {
     return await unitRepository.deleteUnitById(id);
+  }
+
+  /**
+   * 부대 다건 일괄 삭제 (JS 기능 유지)
+   */
+  async removeMultipleUnits(ids: (number | string)[]) {
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new AppError('삭제할 부대 ID가 없습니다.', 400, 'VALIDATION_ERROR');
+    }
+    return await unitRepository.deleteManyUnits(ids);
+  }
+
+  // --- 헬퍼 (JS에서 이식) ---
+
+  /**
+   * 교육 기간에서 일정 자동 계산
+   */
+  _calculateSchedules(
+    start: string | Date | undefined,
+    end: string | Date | undefined,
+    excludedDates: ScheduleData[] | undefined,
+  ): ScheduleData[] {
+    if (!start || !end) return [];
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    const excludedSet = new Set(
+      (excludedDates || [])
+        .map((d) => {
+          const v = d.date;
+          const dateObj = new Date(v);
+          return !isNaN(dateObj.getTime()) ? dateObj.toISOString().split('T')[0] : null;
+        })
+        .filter(Boolean),
+    );
+
+    const schedules: ScheduleData[] = [];
+    const current = new Date(startDate);
+    while (current <= endDate) {
+      const dateStr = current.toISOString().split('T')[0];
+      if (!excludedSet.has(dateStr)) schedules.push({ date: new Date(current) });
+      current.setDate(current.getDate() + 1);
+    }
+    return schedules;
   }
 }
 

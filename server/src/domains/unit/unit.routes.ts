@@ -19,6 +19,9 @@ router.post('/', unitController.registerSingleUnit);
 // 엑셀 파일 등록
 router.post('/upload/excel', upload.single('file'), unitController.uploadExcelAndRegisterUnits);
 
+// ✅ 부대 일괄 삭제 (body에 { ids: [...] } 전달) - 반드시 /:id 앞에 위치해야 함
+router.delete('/batch/delete', unitController.deleteMultipleUnits);
+
 // 부대 상세 조회
 router.get('/:id', unitController.getUnitDetail);
 

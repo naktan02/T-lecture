@@ -4,6 +4,7 @@ import React, { ChangeEvent } from 'react';
 interface InputFieldProps {
   label?: string;
   type?: string;
+  name?: string; // ✅ Added for form field identification
   value: string;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
@@ -15,6 +16,7 @@ interface InputFieldProps {
 export const InputField: React.FC<InputFieldProps> = ({
   label,
   type = 'text',
+  name,
   value,
   onChange,
   placeholder,
@@ -32,6 +34,7 @@ export const InputField: React.FC<InputFieldProps> = ({
       <div className="flex gap-2">
         <input
           type={type}
+          name={name}
           value={value}
           onChange={onChange}
           placeholder={placeholder}

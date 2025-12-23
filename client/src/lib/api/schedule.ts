@@ -40,7 +40,7 @@ export const getMyAvailability = async (): Promise<AvailabilityDate[]> => {
 }; 
 */
 
-import { logger } from '../../shared/utils/logger';
+import { logger } from '../../shared/utils';
 
 // [테스트용 가짜 API] 백엔드 없이 화면만 볼 때 사용하세요.
 export const postAvailability = async (dates: string[]): Promise<ScheduleResponse> => {

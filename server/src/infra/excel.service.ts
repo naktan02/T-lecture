@@ -9,11 +9,13 @@ class ExcelService {
       throw new AppError('파일 데이터가 없습니다.', 400, 'INVALID_FILE_DATA');
     }
 
-    const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
+    // ✅ cellDates: true for proper date parsing (from JS version)
+    const workbook = xlsx.read(fileBuffer, { type: 'buffer', cellDates: true });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
 
-    const rawRows = xlsx.utils.sheet_to_json(sheet) as Record<string, unknown>[];
+    // defval: '' for empty cell handling (from JS version)
+    const rawRows = xlsx.utils.sheet_to_json(sheet, { defval: '' }) as Record<string, unknown>[];
 
     if (rawRows.length === 0) {
       throw new AppError('엑셀 파일에 데이터가 없습니다.', 400, 'EMPTY_EXCEL_FILE');

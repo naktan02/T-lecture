@@ -97,6 +97,17 @@ export const deleteUnit = asyncHandler(async (req: Request, res: Response) => {
   res.status(204).send();
 });
 
+// ✅ 부대 일괄 삭제 (JS 기능 유지)
+export const deleteMultipleUnits = asyncHandler(async (req: Request, res: Response) => {
+  const { ids } = req.body;
+  const result = await unitService.removeMultipleUnits(ids);
+
+  res.status(200).json({
+    result: 'Success',
+    message: `${result.count}개의 부대가 삭제되었습니다.`,
+  });
+});
+
 // CommonJS 호환
 module.exports = {
   getUnitList,
@@ -108,4 +119,5 @@ module.exports = {
   addSchedule,
   removeSchedule,
   deleteUnit,
+  deleteMultipleUnits,
 };

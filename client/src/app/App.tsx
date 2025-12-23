@@ -12,6 +12,7 @@ import AdminPage from '../pages/admin/AdminPage';
 import UserMainHome from '../pages/user/UserMainPage';
 import SuperAdminPage from '../pages/admin/SuperAdminPage';
 import AssignmentPage from '../pages/admin/AssignmentPage';
+import UnitPage from '../pages/admin/UnitPage';
 
 function App(): ReactElement {
   return (
@@ -31,6 +32,9 @@ function App(): ReactElement {
 
           {/* 슈퍼 관리자 */}
           <Route path="/admin/super" element={<SuperAdminPage />} />
+
+          {/* 부대 관리 */}
+          <Route path="/admin/units" element={<UnitPage />} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/login" replace />} />

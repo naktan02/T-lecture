@@ -1,6 +1,6 @@
 // src/pages/user/UserMainPage.tsx
 import { UserHeader } from '../../features/user/ui/headers/UserHeader';
-import { ContentWrapper } from '../../shared/ui/ContentWrapper';
+import { ContentWrapper } from '../../shared/ui';
 import { UserDashboard } from '../../features/user/ui/userMainhome';
 import { useAuthGuard } from '../../features/auth/model/useAuthGuard';
 

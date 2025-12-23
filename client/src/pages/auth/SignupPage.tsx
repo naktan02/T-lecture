@@ -1,6 +1,6 @@
 // src/pages/auth/SignupPage.tsx
 import { RegisterForm } from '../../features/auth/ui/RegisterForm';
-import { ContentWrapper } from '../../shared/ui/ContentWrapper';
+import { ContentWrapper } from '../../shared/ui';
 import { useAuthGuard } from '../../features/auth/model/useAuthGuard';
 
 const SignupPage: React.FC = () => {

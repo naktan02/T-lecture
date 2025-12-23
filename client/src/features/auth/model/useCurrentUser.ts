@@ -1,6 +1,6 @@
 // client/src/features/auth/model/useCurrentUser.ts
 import { useState, useEffect } from 'react';
-import { logger } from '../../../shared/utils/logger';
+import { logger } from '../../../shared/utils';
 
 interface StoredUser {
   name?: string;
