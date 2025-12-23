@@ -1,0 +1,76 @@
+// server/src/domains/metadata/metadata.repository.ts
+import prisma from '../../libs/prisma';
+
+interface CategoryItem {
+  id: string;
+  label: string;
+}
+
+class MetadataRepository {
+  // 덕목(강의) 조회
+  async findVirtues() {
+    return prisma.virtue.findMany({
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  // 팀 조회
+  async findTeams() {
+    return prisma.team.findMany({
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  // 유저 카테고리 조회 (ENUM → 하드코딩 반환)
+  async findCategories(): Promise<CategoryItem[]> {
+    return [
+      { id: 'Main', label: '주강사' },
+      { id: 'Co', label: '부강사' },
+      { id: 'Assistant', label: '보조강사' },
+      { id: 'Practicum', label: '실습강사' },
+    ];
+  }
+
+  // 메시지 템플릿 전체 조회
+  async findMessageTemplates() {
+    return prisma.messageTemplate.findMany({
+      orderBy: { key: 'asc' },
+    });
+  }
+
+  // 메시지 템플릿 단건 조회
+  async findTemplateByKey(key: string) {
+    return prisma.messageTemplate.findUnique({
+      where: { key },
+    });
+  }
+
+  // 팀 수정
+  async updateTeam(id: number, name: string) {
+    return prisma.team.update({
+      where: { id },
+      data: { name },
+    });
+  }
+
+  // 덕목 수정
+  async updateVirtue(id: number, name: string) {
+    return prisma.virtue.update({
+      where: { id },
+      data: { name },
+    });
+  }
+
+  // 메시지 템플릿 수정
+  async updateMessageTemplate(key: string, title: string, body: string) {
+    return prisma.messageTemplate.update({
+      where: { key },
+      data: { title, body },
+    });
+  }
+}
+
+export default new MetadataRepository();
+
+// CommonJS 호환
+module.exports = new MetadataRepository();
