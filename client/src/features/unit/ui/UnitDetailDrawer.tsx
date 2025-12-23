@@ -18,11 +18,7 @@ type UnitType = 'Army' | 'Navy';
 interface Schedule {
   id?: number;
   date: string; // YYYY-MM-DD (UI용)
-}
-
-interface ExcludedDate {
-  id?: number | null;
-  date: string; // YYYY-MM-DD (UI용)
+  isExcluded: boolean; // 교육불가 여부
 }
 
 interface TrainingLocation {
@@ -64,8 +60,7 @@ interface Unit {
   lunchEndTime?: string;
 
   trainingLocations?: TrainingLocation[] | any[];
-  excludedDates?: { id?: number | null; date?: string }[] | any[];
-  schedules?: { id?: number; date?: string }[] | any[];
+  schedules?: { id?: number; date?: string; isExcluded?: boolean }[] | any[];
 }
 
 // 서버 응답이 { data: { result: 'Success', data: Unit } } 형태라고 가정
@@ -189,7 +184,6 @@ export const UnitDetailDrawer = ({
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM);
 
   const [locations, setLocations] = useState<TrainingLocation[]>([]);
-  const [excludedDates, setExcludedDates] = useState<ExcludedDate[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
 
   const unitId = initialUnit?.id;
@@ -217,7 +211,6 @@ export const UnitDetailDrawer = ({
       // 신규 등록 모드
       setFormData({ ...INITIAL_FORM });
       setLocations([]);
-      setExcludedDates([]);
       setSchedules([]);
       setActiveTab('basic');
       return;
@@ -268,24 +261,13 @@ export const UnitDetailDrawer = ({
       setLocations([]);
     }
 
-    // excludedDates
-    if (Array.isArray(target.excludedDates)) {
-      setExcludedDates(
-        target.excludedDates.map((d: any) => ({
-          id: d?.id ?? null,
-          date: toDateValue(d?.date),
-        })),
-      );
-    } else {
-      setExcludedDates([]);
-    }
-
-    // schedules (조회 전용)
+    // schedules (isExcluded 포함)
     if (Array.isArray(target.schedules)) {
       setSchedules(
         target.schedules.map((s: any) => ({
           id: s?.id,
           date: toDateValue(s?.date),
+          isExcluded: Boolean(s?.isExcluded),
         })),
       );
     } else {
@@ -301,19 +283,14 @@ export const UnitDetailDrawer = ({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // excludedDates
-  const addExcludedDate = () => setExcludedDates((prev) => [...prev, { id: null, date: '' }]);
-
-  const updateExcludedDate = (i: number, v: string) => {
-    setExcludedDates((prev) => {
+  // schedules - isExcluded 토글
+  const toggleScheduleExcluded = (idx: number) => {
+    setSchedules((prev) => {
       const n = [...prev];
-      n[i] = { ...n[i], date: v };
+      n[idx] = { ...n[idx], isExcluded: !n[idx].isExcluded };
       return n;
     });
   };
-
-  const removeExcludedDate = (i: number) =>
-    setExcludedDates((prev) => prev.filter((_, idx) => idx !== i));
 
   // locations
   const addLocation = () => setLocations((prev) => [...prev, createEmptyLocation()]);
@@ -367,11 +344,13 @@ export const UnitDetailDrawer = ({
 
       trainingLocations: locationsPayload,
 
-      excludedDates: excludedDates
-        .filter((d) => d.date)
-        .map((d) => ({ id: d.id, date: makeDateISO(d.date) })),
-
-      schedules: [], // ✅ 서버 자동 생성이면 빈 배열 유지
+      schedules: schedules
+        .filter((s) => s.date)
+        .map((s) => ({
+          id: s.id,
+          date: makeDateISO(s.date),
+          isExcluded: s.isExcluded,
+        })),
     };
 
     try {
@@ -492,39 +471,6 @@ export const UnitDetailDrawer = ({
                       onChange={handleChange}
                       required
                     />
-
-                    <div className="col-span-2 bg-red-50 p-4 rounded-lg border border-red-100">
-                      <div className="flex justify-between items-center mb-2">
-                        <label className="text-sm font-bold text-red-600">🚫 교육 불가 일자</label>
-                        <Button
-                          type="button"
-                          size="small"
-                          onClick={addExcludedDate}
-                          variant="outline"
-                          className="bg-white text-xs"
-                        >
-                          + 추가
-                        </Button>
-                      </div>
-
-                      {excludedDates.map((item, idx) => (
-                        <div key={idx} className="flex gap-2 mb-2 items-center">
-                          <input
-                            type="date"
-                            className="border p-2 rounded text-sm bg-white"
-                            value={item.date}
-                            onChange={(e) => updateExcludedDate(idx, e.target.value)}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeExcludedDate(idx)}
-                            className="text-red-500 px-2"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
-                    </div>
 
                     <div className="col-span-2 border-t my-2" />
 
@@ -670,19 +616,33 @@ export const UnitDetailDrawer = ({
                 {schedules.length > 0 ? (
                   <>
                     <div className="bg-blue-50 p-3 rounded text-center text-sm text-blue-800 mb-4">
-                      <b>📅 등록된 교육 일정 ({schedules.length}일)</b>
+                      <b>📅 등록된 교육 일정 ({schedules.filter((s) => !s.isExcluded).length}일)</b>
                       <br />
-                      기간 및 불가일자를 수정하고 저장하면 자동 갱신됩니다.
+                      <span className="text-red-600">
+                        🚫 교육불가: {schedules.filter((s) => s.isExcluded).length}일
+                      </span>
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {schedules.map((sch, idx) => (
                         <div
                           key={idx}
-                          className="bg-white border p-3 rounded text-center shadow-sm"
+                          className={`border p-3 rounded text-center shadow-sm cursor-pointer transition-colors ${
+                            sch.isExcluded
+                              ? 'bg-red-50 border-red-300'
+                              : 'bg-white hover:bg-blue-50'
+                          }`}
+                          onClick={() => toggleScheduleExcluded(idx)}
                         >
                           <div className="text-xs text-gray-400 mb-1">{idx + 1}일차</div>
-                          <div className="font-bold">{sch.date}</div>
+                          <div
+                            className={`font-bold ${sch.isExcluded ? 'text-red-500 line-through' : ''}`}
+                          >
+                            {sch.date}
+                          </div>
+                          <div className="text-xs mt-1">
+                            {sch.isExcluded ? '🚫 교육불가' : '✅ 교육가능'}
+                          </div>
                         </div>
                       ))}
                     </div>

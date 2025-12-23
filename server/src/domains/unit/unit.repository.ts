@@ -24,6 +24,7 @@ interface TrainingLocationData {
 
 interface ScheduleData {
   date: Date | string;
+  isExcluded?: boolean;
 }
 
 // 헬퍼
@@ -85,7 +86,6 @@ class UnitRepository {
       include: {
         trainingLocations: true,
         schedules: { orderBy: { date: 'asc' } },
-        excludedDates: { orderBy: { date: 'asc' } },
       },
     });
   }
@@ -112,7 +112,6 @@ class UnitRepository {
     unitData: Record<string, any>,
     locations: TrainingLocationData[],
     schedules: ScheduleData[],
-    excludedDates: ScheduleData[],
   ) {
     return prisma.unit.create({
       data: {
@@ -126,13 +125,13 @@ class UnitRepository {
           }),
         },
         schedules: {
-          create: (schedules || []).map((s) => ({ date: new Date(s.date) })),
-        },
-        excludedDates: {
-          create: (excludedDates || []).map((d) => ({ date: new Date(d.date) })),
+          create: (schedules || []).map((s) => ({
+            date: new Date(s.date),
+            isExcluded: s.isExcluded ?? false,
+          })),
         },
       },
-      include: { trainingLocations: true, schedules: true, excludedDates: true },
+      include: { trainingLocations: true, schedules: true },
     });
   }
 
@@ -169,7 +168,6 @@ class UnitRepository {
     unitData: Record<string, any>,
     locations: TrainingLocationData[] | undefined,
     schedules: ScheduleData[] | undefined,
-    excludedDates: ScheduleData[] | undefined,
   ) {
     return prisma.$transaction(async (tx) => {
       const unitId = Number(id);
@@ -201,25 +199,21 @@ class UnitRepository {
         }
       }
 
-      // Schedules (재생성)
+      // Schedules (재생성 - isExcluded 포함)
       if (schedules) {
         await tx.unitSchedule.deleteMany({ where: { unitId } });
         await tx.unitSchedule.createMany({
-          data: schedules.map((s) => ({ unitId, date: new Date(s.date) })),
-        });
-      }
-
-      // ExcludedDates (재생성)
-      if (excludedDates) {
-        await tx.unitExcludedDate.deleteMany({ where: { unitId } });
-        await tx.unitExcludedDate.createMany({
-          data: excludedDates.map((d) => ({ unitId, date: new Date(d.date) })),
+          data: schedules.map((s) => ({
+            unitId,
+            date: new Date(s.date),
+            isExcluded: s.isExcluded ?? false,
+          })),
         });
       }
 
       return tx.unit.findUnique({
         where: { id: unitId },
-        include: { trainingLocations: true, schedules: true, excludedDates: true },
+        include: { trainingLocations: true, schedules: true },
       });
     });
   }

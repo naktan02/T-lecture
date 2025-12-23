@@ -26,8 +26,7 @@ export interface UnitData {
   lunchStartTime?: string | null;
   lunchEndTime?: string | null;
   trainingLocations?: unknown[];
-  excludedDates?: unknown[];
-  schedules?: unknown[];
+  schedules?: { date?: string | null; isExcluded?: boolean }[];
   [key: string]: unknown;
 }
 

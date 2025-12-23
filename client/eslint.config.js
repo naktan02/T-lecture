@@ -9,7 +9,7 @@ import prettier from 'eslint-config-prettier';
 export default [
   // 무시할 것들 (앞에 둬도 됨)
   {
-    ignores: ['dist/**', 'build/**', 'node_modules/**'],
+    ignores: ['dist/**', 'build/**', 'node_modules/**', '**/*.d.ts'],
   },
 
   js.configs.recommended,
