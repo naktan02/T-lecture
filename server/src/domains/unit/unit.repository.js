@@ -7,9 +7,8 @@ const safeInt = (val) => {
   const num = Number(val);
   return isNaN(num) ? 0 : num;
 };
-
 const safeBool = (val) => {
-  if (val === true || val === 'true' || val === 'TRUE' || String(val).toUpperCase() === 'O') return true;
+  if (val === true || val === 'true' || String(val).toUpperCase() === 'O') return true;
   return false;
 };
 
@@ -25,14 +24,14 @@ class UnitRepository {
   // 2. 개수 조회
   async count(where) { return prisma.unit.count({ where }); }
 
-  // 3. 상세 조회 (✅ 일정, 불가일자 포함 필수)
+  // ✅ [필수] 상세 조회 시 일정(schedules) 포함
   async findUnitById(id) {
     return prisma.unit.findUnique({
       where: { id: Number(id) },
       include: {
         trainingLocations: true,
-        schedules: { orderBy: { date: 'asc' } }, // ✅ 일정 포함
-        excludedDates: { orderBy: { date: 'asc' } }, // ✅ 불가일자 포함
+        schedules: { orderBy: { date: 'asc' } }, // 이게 있어야 보입니다!
+        excludedDates: { orderBy: { date: 'asc' } },
       },
     });
   }
@@ -60,23 +59,16 @@ class UnitRepository {
   async updateUnitWithNested(id, unitData, locations, schedules, excludedDates) {
     return prisma.$transaction(async (tx) => {
       const unitId = Number(id);
-
-      // (1) 기본 정보
       await tx.unit.update({ where: { id: unitId }, data: unitData });
 
-      // (2) 교육장소 (ID 기반 스마트 업데이트)
+      // Locations
       if (locations) {
         const existing = await tx.trainingLocation.findMany({ where: { unitId }, select: { id: true } });
         const existingIds = existing.map(e => e.id);
         const incomingIds = locations.filter(l => l.id).map(l => Number(l.id));
+        
+        await tx.trainingLocation.deleteMany({ where: { unitId, id: { notIn: incomingIds } } }); // 삭제
 
-        // 삭제
-        const toDelete = existingIds.filter(dbId => !incomingIds.includes(dbId));
-        if (toDelete.length > 0) {
-          await tx.trainingLocation.deleteMany({ where: { id: { in: toDelete } } });
-        }
-
-        // 생성/수정
         for (const loc of locations) {
           const data = this._mapLocationData(loc, unitId);
           if (loc.id && existingIds.includes(Number(loc.id))) {
@@ -87,24 +79,20 @@ class UnitRepository {
         }
       }
 
-      // (3) 일정 (전체 교체)
+      // Schedules (재생성)
       if (schedules) {
         await tx.unitSchedule.deleteMany({ where: { unitId } });
-        if (schedules.length > 0) {
-          await tx.unitSchedule.createMany({
-            data: schedules.map(s => ({ unitId, date: new Date(s.date) }))
-          });
-        }
+        await tx.unitSchedule.createMany({
+          data: schedules.map(s => ({ unitId, date: new Date(s.date) }))
+        });
       }
 
-      // (4) 불가일자 (전체 교체)
+      // ExcludedDates (재생성)
       if (excludedDates) {
         await tx.unitExcludedDate.deleteMany({ where: { unitId } });
-        if (excludedDates.length > 0) {
-          await tx.unitExcludedDate.createMany({
-            data: excludedDates.map(d => ({ unitId, date: new Date(d.date) }))
-          });
-        }
+        await tx.unitExcludedDate.createMany({
+          data: excludedDates.map(d => ({ unitId, date: new Date(d.date) }))
+        });
       }
 
       return tx.unit.findUnique({
