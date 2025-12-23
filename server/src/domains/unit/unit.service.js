@@ -1,3 +1,4 @@
+// server/src/domains/unit/unit.service.js
 const unitRepository = require('./unit.repository');
 const { buildPaging, buildUnitWhere } = require('./unit.filters');
 const AppError = require('../../common/errors/AppError');
@@ -9,7 +10,7 @@ class UnitService {
     const where = buildUnitWhere(params);
 
     const [data, total] = await Promise.all([
-      unitRepository.findMany(where, skip, take), // ✅ Repository 메서드 호출
+      unitRepository.findMany(where, skip, take),
       unitRepository.count(where)
     ]);
 
@@ -47,17 +48,20 @@ class UnitService {
     );
   }
 
-  // 5. 엑셀 등록
+  // 5. 엑셀 일괄 등록
   async registerMultipleUnits(unitsList) {
-    if (!unitsList || unitsList.length === 0) throw new AppError('데이터 없음', 400);
+    if (!unitsList || unitsList.length === 0) throw new AppError('데이터가 없습니다.');
     return await unitRepository.insertManyUnits(unitsList);
   }
 
   // 6. 삭제
   async removeUnitPermanently(id) { return await unitRepository.deleteUnitById(id); }
-  async removeMultipleUnits(ids) { return await unitRepository.deleteManyUnits(ids); }
+  async removeMultipleUnits(ids) {
+    if (!ids || !ids.length) throw new AppError('ID 목록이 없습니다.');
+    return await unitRepository.deleteManyUnits(ids);
+  }
 
-  // [Helper] 데이터 추출 및 변환
+  // Helper
   _extractBasicInfo(rawData) {
     const updateData = {};
     const allow = ['name', 'unitType', 'wideArea', 'region', 'addressDetail', 'officerName', 'officerPhone', 'officerEmail', 'lat', 'lng'];
