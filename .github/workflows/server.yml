@@ -21,6 +21,10 @@ jobs:
       run:
         working-directory: server
 
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/t_lecture_test
+      DIRECT_URL: postgresql://test:test@localhost:5432/t_lecture_test
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4

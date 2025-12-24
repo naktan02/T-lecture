@@ -55,7 +55,7 @@ export const AssignmentWorkspace: React.FC = () => {
     dates: [],
   });
 
-  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleAutoAssignClick = () => {
     setShowAutoAssignConfirm(true);
