@@ -1,8 +1,7 @@
-// server/src/domains/user/services/user.admin.service.ts
 import adminRepository from '../repositories/user.admin.repository';
 import userRepository from '../repositories/user.repository';
 import AppError from '../../../common/errors/AppError';
-import { UserStatus, AdminLevel } from '@prisma/client';
+import { UserStatus, AdminLevel, Prisma, User, Instructor, Admin } from '@prisma/client';
 
 const ALLOWED_USER_STATUS = ['PENDING', 'APPROVED', 'RESTING', 'INACTIVE'] as const;
 
@@ -14,9 +13,11 @@ function parseBool(v: unknown): boolean {
 }
 
 // 응답 객체에서 password와 admin 정보를 제거하고, 강사 정보는 남깁니다.
-function mapUserForAdmin(user: any) {
+type UserWithRelations = User & { instructor?: Instructor | null; admin?: Admin | null };
+
+function mapUserForAdmin(user: UserWithRelations | null) {
   if (!user) return null;
-  const { password, admin, instructor, ...rest } = user;
+  const { password: _password, admin: _admin, instructor, ...rest } = user;
   if (instructor) {
     return { instructor, ...rest };
   }
@@ -31,33 +32,42 @@ interface QueryFilters {
   onlyInstructors?: boolean;
 }
 
+interface RepoFilters {
+  status?: UserStatus;
+  name?: string;
+  onlyAdmins?: boolean;
+  onlyInstructors?: boolean;
+}
+
 // querystring을 repo가 이해하는 형태로 변환
-function normalizeFilters(query: QueryFilters = {}): QueryFilters {
-  const filters: QueryFilters = { ...query };
-  if (!filters.status) filters.status = 'APPROVED';
-  if (filters.status === 'ALL') delete filters.status;
-  if (filters.name !== undefined && filters.name !== null && String(filters.name).trim() === '') {
-    delete filters.name;
+function normalizeFilters(query: QueryFilters = {}): RepoFilters {
+  const filters: RepoFilters = {};
+
+  // status 처리: 'ALL'이면 필터 없음, 없으면 APPROVED 기본값
+  if (query.status && query.status !== 'ALL') {
+    filters.status = query.status as UserStatus;
+  } else if (!query.status) {
+    filters.status = UserStatus.APPROVED;
   }
-  const role = (filters.role || '').toString().toUpperCase();
+
+  // name 처리
+  if (query.name !== undefined && query.name !== null && String(query.name).trim() !== '') {
+    filters.name = query.name;
+  }
+
+  // role 처리
+  const role = (query.role || '').toString().toUpperCase();
   if (role === 'ADMIN') {
     filters.onlyAdmins = true;
-    delete filters.onlyInstructors;
   } else if (role === 'INSTRUCTOR') {
     filters.onlyInstructors = true;
-    delete filters.onlyAdmins;
-    if (filters.onlyAdmins !== undefined) filters.onlyAdmins = parseBool(filters.onlyAdmins);
-    if (filters.onlyInstructors !== undefined)
-      filters.onlyInstructors = parseBool(filters.onlyInstructors);
-    delete filters.role;
-
-    return filters;
   }
+
   return filters;
 }
 
 // dto 검증
-function assertDtoObject(dto: unknown): asserts dto is Record<string, any> {
+function assertDtoObject(dto: unknown): asserts dto is Record<string, unknown> {
   if (!dto || typeof dto !== 'object' || Array.isArray(dto)) {
     throw new AppError('요청 바디 형식이 올바르지 않습니다.', 400, 'INVALID_BODY');
   }
@@ -78,7 +88,7 @@ function assertValidStatusOrUndefined(status: unknown): void {
   if (typeof status !== 'string') {
     throw new AppError('status는 문자열이어야 합니다.', 400, 'INVALID_STATUS');
   }
-  if (!ALLOWED_USER_STATUS.includes(status as any)) {
+  if (!ALLOWED_USER_STATUS.includes(status as (typeof ALLOWED_USER_STATUS)[number])) {
     throw new AppError(
       `유효하지 않은 status 입니다. allowed: ${ALLOWED_USER_STATUS.join(', ')}`,
       400,
@@ -147,12 +157,12 @@ class AdminService {
     const user = await userRepository.findById(id);
     if (!user) throw new AppError('해당 회원을 찾을 수 없습니다.', 404, 'USER_NOT_FOUND');
 
-    const userData: Record<string, any> = {};
+    const userData: Prisma.UserUpdateInput = {};
     if (name !== undefined) userData.name = name;
     if (phoneNumber !== undefined) userData.userphoneNumber = phoneNumber;
-    if (status !== undefined) userData.status = status;
+    if (status !== undefined) userData.status = status as UserStatus;
 
-    const instructorData: Record<string, any> = {};
+    const instructorData: Prisma.InstructorUpdateInput = {};
     const isInstructor = !!user.instructor;
 
     if (isInstructor) {

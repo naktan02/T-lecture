@@ -14,7 +14,7 @@ interface TrainingLocationInput {
   note?: string;
 }
 
-interface RawUnitData {
+export interface RawUnitData {
   name?: string;
   unitType?: string;
   wideArea?: string;
@@ -35,7 +35,9 @@ interface RawUnitData {
   schedules?: string[];
 }
 
+// Excel 파일에서 동적으로 읽어온 행 데이터 - 다양한 속성 접근이 필요하여 any 사용
 interface ExcelRow {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }
 
@@ -62,7 +64,7 @@ export function toCreateUnitDto(rawData: RawUnitData = {}): Prisma.UnitCreateInp
 
   return {
     name: rawData.name,
-    unitType: rawData.unitType as any,
+    unitType: rawData.unitType as Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput['set'],
     wideArea: rawData.wideArea,
     region: rawData.region,
     addressDetail: rawData.addressDetail,

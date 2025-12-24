@@ -1,5 +1,84 @@
 // server/src/domains/assignment/assignment.dto.ts
 
+// Prisma 반환 타입과 호환되는 인터페이스 정의
+interface TrainingLocationRaw {
+  id: number | string;
+  originalPlace: string | null;
+  changedPlace?: string | null;
+  instructorsNumbers?: number | null;
+  plannedCount?: number | null;
+  actualCount?: number | null;
+  note?: string | null;
+  hasInstructorLounge?: boolean | null;
+  hasWomenRestroom?: boolean | null;
+  hasCateredMeals?: boolean | null;
+  hasHallLodging?: boolean | null;
+  allowsPhoneBeforeAfter?: boolean | null;
+}
+
+interface ScheduleRaw {
+  id: number;
+  date: Date | null;
+  assignments?: AssignmentRaw[];
+}
+
+interface AssignmentRaw {
+  unitScheduleId: number;
+  userId: number;
+  state: string;
+  classification?: string | null;
+  User: {
+    name: string | null;
+    instructor?: {
+      team?: { name: string | null } | null;
+    } | null;
+  };
+}
+
+interface UnitRaw {
+  id: number;
+  name: string | null;
+  region: string | null;
+  wideArea: string | null;
+  addressDetail: string | null;
+  officerName: string | null;
+  officerPhone: string | null;
+  officerEmail: string | null;
+  workStartTime: Date | null;
+  workEndTime?: Date | null;
+  educationStart?: Date | null;
+  educationEnd?: Date | null;
+  lunchStartTime?: Date | null;
+  lunchEndTime?: Date | null;
+  trainingLocations: TrainingLocationRaw[];
+  schedules: ScheduleRaw[];
+}
+
+interface AvailabilityRaw {
+  availableOn: Date;
+}
+
+interface VirtueRaw {
+  virtue?: { name: string | null } | null;
+}
+
+interface InstructorRaw {
+  userId: number;
+  category?: string | null;
+  location?: string | null;
+  generation?: number | null;
+  isTeamLeader?: boolean;
+  restrictedArea?: string | null;
+  user: {
+    name: string | null;
+    userphoneNumber?: string | null;
+    userEmail?: string | null;
+  };
+  team?: { name: string | null } | null;
+  availabilities: AvailabilityRaw[];
+  virtues: VirtueRaw[];
+}
+
 /**
  * 날짜를 KST(한국 시간) 문자열(YYYY-MM-DD)로 변환
  */
@@ -25,7 +104,7 @@ class AssignmentDTO {
   /**
    * 배정 후보 데이터(부대+강사)를 프론트엔드용 포맷으로 변환
    */
-  toCandidateResponse(unitsRaw: any[], instructorsRaw: any[]) {
+  toCandidateResponse(unitsRaw: UnitRaw[], instructorsRaw: InstructorRaw[]) {
     const unassignedUnits = this.mapUnitsToCards(unitsRaw);
     const availableInstructors = this.mapInstructorsToCards(instructorsRaw);
 
@@ -36,8 +115,8 @@ class AssignmentDTO {
   }
 
   // 내부 로직: 부대 -> 카드 변환
-  mapUnitsToCards(units: any[]) {
-    const list: any[] = [];
+  mapUnitsToCards(units: UnitRaw[]) {
+    const list: unknown[] = [];
     units.forEach((unit) => {
       // 1. 교육장소 목록 준비
       const locations =
@@ -46,11 +125,11 @@ class AssignmentDTO {
           : [{ id: 'def', originalPlace: '교육장소 미정', instructorsNumbers: 0 }];
 
       // 2. 스케줄(날짜)별로 반복
-      unit.schedules.forEach((schedule: any) => {
+      unit.schedules.forEach((schedule: ScheduleRaw) => {
         const dateStr = toKSTDateString(schedule.date);
 
         // 3. 교육장소별로 카드 생성
-        locations.forEach((loc: any) => {
+        locations.forEach((loc: TrainingLocationRaw) => {
           list.push({
             type: 'UNIT',
             id: `u-${unit.id}-s-${schedule.id}-l-${loc.id}`,
@@ -100,9 +179,11 @@ class AssignmentDTO {
   }
 
   // 내부 로직: 강사 -> 카드 변환
-  mapInstructorsToCards(instructors: any[]) {
+  mapInstructorsToCards(instructors: InstructorRaw[]) {
     return instructors.map((inst) => {
-      const availableDates = inst.availabilities.map((a: any) => toKSTDateString(a.availableOn));
+      const availableDates = inst.availabilities.map((a: AvailabilityRaw) =>
+        toKSTDateString(a.availableOn),
+      );
 
       return {
         type: 'INSTRUCTOR',
@@ -128,7 +209,7 @@ class AssignmentDTO {
           isTeamLeader: inst.isTeamLeader,
           restrictedArea: inst.restrictedArea,
           virtues: inst.virtues
-            .map((v: any) => (v.virtue ? v.virtue.name : ''))
+            .map((v: VirtueRaw) => (v.virtue ? v.virtue.name : ''))
             .filter(Boolean)
             .join(', '),
           availableDates: availableDates,
@@ -137,7 +218,7 @@ class AssignmentDTO {
     });
   }
 
-  toHierarchicalResponse(unitsWithAssignments: any[]) {
+  toHierarchicalResponse(unitsWithAssignments: UnitRaw[]) {
     return unitsWithAssignments.map((unit) => {
       let totalRequired = 0;
       let totalAssigned = 0;
@@ -148,17 +229,17 @@ class AssignmentDTO {
           ? unit.trainingLocations
           : [{ id: 'default', originalPlace: '교육장소 미정', instructorsNumbers: 0 }];
 
-      const trainingLocations = locations.map((loc: any) => {
+      const trainingLocations = locations.map((loc: TrainingLocationRaw) => {
         const daysCount = unit.schedules.length;
         totalRequired += (loc.instructorsNumbers || 0) * daysCount;
 
         // 2. 각 장소 안에서 '날짜별' 스케줄 구성
-        const dates = unit.schedules.map((schedule: any) => {
+        const dates = unit.schedules.map((schedule: ScheduleRaw) => {
           const dateStr = toKSTDateString(schedule.date);
 
-          const assignedInstructors = schedule.assignments
-            .filter((a: any) => a.state === 'Active')
-            .map((assign: any) => {
+          const assignedInstructors = (schedule.assignments || [])
+            .filter((a: AssignmentRaw) => a.state === 'Active')
+            .map((assign: AssignmentRaw) => {
               totalAssigned++;
               return {
                 assignmentId: assign.unitScheduleId + '-' + assign.userId,

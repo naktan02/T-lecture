@@ -1,5 +1,5 @@
 // server/src/domains/unit/unit.filters.ts
-import { Prisma } from '@prisma/client';
+import { Prisma, MilitaryType } from '@prisma/client';
 
 interface UnitQuery {
   page?: string | number;
@@ -52,7 +52,7 @@ export function buildUnitWhere(query: UnitQuery = {}): Prisma.UnitWhereInput {
   // 단일 필드 필터
   if (region) conditions.push({ region: { contains: String(region).trim() } });
   if (wideArea) conditions.push({ wideArea: String(wideArea).trim() });
-  if (unitType) conditions.push({ unitType: String(unitType).trim() as any });
+  if (unitType) conditions.push({ unitType: String(unitType).trim() as MilitaryType });
 
   // 날짜 범위 필터 (일정)
   if (startDate || endDate) {

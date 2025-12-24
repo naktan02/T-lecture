@@ -23,6 +23,20 @@ interface ProcessResult {
   prismaCode?: string | null;
 }
 
+interface InstructorWithCoords {
+  userId: number;
+  lat: number | null;
+  lng: number | null;
+  location: string | null;
+}
+
+interface UnitWithCoords {
+  id: number;
+  lat: number | null;
+  lng: number | null;
+  addressDetail: string | null;
+}
+
 class DistanceService {
   // 카카오 API 사용량(오늘) 조회
   async getTodayUsage() {
@@ -66,7 +80,7 @@ class DistanceService {
   }
 
   // 강사 좌표 조회
-  async _getOrCreateInstructorCoords(instructor: any) {
+  async _getOrCreateInstructorCoords(instructor: InstructorWithCoords) {
     if (instructor.lat !== null && instructor.lng !== null) {
       return { lat: instructor.lat, lng: instructor.lng };
     }
@@ -83,7 +97,7 @@ class DistanceService {
   }
 
   // 부대 좌표 조회
-  async _getOrCreateUnitCoords(unit: any) {
+  async _getOrCreateUnitCoords(unit: UnitWithCoords) {
     if (unit.lat !== null && unit.lng !== null) {
       return { lat: unit.lat, lng: unit.lng };
     }
@@ -104,7 +118,7 @@ class DistanceService {
     const instructor = await instructorRepository.findById(instructorId);
     if (!instructor) throw new AppError('Instructor not found', 404, 'INSTRUCTOR_NOT_FOUND');
 
-    const unit = await (unitRepository as any).findUnitWithRelations(unitId);
+    const unit = await unitRepository.findUnitWithRelations(unitId);
     if (!unit) throw new AppError('Unit not found', 404, 'UNIT_NOT_FOUND');
 
     const origin = await this._getOrCreateInstructorCoords(instructor);
@@ -112,10 +126,10 @@ class DistanceService {
 
     await this._ensureRouteQuotaOrThrow(1);
     const route = await kakaoService.getRouteDistance(
-      origin.lat,
-      origin.lng,
-      destination.lat,
-      destination.lng,
+      origin.lat!,
+      origin.lng!,
+      destination.lat!,
+      destination.lng!,
     );
 
     const saved = await distanceRepository.upsertDistance(instructorId, unitId, {
@@ -142,7 +156,7 @@ class DistanceService {
     const upcomingSchedules = await unitRepository.findUpcomingSchedules(50);
     if (!upcomingSchedules.length) return { processed: 0, message: 'No upcoming unit schedules' };
 
-    const unitIds = Array.from(new Set(upcomingSchedules.map((s: any) => s.unitId))) as number[];
+    const unitIds = Array.from(new Set(upcomingSchedules.map((s) => s.unitId))) as number[];
     const existingDistances = await distanceRepository.findManyByUnitIds(unitIds);
 
     const existingByUnit = new Map<number, Set<number>>();
@@ -196,18 +210,19 @@ class DistanceService {
               distance: Number(saved.distance),
               status: 'success',
             };
-          } catch (error: any) {
+          } catch (error: unknown) {
+            const err = error as { message?: string; code?: string; statusCode?: number };
             const prismaCode =
-              typeof error?.code === 'string' && error.code.startsWith('P') ? error.code : null;
+              typeof err?.code === 'string' && err.code.startsWith('P') ? err.code : null;
 
             return {
               instructorId,
               unitId,
               scheduleDate,
               status: 'error',
-              error: error.message,
-              code: error.code || 'DISTANCE_CALC_FAILED',
-              statusCode: error.statusCode || 500,
+              error: err.message || 'Unknown error',
+              code: err.code || 'DISTANCE_CALC_FAILED',
+              statusCode: err.statusCode || 500,
               prismaCode,
             };
           }

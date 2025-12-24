@@ -2,7 +2,7 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { UserStatus } from '@prisma/client';
+import { UserStatus, UserCategory } from '@prisma/client';
 
 import instructorRepository from '../instructor/instructor.repository';
 import authRepository from './auth.repository';
@@ -11,6 +11,22 @@ import emailService from '../../infra/email.service';
 import AppError from '../../common/errors/AppError';
 
 const SALT_ROUNDS = 10;
+
+interface RegisterDto {
+  email: string;
+  password: string;
+  name: string;
+  phoneNumber: string;
+  address?: string;
+  type?: string;
+  virtueIds?: number[];
+  teamId?: number;
+  category?: UserCategory;
+}
+
+interface JwtPayload {
+  userId: number;
+}
 
 class AuthService {
   // 이메일 인증 코드 생성/저장 후 이메일로 발송
@@ -43,7 +59,7 @@ class AuthService {
   }
 
   // 회원가입
-  async register(dto: any) {
+  async register(dto: RegisterDto) {
     const { email, password, name, phoneNumber, address, type, virtueIds, teamId, category } = dto;
 
     if (!email || !password || !name || !phoneNumber) {
@@ -85,7 +101,7 @@ class AuthService {
 
       newUser = await userRepository.createInstructor(commonData, {
         location: address,
-        teamId: teamId || null,
+        ...(teamId ? { team: { connect: { id: teamId } } } : {}),
         category: category || null,
         lat: null,
         lng: null,
@@ -166,10 +182,10 @@ class AuthService {
       throw new AppError('서버 설정 오류: 토큰 시크릿이 없습니다.', 500, 'CONFIG_ERROR');
     }
 
-    let payload: any;
+    let payload: JwtPayload;
     try {
-      payload = jwt.verify(incomingRefreshToken, REFRESH_SECRET);
-    } catch (e) {
+      payload = jwt.verify(incomingRefreshToken, REFRESH_SECRET) as JwtPayload;
+    } catch (_e) {
       throw new AppError('리프레시 토큰이 만료되었거나 유효하지 않습니다.', 401, 'TOKEN_INVALID');
     }
 

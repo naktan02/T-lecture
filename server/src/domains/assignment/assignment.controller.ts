@@ -96,7 +96,7 @@ export const cancelAssignmentByAdmin = asyncHandler(async (req: Request, res: Re
   }
   const result = await assignmentService.cancelAssignment(
     req.user!.id,
-    (req.user as any).role || 'ADMIN',
+    req.user!.isAdmin ? (req.user!.adminLevel === 'SUPER' ? 'SUPER' : 'ADMIN') : 'USER',
     instructorId,
     unitScheduleId,
   );

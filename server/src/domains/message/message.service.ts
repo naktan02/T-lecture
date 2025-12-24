@@ -8,6 +8,16 @@ interface PrismaError extends Error {
   code?: string;
 }
 
+// 메시지 대상 조회 결과 타입 - Prisma 반환 타입과 호환되도록 유연하게 정의
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AssignmentTarget = any;
+
+interface UserMessageGroup {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  user: any;
+  assignments: AssignmentTarget[];
+}
+
 class MessageService {
   // 임시 배정 메시지 일괄 발송
   async sendTemporaryMessages() {
@@ -28,7 +38,7 @@ class MessageService {
     }
 
     // 그룹화 로직 (User ID 기준)
-    const userMap = new Map<number, { user: any; assignments: any[] }>();
+    const userMap = new Map<number, UserMessageGroup>();
     targets.forEach((assign) => {
       const userId = assign.userId;
       if (!userMap.has(userId)) {
@@ -99,7 +109,7 @@ class MessageService {
     }
 
     // 그룹화
-    const userMap = new Map<number, { user: any; assignments: any[] }>();
+    const userMap = new Map<number, UserMessageGroup>();
     targets.forEach((assign) => {
       const userId = assign.userId;
       if (!userMap.has(userId)) {
@@ -128,9 +138,9 @@ class MessageService {
 
       // 변수 준비
       const variables: Record<string, string> = {
-        userName: user.name,
-        unitName: unit.name,
-        address: unit.addressDetail,
+        userName: user.name || '',
+        unitName: unit.name || '',
+        address: unit.addressDetail || '',
         colleagues: '없음',
         locations: '',
       };
@@ -138,14 +148,14 @@ class MessageService {
       if (isLeader) {
         // 동료 강사 목록
         const colleagues = unitSchedule.assignments
-          .filter((a: any) => a.userId !== userId)
-          .map((a: any) => `${a.User.name} (${a.User.userphoneNumber})`)
+          .filter((a) => a.userId !== userId)
+          .map((a) => `${a.User.name} (${a.User.userphoneNumber})`)
           .join(', ');
         if (colleagues) variables.colleagues = colleagues;
 
         // 하위 교육장소 목록
         variables.locations = unit.trainingLocations
-          .map((loc: any) => `[${loc.originalPlace}] 인원: ${loc.plannedCount}명`)
+          .map((loc) => `[${loc.originalPlace}] 인원: ${loc.plannedCount}명`)
           .join('\n');
       }
 

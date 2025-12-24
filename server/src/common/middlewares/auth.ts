@@ -37,8 +37,8 @@ const auth = async (req: Request, res: Response, next: NextFunction) => {
     let payload: JWTPayload;
     try {
       payload = jwt.verify(token, secret) as JWTPayload;
-    } catch (err: any) {
-      if (err?.name === 'TokenExpiredError') {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'TokenExpiredError') {
         throw new AppError('토큰이 만료되었습니다.', 401, 'TOKEN_EXPIRED');
       }
       throw new AppError('유효하지 않은 토큰입니다.', 401, 'INVALID_TOKEN');

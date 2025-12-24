@@ -2,14 +2,14 @@
 export class AppError extends Error {
   public readonly statusCode: number;
   public readonly code: string;
-  public readonly meta: any;
+  public readonly meta: Record<string, unknown> | null;
   public readonly isAppError: boolean;
 
   constructor(
     message: string,
     statusCode: number = 500,
     code: string = 'INTERNAL_ERROR',
-    meta: any = null,
+    meta: Record<string, unknown> | null = null,
   ) {
     super(message);
     this.name = 'AppError';

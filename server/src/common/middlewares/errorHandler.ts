@@ -23,7 +23,7 @@ function normalizeError(err: unknown): {
   code: string;
   message: string;
   stack?: string;
-  meta?: any;
+  meta?: Record<string, unknown> | null;
   isAppError: boolean;
 } {
   if (err instanceof AppError) {
@@ -33,7 +33,7 @@ function normalizeError(err: unknown): {
       code: err.code || defaultCodeByStatus(statusCode),
       message: err.message,
       stack: err.stack,
-      meta: (err as any).meta,
+      meta: err.meta,
       isAppError: true,
     };
   }
@@ -57,7 +57,7 @@ function normalizeError(err: unknown): {
   };
 }
 
-export const errorHandler = (err: unknown, req: Request, res: Response, next: NextFunction) => {
+export const errorHandler = (err: unknown, req: Request, res: Response, _next: NextFunction) => {
   const mapped = mapPrismaError(err);
   const normalized = normalizeError(mapped ?? err);
 
@@ -69,7 +69,7 @@ export const errorHandler = (err: unknown, req: Request, res: Response, next: Ne
     code: normalized.code,
     statusCode: normalized.statusCode,
     message: normalized.message,
-    userId: (req as any).user?.id ?? null,
+    userId: req.user?.id ?? null,
     method: req.method,
     url: req.originalUrl || req.url,
     meta: normalized.meta ?? null,

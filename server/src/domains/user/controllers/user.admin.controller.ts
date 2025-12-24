@@ -26,7 +26,12 @@ function parseUserIdParam(req: Request): number {
 
 // ✅ 전체 사용자 조회
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
-  const users = await adminService.getAllUsers(req.query as any);
+  const { status, name, role } = req.query;
+  const users = await adminService.getAllUsers({
+    status: typeof status === 'string' ? status : undefined,
+    name: typeof name === 'string' ? name : undefined,
+    role: typeof role === 'string' ? role : undefined,
+  });
   res.json(users);
 });
 

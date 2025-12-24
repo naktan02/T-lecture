@@ -44,6 +44,7 @@ class AssignmentService {
     }
 
     // 2) 알고리즘 실행
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const matchResults = assignmentAlgorithm.execute(units as any, instructors as any);
 
     if (!matchResults || matchResults.length === 0) {

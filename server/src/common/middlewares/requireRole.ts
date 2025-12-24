@@ -27,12 +27,8 @@ export function requireRole(requiredRole: 'ADMIN' | 'INSTRUCTOR' | string) {
       return next();
     }
 
-    // 기존 로직 유지: 기타 커스텀 역할 체크
-    if ((user as any).role !== requiredRole) {
-      return next(new AppError('권한이 없습니다.', 403, 'FORBIDDEN'));
-    }
-
-    next();
+    // ADMIN, INSTRUCTOR 외 다른 역할은 지원하지 않음
+    return next(new AppError('권한이 없습니다.', 403, 'FORBIDDEN'));
   };
 }
 
