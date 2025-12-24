@@ -65,4 +65,3 @@ model UnitSchedule {
 
   @@map("부대일정")
 }
-
