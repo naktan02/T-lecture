@@ -1,5 +1,6 @@
 // client/src/features/unit/ui/UnitList.tsx
 import React, { ReactElement, ChangeEvent } from 'react';
+import { EmptyState } from '../../../shared/ui';
 
 interface Unit {
   id: number;
@@ -10,6 +11,8 @@ interface Unit {
   addressDetail?: string;
   officerName?: string;
   officerPhone?: string;
+  educationStart?: string;
+  educationEnd?: string;
   [key: string]: unknown;
 }
 
@@ -21,6 +24,13 @@ interface UnitListProps {
   onUnitClick?: (unit: Unit) => void;
 }
 
+// 날짜 포맷팅 헬퍼
+const formatDate = (dateStr?: string): string => {
+  if (!dateStr) return '-';
+  const date = new Date(dateStr);
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+};
+
 export const UnitList = ({
   units = [],
   selectedIds = [],
@@ -28,13 +38,14 @@ export const UnitList = ({
   onToggleAll,
   onUnitClick,
 }: UnitListProps): ReactElement => {
-  // 1. 데이터가 없을 경우 표시할 UI (렌더링 에러 방지)
+  // 1. 데이터가 없을 경우
   if (!units || !Array.isArray(units) || units.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-gray-400 bg-white rounded-xl border border-gray-200">
-        <div className="text-4xl mb-2">📭</div>
-        <p>등록된 부대 데이터가 없습니다.</p>
-      </div>
+      <EmptyState
+        icon="🏢"
+        title="등록된 부대가 없습니다"
+        description="새로운 부대를 등록하거나 엑셀 파일을 업로드하세요."
+      />
     );
   }
 
@@ -46,99 +57,218 @@ export const UnitList = ({
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-white rounded-xl shadow-sm border border-gray-200 relative">
-      <table className="w-full text-left border-collapse">
-        {/* 헤더 고정 (Sticky Header) */}
-        <thead className="sticky top-0 z-10 bg-gray-50 shadow-sm">
-          <tr className="text-xs uppercase text-gray-500 font-semibold border-b border-gray-200">
-            {/* ✅ 전체 선택 체크박스 */}
-            <th className="px-6 py-4 w-12 text-center bg-gray-50">
-              <input
-                type="checkbox"
-                checked={isAllSelected}
-                onChange={handleToggleAll}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-              />
-            </th>
-            <th className="px-6 py-4 bg-gray-50">부대명 / 구분</th>
-            <th className="px-6 py-4 bg-gray-50">위치 (지역)</th>
-            <th className="px-6 py-4 bg-gray-50">담당자</th>
-            <th className="px-6 py-4 bg-gray-50 text-right">관리</th>
-          </tr>
-        </thead>
+    <div className="h-full overflow-y-auto">
+      {/* 데스크톱: 테이블 뷰 */}
+      <div className="hidden md:block">
+        <table className="w-full text-left border-collapse">
+          <thead className="sticky top-0 z-10 bg-gray-50 shadow-sm">
+            <tr className="text-xs uppercase text-gray-500 font-semibold border-b border-gray-200">
+              <th className="px-4 py-3 w-12 text-center">
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  onChange={handleToggleAll}
+                  className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
+                />
+              </th>
+              <th className="px-4 py-3">부대명</th>
+              <th className="px-4 py-3">위치</th>
+              <th className="px-4 py-3">교육기간</th>
+              <th className="px-4 py-3">담당자</th>
+              <th className="px-4 py-3 w-16"></th>
+            </tr>
+          </thead>
 
-        <tbody className="divide-y divide-gray-100 bg-white">
-          {units.map((unit) => {
-            const isSelected = selectedIds.includes(unit.id);
+          <tbody className="divide-y divide-gray-100">
+            {units.map((unit) => {
+              const isSelected = selectedIds.includes(unit.id);
 
-            return (
-              <tr
-                key={unit.id}
-                className={`transition-colors group ${isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50'}`}
-              >
-                {/* ✅ 개별 선택 체크박스 */}
-                <td className="px-6 py-4 text-center" onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => onToggleSelect?.(unit.id)}
-                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                  />
-                </td>
-
-                {/* 클릭 시 상세 이동 (이름 영역) */}
-                <td className="px-6 py-4 cursor-pointer" onClick={() => onUnitClick?.(unit)}>
-                  <div
-                    className={`font-bold ${isSelected ? 'text-blue-700' : 'text-gray-900 group-hover:text-blue-600'}`}
-                  >
-                    {unit.name}
-                  </div>
-                  <div className="text-xs text-gray-500 bg-gray-100 inline-block px-2 py-0.5 rounded mt-1">
-                    {unit.unitType}
-                  </div>
-                </td>
-
-                {/* 위치 정보 */}
-                <td className="px-6 py-4 cursor-pointer" onClick={() => onUnitClick?.(unit)}>
-                  <div className="text-sm text-gray-800">
-                    {unit.wideArea} {unit.region}
-                  </div>
-                  <div
-                    className="text-xs text-gray-400 truncate max-w-[200px]"
-                    title={unit.addressDetail}
-                  >
-                    {unit.addressDetail || '-'}
-                  </div>
-                </td>
-
-                {/* 담당자 정보 */}
-                <td className="px-6 py-4 cursor-pointer" onClick={() => onUnitClick?.(unit)}>
-                  {unit.officerName ? (
-                    <div>
-                      <div className="text-sm font-medium">{unit.officerName}</div>
-                      <div className="text-xs text-gray-400">{unit.officerPhone}</div>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-gray-300 bg-gray-50 px-2 py-1 rounded">
-                      미지정
-                    </span>
-                  )}
-                </td>
-
-                {/* 관리 버튼 */}
-                <td
-                  className="px-6 py-4 text-right cursor-pointer"
+              return (
+                <tr
+                  key={unit.id}
+                  className={`
+                    transition-all duration-200 cursor-pointer
+                    ${isSelected ? 'bg-green-50' : 'hover:bg-gray-50'}
+                  `}
                   onClick={() => onUnitClick?.(unit)}
                 >
-                  <span className="text-gray-400 group-hover:text-blue-500 transition-colors text-lg">
-                    &gt;
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => onToggleSelect?.(unit.id)}
+                      className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
+                    />
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <div className="font-semibold text-gray-900">{unit.name}</div>
+                    <span
+                      className={`
+                      inline-block text-xs px-2 py-0.5 rounded-full mt-1
+                      ${
+                        unit.unitType === 'Army'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }
+                    `}
+                    >
+                      {unit.unitType === 'Army' ? '육군' : '해군'}
+                    </span>
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <div className="text-sm text-gray-800">
+                      {unit.wideArea} {unit.region}
+                    </div>
+                    <div
+                      className="text-xs text-gray-400 truncate max-w-[180px]"
+                      title={unit.addressDetail}
+                    >
+                      {unit.addressDetail || '-'}
+                    </div>
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <div className="text-sm text-gray-700">
+                      {formatDate(unit.educationStart)} ~ {formatDate(unit.educationEnd)}
+                    </div>
+                  </td>
+
+                  <td className="px-4 py-3">
+                    {unit.officerName ? (
+                      <div>
+                        <div className="text-sm font-medium">{unit.officerName}</div>
+                        <div className="text-xs text-gray-400">{unit.officerPhone}</div>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">미지정</span>
+                    )}
+                  </td>
+
+                  <td className="px-4 py-3 text-right">
+                    <svg
+                      className="w-5 h-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 모바일: 카드 뷰 */}
+      <div className="md:hidden p-3 space-y-3">
+        {/* 모바일 전체 선택 */}
+        <div className="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-lg">
+          <input
+            type="checkbox"
+            checked={isAllSelected}
+            onChange={handleToggleAll}
+            className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+          />
+          <span className="text-sm text-gray-600">전체 선택</span>
+          <span className="text-xs text-gray-400 ml-auto">{units.length}개</span>
+        </div>
+
+        {units.map((unit) => {
+          const isSelected = selectedIds.includes(unit.id);
+
+          return (
+            <div
+              key={unit.id}
+              className={`
+                relative p-4 rounded-xl border-2 transition-all duration-200
+                ${
+                  isSelected
+                    ? 'border-green-400 bg-green-50/50 shadow-sm'
+                    : 'border-gray-200 bg-white active:bg-gray-50'
+                }
+              `}
+              onClick={() => onUnitClick?.(unit)}
+            >
+              {/* 체크박스 */}
+              <div className="absolute top-3 left-3" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => onToggleSelect?.(unit.id)}
+                  className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                />
+              </div>
+
+              {/* 콘텐츠 */}
+              <div className="ml-8">
+                {/* 상단: 부대명 + 타입 */}
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="font-bold text-gray-900">{unit.name}</h3>
+                    <span
+                      className={`
+                      inline-block text-xs px-2 py-0.5 rounded-full mt-1
+                      ${
+                        unit.unitType === 'Army'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }
+                    `}
+                    >
+                      {unit.unitType === 'Army' ? '육군' : '해군'}
+                    </span>
+                  </div>
+                  <svg
+                    className="w-5 h-5 text-gray-400 flex-shrink-0 mt-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </div>
+
+                {/* 정보 그리드 */}
+                <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                  <div className="flex items-center gap-1.5 text-gray-600">
+                    <span className="text-base">📍</span>
+                    <span className="truncate">
+                      {unit.wideArea} {unit.region}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-gray-600">
+                    <span className="text-base">📅</span>
+                    <span>
+                      {formatDate(unit.educationStart)} ~ {formatDate(unit.educationEnd)}
+                    </span>
+                  </div>
+                  {unit.officerName && (
+                    <div className="flex items-center gap-1.5 text-gray-600 col-span-2">
+                      <span className="text-base">👤</span>
+                      <span>{unit.officerName}</span>
+                      <span className="text-gray-400">{unit.officerPhone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };

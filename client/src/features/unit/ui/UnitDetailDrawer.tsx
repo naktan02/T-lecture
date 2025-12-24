@@ -387,26 +387,54 @@ export const UnitDetailDrawer = ({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40" onClick={onClose} />
 
-      <div className="fixed inset-y-0 right-0 z-50 w-full md:w-[800px] bg-white shadow-2xl flex flex-col h-full">
-        <div className="px-6 py-4 border-b flex justify-between items-center bg-white shrink-0">
-          <h2 className="text-xl font-bold">{initialUnit ? '부대 정보 수정' : '신규 부대 등록'}</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            ✕
+      <div className="fixed inset-0 md:inset-y-0 md:left-auto md:right-0 z-50 w-full md:w-[800px] bg-white shadow-2xl flex flex-col">
+        <div className="px-4 md:px-6 py-3 md:py-4 border-b flex justify-between items-center bg-white shrink-0">
+          <div className="flex items-center gap-3">
+            {/* 모바일 뒤로가기 */}
+            <button
+              onClick={onClose}
+              className="md:hidden p-2 -ml-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+            <h2 className="text-lg md:text-xl font-bold">
+              {initialUnit ? '부대 정보 수정' : '신규 부대 등록'}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="hidden md:flex items-center justify-center w-8 h-8 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
           </button>
         </div>
 
-        <div className="flex border-b bg-gray-50 shrink-0">
+        <div className="flex border-b bg-gray-50 shrink-0 overflow-x-auto">
           {(['basic', 'location', 'schedule'] as const).map((tab) => (
             <button
               key={tab}
               type="button"
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-3 font-medium border-b-2 ${
+              className={`flex-1 min-w-[100px] py-3 px-4 font-medium text-sm md:text-base border-b-2 whitespace-nowrap transition-colors ${
                 activeTab === tab
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500'
+                  ? 'border-green-500 text-green-600 bg-white'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               {tab === 'basic'

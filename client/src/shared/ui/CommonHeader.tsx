@@ -3,10 +3,12 @@
 import React from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/model/useAuth';
+import { MobileNav } from './MobileNav';
 
 interface NavLink {
   label: string;
   path: string;
+  icon?: string;
 }
 
 interface CommonHeaderProps {
@@ -40,9 +42,10 @@ export const CommonHeader: React.FC<CommonHeaderProps> = ({ title, userLabel, li
       return (
         <button
           onClick={() => navigate('/user-main')}
-          className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded-md text-sm transition duration-150"
+          className="px-3 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-sm 
+                     transition-all duration-200 active:scale-95 hidden sm:block"
         >
-          사용자 모드로 이동
+          사용자 모드
         </button>
       );
     }
@@ -52,9 +55,10 @@ export const CommonHeader: React.FC<CommonHeaderProps> = ({ title, userLabel, li
       return (
         <button
           onClick={() => navigate(isSuperAdmin ? '/admin/super' : '/admin')}
-          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-md text-sm transition duration-150"
+          className="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm 
+                     transition-all duration-200 active:scale-95 hidden sm:block"
         >
-          관리자 모드로 이동
+          관리자 모드
         </button>
       );
     }
@@ -62,40 +66,63 @@ export const CommonHeader: React.FC<CommonHeaderProps> = ({ title, userLabel, li
   };
 
   return (
-    <header className="flex justify-between items-center  bg-[#2c3e50] px-6 py-4 shadow-md text-white">
-      {/* 1. 왼쪽: 타이틀 및 메뉴 */}
-      <div className="flex items-center gap-8">
-        <h1 className="text-xl font-bold text-green-400">{title}</h1>
+    <header className="sticky top-0 z-30 flex justify-between items-center bg-[#2c3e50] px-4 md:px-6 py-3 md:py-4 shadow-lg text-white">
+      {/* 1. 왼쪽: 모바일 메뉴 + 타이틀 */}
+      <div className="flex items-center gap-4">
+        {/* 모바일 네비게이션 */}
+        <MobileNav links={links} onLogout={handleLogout} userLabel={userLabel} />
 
-        {/* 여기가 핵심: links 배열을 돌면서 메뉴 생성 */}
-        <nav className="hidden md:flex gap-6 text-sm">
-          {links.map((link) => (
-            <Link
-              key={link.path}
-              to={link.path}
-              className={`transition-colors duration-200 ${
-                location.pathname === link.path
-                  ? 'text-white font-bold border-b-2 border-green-400 pb-1'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
+        {/* 로고/타이틀 */}
+        <h1 className="text-lg md:text-xl font-bold text-green-400">{title}</h1>
+
+        {/* 데스크톱 네비게이션 */}
+        <nav className="hidden md:flex items-center gap-1 ml-4">
+          {links.map((link) => {
+            const isActive = location.pathname === link.path;
+            return (
+              <Link
+                key={link.path}
+                to={link.path}
+                className={`
+                  px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
+                  ${
+                    isActive
+                      ? 'bg-green-500/20 text-green-400'
+                      : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                  }
+                `}
+              >
+                {link.icon && <span className="mr-2">{link.icon}</span>}
+                {link.label}
+              </Link>
+            );
+          })}
         </nav>
       </div>
 
       {/* 2. 오른쪽: 유저 정보 및 로그아웃 */}
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center gap-2 md:gap-4">
         {renderModeSwitch()}
 
-        <span className="text-sm font-medium border border-gray-600 rounded px-2 py-1 bg-gray-700">
+        {/* 유저 라벨 - 모바일에서 축소 */}
+        <span className="hidden sm:block text-sm font-medium border border-gray-600 rounded-lg px-3 py-2 bg-gray-700/50">
           {userLabel}
         </span>
+
+        {/* 로그아웃 버튼 - 데스크톱만 */}
         <button
           onClick={handleLogout}
-          className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded-md text-sm transition duration-150"
+          className="hidden md:flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 
+                     rounded-lg text-sm transition-all duration-200 active:scale-95"
         >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+            />
+          </svg>
           로그아웃
         </button>
       </div>

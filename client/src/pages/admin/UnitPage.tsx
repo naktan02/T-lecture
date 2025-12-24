@@ -84,43 +84,56 @@ const UnitPage = (): ReactElement => {
   };
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+    <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
       <AdminHeader />
 
-      <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-6 flex flex-col min-h-0">
+      <main className="flex-1 w-full max-w-7xl mx-auto p-3 md:p-6 flex flex-col min-h-0">
         {/* 툴바 영역 */}
-        <div className="shrink-0 flex flex-col md:flex-row justify-between items-end gap-4 mb-4">
-          <div className="w-full">
-            <UnitToolbar
-              onSearch={handleSearch}
-              onUploadExcel={uploadExcel}
-              onCreate={() => {
-                setSelectedUnit(null);
-                setIsDrawerOpen(true);
-              }}
-              totalCount={meta?.total || 0}
-            />
-          </div>
+        <div className="shrink-0 mb-3 md:mb-4">
+          <UnitToolbar
+            onSearch={handleSearch}
+            onUploadExcel={uploadExcel}
+            onCreate={() => {
+              setSelectedUnit(null);
+              setIsDrawerOpen(true);
+            }}
+            totalCount={meta?.total || 0}
+          />
         </div>
 
-        {/* ✅ 선택 삭제 버튼 (선택된 항목이 있을 때만 표시) */}
+        {/* 선택 삭제 바 */}
         {selectedIds.length > 0 && (
-          <div className="shrink-0 mb-2 flex justify-between items-center bg-blue-50 p-2 px-4 rounded border border-blue-100 text-blue-800 text-sm">
-            <span>{selectedIds.length}개 항목이 선택됨</span>
+          <div className="shrink-0 mb-3 flex justify-between items-center bg-green-50 p-3 px-4 rounded-xl border border-green-200">
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                {selectedIds.length}
+              </span>
+              <span className="text-sm text-green-800 font-medium">개 선택됨</span>
+            </div>
             <button
               onClick={handleDeleteSelected}
-              className="px-3 py-1 bg-white border border-red-200 text-red-600 rounded hover:bg-red-50 font-medium text-xs"
+              className="flex items-center gap-1.5 px-3 py-2 bg-red-500 text-white rounded-lg 
+                         hover:bg-red-600 active:scale-95 transition-all text-sm font-medium"
             >
-              선택 삭제 🗑️
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+              삭제
             </button>
           </div>
         )}
 
         {/* 리스트 영역 */}
-        <div className="flex-1 min-h-0 bg-white rounded-xl shadow-sm border border-gray-200 relative">
+        <div className="flex-1 min-h-0 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {isLoading ? (
-            <div className="flex justify-center items-center h-full text-gray-500">
-              데이터를 불러오는 중입니다...
+            <div className="flex flex-col items-center justify-center h-full gap-3">
+              <div className="w-10 h-10 border-4 border-gray-200 border-t-green-500 rounded-full animate-spin" />
+              <p className="text-sm text-gray-500">데이터를 불러오는 중...</p>
             </div>
           ) : (
             <UnitList
@@ -137,23 +150,42 @@ const UnitPage = (): ReactElement => {
         </div>
 
         {/* 페이지네이션 */}
-        <div className="shrink-0 py-4 flex justify-center items-center gap-4">
+        <div className="shrink-0 py-3 md:py-4 flex justify-center items-center gap-2 md:gap-4">
           <button
             onClick={() => setPage((p: number) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-3 py-1 border rounded bg-white disabled:opacity-50"
+            className="flex items-center gap-1 px-3 py-2 md:px-4 border rounded-lg bg-white 
+                       disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 
+                       active:scale-95 transition-all text-sm"
           >
-            이전
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            <span className="hidden sm:inline">이전</span>
           </button>
-          <span className="text-sm text-gray-600">
-            Page {page} / {meta?.lastPage || 1}
-          </span>
+
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg">
+            <span className="text-sm font-medium text-gray-700">{page}</span>
+            <span className="text-sm text-gray-400">/</span>
+            <span className="text-sm text-gray-500">{meta?.lastPage || 1}</span>
+          </div>
+
           <button
             onClick={() => setPage((p: number) => p + 1)}
             disabled={page >= (meta?.lastPage || 1)}
-            className="px-3 py-1 border rounded bg-white disabled:opacity-50"
+            className="flex items-center gap-1 px-3 py-2 md:px-4 border rounded-lg bg-white 
+                       disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 
+                       active:scale-95 transition-all text-sm"
           >
-            다음
+            <span className="hidden sm:inline">다음</span>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </button>
         </div>
       </main>
