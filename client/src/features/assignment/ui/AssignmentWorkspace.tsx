@@ -2,7 +2,7 @@
 
 import { useState, useRef, ChangeEvent, MouseEvent } from 'react';
 import { useAssignment } from '../model/useAssignment';
-import { Button, MiniCalendar } from '../../../shared/ui';
+import { Button, MiniCalendar, ConfirmModal } from '../../../shared/ui';
 import { AssignmentDetailModal, AssignmentGroupDetailModal } from './AssignmentDetailModal';
 
 interface SelectedItem {
@@ -45,6 +45,7 @@ export const AssignmentWorkspace: React.FC = () => {
   } = useAssignment();
 
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
+  const [showAutoAssignConfirm, setShowAutoAssignConfirm] = useState(false);
   const [detailModalData, setDetailModalData] = useState<AssignmentGroup | null>(null);
 
   const [calendarPopup, setCalendarPopup] = useState<CalendarPopup>({
@@ -55,6 +56,15 @@ export const AssignmentWorkspace: React.FC = () => {
   });
 
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleAutoAssignClick = () => {
+    setShowAutoAssignConfirm(true);
+  };
+
+  const confirmAutoAssign = async () => {
+    setShowAutoAssignConfirm(false);
+    await executeAutoAssign();
+  };
 
   const handleDateChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
@@ -120,6 +130,36 @@ export const AssignmentWorkspace: React.FC = () => {
           <Button onClick={fetchData} disabled={loading} size="medium">
             {loading ? '조회 중...' : '조회하기'}
           </Button>
+          <button
+            onClick={handleAutoAssignClick}
+            disabled={loading || unassignedUnits.length === 0}
+            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 
+                           disabled:bg-gray-300 disabled:cursor-not-allowed
+                           shadow-sm transition-all text-sm font-bold flex items-center gap-2"
+          >
+            {loading ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                배정 중...
+              </>
+            ) : (
+              <>⚡ 자동 배정 실행</>
+            )}
+          </button>
         </div>
       </div>
 
@@ -241,7 +281,7 @@ export const AssignmentWorkspace: React.FC = () => {
             <div className="p-3 bg-orange-50 border-b border-orange-100 border-l-4 border-l-orange-500 font-bold text-gray-700 flex justify-between items-center">
               <span>⚖️ 배정 작업 공간 (부대별)</span>
               <div className="flex gap-2">
-                <Button size="xsmall" variant="ghost" onClick={executeAutoAssign}>
+                <Button size="xsmall" variant="ghost" onClick={handleAutoAssignClick}>
                   자동 배정
                 </Button>
                 {assignments.length > 0 && (
@@ -346,6 +386,24 @@ export const AssignmentWorkspace: React.FC = () => {
           onRemove={removeAssignment}
         />
       )}
+
+      {/* 자동 배정 확인 모달 */}
+      <ConfirmModal
+        isOpen={showAutoAssignConfirm}
+        title="자동 배정 실행"
+        message={
+          <div>
+            <p>현재 조건으로 자동 배정을 실행하시겠습니까?</p>
+            <p className="text-sm text-gray-500 mt-2">
+              * 기존 배정 이력은 초기화되지 않으며, 미배정된 건에 대해서만 수행됩니다.
+            </p>
+          </div>
+        }
+        confirmText="실행"
+        cancelText="취소"
+        onConfirm={confirmAutoAssign}
+        onCancel={() => setShowAutoAssignConfirm(false)}
+      />
     </div>
   );
 };

@@ -3,11 +3,14 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/model/useAuth';
+import { MobileNav } from './MobileNav';
+import { ConfirmModal } from './ConfirmModal';
 import { showConfirm } from '../utils';
 
 interface NavLink {
   label: string;
   path: string;
+  icon?: string;
 }
 
 interface CommonHeaderProps {
@@ -45,9 +48,10 @@ export const CommonHeader: React.FC<CommonHeaderProps> = ({ title, userLabel, li
       return (
         <button
           onClick={() => navigate('/user-main')}
-          className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded-md text-sm transition duration-150"
+          className="px-3 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-sm 
+                     transition-all duration-200 active:scale-95 hidden sm:block"
         >
-          사용자 모드로 이동
+          사용자 모드
         </button>
       );
     }
@@ -57,9 +61,10 @@ export const CommonHeader: React.FC<CommonHeaderProps> = ({ title, userLabel, li
       return (
         <button
           onClick={() => navigate(isSuperAdmin ? '/admin/super' : '/admin')}
-          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-md text-sm transition duration-150"
+          className="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm 
+                     transition-all duration-200 active:scale-95 hidden sm:block"
         >
-          관리자 모드로 이동
+          관리자 모드
         </button>
       );
     }

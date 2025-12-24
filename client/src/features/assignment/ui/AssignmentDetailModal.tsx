@@ -1,7 +1,7 @@
 // src/features/assignment/ui/AssignmentDetailModal.tsx
 
 import { useMemo, useState, ReactNode } from 'react';
-import { DetailModal, MiniCalendar, Button } from '../../../shared/ui';
+import { DetailModal, MiniCalendar, Button, ConfirmModal } from '../../../shared/ui';
 import { InstructorSelectionPopup } from './InstructorSelectionPopup';
 import { logger } from '../../../shared/utils';
 
@@ -209,13 +209,17 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
 }) => {
   const [addPopupTarget, setAddPopupTarget] = useState<AddPopupTarget | null>(null);
 
-  const handleRemoveInstructor = (unitScheduleId: number, instructorId: number): void => {
-    if (confirm('이 강사를 배정에서 제외하시겠습니까?')) {
-      if (onRemove) {
-        onRemove(unitScheduleId, instructorId);
-      }
-      logger.debug('Remove:', unitScheduleId, instructorId);
+  const [removeTarget, setRemoveTarget] = useState<{
+    unitScheduleId: number;
+    instructorId: number;
+  } | null>(null);
+
+  const confirmRemove = (): void => {
+    if (removeTarget && onRemove) {
+      onRemove(removeTarget.unitScheduleId, removeTarget.instructorId);
+      logger.debug('Remove:', removeTarget.unitScheduleId, removeTarget.instructorId);
     }
+    setRemoveTarget(null);
   };
 
   return (
@@ -278,7 +282,10 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
 
                           <button
                             onClick={() =>
-                              handleRemoveInstructor(dateInfo.unitScheduleId, inst.instructorId)
+                              setRemoveTarget({
+                                unitScheduleId: dateInfo.unitScheduleId,
+                                instructorId: inst.instructorId,
+                              })
                             }
                             className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-600"
                           >
@@ -320,6 +327,17 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
       {addPopupTarget && (
         <InstructorSelectionPopup target={addPopupTarget} onClose={() => setAddPopupTarget(null)} />
       )}
+      {/* 5. 삭제 확인 모달 */}
+      <ConfirmModal
+        isOpen={!!removeTarget}
+        title="배정 제외"
+        message="이 강사를 배정에서 제외하시겠습니까?"
+        confirmText="제외"
+        cancelText="취소"
+        confirmVariant="danger"
+        onConfirm={confirmRemove}
+        onCancel={() => setRemoveTarget(null)}
+      />
     </div>
   );
 };

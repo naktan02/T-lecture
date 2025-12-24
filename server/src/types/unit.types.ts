@@ -57,6 +57,7 @@ export interface TrainingLocationInput {
   originalPlace?: string;
   changedPlace?: string;
   plannedCount?: number | string;
+  actualCount?: number | string;
   instructorsNumbers?: number | string;
   hasInstructorLounge?: boolean | string;
   hasWomenRestroom?: boolean | string;
@@ -76,6 +77,8 @@ export interface RawUnitInput {
   lng?: number;
   educationStart?: string | Date;
   educationEnd?: string | Date;
+  // 교육불가 일자 목록 (개별 날짜 배열)
+  excludedDates?: string[];
   workStartTime?: string | Date;
   workEndTime?: string | Date;
   lunchStartTime?: string | Date;
@@ -84,7 +87,7 @@ export interface RawUnitInput {
   officerPhone?: string;
   officerEmail?: string;
   trainingLocations?: TrainingLocationInput[];
-  schedules?: string[];
+  schedules?: ScheduleInput[];
 }
 
 export interface ScheduleInput {

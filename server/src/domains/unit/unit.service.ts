@@ -4,7 +4,7 @@ import { buildPaging, buildUnitWhere } from './unit.filters';
 import { toCreateUnitDto, excelRowToRawUnit, RawUnitData } from './unit.mapper';
 import AppError from '../../common/errors/AppError';
 import { Prisma, MilitaryType } from '@prisma/client';
-import { ExcelRow, ScheduleInput, UnitQueryInput } from '../../types/unit.types';
+import { ScheduleInput, UnitQueryInput } from '../../types/unit.types';
 
 // 서비스 입력 타입들
 type RawUnitInput = RawUnitData;
@@ -28,12 +28,27 @@ class UnitService {
   // --- 등록 ---
 
   /**
-   * 부대 단건 등록
+   * 부대 단건 등록 (일정 자동 생성 포함)
+   * - educationStart ~ educationEnd 사이의 모든 날짜를 일정으로 생성
+   * - excludedStart ~ excludedEnd 범위의 날짜는 isExcluded: true로 설정
    */
   async registerSingleUnit(rawData: RawUnitInput) {
     try {
       const cleanData = toCreateUnitDto(rawData);
-      return await unitRepository.insertOneUnit(cleanData);
+
+      // 교육 기간에서 일정 자동 계산 (excludedDates 배열 직접 사용)
+      const schedules = this._calculateSchedules(
+        rawData.educationStart,
+        rawData.educationEnd,
+        rawData.excludedDates || [],
+      );
+
+      // 부대 + 교육장소 + 일정 한 번에 생성
+      return await unitRepository.createUnitWithNested(
+        cleanData,
+        rawData.trainingLocations || [],
+        schedules,
+      );
     } catch (e: unknown) {
       if (e instanceof Error && e.message.includes('부대명(name)은 필수입니다.')) {
         throw new AppError(e.message, 400, 'VALIDATION_ERROR');
@@ -45,29 +60,38 @@ class UnitService {
   /**
    * 엑셀 파일 처리 및 일괄 등록
    */
-  async processExcelDataAndRegisterUnits(rawRows: ExcelRow[]) {
+  async processExcelDataAndRegisterUnits(rawRows: Record<string, unknown>[]) {
     const rawDataList = rawRows.map(excelRowToRawUnit);
     return await this.registerMultipleUnits(rawDataList);
   }
 
   /**
    * 일괄 등록 (내부 로직)
+   * 각 부대별로 registerSingleUnit을 호출하여 일정 자동 생성
    */
   async registerMultipleUnits(dataArray: RawUnitInput[]) {
     if (!Array.isArray(dataArray) || dataArray.length === 0) {
       throw new AppError('등록할 데이터가 없습니다.', 400, 'VALIDATION_ERROR');
     }
 
-    try {
-      const dtoList = dataArray.map(toCreateUnitDto);
-      const results = await unitRepository.insertManyUnits(dtoList);
-      return { count: results.length };
-    } catch (e: unknown) {
-      if (e instanceof Error && e.message.includes('부대명(name)은 필수입니다.')) {
-        throw new AppError(e.message, 400, 'VALIDATION_ERROR');
+    const results: unknown[] = [];
+    const errors: { name: string; error: string }[] = [];
+
+    for (const rawData of dataArray) {
+      try {
+        const unit = await this.registerSingleUnit(rawData);
+        results.push(unit);
+      } catch (e: unknown) {
+        const name = rawData.name || '(부대명 없음)';
+        const message = e instanceof Error ? e.message : '알 수 없는 오류';
+        errors.push({ name, error: message });
       }
-      throw e;
     }
+
+    return {
+      count: results.length,
+      errors: errors.length > 0 ? errors : undefined,
+    };
   }
 
   // --- 조회 ---
@@ -141,6 +165,77 @@ class UnitService {
     return await unitRepository.updateUnitById(id, updateData);
   }
 
+  /**
+   * 부대 전체 정보 수정 (기본정보 + 교육장소 + 일정)
+   * - 일정은 항상 전송받은 schedules 배열로 덮어쓰기
+   * - excludedStart/excludedEnd가 있으면 educationStart/End 기반으로 일정 재생성
+   */
+  async updateUnitFull(id: number | string, rawData: RawUnitInput) {
+    const unit = await unitRepository.findUnitWithRelations(id);
+    if (!unit) {
+      throw new AppError('해당 부대를 찾을 수 없습니다.', 404, 'UNIT_NOT_FOUND');
+    }
+
+    // 기본 정보 업데이트 데이터 구성
+    const unitUpdateData: Prisma.UnitUpdateInput = {};
+    if (rawData.name !== undefined) unitUpdateData.name = rawData.name;
+    if (rawData.unitType !== undefined)
+      unitUpdateData.unitType =
+        rawData.unitType as Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput['set'];
+    if (rawData.wideArea !== undefined) unitUpdateData.wideArea = rawData.wideArea;
+    if (rawData.region !== undefined) unitUpdateData.region = rawData.region;
+    if (rawData.addressDetail !== undefined) {
+      unitUpdateData.addressDetail = rawData.addressDetail;
+      unitUpdateData.lat = null;
+      unitUpdateData.lng = null;
+    }
+    if (rawData.officerName !== undefined) unitUpdateData.officerName = rawData.officerName;
+    if (rawData.officerPhone !== undefined) unitUpdateData.officerPhone = rawData.officerPhone;
+    if (rawData.officerEmail !== undefined) unitUpdateData.officerEmail = rawData.officerEmail;
+    if (rawData.educationStart !== undefined)
+      unitUpdateData.educationStart = rawData.educationStart
+        ? new Date(rawData.educationStart)
+        : null;
+    if (rawData.educationEnd !== undefined)
+      unitUpdateData.educationEnd = rawData.educationEnd ? new Date(rawData.educationEnd) : null;
+    if (rawData.workStartTime !== undefined)
+      unitUpdateData.workStartTime = rawData.workStartTime ? new Date(rawData.workStartTime) : null;
+    if (rawData.workEndTime !== undefined)
+      unitUpdateData.workEndTime = rawData.workEndTime ? new Date(rawData.workEndTime) : null;
+    if (rawData.lunchStartTime !== undefined)
+      unitUpdateData.lunchStartTime = rawData.lunchStartTime
+        ? new Date(rawData.lunchStartTime)
+        : null;
+    if (rawData.lunchEndTime !== undefined)
+      unitUpdateData.lunchEndTime = rawData.lunchEndTime ? new Date(rawData.lunchEndTime) : null;
+
+    // 일정 계산 로직:
+    // 1. excludedDates가 정의되어 있으면 (빈 배열 포함) -> 일정 재계산
+    // 2. excludedDates가 undefined이고 schedules가 있으면 -> 그 schedules 사용
+    // 3. 둘 다 없으면 -> 기존 일정 유지
+    let schedules: ScheduleData[] | undefined;
+    if (rawData.excludedDates !== undefined) {
+      // excludedDates가 정의되어 있으면 educationStart/End 기반으로 일정 재생성
+      const start = rawData.educationStart || unit.educationStart || undefined;
+      const end = rawData.educationEnd || unit.educationEnd || undefined;
+      schedules = this._calculateSchedules(start, end, rawData.excludedDates);
+    } else if (rawData.schedules && rawData.schedules.length > 0) {
+      // excludedDates가 없고 schedules 배열이 있으면 그것으로 업데이트
+      schedules = rawData.schedules.map((s) => ({
+        date: typeof s.date === 'string' ? new Date(s.date) : s.date,
+        isExcluded: s.isExcluded ?? false,
+      }));
+    }
+    // schedules가 undefined이면 updateUnitWithNested에서 기존 일정 유지
+
+    return await unitRepository.updateUnitWithNested(
+      id,
+      unitUpdateData,
+      rawData.trainingLocations,
+      schedules,
+    );
+  }
+
   // --- 일정 관리 ---
 
   /**
@@ -198,7 +293,34 @@ class UnitService {
     return await unitRepository.deleteManyUnits(ids);
   }
 
+  /**
+   * 검색 조건에 맞는 모든 부대 삭제
+   */
+  async removeUnitsByFilter(query: UnitQueryInput) {
+    const where = buildUnitWhere(query);
+    return await unitRepository.deleteUnitsByFilter(where);
+  }
+
   // --- 헬퍼 (JS에서 이식) ---
+
+  /**
+   * 교육불가 기간(시작~종료)을 YYYY-MM-DD 문자열 배열로 변환
+   */
+  _getExcludedDateStrings(excludedStart?: string | Date, excludedEnd?: string | Date): string[] {
+    if (!excludedStart || !excludedEnd) return [];
+
+    const start = new Date(excludedStart);
+    const end = new Date(excludedEnd);
+    const dates: string[] = [];
+
+    const current = new Date(start);
+    while (current <= end) {
+      dates.push(current.toISOString().split('T')[0]);
+      current.setDate(current.getDate() + 1);
+    }
+
+    return dates;
+  }
 
   /**
    * 교육 기간에서 일정 자동 계산 (isExcluded 포함)

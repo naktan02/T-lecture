@@ -31,7 +31,7 @@ export const uploadExcelAndRegisterUnits = asyncHandler(async (req: Request, res
     throw new AppError('파일이 업로드되지 않았습니다.', 400, 'VALIDATION_ERROR');
   }
 
-  const rawRows = excelService.bufferToJson(req.file.buffer);
+  const rawRows = await excelService.bufferToJson(req.file.buffer);
   const result = await unitService.processExcelDataAndRegisterUnits(rawRows);
 
   res.status(201).json({
@@ -71,6 +71,16 @@ export const updateOfficerInfo = asyncHandler(async (req: Request, res: Response
   });
 });
 
+// 부대 전체 정보 수정 (기본정보 + 교육장소 + 일정)
+export const updateUnitFull = asyncHandler(async (req: Request, res: Response) => {
+  const unit = await unitService.updateUnitFull(req.params.id, req.body);
+
+  res.status(200).json({
+    result: 'Success',
+    data: unit,
+  });
+});
+
 // 부대 일정 추가
 export const addSchedule = asyncHandler(async (req: Request, res: Response) => {
   const result = await unitService.addScheduleToUnit(req.params.id, req.body.date);
@@ -99,8 +109,14 @@ export const deleteUnit = asyncHandler(async (req: Request, res: Response) => {
 
 // ✅ 부대 일괄 삭제 (JS 기능 유지)
 export const deleteMultipleUnits = asyncHandler(async (req: Request, res: Response) => {
-  const { ids } = req.body;
-  const result = await unitService.removeMultipleUnits(ids);
+  const { ids, all, filter } = req.body;
+
+  let result;
+  if (all && filter) {
+    result = await unitService.removeUnitsByFilter(filter);
+  } else {
+    result = await unitService.removeMultipleUnits(ids);
+  }
 
   res.status(200).json({
     result: 'Success',
@@ -116,6 +132,7 @@ module.exports = {
   getUnitDetail,
   updateBasicInfo,
   updateOfficerInfo,
+  updateUnitFull,
   addSchedule,
   removeSchedule,
   deleteUnit,
