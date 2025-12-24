@@ -85,7 +85,7 @@ export const useAssignment = (): UseAssignmentReturn => {
 
   // 2. 자동 배정 실행 (API 호출)
   const executeAutoAssign = async (): Promise<void> => {
-    if (!confirm('현재 조건으로 자동 배정을 실행하시겠습니까?')) return;
+    // UI에서 확인 모달 처리하므로 여기서 confirm 제거
 
     setLoading(true);
     try {

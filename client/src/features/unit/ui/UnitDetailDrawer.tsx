@@ -13,7 +13,7 @@ import { Button, InputField } from '../../../shared/ui';
  */
 
 // ---------- Types ----------
-type UnitType = 'Army' | 'Navy';
+type UnitType = 'Army' | 'Navy' | 'AirForce' | 'Marines' | 'MND';
 
 interface Schedule {
   id?: number;
@@ -229,7 +229,9 @@ export const UnitDetailDrawer = ({
 
     setFormData({
       name: target.name || '',
-      unitType: (target.unitType === 'Navy' ? 'Navy' : 'Army') as UnitType,
+      unitType: (['Army', 'Navy', 'AirForce', 'Marines', 'MND'].includes(target.unitType as string)
+        ? target.unitType
+        : 'Army') as UnitType,
       region: target.region || '',
       wideArea: target.wideArea || '',
       addressDetail: target.addressDetail || '',
@@ -471,6 +473,9 @@ export const UnitDetailDrawer = ({
                       >
                         <option value="Army">육군</option>
                         <option value="Navy">해군</option>
+                        <option value="AirForce">공군</option>
+                        <option value="Marines">해병대</option>
+                        <option value="MND">국직부대</option>
                       </select>
                     </div>
 

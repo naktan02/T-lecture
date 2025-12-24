@@ -1,5 +1,6 @@
 // client/src/features/unit/ui/UnitToolbar.tsx
 import { useRef, useState, ChangeEvent, KeyboardEvent, ReactElement } from 'react';
+import { ConfirmModal } from '../../../shared/ui';
 
 interface SearchFilters {
   keyword: string;
@@ -31,16 +32,32 @@ export const UnitToolbar = ({
     endDate: '',
   });
 
-  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>): Promise<void> => {
+  // ✅ 업로드 확인 모달 상태
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0];
-    if (file && window.confirm(`${file.name}을 업로드하시겠습니까?`)) {
-      try {
-        await onUploadExcel(file);
-      } catch {
-        /* useUnit에서 처리됨 */
-      }
+    if (file) {
+      setPendingFile(file);
     }
-    e.target.value = '';
+  };
+
+  const confirmUpload = async (): Promise<void> => {
+    if (pendingFile) {
+      try {
+        await onUploadExcel(pendingFile);
+      } catch {
+        // useUnit에서 처리됨
+      }
+      setPendingFile(null);
+      // input 초기화
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const cancelUpload = (): void => {
+    setPendingFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
@@ -287,6 +304,17 @@ export const UnitToolbar = ({
           </div>
         </div>
       )}
+
+      {/* 엑셀 업로드 확인 모달 */}
+      <ConfirmModal
+        isOpen={!!pendingFile}
+        title="엑셀 업로드"
+        message={`${pendingFile?.name} 파일을 업로드하시겠습니까?`}
+        confirmText="업로드"
+        cancelText="취소"
+        onConfirm={confirmUpload}
+        onCancel={cancelUpload}
+      />
     </div>
   );
 };

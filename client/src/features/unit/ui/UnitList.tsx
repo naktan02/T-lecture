@@ -1,5 +1,5 @@
 // client/src/features/unit/ui/UnitList.tsx
-import React, { ReactElement, ChangeEvent } from 'react';
+import { ReactElement, ChangeEvent } from 'react';
 import { EmptyState } from '../../../shared/ui';
 
 interface Unit {
@@ -29,6 +29,26 @@ const formatDate = (dateStr?: string): string => {
   if (!dateStr) return '-';
   const date = new Date(dateStr);
   return `${date.getMonth() + 1}/${date.getDate()}`;
+};
+
+// 군 타입 정보 헬퍼
+const getUnitTypeInfo = (
+  unitType?: string,
+): { label: string; bgColor: string; textColor: string } => {
+  switch (unitType) {
+    case 'Army':
+      return { label: '육군', bgColor: 'bg-green-100', textColor: 'text-green-700' };
+    case 'Navy':
+      return { label: '해군', bgColor: 'bg-blue-100', textColor: 'text-blue-700' };
+    case 'AirForce':
+      return { label: '공군', bgColor: 'bg-sky-100', textColor: 'text-sky-700' };
+    case 'Marines':
+      return { label: '해병대', bgColor: 'bg-red-100', textColor: 'text-red-700' };
+    case 'MND':
+      return { label: '국직부대', bgColor: 'bg-purple-100', textColor: 'text-purple-700' };
+    default:
+      return { label: unitType || '미지정', bgColor: 'bg-gray-100', textColor: 'text-gray-600' };
+  }
 };
 
 export const UnitList = ({
@@ -103,18 +123,16 @@ export const UnitList = ({
 
                   <td className="px-4 py-3">
                     <div className="font-semibold text-gray-900">{unit.name}</div>
-                    <span
-                      className={`
-                      inline-block text-xs px-2 py-0.5 rounded-full mt-1
-                      ${
-                        unit.unitType === 'Army'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-blue-100 text-blue-700'
-                      }
-                    `}
-                    >
-                      {unit.unitType === 'Army' ? '육군' : '해군'}
-                    </span>
+                    {(() => {
+                      const typeInfo = getUnitTypeInfo(unit.unitType);
+                      return (
+                        <span
+                          className={`inline-block text-xs px-2 py-0.5 rounded-full mt-1 ${typeInfo.bgColor} ${typeInfo.textColor}`}
+                        >
+                          {typeInfo.label}
+                        </span>
+                      );
+                    })()}
                   </td>
 
                   <td className="px-4 py-3">
@@ -214,18 +232,16 @@ export const UnitList = ({
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <h3 className="font-bold text-gray-900">{unit.name}</h3>
-                    <span
-                      className={`
-                      inline-block text-xs px-2 py-0.5 rounded-full mt-1
-                      ${
-                        unit.unitType === 'Army'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-blue-100 text-blue-700'
-                      }
-                    `}
-                    >
-                      {unit.unitType === 'Army' ? '육군' : '해군'}
-                    </span>
+                    {(() => {
+                      const typeInfo = getUnitTypeInfo(unit.unitType);
+                      return (
+                        <span
+                          className={`inline-block text-xs px-2 py-0.5 rounded-full mt-1 ${typeInfo.bgColor} ${typeInfo.textColor}`}
+                        >
+                          {typeInfo.label}
+                        </span>
+                      );
+                    })()}
                   </div>
                   <svg
                     className="w-5 h-5 text-gray-400 flex-shrink-0 mt-1"

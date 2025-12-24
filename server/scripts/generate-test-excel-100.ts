@@ -50,12 +50,21 @@ const UNIT_TYPES_ARMY = [
   '특수전사령부',
   '항공작전사령부',
 ];
-const UNIT_TYPES_NAVY = [
-  '함대사령부',
-  '해군작전사령부',
-  '해병대사령부',
-  '잠수함사령부',
-  '해군교육사령부',
+const UNIT_TYPES_NAVY = ['함대사령부', '해군작전사령부', '잠수함사령부', '해군교육사령부'];
+const UNIT_TYPES_AIRFORCE = [
+  '전투비행단',
+  '공군작전사령부',
+  '방공관제사령부',
+  '공군교육사령부',
+  '공중기동정찰사령부',
+];
+const UNIT_TYPES_MARINES = ['해병사단', '해병여단', '해병대사령부', '해병교육훈련단'];
+const UNIT_TYPES_MND = [
+  '국방부직할부대',
+  '합동군사대학',
+  '국군의무사령부',
+  '국군체육부대',
+  '국방정보본부',
 ];
 
 const WIDE_AREAS = [
@@ -351,11 +360,27 @@ function generateEducationDates(baseDate: Date): { start: string; end: string; e
 }
 
 function generateUnit(index: number, baseDate: Date): Record<string, unknown> {
-  const isArmy = Math.random() > 0.3; // 70% 육군, 30% 해군
-  const unitType = isArmy ? 'Army' : 'Navy';
-  const unitName = isArmy
-    ? `${randomChoice(UNIT_PREFIXES)}${randomChoice(UNIT_TYPES_ARMY)}`
-    : `${randomChoice(UNIT_PREFIXES)}${randomChoice(UNIT_TYPES_NAVY)}`;
+  // 군 타입 비율: 육군 50%, 해군 15%, 공군 15%, 해병대 10%, 국직부대 10%
+  const rand = Math.random();
+  let unitType: string;
+  let unitName: string;
+
+  if (rand < 0.5) {
+    unitType = 'Army';
+    unitName = `${randomChoice(UNIT_PREFIXES)}${randomChoice(UNIT_TYPES_ARMY)}`;
+  } else if (rand < 0.65) {
+    unitType = 'Navy';
+    unitName = `${randomChoice(UNIT_PREFIXES)}${randomChoice(UNIT_TYPES_NAVY)}`;
+  } else if (rand < 0.8) {
+    unitType = 'AirForce';
+    unitName = `${randomChoice(UNIT_PREFIXES)}${randomChoice(UNIT_TYPES_AIRFORCE)}`;
+  } else if (rand < 0.9) {
+    unitType = 'Marines';
+    unitName = `${randomChoice(UNIT_PREFIXES)}${randomChoice(UNIT_TYPES_MARINES)}`;
+  } else {
+    unitType = 'MND';
+    unitName = randomChoice(UNIT_TYPES_MND);
+  }
 
   const wideArea = randomChoice(WIDE_AREAS);
   const region = randomChoice(REGIONS[wideArea] || ['중앙']);

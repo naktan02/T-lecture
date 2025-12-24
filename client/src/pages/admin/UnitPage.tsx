@@ -1,10 +1,11 @@
 // client/src/pages/admin/UnitPage.tsx
-import React, { useState, ReactElement } from 'react';
+import { useState, ReactElement } from 'react';
 import { AdminHeader } from '../../features/admin/ui/headers/AdminHeader';
 import { useUnit } from '../../features/unit/model/useUnit';
 import { UnitToolbar } from '../../features/unit/ui/UnitToolbar';
 import { UnitList } from '../../features/unit/ui/UnitList';
 import { UnitDetailDrawer } from '../../features/unit/ui/UnitDetailDrawer';
+import { ConfirmModal } from '../../shared/ui';
 
 interface SearchParams {
   keyword: string;
@@ -30,6 +31,9 @@ const UnitPage = (): ReactElement => {
 
   // ✅ 다중 선택 상태 관리
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+  // ✅ 삭제 확인 모달 상태
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const {
     units,
@@ -72,14 +76,12 @@ const UnitPage = (): ReactElement => {
   // ✅ 선택 삭제 핸들러
   const handleDeleteSelected = async (): Promise<void> => {
     if (selectedIds.length === 0) return;
-    if (window.confirm(`선택한 ${selectedIds.length}개 부대를 삭제하시겠습니까?`)) {
-      try {
-        await deleteUnits(selectedIds);
-        setSelectedIds([]);
-        alert('삭제되었습니다.');
-      } catch (e) {
-        console.error(e);
-      }
+    try {
+      await deleteUnits(selectedIds);
+      setSelectedIds([]);
+      setShowDeleteConfirm(false);
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -111,7 +113,7 @@ const UnitPage = (): ReactElement => {
               <span className="text-sm text-green-800 font-medium">개 선택됨</span>
             </div>
             <button
-              onClick={handleDeleteSelected}
+              onClick={() => setShowDeleteConfirm(true)}
               className="flex items-center gap-1.5 px-3 py-2 bg-red-500 text-white rounded-lg 
                          hover:bg-red-600 active:scale-95 transition-all text-sm font-medium"
             >
@@ -197,6 +199,18 @@ const UnitPage = (): ReactElement => {
         onRegister={registerUnit}
         onUpdate={updateUnit}
         onDelete={deleteUnit}
+      />
+
+      {/* 삭제 확인 모달 */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="부대 삭제"
+        message={`선택한 ${selectedIds.length}개 부대를 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.`}
+        confirmText="삭제"
+        cancelText="취소"
+        confirmVariant="danger"
+        onConfirm={handleDeleteSelected}
+        onCancel={() => setShowDeleteConfirm(false)}
       />
     </div>
   );

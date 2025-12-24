@@ -4,6 +4,7 @@ import React from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/model/useAuth';
 import { MobileNav } from './MobileNav';
+import { ConfirmModal } from './ConfirmModal';
 
 interface NavLink {
   label: string;
@@ -27,10 +28,15 @@ export const CommonHeader: React.FC<CommonHeaderProps> = ({ title, userLabel, li
   const location = useLocation();
   const { logout, isAdmin, isSuperAdmin } = useAuth();
 
-  const handleLogout = async (): Promise<void> => {
-    if (window.confirm('정말 로그아웃 하시겠습니까?')) {
-      logout();
-    }
+  const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
+
+  const handleLogout = (): void => {
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = async (): Promise<void> => {
+    await logout();
+    setShowLogoutConfirm(false);
   };
 
   const isInAdminPage = location.pathname.startsWith('/admin');
@@ -126,6 +132,17 @@ export const CommonHeader: React.FC<CommonHeaderProps> = ({ title, userLabel, li
           로그아웃
         </button>
       </div>
+
+      <ConfirmModal
+        isOpen={showLogoutConfirm}
+        title="로그아웃"
+        message="정말 로그아웃 하시겠습니까?"
+        confirmText="로그아웃"
+        cancelText="취소"
+        confirmVariant="danger"
+        onConfirm={confirmLogout}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
     </header>
   );
 };
