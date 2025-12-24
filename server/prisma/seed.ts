@@ -55,7 +55,31 @@ async function main() {
     logger.info('.env에 SUPER_ADMIN 정보가 없어 관리자 생성을 건너뜁니다.');
   }
 
-  // 2. 메시지 템플릿 시딩
+  // 2. 소속팀(Team) 시딩
+  logger.info('소속팀 데이터 생성 중...');
+  const teams = ['1팀', '2팀', '3팀', '4팀', '5팀'];
+  for (const teamName of teams) {
+    await prisma.team.upsert({
+      where: { id: teams.indexOf(teamName) + 1 },
+      update: { name: teamName },
+      create: { name: teamName },
+    });
+  }
+  logger.info(`소속팀 ${teams.length}개 생성 완료`);
+
+  // 3. 덕목(Virtue) 시딩 - 강의 가능 과목
+  logger.info('덕목(강의 가능 과목) 데이터 생성 중...');
+  const virtues = ['예', '효', '정직', '책임', '존중', '배려', '소통', '협동'];
+  for (const virtueName of virtues) {
+    await prisma.virtue.upsert({
+      where: { id: virtues.indexOf(virtueName) + 1 },
+      update: { name: virtueName },
+      create: { name: virtueName },
+    });
+  }
+  logger.info(`덕목 ${virtues.length}개 생성 완료`);
+
+  // 4. 메시지 템플릿 시딩
   logger.info('메시지 템플릿 생성 중...');
   await prisma.messageTemplate.createMany({
     data: [

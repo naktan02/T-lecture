@@ -33,10 +33,13 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
       queryKeys: Object.keys(req.query || {}),
     };
 
+    // 로그 메시지를 더 읽기 쉽게 개선
+    const logMessage = `${req.method} ${req.originalUrl || req.url} - ${statusCode} (${Date.now() - start}ms)`;
+
     if (statusCode >= 400) {
-      logger.warn('[RES]', payload);
+      logger.warn(logMessage, payload);
     } else {
-      logger.info('[RES]', payload);
+      logger.info(logMessage, payload);
     }
   });
 

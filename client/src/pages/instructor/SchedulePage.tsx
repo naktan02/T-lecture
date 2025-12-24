@@ -1,16 +1,21 @@
 // client/src/pages/instructor/SchedulePage.tsx
-import { InstructorCalendar } from '../../features/schedule/components/InstructorCalendar';
+import { InstructorCalendar } from '../../features/schedule/ui/InstructorCalendar';
+import { UserHeader } from '../../features/user/ui/headers/UserHeader';
+import { ContentWrapper } from '../../shared/ui';
+import { useAuthGuard } from '../../features/auth/model/useAuthGuard';
 
 const InstructorSchedulePage: React.FC = () => {
-  return (
-    <div style={{ padding: '50px', backgroundColor: '#eeeeee', minHeight: '100vh' }}>
-      <h1 style={{ color: 'red' }}>캘린더 테스트 화면입니다!</h1>
-      <p>아래에 달력이 보여야 합니다.</p>
+  // 강사 전용 페이지
+  const { shouldRender } = useAuthGuard('INSTRUCTOR');
+  if (!shouldRender) return null;
 
-      <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>
+  return (
+    <>
+      <UserHeader />
+      <ContentWrapper scrollable={false}>
         <InstructorCalendar />
-      </div>
-    </div>
+      </ContentWrapper>
+    </>
   );
 };
 

@@ -59,6 +59,8 @@ npx prisma migrate reset # yes 나오면 y
 
 ```bash
 npx tsx prisma/seed.ts
+
+npx prisma db seed
 ```
 
 

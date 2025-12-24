@@ -1,10 +1,11 @@
 // client/src/pages/admin/UnitPage.tsx
-import React, { useState, ReactElement } from 'react';
+import { useState, ReactElement } from 'react';
 import { AdminHeader } from '../../features/admin/ui/headers/AdminHeader';
 import { useUnit } from '../../features/unit/model/useUnit';
 import { UnitToolbar } from '../../features/unit/ui/UnitToolbar';
 import { UnitList } from '../../features/unit/ui/UnitList';
 import { UnitDetailDrawer } from '../../features/unit/ui/UnitDetailDrawer';
+import { showSuccess, showConfirm } from '../../shared/utils';
 
 interface SearchParams {
   keyword: string;
@@ -70,17 +71,17 @@ const UnitPage = (): ReactElement => {
   };
 
   // ✅ 선택 삭제 핸들러
-  const handleDeleteSelected = async (): Promise<void> => {
+  const handleDeleteSelected = (): void => {
     if (selectedIds.length === 0) return;
-    if (window.confirm(`선택한 ${selectedIds.length}개 부대를 삭제하시겠습니까?`)) {
+    showConfirm(`선택한 ${selectedIds.length}개 부대를 삭제하시겠습니까?`, async () => {
       try {
         await deleteUnits(selectedIds);
         setSelectedIds([]);
-        alert('삭제되었습니다.');
+        showSuccess('삭제되었습니다.');
       } catch (e) {
         console.error(e);
       }
-    }
+    });
   };
 
   return (
