@@ -1,16 +1,15 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
     container_name: t-lecture-db
-    env_file:
-      - ./server/.env
     ports:
-      - "${DB_PORT:-5432}:5432"  
+      - "5432:5432"
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD} 
-      POSTGRES_DB: ${DB_NAME}     
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: Project
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data
+      - tlecture_pgdata:/var/lib/postgresql/data
+
+volumes:
+  tlecture_pgdata:

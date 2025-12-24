@@ -1,0 +1,104 @@
+// client/src/shared/ui/CommonHeader.tsx
+
+import React from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../../features/auth/model/useAuth';
+
+interface NavLink {
+  label: string;
+  path: string;
+}
+
+interface CommonHeaderProps {
+  title: string;
+  userLabel: string;
+  links?: NavLink[];
+}
+
+/**
+ * @param title - 왼쪽 상단 제목
+ * @param userLabel - 오른쪽 유저 이름/직책
+ * @param links - 네비게이션 메뉴 목록 [{ label: '메뉴명', path: '/이동경로' }]
+ */
+export const CommonHeader: React.FC<CommonHeaderProps> = ({ title, userLabel, links = [] }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { logout, isAdmin, isSuperAdmin } = useAuth();
+
+  const handleLogout = async (): Promise<void> => {
+    if (window.confirm('정말 로그아웃 하시겠습니까?')) {
+      logout();
+    }
+  };
+
+  const isInAdminPage = location.pathname.startsWith('/admin');
+
+  // 모드 전환 버튼 렌더링 로직
+  const renderModeSwitch = () => {
+    // 1. 관리자 페이지에 있을 때 -> '사용자 모드로 이동'
+    if (isInAdminPage) {
+      return (
+        <button
+          onClick={() => navigate('/user-main')}
+          className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded-md text-sm transition duration-150"
+        >
+          사용자 모드로 이동
+        </button>
+      );
+    }
+
+    // 2. 일반 페이지에 있는데 관리자 권한이 있을 때 -> '관리자 모드로 이동'
+    if (isAdmin) {
+      return (
+        <button
+          onClick={() => navigate(isSuperAdmin ? '/admin/super' : '/admin')}
+          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-md text-sm transition duration-150"
+        >
+          관리자 모드로 이동
+        </button>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <header className="flex justify-between items-center  bg-[#2c3e50] px-6 py-4 shadow-md text-white">
+      {/* 1. 왼쪽: 타이틀 및 메뉴 */}
+      <div className="flex items-center gap-8">
+        <h1 className="text-xl font-bold text-green-400">{title}</h1>
+
+        {/* 여기가 핵심: links 배열을 돌면서 메뉴 생성 */}
+        <nav className="hidden md:flex gap-6 text-sm">
+          {links.map((link) => (
+            <Link
+              key={link.path}
+              to={link.path}
+              className={`transition-colors duration-200 ${
+                location.pathname === link.path
+                  ? 'text-white font-bold border-b-2 border-green-400 pb-1'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+
+      {/* 2. 오른쪽: 유저 정보 및 로그아웃 */}
+      <div className="flex items-center space-x-4">
+        {renderModeSwitch()}
+
+        <span className="text-sm font-medium border border-gray-600 rounded px-2 py-1 bg-gray-700">
+          {userLabel}
+        </span>
+        <button
+          onClick={handleLogout}
+          className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded-md text-sm transition duration-150"
+        >
+          로그아웃
+        </button>
+      </div>
+    </header>
+  );
+};

@@ -3,33 +3,35 @@
   "version": "0.0.1",
   "private": true,
   "description": "T-LECTURE Backend Server",
-  "main": "src/server.js",
+  "main": "dist/server.js",
   "engines": {
     "node": "20.x"
   },
   "prisma": {
     "schema": "./prisma",
-    "seed": "node prisma/seed.js"
+    "seed": "tsx prisma/seed.ts"
   },
   "scripts": {
-    "dev": "nodemon src/server.js",
-    "build": "prisma generate",
-    "start": "node src/server.js",
+    "dev": "tsx watch src/server.ts",
+    "build": "prisma generate && tsc",
+    "start": "node dist/server.js",
     "prisma:format": "prisma format",
     "prisma:validate": "prisma validate",
     "db:push": "npm run prisma:format && npm run prisma:validate && prisma db push",
     "db:migrate": "npm run prisma:format && npm run prisma:validate && prisma migrate dev",
     "db:studio": "prisma studio",
-    "test": "mocha tests/test/**/*.spec.js --timeout 10000 --exit",
-    "test:integration": "mocha tests/test/auth.integration.spec.js --timeout 10000 --exit",
-    "test:integration1": "mocha tests/test/user.admin.integration.spec.js --timeout 10000 --exit",
-    "test:integration2": "mocha tests/test/user.me.integration.spec.js --timeout 10000 --exit",
-    "test:integration3": "mocha tests/test/assignment_integration.spec.js --timeout 10000 --exit",
-    "test:integration4": "mocha tests/test/message.integration.spec.js --timeout 10000 --exit",
-    "test:integration5": "mocha tests/test/unit.integration.spec.js --timeout 10000 --exit",
-    "test:integration6": "mocha tests/test/metadata.integration.spec.js --timeout 10000 --exit",
-    "test:integration8": "mocha tests/test/distance_integration.spec.js --timeout 10000 --exit",
-    "test:integration9": "mocha tests/test/instructor.integration.spec.js --timeout 10000 --exit"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "mocha --require tsx tests/**/*.spec.js --timeout 10000 --exit",
+    "test:assignments": "mocha --require tsx tests/test/assignments.integration.spec.js --timeout 10000 --exit",
+    "test:auth": "mocha --require tsx tests/test/auth.integration.spec.js --timeout 10000 --exit",
+    "test:distance": "mocha --require tsx tests/test/distance.integration.spec.js --timeout 10000 --exit",
+    "test:instructor": "mocha --require tsx tests/test/instructor.integration.spec.js --timeout 10000 --exit",
+    "test:messages": "mocha --require tsx tests/test/messages.integration.spec.js --timeout 10000 --exit",
+    "test:metadata": "mocha --require tsx tests/test/metadata.integration.spec.js --timeout 10000 --exit",
+    "test:units": "mocha --require tsx tests/test/units.integration.spec.js --timeout 10000 --exit",
+    "test:user.admin": "mocha --require tsx tests/test/user.admin.integration.spec.js --timeout 10000 --exit",
+    "test:user.me": "mocha --require tsx tests/test/user.me.integration.spec.js --timeout 10000 --exit"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
@@ -46,15 +48,34 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.10",
     "readline-sync": "^1.4.10",
-    "xlsx": "^0.18.5",
     "winston": "^3.19.0",
-    "winston-daily-rotate-file": "^5.0.0"
+    "winston-daily-rotate-file": "^5.0.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/morgan": "^1.9.10",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^25.0.3",
+    "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^7.0.4",
+    "@types/supertest": "^6.0.3",
     "chai": "^6.2.1",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.5.0",
     "mocha": "^11.7.5",
-    "nodemon": "^3.1.9",
+    "prettier": "^3.7.4",
     "prisma": "^6.19.0",
-    "supertest": "^7.1.4"
+    "supertest": "^7.1.4",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.50.1"
   }
 }

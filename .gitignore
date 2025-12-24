@@ -3,10 +3,12 @@
 /client/node_modules
 /server/node_modules
 /package/*/node_modules
+**/package-lock.json
 # Build artifacts
 /client/.next
 /client/out
-
+/server/dist
+/client/dist
 # Logs
 logs
 *.log
@@ -39,3 +41,15 @@ mysql_data/
 server/mysql_data/
 postgres_data/
 server/postgres_data/
+
+# TypeScript
+*.tsbuildinfo
+
+# ESLint
+.eslintcache
+
+# Test coverage
+coverage/
+
+# Turborepo (if used)
+.turbo
