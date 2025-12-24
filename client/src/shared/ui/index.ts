@@ -13,3 +13,4 @@ export { LoadingSpinner } from './LoadingSpinner';
 export { EmptyState } from './EmptyState';
 export { MobileNav } from './MobileNav';
 export { ConfirmModal } from './ConfirmModal';
+export { Pagination } from './Pagination';

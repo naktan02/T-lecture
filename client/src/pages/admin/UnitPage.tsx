@@ -5,7 +5,7 @@ import { useUnit } from '../../features/unit/model/useUnit';
 import { UnitToolbar } from '../../features/unit/ui/UnitToolbar';
 import { UnitList } from '../../features/unit/ui/UnitList';
 import { UnitDetailDrawer } from '../../features/unit/ui/UnitDetailDrawer';
-import { ConfirmModal } from '../../shared/ui';
+import { ConfirmModal, Pagination } from '../../shared/ui';
 
 interface SearchParams {
   keyword: string;
@@ -186,43 +186,8 @@ const UnitPage = (): ReactElement => {
         </div>
 
         {/* 페이지네이션 */}
-        <div className="shrink-0 py-3 md:py-4 flex justify-center items-center gap-2 md:gap-4">
-          <button
-            onClick={() => setPage((p: number) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="flex items-center gap-1 px-3 py-2 md:px-4 border rounded-lg bg-white 
-                       disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 
-                       active:scale-95 transition-all text-sm"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            <span className="hidden sm:inline">이전</span>
-          </button>
-
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg">
-            <span className="text-sm font-medium text-gray-700">{page}</span>
-            <span className="text-sm text-gray-400">/</span>
-            <span className="text-sm text-gray-500">{meta?.lastPage || 1}</span>
-          </div>
-
-          <button
-            onClick={() => setPage((p: number) => p + 1)}
-            disabled={page >= (meta?.lastPage || 1)}
-            className="flex items-center gap-1 px-3 py-2 md:px-4 border rounded-lg bg-white 
-                       disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 
-                       active:scale-95 transition-all text-sm"
-          >
-            <span className="hidden sm:inline">다음</span>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+        <div className="shrink-0 py-3 md:py-4">
+          <Pagination currentPage={page} totalPage={meta?.lastPage || 1} onPageChange={setPage} />
         </div>
       </main>
 
