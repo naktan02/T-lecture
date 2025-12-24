@@ -83,6 +83,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://test:test@localhost:5432/t_lecture_test
+      DIRECT_URL: postgresql://test:test@localhost:5432/t_lecture_test
       JWT_SECRET: test-secret-key-for-ci
       NODE_ENV: test
 
