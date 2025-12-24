@@ -8,6 +8,9 @@
   "scripts": {
     "dev:client": "npm run dev --prefix client",
     "dev:server": "npm run dev --prefix server",
+    "build:server": "npm run build -w server",
+    "start:server": "npm start -w server",
+    "db:migrate": "npm run db:migrate -w server",
     "db:up": "docker-compose --env-file server/.env up -d",
     "db:down": "docker-compose down",
     "format": "prettier --write .",

@@ -1,10 +1,8 @@
 // client/src/shared/ui/CommonHeader.tsx
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/model/useAuth';
-import { MobileNav } from './MobileNav';
-import { ConfirmModal } from './ConfirmModal';
 import { showConfirm } from '../utils';
 
 interface NavLink {
@@ -24,7 +22,7 @@ interface CommonHeaderProps {
  * @param userLabel - 오른쪽 유저 이름/직책
  * @param links - 네비게이션 메뉴 목록 [{ label: '메뉴명', path: '/이동경로' }]
  */
-export const CommonHeader: React.FC<CommonHeaderProps> = ({ title, userLabel, links = [] }) => {
+export const CommonHeader = ({ title, userLabel, links = [] }: CommonHeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, isAdmin, isSuperAdmin } = useAuth();
