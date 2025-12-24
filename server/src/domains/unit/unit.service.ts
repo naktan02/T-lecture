@@ -293,6 +293,14 @@ class UnitService {
     return await unitRepository.deleteManyUnits(ids);
   }
 
+  /**
+   * 검색 조건에 맞는 모든 부대 삭제
+   */
+  async removeUnitsByFilter(query: UnitQueryInput) {
+    const where = buildUnitWhere(query);
+    return await unitRepository.deleteUnitsByFilter(where);
+  }
+
   // --- 헬퍼 (JS에서 이식) ---
 
   /**

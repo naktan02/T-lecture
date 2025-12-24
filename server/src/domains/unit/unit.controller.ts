@@ -109,8 +109,14 @@ export const deleteUnit = asyncHandler(async (req: Request, res: Response) => {
 
 // ✅ 부대 일괄 삭제 (JS 기능 유지)
 export const deleteMultipleUnits = asyncHandler(async (req: Request, res: Response) => {
-  const { ids } = req.body;
-  const result = await unitService.removeMultipleUnits(ids);
+  const { ids, all, filter } = req.body;
+
+  let result;
+  if (all && filter) {
+    result = await unitService.removeUnitsByFilter(filter);
+  } else {
+    result = await unitService.removeMultipleUnits(ids);
+  }
 
   res.status(200).json({
     result: 'Success',

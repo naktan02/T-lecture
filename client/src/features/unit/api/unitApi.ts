@@ -111,10 +111,10 @@ export const unitApi = {
   },
 
   // 다중 삭제
-  deleteUnits: async (ids: (number | string)[]) => {
+  deleteUnits: async (ids: (number | string)[], all?: boolean, filter?: UnitListParams) => {
     const response = await apiClient(`/api/v1/units/batch/delete`, {
       method: 'DELETE',
-      body: JSON.stringify({ ids }),
+      body: JSON.stringify({ ids, all, filter }),
     });
     return response.json();
   },

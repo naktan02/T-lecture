@@ -37,7 +37,11 @@ interface UseUnitReturn {
   setPage: Dispatch<SetStateAction<number>>;
   isLoading: boolean;
   isError: boolean;
-  deleteUnits: (ids: (number | string)[]) => Promise<unknown>;
+  deleteUnits: (
+    ids: (number | string)[],
+    selectAll?: boolean,
+    filters?: SearchParams,
+  ) => Promise<unknown>;
   registerUnit: (data: UnitData) => Promise<unknown>;
   updateUnit: (params: { id: number | string; data: unknown }) => void;
   deleteUnit: (id: number | string) => void;
@@ -65,7 +69,6 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number | string; data: unknown }) => {
-      // 전체 정보 수정 API 호출 (PUT /:id)
       return unitApi.updateUnit(id, data as Record<string, unknown>);
     },
     onSuccess: () => {
@@ -106,7 +109,15 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
   });
 
   const deleteManyMutation = useMutation({
-    mutationFn: unitApi.deleteUnits,
+    mutationFn: ({
+      ids,
+      selectAll,
+      filters,
+    }: {
+      ids: (number | string)[];
+      selectAll?: boolean;
+      filters?: SearchParams;
+    }) => unitApi.deleteUnits(ids, selectAll, filters),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
       return res;
@@ -122,7 +133,8 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
     isLoading,
     isError,
     // Actions
-    deleteUnits: deleteManyMutation.mutateAsync,
+    deleteUnits: (ids, selectAll, filters) =>
+      deleteManyMutation.mutateAsync({ ids, selectAll, filters }),
     registerUnit: registerMutation.mutateAsync,
     updateUnit: updateMutation.mutate,
     deleteUnit: deleteMutation.mutate,

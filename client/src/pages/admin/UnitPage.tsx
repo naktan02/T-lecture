@@ -31,6 +31,8 @@ const UnitPage = (): ReactElement => {
 
   // ✅ 다중 선택 상태 관리
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  // 전체 페이지 데이터 선택 여부
+  const [selectAll, setSelectAll] = useState(false);
 
   // ✅ 삭제 확인 모달 상태
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -53,6 +55,7 @@ const UnitPage = (): ReactElement => {
     setSearchParams(newParams);
     setPage(1);
     setSelectedIds([]); // 검색 시 선택 초기화
+    setSelectAll(false);
   };
 
   // ✅ 개별 선택 토글
@@ -62,7 +65,7 @@ const UnitPage = (): ReactElement => {
     );
   };
 
-  // ✅ 전체 선택 토글
+  // ✅ 전체 선택 토글 (현재 페이지)
   const handleToggleAll = (isChecked: boolean): void => {
     if (isChecked) {
       // 현재 페이지의 모든 ID 선택
@@ -70,15 +73,23 @@ const UnitPage = (): ReactElement => {
       setSelectedIds(allIds);
     } else {
       setSelectedIds([]);
+      setSelectAll(false);
     }
+  };
+
+  // ✅ 검색된 모든 데이터 선택
+  const handleSelectAllData = () => {
+    setSelectAll(true);
   };
 
   // ✅ 선택 삭제 핸들러
   const handleDeleteSelected = async (): Promise<void> => {
     if (selectedIds.length === 0) return;
     try {
-      await deleteUnits(selectedIds);
+      // selectAll이 true이면 전체 삭제 요청, 아니면 ID 목록 삭제
+      await deleteUnits(selectedIds, selectAll, searchParams);
       setSelectedIds([]);
+      setSelectAll(false);
       setShowDeleteConfirm(false);
     } catch (e) {
       console.error(e);
@@ -105,28 +116,51 @@ const UnitPage = (): ReactElement => {
 
         {/* 선택 삭제 바 */}
         {selectedIds.length > 0 && (
-          <div className="shrink-0 mb-3 flex justify-between items-center bg-green-50 p-3 px-4 rounded-xl border border-green-200">
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                {selectedIds.length}
-              </span>
-              <span className="text-sm text-green-800 font-medium">개 선택됨</span>
+          <div className="shrink-0 mb-3 flex flex-col gap-2">
+            <div className="flex justify-between items-center bg-green-50 p-3 px-4 rounded-xl border border-green-200">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                  {selectAll ? meta?.total : selectedIds.length}
+                </span>
+                <span className="text-sm text-green-800 font-medium">
+                  {selectAll ? `전체 ${meta?.total}개 데이터가 선택되었습니다.` : '개 선택됨'}
+                </span>
+                {!selectAll && meta?.total > selectedIds.length && (
+                  <button
+                    onClick={handleSelectAllData}
+                    className="ml-4 text-sm text-blue-600 underline hover:text-blue-800 font-bold"
+                  >
+                    검색된 모든 데이터 {meta?.total}개 선택하기
+                  </button>
+                )}
+                {selectAll && (
+                  <button
+                    onClick={() => {
+                      setSelectAll(false);
+                      setSelectedIds([]);
+                    }}
+                    className="ml-4 text-sm text-gray-500 underline hover:text-gray-700"
+                  >
+                    선택 해제
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-red-500 text-white rounded-lg 
+                            hover:bg-red-600 active:scale-95 transition-all text-sm font-medium"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+                삭제
+              </button>
             </div>
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-red-500 text-white rounded-lg 
-                         hover:bg-red-600 active:scale-95 transition-all text-sm font-medium"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-              삭제
-            </button>
           </div>
         )}
 
@@ -205,7 +239,11 @@ const UnitPage = (): ReactElement => {
       <ConfirmModal
         isOpen={showDeleteConfirm}
         title="부대 삭제"
-        message={`선택한 ${selectedIds.length}개 부대를 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.`}
+        message={
+          selectAll
+            ? `전체 ${meta?.total}개 데이터를 모두 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`
+            : `선택한 ${selectedIds.length}개 부대를 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.`
+        }
         confirmText="삭제"
         cancelText="취소"
         confirmVariant="danger"
