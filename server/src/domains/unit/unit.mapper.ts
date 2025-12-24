@@ -20,6 +20,7 @@ const toBoolOrUndef = (v: unknown): boolean | undefined => {
 };
 
 // 부대 생성용 데이터 변환 (CreateUnitDto 역할)
+// 주의: trainingLocations와 schedules는 createUnitWithNested에서 별도로 처리하므로 여기서는 제외
 export function toCreateUnitDto(rawData: RawUnitData = {}): Prisma.UnitCreateInput {
   // 필수값 검증 (Service 로직 단순화)
   if (!isNonEmptyString(rawData.name)) {
@@ -46,32 +47,7 @@ export function toCreateUnitDto(rawData: RawUnitData = {}): Prisma.UnitCreateInp
     officerName: rawData.officerName,
     officerPhone: rawData.officerPhone,
     officerEmail: rawData.officerEmail,
-
-    // 교육장소 (Nested Create)
-    trainingLocations:
-      Array.isArray(rawData.trainingLocations) && rawData.trainingLocations.length > 0
-        ? {
-            create: rawData.trainingLocations.map((loc) => ({
-              originalPlace: loc.originalPlace,
-              changedPlace: loc.changedPlace,
-
-              // 숫자 필드
-              plannedCount: Number(loc.plannedCount || 0),
-              instructorsNumbers: loc.instructorsNumbers
-                ? Number(loc.instructorsNumbers)
-                : undefined,
-
-              // 시설 정보 (Boolean)
-              hasInstructorLounge: toBoolOrUndef(loc.hasInstructorLounge),
-              hasWomenRestroom: toBoolOrUndef(loc.hasWomenRestroom),
-              hasCateredMeals: toBoolOrUndef(loc.hasCateredMeals),
-              hasHallLodging: toBoolOrUndef(loc.hasHallLodging),
-              allowsPhoneBeforeAfter: toBoolOrUndef(loc.allowsPhoneBeforeAfter),
-
-              note: loc.note,
-            })),
-          }
-        : undefined,
+    // trainingLocations와 schedules는 createUnitWithNested에서 처리
   };
 }
 

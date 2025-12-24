@@ -28,6 +28,7 @@ interface TrainingLocation {
 
   // 폼에서는 input 특성상 string으로 관리 (submit 때 number 변환)
   plannedCount: string;
+  actualCount: string;
   instructorsNumbers?: string;
 
   hasInstructorLounge: boolean;
@@ -63,10 +64,9 @@ interface Unit {
   schedules?: { id?: number; date?: string; isExcluded?: boolean }[] | any[];
 }
 
-// 서버 응답이 { data: { result: 'Success', data: Unit } } 형태라고 가정
-// (JS 코드 주석에 있던 구조 기준)
+// 서버 API 응답: { result: 'Success', data: Unit }
+// useQuery의 data는 queryFn의 반환값 그대로
 type ApiEnvelope<T> = { result?: string; data: T };
-type ApiResponse<T> = { data: ApiEnvelope<T> };
 
 // 폼 데이터는 “입력값”만 관리
 interface FormData {
@@ -160,6 +160,7 @@ const createEmptyLocation = (): TrainingLocation => ({
   originalPlace: '',
   changedPlace: '',
   plannedCount: '0',
+  actualCount: '0',
   instructorsNumbers: '0',
 
   hasInstructorLounge: false,
@@ -185,11 +186,15 @@ export const UnitDetailDrawer = ({
 
   const [locations, setLocations] = useState<TrainingLocation[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  // 신규 등록 시 사용: 개별 교육불가일자 목록
+  const [excludedDates, setExcludedDates] = useState<string[]>([]);
+  const [newExcludedDate, setNewExcludedDate] = useState('');
 
   const unitId = initialUnit?.id;
 
   // 1) 상세 데이터 API 조회
-  const { data: detailData, isSuccess } = useQuery<ApiResponse<Unit>>({
+  // API 응답: { result: 'Success', data: unit }
+  const { data: detailData, isSuccess } = useQuery<ApiEnvelope<Unit>>({
     queryKey: ['unitDetail', unitId],
     queryFn: () => unitApi.getUnit(unitId as number),
     enabled: Boolean(unitId) && isOpen,
@@ -197,9 +202,10 @@ export const UnitDetailDrawer = ({
   });
 
   // 2) 실제 바인딩 대상 Unit 결정
+  // API 응답: { result: 'Success', data: unit }
   const boundUnit: Unit | null = useMemo(() => {
     if (!initialUnit) return null;
-    const fromServer = detailData?.data?.data;
+    const fromServer = detailData?.data;
     return fromServer ?? initialUnit;
   }, [initialUnit, detailData]);
 
@@ -212,6 +218,8 @@ export const UnitDetailDrawer = ({
       setFormData({ ...INITIAL_FORM });
       setLocations([]);
       setSchedules([]);
+      setExcludedDates([]);
+      setNewExcludedDate('');
       setActiveTab('basic');
       return;
     }
@@ -247,6 +255,7 @@ export const UnitDetailDrawer = ({
           originalPlace: String(loc?.originalPlace ?? ''),
           changedPlace: String(loc?.changedPlace ?? ''),
           plannedCount: String(loc?.plannedCount ?? '0'),
+          actualCount: String(loc?.actualCount ?? '0'),
           instructorsNumbers: String(loc?.instructorsNumbers ?? '0'),
           hasInstructorLounge: Boolean(loc?.hasInstructorLounge),
           hasWomenRestroom: Boolean(loc?.hasWomenRestroom),
@@ -263,15 +272,19 @@ export const UnitDetailDrawer = ({
 
     // schedules (isExcluded 포함)
     if (Array.isArray(target.schedules)) {
-      setSchedules(
-        target.schedules.map((s: any) => ({
-          id: s?.id,
-          date: toDateValue(s?.date),
-          isExcluded: Boolean(s?.isExcluded),
-        })),
-      );
+      const schedulesNormalized = target.schedules.map((s: any) => ({
+        id: s?.id,
+        date: toDateValue(s?.date),
+        isExcluded: Boolean(s?.isExcluded),
+      }));
+      setSchedules(schedulesNormalized);
+
+      // excludedDates도 schedules에서 추출하여 설정 (isExcluded가 true인 날짜들)
+      const excluded = schedulesNormalized.filter((s) => s.isExcluded && s.date).map((s) => s.date);
+      setExcludedDates(excluded);
     } else {
       setSchedules([]);
+      setExcludedDates([]);
     }
 
     setActiveTab('basic');
@@ -330,6 +343,7 @@ export const UnitDetailDrawer = ({
     const locationsPayload = locations.map((loc) => ({
       ...loc,
       plannedCount: toNumberOrNull(loc.plannedCount) ?? 0,
+      actualCount: toNumberOrNull(loc.actualCount) ?? 0,
       instructorsNumbers: toNumberOrNull(loc.instructorsNumbers) ?? 0,
     }));
 
@@ -337,6 +351,8 @@ export const UnitDetailDrawer = ({
       ...formData,
       educationStart: makeDateISO(formData.educationStart),
       educationEnd: makeDateISO(formData.educationEnd),
+      // excludedDates는 항상 전송하여 일정 재계산 가능하게 함
+      excludedDates: excludedDates,
       workStartTime: makeTimeISO(formData.workStartTime),
       workEndTime: makeTimeISO(formData.workEndTime),
       lunchStartTime: makeTimeISO(formData.lunchStartTime),
@@ -344,6 +360,7 @@ export const UnitDetailDrawer = ({
 
       trainingLocations: locationsPayload,
 
+      // 수정 모드에서도 schedules를 보내되, excludedDates가 있으면 서버에서 재계산됨
       schedules: schedules
         .filter((s) => s.date)
         .map((s) => ({
@@ -472,6 +489,53 @@ export const UnitDetailDrawer = ({
                       required
                     />
 
+                    <div className="col-span-2">
+                      <label className="text-sm font-medium">
+                        교육불가일자 ({excludedDates.length}개)
+                      </label>
+                      <div className="flex gap-2 mt-1">
+                        <input
+                          type="date"
+                          value={newExcludedDate}
+                          onChange={(e) => setNewExcludedDate(e.target.value)}
+                          className="flex-1 p-2 border rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (newExcludedDate && !excludedDates.includes(newExcludedDate)) {
+                              setExcludedDates((prev) => [...prev, newExcludedDate].sort());
+                              setNewExcludedDate('');
+                            }
+                          }}
+                          className="px-3 py-2 bg-red-500 text-white rounded-lg text-sm"
+                        >
+                          추가
+                        </button>
+                      </div>
+                      {excludedDates.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {excludedDates.map((date) => (
+                            <span
+                              key={date}
+                              className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded text-sm"
+                            >
+                              {date}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExcludedDates((prev) => prev.filter((d) => d !== date))
+                                }
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
                     <div className="col-span-2 border-t my-2" />
 
                     <InputField
@@ -571,6 +635,12 @@ export const UnitDetailDrawer = ({
                         label="계획인원"
                         value={loc.plannedCount}
                         onChange={(e) => updateLocation(idx, 'plannedCount', e.target.value)}
+                      />
+                      <InputField
+                        type="number"
+                        label="참여인원"
+                        value={loc.actualCount}
+                        onChange={(e) => updateLocation(idx, 'actualCount', e.target.value)}
                       />
                       <InputField
                         type="number"

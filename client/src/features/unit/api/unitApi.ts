@@ -21,12 +21,14 @@ export interface UnitData {
   officerEmail?: string;
   educationStart?: string | null;
   educationEnd?: string | null;
+  // 교육불가 일자 목록 (개별 날짜 배열)
+  excludedDates?: string[];
   workStartTime?: string | null;
   workEndTime?: string | null;
   lunchStartTime?: string | null;
   lunchEndTime?: string | null;
   trainingLocations?: unknown[];
-  schedules?: { date?: string | null; isExcluded?: boolean }[];
+  schedules?: { id?: number; date?: string | null; isExcluded?: boolean }[];
   [key: string]: unknown;
 }
 
@@ -72,6 +74,15 @@ export const unitApi = {
       method: 'POST',
       body: formData,
       headers: { 'Content-Type': undefined as unknown as string },
+    });
+    return response.json();
+  },
+
+  // 부대 전체 정보 수정 (기본정보 + 교육장소 + 일정)
+  updateUnit: async (id: number | string, data: Partial<UnitData>) => {
+    const response = await apiClient(`/api/v1/units/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
     });
     return response.json();
   },

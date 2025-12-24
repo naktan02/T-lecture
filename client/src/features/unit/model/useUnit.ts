@@ -65,13 +65,12 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number | string; data: unknown }) => {
-      return Promise.all([
-        unitApi.updateUnitBasic(id, data as Record<string, unknown>),
-        unitApi.updateUnitOfficer(id, data as Record<string, unknown>),
-      ]);
+      // 전체 정보 수정 API 호출 (PUT /:id)
+      return unitApi.updateUnit(id, data as Record<string, unknown>);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
+      queryClient.invalidateQueries({ queryKey: ['unitDetail'] });
       alert('부대 정보가 성공적으로 수정되었습니다.');
     },
     onError: (err) => {

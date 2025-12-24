@@ -31,6 +31,9 @@ router.patch('/:id/basic', unitController.updateBasicInfo);
 // 부대 책임자 정보 수정
 router.patch('/:id/officer', unitController.updateOfficerInfo);
 
+// 부대 전체 정보 수정 (기본정보 + 교육장소 + 일정)
+router.put('/:id', unitController.updateUnitFull);
+
 // 부대 일정 추가
 router.post('/:id/schedules', unitController.addSchedule);
 

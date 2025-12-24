@@ -71,6 +71,16 @@ export const updateOfficerInfo = asyncHandler(async (req: Request, res: Response
   });
 });
 
+// 부대 전체 정보 수정 (기본정보 + 교육장소 + 일정)
+export const updateUnitFull = asyncHandler(async (req: Request, res: Response) => {
+  const unit = await unitService.updateUnitFull(req.params.id, req.body);
+
+  res.status(200).json({
+    result: 'Success',
+    data: unit,
+  });
+});
+
 // 부대 일정 추가
 export const addSchedule = asyncHandler(async (req: Request, res: Response) => {
   const result = await unitService.addScheduleToUnit(req.params.id, req.body.date);
@@ -116,6 +126,7 @@ module.exports = {
   getUnitDetail,
   updateBasicInfo,
   updateOfficerInfo,
+  updateUnitFull,
   addSchedule,
   removeSchedule,
   deleteUnit,

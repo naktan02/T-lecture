@@ -13,6 +13,7 @@ interface TrainingLocationData {
   originalPlace?: string | null;
   changedPlace?: string | null;
   plannedCount?: number | string | null;
+  actualCount?: number | string | null;
   instructorsNumbers?: number | string | null;
   hasInstructorLounge?: boolean | string;
   hasWomenRestroom?: boolean | string;
@@ -47,6 +48,7 @@ class UnitRepository {
       originalPlace: loc.originalPlace || null,
       changedPlace: loc.changedPlace || null,
       plannedCount: safeInt(loc.plannedCount),
+      actualCount: safeInt(loc.actualCount),
       instructorsNumbers: safeInt(loc.instructorsNumbers),
       hasInstructorLounge: safeBool(loc.hasInstructorLounge),
       hasWomenRestroom: safeBool(loc.hasWomenRestroom),
