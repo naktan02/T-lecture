@@ -82,7 +82,7 @@ export const UnitToolbar = ({
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
       {/* 상단: 제목 + 액션 버튼 */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-lg md:text-xl font-bold text-gray-800">부대 관리</h2>
           <p className="text-xs md:text-sm text-gray-500 mt-0.5">
@@ -91,7 +91,7 @@ export const UnitToolbar = ({
         </div>
 
         {/* 액션 버튼 그룹 */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* 필터 토글 (모바일) */}
           <button
             onClick={() => setIsFilterOpen(!isFilterOpen)}
@@ -127,7 +127,7 @@ export const UnitToolbar = ({
           <button
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 
-                       bg-white text-gray-600 text-sm hover:bg-gray-50 active:scale-95 transition-all"
+                       bg-white text-gray-600 text-sm hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -145,7 +145,7 @@ export const UnitToolbar = ({
             onClick={onCreate}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg 
                        bg-green-500 text-white text-sm font-medium
-                       hover:bg-green-600 active:scale-95 transition-all shadow-sm"
+                       hover:bg-green-600 active:scale-95 transition-all shadow-sm shadow-green-200"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -161,9 +161,9 @@ export const UnitToolbar = ({
       </div>
 
       {/* 데스크톱 검색 바 */}
-      <div className="hidden md:flex items-center gap-3 mt-4 pt-4 border-t border-gray-100">
+      <div className="hidden md:flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-gray-100">
         {/* 기간 선택 */}
-        <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+        <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
           <svg
             className="w-4 h-4 text-gray-400"
             fill="none"
@@ -182,7 +182,7 @@ export const UnitToolbar = ({
             name="startDate"
             value={filters.startDate}
             onChange={handleChange}
-            className="text-sm bg-transparent outline-none w-32"
+            className="text-sm bg-transparent outline-none w-28 lg:w-32 cursor-pointer"
           />
           <span className="text-gray-400">~</span>
           <input
@@ -190,12 +190,12 @@ export const UnitToolbar = ({
             name="endDate"
             value={filters.endDate}
             onChange={handleChange}
-            className="text-sm bg-transparent outline-none w-32"
+            className="text-sm bg-transparent outline-none w-28 lg:w-32 cursor-pointer"
           />
         </div>
 
         {/* 검색어 */}
-        <div className="flex-1 relative">
+        <div className="flex-1 min-w-[200px] relative">
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
             fill="none"
@@ -214,7 +214,7 @@ export const UnitToolbar = ({
             name="keyword"
             placeholder="부대명, 지역, 담당자 검색..."
             className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm 
-                       focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+                       focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all shadow-sm"
             value={filters.keyword}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
@@ -225,7 +225,7 @@ export const UnitToolbar = ({
         <button
           onClick={handleSearch}
           className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium
-                     hover:bg-green-600 active:scale-95 transition-all"
+                     hover:bg-green-600 active:scale-95 transition-all shadow-md shadow-green-200"
         >
           검색
         </button>
@@ -234,7 +234,7 @@ export const UnitToolbar = ({
         {(filters.keyword || filters.startDate || filters.endDate) && (
           <button
             onClick={handleReset}
-            className="px-3 py-2 text-gray-500 hover:text-gray-700 text-sm transition-colors"
+            className="px-3 py-2 text-gray-500 hover:text-gray-700 text-sm transition-colors hover:bg-gray-50 rounded-lg"
           >
             초기화
           </button>

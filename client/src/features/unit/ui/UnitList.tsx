@@ -77,10 +77,10 @@ export const UnitList = ({
   };
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full flex flex-col">
       {/* 데스크톱: 테이블 뷰 */}
-      <div className="hidden md:block">
-        <table className="w-full text-left border-collapse">
+      <div className="hidden md:block flex-1 overflow-auto custom-scrollbar">
+        <table className="w-full text-left border-collapse whitespace-nowrap">
           <thead className="sticky top-0 z-10 bg-gray-50 shadow-sm">
             <tr className="text-xs uppercase text-gray-500 font-semibold border-b border-gray-200">
               <th className="px-4 py-3 w-12 text-center">
