@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { unitApi, UnitData } from '../api/unitApi';
 import { useState, Dispatch, SetStateAction } from 'react';
+import { showSuccess, showError } from '../../../shared/utils';
 
 interface SearchParams {
   keyword?: string;
@@ -78,7 +79,7 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
     },
     onError: (err) => {
       console.error(err);
-      alert('수정 중 오류가 발생했습니다.');
+      showError('수정 중 오류가 발생했습니다.');
     },
   });
 
@@ -86,7 +87,7 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
     mutationFn: unitApi.deleteUnit,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
-      alert('삭제되었습니다.');
+      showSuccess('삭제되었습니다.');
     },
   });
 
@@ -94,18 +95,18 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
     mutationFn: unitApi.uploadExcel,
     onSuccess: (res: { message?: string }) => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
-      alert(res.message || '업로드가 완료되었습니다.');
+      showSuccess(res.message || '업로드가 완료되었습니다.');
     },
-    onError: () => alert('업로드 실패'),
+    onError: () => showError('업로드 실패'),
   });
 
   const registerMutation = useMutation({
     mutationFn: unitApi.registerUnit,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
-      alert('등록되었습니다.');
+      showSuccess('등록되었습니다.');
     },
-    onError: (err: Error) => alert(err.message || '등록 실패'),
+    onError: (err: Error) => showError(err.message || '등록 실패'),
   });
 
   const deleteManyMutation = useMutation({
@@ -122,7 +123,7 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
       return res;
     },
-    onError: (err: Error) => alert('삭제 중 오류가 발생했습니다: ' + err.message),
+    onError: (err: Error) => showError('삭제 중 오류가 발생했습니다: ' + err.message),
   });
 
   return {

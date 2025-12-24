@@ -28,6 +28,17 @@ export const getMessageTemplates = asyncHandler(async (req: Request, res: Respon
   res.status(200).json(templates);
 });
 
+// 팀 생성
+export const createTeam = asyncHandler(async (req: Request, res: Response) => {
+  const { name } = req.body;
+  if (name === undefined) {
+    throw new AppError('팀 이름(name)이 필요합니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  const created = await metadataService.createTeam(name);
+  res.status(201).json(created);
+});
+
 // 팀 수정
 export const updateTeam = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -38,6 +49,24 @@ export const updateTeam = asyncHandler(async (req: Request, res: Response) => {
 
   const updated = await metadataService.updateTeam(id, name);
   res.status(200).json(updated);
+});
+
+// 팀 삭제 (Soft Delete)
+export const deleteTeam = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  await metadataService.deleteTeam(id);
+  res.status(200).json({ message: '팀이 삭제되었습니다.' });
+});
+
+// 덕목 생성
+export const createVirtue = asyncHandler(async (req: Request, res: Response) => {
+  const { name } = req.body;
+  if (name === undefined) {
+    throw new AppError('덕목 이름(name)이 필요합니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  const created = await metadataService.createVirtue(name);
+  res.status(201).json(created);
 });
 
 // 덕목 수정
@@ -51,6 +80,13 @@ export const updateVirtue = asyncHandler(async (req: Request, res: Response) => 
 
   const updated = await metadataService.updateVirtue(id, name);
   res.status(200).json(updated);
+});
+
+// 덕목 삭제 (Hard Delete)
+export const deleteVirtue = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  await metadataService.deleteVirtue(id);
+  res.status(200).json({ message: '덕목이 삭제되었습니다.' });
 });
 
 // 메시지 템플릿 수정
@@ -76,7 +112,11 @@ module.exports = {
   getTeams,
   getVirtues,
   getMessageTemplates,
+  createTeam,
   updateTeam,
+  deleteTeam,
+  createVirtue,
   updateVirtue,
+  deleteVirtue,
   updateTemplate,
 };

@@ -1,0 +1,308 @@
+/* client/src/features/settings/ui/template-editor/editorStyles.css */
+
+/* ============================================
+   Variable Block - 에디터 내 블록
+   ============================================ */
+.variable-block {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0px 6px;
+  margin: 0 2px;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1d4ed8;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  user-select: none;
+  cursor: grab;
+  border: 1px solid #93c5fd;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  vertical-align: baseline;
+  position: relative;
+  transition: all 0.15s ease;
+  line-height: 1.4;
+  height: 22px;
+}
+
+.variable-block:hover {
+  background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.variable-block:active {
+  cursor: grabbing;
+}
+
+.variable-block.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+/* 삭제 버튼 */
+.variable-block .delete-btn {
+  display: none;
+  width: 14px;
+  height: 14px;
+  margin-left: 2px;
+  padding: 0;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.variable-block:hover .delete-btn {
+  display: inline-flex;
+}
+
+.variable-block .delete-btn:hover {
+  background: #dc2626;
+}
+
+/* ============================================
+   Editor Area - 편집 영역
+   ============================================ */
+.editor-area {
+  min-height: 200px;
+  max-height: 350px;
+  overflow-y: auto;
+  line-height: 2;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.editor-area:focus {
+  outline: none;
+}
+
+.editor-area.drag-over {
+  border-color: #3b82f6 !important;
+  background-color: #eff6ff !important;
+}
+
+.editor-area:empty::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+/* ============================================
+   Scratch Style Panel
+   ============================================ */
+.scratch-panel {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.scratch-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.scratch-count {
+  font-size: 11px;
+  font-weight: normal;
+  color: #94a3b8;
+}
+
+.scratch-body {
+  display: flex;
+  min-height: 280px;
+  max-height: 400px;
+}
+
+/* 왼쪽: 변수 목록 */
+.scratch-variables {
+  flex: 1;
+  padding: 8px;
+  overflow-y: auto;
+  background: white;
+}
+
+.scratch-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.scratch-group {
+  margin-bottom: 8px;
+}
+
+.scratch-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.scratch-variable {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  margin: 3px 0;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: grab;
+  transition: all 0.15s ease;
+  border: 1px solid;
+}
+
+.scratch-variable:hover {
+  transform: translateX(2px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.scratch-variable:active {
+  cursor: grabbing;
+  transform: scale(0.98);
+}
+
+.scratch-variable.used {
+  opacity: 0.6;
+}
+
+.scratch-variable-icon {
+  font-size: 14px;
+}
+
+.scratch-variable-label {
+  flex: 1;
+  font-weight: 500;
+}
+
+.scratch-variable-check {
+  color: #22c55e;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* 포맷 변수 뱃지 */
+.scratch-variable-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  background: #8b5cf6;
+  color: white;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.scratch-variable.format-var {
+  cursor: pointer;
+  border-style: dashed;
+}
+
+.scratch-variable.format-var:hover {
+  border-style: solid;
+}
+
+/* 오른쪽: 카테고리 탭 */
+.scratch-categories {
+  width: 90px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 4px;
+  background: #f1f5f9;
+  border-left: 1px solid #e2e8f0;
+}
+
+.scratch-category-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border: 2px solid;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+  font-size: 10px;
+}
+
+.scratch-category-btn:hover {
+  transform: scale(1.02);
+}
+
+.scratch-category-btn.selected {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.scratch-category-icon {
+  font-size: 18px;
+}
+
+.scratch-category-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.scratch-category-count {
+  font-size: 9px;
+  opacity: 0.8;
+}
+
+/* 도움말 */
+.scratch-help {
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #64748b;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+/* ============================================
+   Mobile
+   ============================================ */
+@media (max-width: 640px) {
+  .scratch-body {
+    flex-direction: column-reverse;
+    max-height: none;
+  }
+
+  .scratch-categories {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-left: none;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .scratch-category-btn {
+    flex: 1;
+    min-width: 70px;
+  }
+
+  .scratch-variables {
+    max-height: 300px;
+  }
+}

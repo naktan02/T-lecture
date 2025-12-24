@@ -11,6 +11,7 @@ import {
   UserActionResponse,
 } from '../adminApi';
 import type { AdminLevel } from '../../../shared/constants';
+import { showSuccess, showError } from '../../../shared/utils';
 
 interface AdminInfo {
   userId: number;
@@ -71,10 +72,10 @@ export const useSuperAdmin = (): UseSuperAdminReturn => {
       if (data.user) {
         setUsers((prev) => [...prev, data.user as UserWithAdmin]);
       } else {
-        alert('승인되었습니다.');
+        showSuccess('승인되었습니다.');
       }
     } catch (e) {
-      alert((e as Error).message);
+      showError((e as Error).message);
     }
   };
 
@@ -83,7 +84,7 @@ export const useSuperAdmin = (): UseSuperAdminReturn => {
       await rejectUserApi(userId);
       setPendingUsers((prev) => prev.filter((u) => u.id !== userId));
     } catch (e) {
-      alert((e as Error).message);
+      showError((e as Error).message);
     }
   };
 
@@ -94,7 +95,7 @@ export const useSuperAdmin = (): UseSuperAdminReturn => {
         prev.map((u) => (u.id === userId ? { ...u, admin: { userId, level } } : u)),
       );
     } catch (e) {
-      alert((e as Error).message);
+      showError((e as Error).message);
     }
   };
 
@@ -103,7 +104,7 @@ export const useSuperAdmin = (): UseSuperAdminReturn => {
       await revokeAdminApi(userId);
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, admin: null } : u)));
     } catch (e) {
-      alert((e as Error).message);
+      showError((e as Error).message);
     }
   };
 

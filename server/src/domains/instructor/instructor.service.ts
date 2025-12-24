@@ -14,7 +14,20 @@ class InstructorService {
       startDate,
       endDate,
     );
-    return availabilities.map((item) => item.availableOn.toISOString().split('T')[0]);
+
+    // 클라이언트가 기대하는 형식으로 반환: { data: AvailabilityDate[] }
+    const data = availabilities.map((item) => {
+      const date = item.availableOn;
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return {
+        date: `${year}-${month}-${day}`,
+        isAvailable: true,
+      };
+    });
+
+    return { data };
   }
 
   // 근무 가능일 수정
@@ -22,10 +35,18 @@ class InstructorService {
     instructorId: number,
     year: number,
     month: number,
-    newDatesStr: string[],
+    dates: number[], // day 숫자 배열 (1~31)
   ) {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
+
+    // day 숫자를 날짜 문자열로 변환 (로컬 시간대 유지)
+    const newDatesStr = dates.map((day) => {
+      const year_str = year.toString();
+      const month_str = month.toString().padStart(2, '0');
+      const day_str = day.toString().padStart(2, '0');
+      return `${year_str}-${month_str}-${day_str}`;
+    });
 
     // 해당 기간에 이미 배정된(Active) 날짜 조회
     const activeAssignmentDates = await instructorRepository.findActiveAssignmentsDate(

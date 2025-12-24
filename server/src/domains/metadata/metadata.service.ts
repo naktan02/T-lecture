@@ -35,7 +35,7 @@ class MetadataService {
     return { virtues, teams, categories };
   }
 
-  // 팀 목록 조회
+  // 팀 목록 조회 (삭제되지 않은 팀만)
   async getAllTeams() {
     return metadataRepository.findTeams();
   }
@@ -50,11 +50,29 @@ class MetadataService {
     return metadataRepository.findMessageTemplates();
   }
 
+  // 팀 생성
+  async createTeam(name: string) {
+    const teamName = requireNonEmptyString(name, 'name');
+    return metadataRepository.createTeam(teamName);
+  }
+
   // 팀 수정
   async updateTeam(id: string | number, name: string) {
     const teamId = parseIntIdOrThrow(id, 'teamId');
     const teamName = requireNonEmptyString(name, 'name');
     return metadataRepository.updateTeam(teamId, teamName);
+  }
+
+  // 팀 삭제 (Soft Delete)
+  async deleteTeam(id: string | number) {
+    const teamId = parseIntIdOrThrow(id, 'teamId');
+    return metadataRepository.softDeleteTeam(teamId);
+  }
+
+  // 덕목 생성
+  async createVirtue(name: string) {
+    const virtueName = requireNonEmptyString(name, 'name');
+    return metadataRepository.createVirtue(virtueName);
   }
 
   // 덕목 수정
@@ -63,6 +81,12 @@ class MetadataService {
     const virtueName = requireNonEmptyString(name, 'name');
 
     return metadataRepository.updateVirtue(virtueId, virtueName);
+  }
+
+  // 덕목 삭제 (Hard Delete - CASCADE로 연결된 강사-덕목도 삭제)
+  async deleteVirtue(id: string | number) {
+    const virtueId = parseIntIdOrThrow(id, 'virtueId');
+    return metadataRepository.deleteVirtue(virtueId);
   }
 
   // 템플릿 수정

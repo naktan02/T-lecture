@@ -14,8 +14,16 @@ class MetadataRepository {
     });
   }
 
-  // 팀 조회
+  // 팀 조회 (삭제되지 않은 팀만)
   async findTeams() {
+    return prisma.team.findMany({
+      where: { deletedAt: null },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  // 모든 팀 조회 (삭제된 팀 포함 - 이력 조회용)
+  async findAllTeamsIncludingDeleted() {
     return prisma.team.findMany({
       orderBy: { name: 'asc' },
     });
@@ -45,10 +53,32 @@ class MetadataRepository {
     });
   }
 
+  // 팀 생성
+  async createTeam(name: string) {
+    return prisma.team.create({
+      data: { name },
+    });
+  }
+
   // 팀 수정
   async updateTeam(id: number, name: string) {
     return prisma.team.update({
       where: { id },
+      data: { name },
+    });
+  }
+
+  // 팀 Soft Delete
+  async softDeleteTeam(id: number) {
+    return prisma.team.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  // 덕목 생성
+  async createVirtue(name: string) {
+    return prisma.virtue.create({
       data: { name },
     });
   }
@@ -58,6 +88,13 @@ class MetadataRepository {
     return prisma.virtue.update({
       where: { id },
       data: { name },
+    });
+  }
+
+  // 덕목 Hard Delete (CASCADE로 강사-덕목 관계도 삭제)
+  async deleteVirtue(id: number) {
+    return prisma.virtue.delete({
+      where: { id },
     });
   }
 

@@ -83,7 +83,7 @@ const UnitPage = (): ReactElement => {
   };
 
   // ✅ 선택 삭제 핸들러
-  const handleDeleteSelected = async (): Promise<void> => {
+  const handleDeleteSelected = (): void => {
     if (selectedIds.length === 0) return;
     try {
       // selectAll이 true이면 전체 삭제 요청, 아니면 ID 목록 삭제
