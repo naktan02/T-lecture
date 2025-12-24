@@ -70,10 +70,10 @@ export const unitApi = {
     const formData = new FormData();
     formData.append('file', file);
 
+    // FormData 전송 시 Content-Type은 apiClient에서 자동 처리됨
     const response = await apiClient('/api/v1/units/upload/excel', {
       method: 'POST',
       body: formData,
-      headers: { 'Content-Type': undefined as unknown as string },
     });
     return response.json();
   },

@@ -31,7 +31,7 @@ export const uploadExcelAndRegisterUnits = asyncHandler(async (req: Request, res
     throw new AppError('파일이 업로드되지 않았습니다.', 400, 'VALIDATION_ERROR');
   }
 
-  const rawRows = excelService.bufferToJson(req.file.buffer);
+  const rawRows = await excelService.bufferToJson(req.file.buffer);
   const result = await unitService.processExcelDataAndRegisterUnits(rawRows);
 
   res.status(201).json({

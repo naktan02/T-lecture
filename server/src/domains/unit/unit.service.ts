@@ -4,7 +4,7 @@ import { buildPaging, buildUnitWhere } from './unit.filters';
 import { toCreateUnitDto, excelRowToRawUnit, RawUnitData } from './unit.mapper';
 import AppError from '../../common/errors/AppError';
 import { Prisma, MilitaryType } from '@prisma/client';
-import { ExcelRow, ScheduleInput, UnitQueryInput } from '../../types/unit.types';
+import { ScheduleInput, UnitQueryInput } from '../../types/unit.types';
 
 // 서비스 입력 타입들
 type RawUnitInput = RawUnitData;
@@ -60,29 +60,38 @@ class UnitService {
   /**
    * 엑셀 파일 처리 및 일괄 등록
    */
-  async processExcelDataAndRegisterUnits(rawRows: ExcelRow[]) {
+  async processExcelDataAndRegisterUnits(rawRows: Record<string, unknown>[]) {
     const rawDataList = rawRows.map(excelRowToRawUnit);
     return await this.registerMultipleUnits(rawDataList);
   }
 
   /**
    * 일괄 등록 (내부 로직)
+   * 각 부대별로 registerSingleUnit을 호출하여 일정 자동 생성
    */
   async registerMultipleUnits(dataArray: RawUnitInput[]) {
     if (!Array.isArray(dataArray) || dataArray.length === 0) {
       throw new AppError('등록할 데이터가 없습니다.', 400, 'VALIDATION_ERROR');
     }
 
-    try {
-      const dtoList = dataArray.map(toCreateUnitDto);
-      const results = await unitRepository.insertManyUnits(dtoList);
-      return { count: results.length };
-    } catch (e: unknown) {
-      if (e instanceof Error && e.message.includes('부대명(name)은 필수입니다.')) {
-        throw new AppError(e.message, 400, 'VALIDATION_ERROR');
+    const results: unknown[] = [];
+    const errors: { name: string; error: string }[] = [];
+
+    for (const rawData of dataArray) {
+      try {
+        const unit = await this.registerSingleUnit(rawData);
+        results.push(unit);
+      } catch (e: unknown) {
+        const name = rawData.name || '(부대명 없음)';
+        const message = e instanceof Error ? e.message : '알 수 없는 오류';
+        errors.push({ name, error: message });
       }
-      throw e;
     }
+
+    return {
+      count: results.length,
+      errors: errors.length > 0 ? errors : undefined,
+    };
   }
 
   // --- 조회 ---

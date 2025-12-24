@@ -1,6 +1,6 @@
 // server/src/domains/unit/unit.mapper.ts
 import { Prisma } from '@prisma/client';
-import { TrainingLocationInput, RawUnitInput, ExcelRow } from '../../types/unit.types';
+import { TrainingLocationInput, RawUnitInput } from '../../types/unit.types';
 
 // RawUnitData는 이 파일에서 export하므로 유지 (다른 파일에서 import)
 export type RawUnitData = RawUnitInput;
@@ -11,13 +11,6 @@ const isNonEmptyString = (v: unknown): v is string => typeof v === 'string' && v
 // 헬퍼: 날짜 변환
 const toDateOrUndef = (v: unknown): Date | undefined =>
   v ? new Date(v as string | Date) : undefined;
-
-// 헬퍼: 불리언 변환 ('true'/'false', 'O'/'X' 등 다양한 입력 처리)
-const toBoolOrUndef = (v: unknown): boolean | undefined => {
-  if (v === true || v === 'true' || v === 'O') return true;
-  if (v === false || v === 'false' || v === 'X') return false;
-  return undefined;
-};
 
 // 부대 생성용 데이터 변환 (CreateUnitDto 역할)
 // 주의: trainingLocations와 schedules는 createUnitWithNested에서 별도로 처리하므로 여기서는 제외
@@ -51,58 +44,54 @@ export function toCreateUnitDto(rawData: RawUnitData = {}): Prisma.UnitCreateInp
   };
 }
 
-// 엑셀 Row(한글) -> API Raw Data 변환
-export function excelRowToRawUnit(row: ExcelRow = {}): RawUnitData {
-  // 콤마로 구분된 일정 문자열 처리
-  const schedules = isNonEmptyString(row['교육일정'])
-    ? row['교육일정']
-        .split(',')
-        .map((d: string) => d.trim())
-        .filter(Boolean)
-    : [];
-
-  // 교육장소 단순화 (엑셀 1줄에 1개 장소라고 가정)
-  const trainingLocations: TrainingLocationInput[] = isNonEmptyString(row['교육장소명'])
+// 엑셀 Row -> API Raw Data 변환
+// excel.service.ts에서 이미 내부 필드명으로 변환되어 오므로 직접 매핑
+export function excelRowToRawUnit(row: Record<string, unknown> = {}): RawUnitData {
+  // 교육장소 정보 추출 (엑셀 1줄에 1개 장소라고 가정)
+  const hasLocationData = row.originalPlace || row.changedPlace || row.plannedCount;
+  const trainingLocations: TrainingLocationInput[] = hasLocationData
     ? [
         {
-          originalPlace: row['교육장소명'],
-          changedPlace: row['변경교육장소명'],
-
-          plannedCount: row['계획인원'] || 0,
-          instructorsNumbers: row['투입강사수'],
-
-          // 시설 여부 매핑 (O/X 또는 TRUE/FALSE)
-          hasInstructorLounge: row['강사휴게실여부'],
-          hasWomenRestroom: row['여자화장실여부'],
-          hasCateredMeals: row['수탁급식여부'],
-          hasHallLodging: row['회관숙박여부'],
-          allowsPhoneBeforeAfter: row['휴대폰불출여부'],
-
-          note: row['비고'] || undefined,
+          originalPlace: row.originalPlace as string | undefined,
+          changedPlace: row.changedPlace as string | undefined,
+          plannedCount: row.plannedCount as number | undefined,
+          actualCount: row.actualCount as number | undefined,
+          instructorsNumbers: row.instructorsNumbers as number | undefined,
+          hasInstructorLounge: row.hasInstructorLounge as boolean | undefined,
+          hasWomenRestroom: row.hasWomenRestroom as boolean | undefined,
+          hasCateredMeals: row.hasCateredMeals as boolean | undefined,
+          hasHallLodging: row.hasHallLodging as boolean | undefined,
+          allowsPhoneBeforeAfter: row.allowsPhoneBeforeAfter as boolean | undefined,
+          note: row.note as string | undefined,
         },
       ]
     : [];
 
   return {
-    name: row['부대명'],
-    unitType: row['군구분'],
-    wideArea: row['광역'],
-    region: row['지역'],
-    addressDetail: row['주소'],
+    name: row.name as string | undefined,
+    unitType: row.unitType as string | undefined,
+    wideArea: row.wideArea as string | undefined,
+    region: row.region as string | undefined,
+    addressDetail: row.addressDetail as string | undefined,
+    lat: row.lat as number | undefined,
+    lng: row.lng as number | undefined,
 
-    // 시간 정보 매핑
-    educationStart: row['교육시작일자'],
-    educationEnd: row['교육종료일자'],
-    workStartTime: row['근무시작시간'],
-    workEndTime: row['근무종료시간'],
-    lunchStartTime: row['점심시작시간'],
-    lunchEndTime: row['점심종료시간'],
+    // 날짜/시간 정보 (excel.service.ts에서 Date로 변환됨)
+    educationStart: row.educationStart as Date | string | undefined,
+    educationEnd: row.educationEnd as Date | string | undefined,
+    workStartTime: row.workStartTime as Date | string | undefined,
+    workEndTime: row.workEndTime as Date | string | undefined,
+    lunchStartTime: row.lunchStartTime as Date | string | undefined,
+    lunchEndTime: row.lunchEndTime as Date | string | undefined,
 
-    officerName: row['담당자명'],
-    officerPhone: row['연락처'],
-    officerEmail: row['이메일'],
+    // 교육불가일자 (배열로 파싱됨)
+    excludedDates: row.excludedDates as string[] | undefined,
 
-    schedules,
+    // 담당자 정보
+    officerName: row.officerName as string | undefined,
+    officerPhone: row.officerPhone as string | undefined,
+    officerEmail: row.officerEmail as string | undefined,
+
     trainingLocations,
   };
 }
