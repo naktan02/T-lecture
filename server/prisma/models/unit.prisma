@@ -1,9 +1,9 @@
 enum MilitaryType {
-  Army      // 육군
-  Navy      // 해군
-  AirForce  // 공군
-  Marines   // 해병대
-  MND       // 국직부대 (국방부 직할)
+  Army // 육군
+  Navy // 해군
+  AirForce // 공군
+  Marines // 해병대
+  MND // 국직부대 (국방부 직할)
 
   @@map("군구분__t")
 }

@@ -1,5 +1,5 @@
 // client/src/features/unit/ui/UnitDetailDrawer.tsx
-import React, { useEffect, useMemo, useState, ChangeEvent, FormEvent } from 'react';
+import { useEffect, useMemo, useState, ChangeEvent, FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { unitApi, UnitData } from '../api/unitApi';
 import { Button, InputField } from '../../../shared/ui';
