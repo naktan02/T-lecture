@@ -9,3 +9,4 @@ export { ContentWrapper } from './ContentWrapper';
 export { DetailModal } from './DetailModal';
 export { default as ErrorBoundary } from './ErrorBoundary';
 export { MiniCalendar } from './MiniCalendar';
+export { BaseCalendar } from './BaseCalendar';

@@ -17,11 +17,9 @@ type UserWithRelations = User & { instructor?: Instructor | null; admin?: Admin 
 
 function mapUserForAdmin(user: UserWithRelations | null) {
   if (!user) return null;
-  const { password: _password, admin: _admin, instructor, ...rest } = user;
-  if (instructor) {
-    return { instructor, ...rest };
-  }
-  return rest;
+  const { password: _password, admin, instructor, ...rest } = user;
+  // admin 정보도 함께 반환하여 클라이언트가 관리자 여부를 판단할 수 있도록 함
+  return { ...rest, instructor: instructor || null, admin: admin || null };
 }
 
 interface QueryFilters {

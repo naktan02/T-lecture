@@ -1,7 +1,7 @@
 // client/src/features/unit/ui/UnitToolbar.tsx
-import React, { useRef, useState, ChangeEvent, KeyboardEvent, ReactElement } from 'react';
+import { useRef, useState, ChangeEvent, KeyboardEvent, ReactElement } from 'react';
 import { Button } from '../../../shared/ui';
-
+import { showConfirm } from '../../../shared/utils';
 interface SearchFilters {
   keyword: string;
   startDate: string;
@@ -31,14 +31,16 @@ export const UnitToolbar = ({
     endDate: '',
   });
 
-  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>): Promise<void> => {
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0];
-    if (file && window.confirm(`${file.name}을 업로드하시겠습니까?`)) {
-      try {
-        await onUploadExcel(file);
-      } catch {
-        /* useUnit에서 처리됨 */
-      }
+    if (file) {
+      showConfirm(`${file.name}을 업로드하시겠습니까?`, async () => {
+        try {
+          await onUploadExcel(file);
+        } catch {
+          /* useUnit에서 처리됨 */
+        }
+      });
     }
     e.target.value = '';
   };

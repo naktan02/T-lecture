@@ -1,0 +1,136 @@
+/* shared/styles/calendar.css */
+/* 캘린더 공통 스타일 - MiniCalendar, InstructorCalendar에서 공유 */
+
+/* ============================================
+   React Calendar 기본 스타일 오버라이드
+   ============================================ */
+.react-calendar {
+  border: none !important;
+  font-family: 'Inter', sans-serif !important;
+  background: transparent !important;
+}
+
+/* ============================================
+   날짜 셀 기본 스타일
+   ============================================ */
+.react-calendar__tile {
+  position: relative !important;
+  background: transparent !important;
+}
+
+/* 기본 호버/클릭 스타일 리셋 */
+.react-calendar__tile:enabled:hover,
+.react-calendar__tile:enabled:focus {
+  background: #f3f4f6 !important;
+  border-radius: 8px !important;
+}
+
+/* 선택 상태 기본 스타일 리셋 */
+.react-calendar__tile--active,
+.react-calendar__tile--active:enabled:hover,
+.react-calendar__tile--active:enabled:focus {
+  background: transparent !important;
+}
+
+/* ============================================
+   선택된 날짜 - 파란 점 표시
+   ============================================ */
+.calendar-selected-date {
+  background: transparent !important;
+}
+
+.calendar-selected-date::after {
+  content: '' !important;
+  display: block !important;
+  position: absolute !important;
+  bottom: 6px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 6px !important;
+  height: 6px !important;
+  background: #3b82f6 !important;
+  border-radius: 50% !important;
+}
+
+/* ============================================
+   공휴일 & 일요일 - 빨간색 텍스트
+   ============================================ */
+.calendar-holiday {
+  color: #dc2626 !important;
+}
+
+/* ============================================
+   토요일 - 파란색 텍스트
+   ============================================ */
+.calendar-saturday {
+  color: #2563eb !important;
+}
+
+/* ============================================
+   비활성화된 날짜 (공휴일/토요일/일요일)
+   ============================================ */
+.calendar-disabled {
+  cursor: not-allowed !important;
+  opacity: 0.6 !important;
+}
+
+.calendar-disabled:hover,
+.calendar-disabled:focus {
+  background: transparent !important;
+}
+
+/* ============================================
+   오늘 날짜 - 회색 원형 배경
+   ============================================ */
+.react-calendar__tile--now {
+  background: #e5e7eb !important;
+  border-radius: 50% !important;
+}
+
+.react-calendar__tile--now.calendar-selected-date {
+  background: #e5e7eb !important;
+}
+
+/* ============================================
+   주말 기본 색상 리셋
+   ============================================ */
+.react-calendar__month-view__days__day--weekend {
+  color: inherit !important;
+}
+
+/* ============================================
+   Instructor Calendar 전용 레이아웃
+   ============================================ */
+.instructor-calendar-container .react-calendar {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.instructor-calendar-container .react-calendar__tile {
+  padding: 1em 0.5em !important;
+  font-size: 16px !important;
+  height: 70px !important;
+}
+
+.instructor-calendar-container .react-calendar__navigation {
+  margin-bottom: 1em !important;
+}
+
+.instructor-calendar-container .react-calendar__navigation button {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+}
+
+.instructor-calendar-container .react-calendar__month-view__weekdays {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: #6b7280 !important;
+}
+
+.instructor-calendar-container .react-calendar__month-view__weekdays__weekday {
+  padding: 0.5em !important;
+}
+
+.instructor-calendar-container .react-calendar__month-view__weekdays__weekday abbr {
+  text-decoration: none !important;
+}

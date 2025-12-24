@@ -1,4 +1,5 @@
 // client/src/shared/apiClient.ts
+import { showError } from './utils';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -85,7 +86,8 @@ export const apiClient = async (url: string, options: ApiClientOptions = {}): Pr
         processQueue(err as Error, null);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('userRole');
-        alert('세션이 만료되었습니다. 다시 로그인해주세요.');
+        localStorage.removeItem('isInstructor');
+        showError('세션이 만료되었습니다. 다시 로그인해주세요.');
         window.location.href = '/login';
         return Promise.reject(err);
       } finally {

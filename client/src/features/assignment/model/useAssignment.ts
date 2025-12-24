@@ -7,7 +7,7 @@ import {
   UnitSchedule,
   Instructor,
 } from '../assignmentApi';
-import { logger } from '../../../shared/utils';
+import { logger, showSuccess, showError, showInfo, showConfirm } from '../../../shared/utils';
 
 interface DateRange {
   startDate: Date;
@@ -85,49 +85,51 @@ export const useAssignment = (): UseAssignmentReturn => {
 
   // 2. 자동 배정 실행 (API 호출)
   const executeAutoAssign = async (): Promise<void> => {
-    if (!confirm('현재 조건으로 자동 배정을 실행하시겠습니까?')) return;
+    showConfirm('현재 조건으로 자동 배정을 실행하시겠습니까?', async () => {
+      setLoading(true);
+      try {
+        const startStr = dateRange.startDate.toISOString().split('T')[0];
+        const endStr = dateRange.endDate.toISOString().split('T')[0];
 
-    setLoading(true);
-    try {
-      const startStr = dateRange.startDate.toISOString().split('T')[0];
-      const endStr = dateRange.endDate.toISOString().split('T')[0];
-
-      // 서버 API 호출 -> 계층형 결과 수신
-      const result = await postAutoAssignment(startStr, endStr);
-      logger.debug('서버 응답 데이터:', result);
-      const resultData = (result as unknown as { data?: AssignmentData[] }).data;
-      if (!resultData) {
-        logger.error('데이터 구조가 이상합니다!', result);
+        // 서버 API 호출 -> 계층형 결과 수신
+        const result = await postAutoAssignment(startStr, endStr);
+        logger.debug('서버 응답 데이터:', result);
+        const resultData = (result as unknown as { data?: AssignmentData[] }).data;
+        if (!resultData) {
+          logger.error('데이터 구조가 이상합니다!', result);
+        }
+        setAssignments(resultData || []);
+        showSuccess('배정이 완료되었습니다.');
+      } catch (err) {
+        logger.error(err);
+        showError((err as Error).message);
+      } finally {
+        setLoading(false);
       }
-      setAssignments(resultData || []);
-      alert(`배정이 완료되었습니다.`);
-    } catch (err) {
-      logger.error(err);
-      alert((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
-  // 3. 저장 로직 (이미 서버에 저장된 상태를 불러오므로 여기선 새로고침 정도만)
+  // 3. 저장 로직 (이미 서버에 저장된 상태를  불러오므로 여기선 새로고침 정도만)
   const saveAssignments = async (): Promise<void> => {
-    alert('서버에 이미 저장된 상태입니다. (재조회)');
+    showInfo('서버에 이미 저장된 상태입니다. (재조회)');
     fetchData();
   };
 
   const removeAssignment = async (unitScheduleId: number, instructorId: number): Promise<void> => {
-    try {
-      setLoading(true);
-      await cancelAssignmentApi(unitScheduleId, instructorId);
-      alert('배정이 취소되었습니다.');
+    showConfirm('배정을 취소하시겠습니까?', async () => {
+      try {
+        setLoading(true);
+        await cancelAssignmentApi(unitScheduleId, instructorId);
+        showSuccess('배정이 취소되었습니다.');
 
-      // 화면 갱신을 위해 데이터 재조회
-      await fetchData();
-    } catch (e) {
-      alert((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
+        // 화면 갱신을 위해 데이터 재조회
+        await fetchData();
+      } catch (e) {
+        showError((e as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    });
   };
 
   return {
