@@ -15,6 +15,7 @@ import UserMainHome from '../pages/user/UserMainPage';
 import SuperAdminPage from '../pages/admin/SuperAdminPage';
 import AssignmentPage from '../pages/admin/AssignmentPage';
 import UnitPage from '../pages/admin/UnitPage';
+import SettingsPage from '../pages/admin/SettingsPage';
 
 function App(): ReactElement {
   return (
@@ -34,6 +35,7 @@ function App(): ReactElement {
           {/* 일반 관리자 */}
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/admin/assignments" element={<AssignmentPage />} />
+          <Route path="/admin/settings" element={<SettingsPage />} />
 
           {/* 슈퍼 관리자 */}
           <Route path="/admin/super" element={<SuperAdminPage />} />
