@@ -2,31 +2,16 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { UserStatus, UserCategory } from '@prisma/client';
+import { UserStatus } from '@prisma/client';
 
 import instructorRepository from '../instructor/instructor.repository';
 import authRepository from './auth.repository';
 import userRepository from '../user/repositories/user.repository';
 import emailService from '../../infra/email.service';
 import AppError from '../../common/errors/AppError';
+import { RegisterDto, JwtPayload } from '../../types/auth.types';
 
 const SALT_ROUNDS = 10;
-
-interface RegisterDto {
-  email: string;
-  password: string;
-  name: string;
-  phoneNumber: string;
-  address?: string;
-  type?: string;
-  virtueIds?: number[];
-  teamId?: number;
-  category?: UserCategory;
-}
-
-interface JwtPayload {
-  userId: number;
-}
 
 class AuthService {
   // 이메일 인증 코드 생성/저장 후 이메일로 발송

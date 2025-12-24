@@ -3,20 +3,8 @@ import messageRepository from './message.repository';
 import { compileTemplate } from '../../common/utils/templateHelper';
 import AppError from '../../common/errors/AppError';
 import metadataRepository from '../metadata/metadata.repository';
-
-interface PrismaError extends Error {
-  code?: string;
-}
-
-// 메시지 대상 조회 결과 타입 - Prisma 반환 타입과 호환되도록 유연하게 정의
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AssignmentTarget = any;
-
-interface UserMessageGroup {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  user: any;
-  assignments: AssignmentTarget[];
-}
+import { PrismaError } from '../../types/common.types';
+import { UserMessageGroup } from '../../types/message.types';
 
 class MessageService {
   // 임시 배정 메시지 일괄 발송

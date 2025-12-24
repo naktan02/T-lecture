@@ -7,35 +7,10 @@ import instructorRepository from '../instructor/instructor.repository';
 import unitRepository from '../unit/unit.repository';
 
 import AppError from '../../common/errors/AppError';
+import { ProcessResult, InstructorWithCoords, UnitWithCoords } from '../../types/distance.types';
 
 const MAX_ROUTE_PER_DAY = 9000;
 const MAX_GEOCODE_PER_DAY = 900;
-
-interface ProcessResult {
-  instructorId: number;
-  unitId: number;
-  scheduleDate: Date | null;
-  distance?: number;
-  status: 'success' | 'error';
-  error?: string;
-  code?: string;
-  statusCode?: number;
-  prismaCode?: string | null;
-}
-
-interface InstructorWithCoords {
-  userId: number;
-  lat: number | null;
-  lng: number | null;
-  location: string | null;
-}
-
-interface UnitWithCoords {
-  id: number;
-  lat: number | null;
-  lng: number | null;
-  addressDetail: string | null;
-}
 
 class DistanceService {
   // 카카오 API 사용량(오늘) 조회

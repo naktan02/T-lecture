@@ -1,83 +1,13 @@
 // server/src/domains/assignment/assignment.dto.ts
-
-// Prisma 반환 타입과 호환되는 인터페이스 정의
-interface TrainingLocationRaw {
-  id: number | string;
-  originalPlace: string | null;
-  changedPlace?: string | null;
-  instructorsNumbers?: number | null;
-  plannedCount?: number | null;
-  actualCount?: number | null;
-  note?: string | null;
-  hasInstructorLounge?: boolean | null;
-  hasWomenRestroom?: boolean | null;
-  hasCateredMeals?: boolean | null;
-  hasHallLodging?: boolean | null;
-  allowsPhoneBeforeAfter?: boolean | null;
-}
-
-interface ScheduleRaw {
-  id: number;
-  date: Date | null;
-  assignments?: AssignmentRaw[];
-}
-
-interface AssignmentRaw {
-  unitScheduleId: number;
-  userId: number;
-  state: string;
-  classification?: string | null;
-  User: {
-    name: string | null;
-    instructor?: {
-      team?: { name: string | null } | null;
-    } | null;
-  };
-}
-
-interface UnitRaw {
-  id: number;
-  name: string | null;
-  region: string | null;
-  wideArea: string | null;
-  addressDetail: string | null;
-  officerName: string | null;
-  officerPhone: string | null;
-  officerEmail: string | null;
-  workStartTime: Date | null;
-  workEndTime?: Date | null;
-  educationStart?: Date | null;
-  educationEnd?: Date | null;
-  lunchStartTime?: Date | null;
-  lunchEndTime?: Date | null;
-  trainingLocations: TrainingLocationRaw[];
-  schedules: ScheduleRaw[];
-}
-
-interface AvailabilityRaw {
-  availableOn: Date;
-}
-
-interface VirtueRaw {
-  virtue?: { name: string | null } | null;
-}
-
-interface InstructorRaw {
-  userId: number;
-  category?: string | null;
-  location?: string | null;
-  generation?: number | null;
-  isTeamLeader?: boolean;
-  restrictedArea?: string | null;
-  user: {
-    name: string | null;
-    userphoneNumber?: string | null;
-    userEmail?: string | null;
-  };
-  team?: { name: string | null } | null;
-  availabilities: AvailabilityRaw[];
-  virtues: VirtueRaw[];
-}
+import {
+  UnitRaw,
+  InstructorRaw,
+  TrainingLocationRaw,
+  ScheduleRaw,
+  AssignmentRaw,
+  AvailabilityRaw,
+  VirtueRaw,
+} from '../../types/assignment.types';
 
 /**
  * 날짜를 KST(한국 시간) 문자열(YYYY-MM-DD)로 변환

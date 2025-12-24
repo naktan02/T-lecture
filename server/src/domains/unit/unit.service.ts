@@ -4,31 +4,11 @@ import { buildPaging, buildUnitWhere } from './unit.filters';
 import { toCreateUnitDto, excelRowToRawUnit, RawUnitData } from './unit.mapper';
 import AppError from '../../common/errors/AppError';
 import { Prisma, MilitaryType } from '@prisma/client';
-
-interface ExcelRow {
-  [key: string]: unknown;
-}
-
-interface ScheduleData {
-  date: Date | string;
-  isExcluded?: boolean;
-}
+import { ExcelRow, ScheduleInput, UnitQueryInput } from '../../types/unit.types';
 
 // 서비스 입력 타입들
 type RawUnitInput = RawUnitData;
-
-interface UnitQueryInput {
-  page?: string | number;
-  limit?: string | number;
-  keyword?: string;
-  region?: string;
-  wideArea?: string;
-  unitType?: string;
-  startDate?: string;
-  endDate?: string;
-  minPersonnel?: string | number;
-  maxPersonnel?: string | number;
-}
+type ScheduleData = ScheduleInput;
 
 interface UnitBasicInfoInput {
   name?: string;
