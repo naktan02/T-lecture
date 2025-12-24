@@ -1,6 +1,7 @@
 // server/src/domains/user/services/user.me.service.ts
 import userRepository from '../repositories/user.repository';
 import AppError from '../../../common/errors/AppError';
+import { Prisma } from '@prisma/client';
 
 interface UpdateProfileDto {
   name?: string;
@@ -16,11 +17,13 @@ class UserMeService {
       throw new AppError('사용자 정보를 찾을 수 없습니다.', 404, 'USER_NOT_FOUND');
     }
 
-    const { password, ...profile } = user;
-    if (!profile.instructor) {
-      delete (profile as any).instructor;
+    const { password: _password, ...profile } = user;
+    // instructor가 null이면 응답에서 제외
+    const { instructor, ...rest } = profile;
+    if (instructor) {
+      return { ...rest, instructor };
     }
-    return profile;
+    return rest;
   }
 
   // 내 프로필 수정
@@ -54,11 +57,11 @@ class UserMeService {
       throw new AppError('사용자 정보를 찾을 수 없습니다.', 404, 'USER_NOT_FOUND');
     }
 
-    const userData: Record<string, any> = {};
+    const userData: Prisma.UserUpdateInput = {};
     if (name !== undefined) userData.name = name;
     if (phoneNumber !== undefined) userData.userphoneNumber = phoneNumber;
 
-    const instructorData: Record<string, any> = {};
+    const instructorData: Prisma.InstructorUpdateInput = {};
     const isInstructor = !!user.instructor;
 
     if (isInstructor && address !== undefined) {
@@ -69,11 +72,13 @@ class UserMeService {
 
     const updatedUser = await userRepository.update(userId, userData, instructorData);
 
-    const { password, ...result } = updatedUser;
-    if (!result.instructor) {
-      delete (result as any).instructor;
+    const { password: _password, ...result } = updatedUser;
+    // instructor가 null이면 응답에서 제외
+    const { instructor, ...restResult } = result;
+    if (instructor) {
+      return { ...restResult, instructor };
     }
-    return result;
+    return restResult;
   }
 
   // 회원 탈퇴 (내 계정 삭제)

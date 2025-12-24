@@ -29,7 +29,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
       url: req.originalUrl || req.url,
       statusCode,
       durationMs: Date.now() - start,
-      userId: (req as any).user?.id ?? null, // 아직 user 타입 정의 전이므로 any 캐스팅
+      userId: req.user?.id ?? null,
       queryKeys: Object.keys(req.query || {}),
     };
 

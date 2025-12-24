@@ -1,25 +1,10 @@
 // server/src/domains/unit/unit.filters.ts
-import { Prisma } from '@prisma/client';
+import { Prisma, MilitaryType } from '@prisma/client';
+import { PagingResult } from '../../types/common.types';
+import { UnitQueryInput } from '../../types/unit.types';
 
-interface UnitQuery {
-  page?: string | number;
-  limit?: string | number;
-  keyword?: string;
-  region?: string;
-  wideArea?: string;
-  unitType?: string;
-  startDate?: string;
-  endDate?: string;
-  minPersonnel?: string | number;
-  maxPersonnel?: string | number;
-}
-
-interface PagingResult {
-  page: number;
-  limit: number;
-  skip: number;
-  take: number;
-}
+// UnitQuery는 UnitQueryInput의 별칭
+type UnitQuery = UnitQueryInput;
 
 // 페이지네이션 계산 (Paging DTO)
 export function buildPaging(query: UnitQuery = {}): PagingResult {
@@ -52,7 +37,7 @@ export function buildUnitWhere(query: UnitQuery = {}): Prisma.UnitWhereInput {
   // 단일 필드 필터
   if (region) conditions.push({ region: { contains: String(region).trim() } });
   if (wideArea) conditions.push({ wideArea: String(wideArea).trim() });
-  if (unitType) conditions.push({ unitType: String(unitType).trim() as any });
+  if (unitType) conditions.push({ unitType: String(unitType).trim() as MilitaryType });
 
   // 날짜 범위 필터 (일정)
   if (startDate || endDate) {

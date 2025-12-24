@@ -9,6 +9,7 @@ import authRepository from './auth.repository';
 import userRepository from '../user/repositories/user.repository';
 import emailService from '../../infra/email.service';
 import AppError from '../../common/errors/AppError';
+import { RegisterDto, JwtPayload } from '../../types/auth.types';
 
 const SALT_ROUNDS = 10;
 
@@ -43,7 +44,7 @@ class AuthService {
   }
 
   // 회원가입
-  async register(dto: any) {
+  async register(dto: RegisterDto) {
     const { email, password, name, phoneNumber, address, type, virtueIds, teamId, category } = dto;
 
     if (!email || !password || !name || !phoneNumber) {
@@ -85,7 +86,7 @@ class AuthService {
 
       newUser = await userRepository.createInstructor(commonData, {
         location: address,
-        teamId: teamId || null,
+        ...(teamId ? { team: { connect: { id: teamId } } } : {}),
         category: category || null,
         lat: null,
         lng: null,
@@ -166,10 +167,10 @@ class AuthService {
       throw new AppError('서버 설정 오류: 토큰 시크릿이 없습니다.', 500, 'CONFIG_ERROR');
     }
 
-    let payload: any;
+    let payload: JwtPayload;
     try {
-      payload = jwt.verify(incomingRefreshToken, REFRESH_SECRET);
-    } catch (e) {
+      payload = jwt.verify(incomingRefreshToken, REFRESH_SECRET) as JwtPayload;
+    } catch (_e) {
       throw new AppError('리프레시 토큰이 만료되었거나 유효하지 않습니다.', 401, 'TOKEN_INVALID');
     }
 

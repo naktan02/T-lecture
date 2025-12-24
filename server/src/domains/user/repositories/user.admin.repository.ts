@@ -1,9 +1,9 @@
 // server/src/domains/user/repositories/user.admin.repository.ts
 import prisma from '../../../libs/prisma';
-import { AdminLevel, UserStatus } from '@prisma/client';
+import { AdminLevel, UserStatus, Prisma } from '@prisma/client';
 
 interface UserFilters {
-  status?: string;
+  status?: UserStatus;
   name?: string;
   onlyAdmins?: boolean;
   onlyInstructors?: boolean;
@@ -14,7 +14,7 @@ class AdminRepository {
   async findAll(filters: UserFilters = {}) {
     const { status, name, onlyAdmins, onlyInstructors } = filters;
 
-    const where: Record<string, any> = {};
+    const where: Prisma.UserWhereInput = {};
 
     if (status) {
       where.status = status;

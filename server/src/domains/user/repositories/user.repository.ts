@@ -25,8 +25,8 @@ class UserRepository {
   // 유저 정보 수정 (User + Instructor 트랜잭션 처리)
   async update(
     id: number | string,
-    userData: Record<string, any>,
-    instructorData?: Record<string, any>,
+    userData: Prisma.UserUpdateInput,
+    instructorData?: Prisma.InstructorUpdateInput,
   ) {
     return await prisma.user.update({
       where: { id: Number(id) },
@@ -108,7 +108,10 @@ class UserRepository {
   }
 
   // [Auth] 강사 생성 (User + Instructor 동시 생성)
-  async createInstructor(userData: Record<string, any>, instructorData: Record<string, any>) {
+  async createInstructor(
+    userData: Prisma.UserCreateInput,
+    instructorData: Prisma.InstructorCreateWithoutUserInput,
+  ) {
     return await prisma.user.create({
       data: {
         ...userData,

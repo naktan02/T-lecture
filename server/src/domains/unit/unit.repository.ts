@@ -109,7 +109,7 @@ class UnitRepository {
    * 부대 + 하위 데이터 함께 생성 (JS 기능 유지)
    */
   async createUnitWithNested(
-    unitData: Record<string, any>,
+    unitData: Prisma.UnitCreateInput,
     locations: TrainingLocationData[],
     schedules: ScheduleData[],
   ) {
@@ -165,7 +165,7 @@ class UnitRepository {
    */
   async updateUnitWithNested(
     id: number | string,
-    unitData: Record<string, any>,
+    unitData: Prisma.UnitUpdateInput,
     locations: TrainingLocationData[] | undefined,
     schedules: ScheduleData[] | undefined,
   ) {

@@ -1,16 +1,27 @@
 // server/src/domains/unit/unit.service.ts
 import unitRepository from './unit.repository';
 import { buildPaging, buildUnitWhere } from './unit.filters';
-import { toCreateUnitDto, excelRowToRawUnit } from './unit.mapper';
+import { toCreateUnitDto, excelRowToRawUnit, RawUnitData } from './unit.mapper';
 import AppError from '../../common/errors/AppError';
+import { Prisma, MilitaryType } from '@prisma/client';
+import { ExcelRow, ScheduleInput, UnitQueryInput } from '../../types/unit.types';
 
-interface ExcelRow {
-  [key: string]: any;
+// 서비스 입력 타입들
+type RawUnitInput = RawUnitData;
+type ScheduleData = ScheduleInput;
+
+interface UnitBasicInfoInput {
+  name?: string;
+  unitType?: MilitaryType;
+  wideArea?: string;
+  region?: string;
+  addressDetail?: string;
 }
 
-interface ScheduleData {
-  date: Date | string;
-  isExcluded?: boolean;
+interface UnitContactInput {
+  officerName?: string;
+  officerPhone?: string;
+  officerEmail?: string;
 }
 
 class UnitService {
@@ -19,12 +30,12 @@ class UnitService {
   /**
    * 부대 단건 등록
    */
-  async registerSingleUnit(rawData: any) {
+  async registerSingleUnit(rawData: RawUnitInput) {
     try {
       const cleanData = toCreateUnitDto(rawData);
       return await unitRepository.insertOneUnit(cleanData);
-    } catch (e: any) {
-      if (e.message.includes('부대명(name)은 필수입니다.')) {
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message.includes('부대명(name)은 필수입니다.')) {
         throw new AppError(e.message, 400, 'VALIDATION_ERROR');
       }
       throw e;
@@ -42,7 +53,7 @@ class UnitService {
   /**
    * 일괄 등록 (내부 로직)
    */
-  async registerMultipleUnits(dataArray: any[]) {
+  async registerMultipleUnits(dataArray: RawUnitInput[]) {
     if (!Array.isArray(dataArray) || dataArray.length === 0) {
       throw new AppError('등록할 데이터가 없습니다.', 400, 'VALIDATION_ERROR');
     }
@@ -51,8 +62,8 @@ class UnitService {
       const dtoList = dataArray.map(toCreateUnitDto);
       const results = await unitRepository.insertManyUnits(dtoList);
       return { count: results.length };
-    } catch (e: any) {
-      if (e.message.includes('부대명(name)은 필수입니다.')) {
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message.includes('부대명(name)은 필수입니다.')) {
         throw new AppError(e.message, 400, 'VALIDATION_ERROR');
       }
       throw e;
@@ -64,7 +75,7 @@ class UnitService {
   /**
    * 목록 조회
    */
-  async searchUnitList(query: any) {
+  async searchUnitList(query: UnitQueryInput) {
     const paging = buildPaging(query);
     const where = buildUnitWhere(query);
 
@@ -101,8 +112,8 @@ class UnitService {
   /**
    * 부대 기본 정보 수정
    */
-  async modifyUnitBasicInfo(id: number | string, rawData: any) {
-    const updateData: Record<string, any> = {};
+  async modifyUnitBasicInfo(id: number | string, rawData: UnitBasicInfoInput) {
+    const updateData: Prisma.UnitUpdateInput = {};
 
     if (rawData.name !== undefined) updateData.name = rawData.name;
     if (rawData.unitType !== undefined) updateData.unitType = rawData.unitType;
@@ -121,7 +132,7 @@ class UnitService {
   /**
    * 부대 담당자 정보 수정
    */
-  async modifyUnitContactInfo(id: number | string, rawData: any) {
+  async modifyUnitContactInfo(id: number | string, rawData: UnitContactInput) {
     const updateData = {
       officerName: rawData.officerName,
       officerPhone: rawData.officerPhone,

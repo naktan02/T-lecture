@@ -1,43 +1,9 @@
 // server/src/domains/unit/unit.mapper.ts
 import { Prisma } from '@prisma/client';
+import { TrainingLocationInput, RawUnitInput, ExcelRow } from '../../types/unit.types';
 
-interface TrainingLocationInput {
-  originalPlace?: string;
-  changedPlace?: string;
-  plannedCount?: number | string;
-  instructorsNumbers?: number | string;
-  hasInstructorLounge?: boolean | string;
-  hasWomenRestroom?: boolean | string;
-  hasCateredMeals?: boolean | string;
-  hasHallLodging?: boolean | string;
-  allowsPhoneBeforeAfter?: boolean | string;
-  note?: string;
-}
-
-interface RawUnitData {
-  name?: string;
-  unitType?: string;
-  wideArea?: string;
-  region?: string;
-  addressDetail?: string;
-  lat?: number;
-  lng?: number;
-  educationStart?: string | Date;
-  educationEnd?: string | Date;
-  workStartTime?: string | Date;
-  workEndTime?: string | Date;
-  lunchStartTime?: string | Date;
-  lunchEndTime?: string | Date;
-  officerName?: string;
-  officerPhone?: string;
-  officerEmail?: string;
-  trainingLocations?: TrainingLocationInput[];
-  schedules?: string[];
-}
-
-interface ExcelRow {
-  [key: string]: any;
-}
+// RawUnitData는 이 파일에서 export하므로 유지 (다른 파일에서 import)
+export type RawUnitData = RawUnitInput;
 
 // 헬퍼: 문자열 확인
 const isNonEmptyString = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 0;
@@ -62,7 +28,7 @@ export function toCreateUnitDto(rawData: RawUnitData = {}): Prisma.UnitCreateInp
 
   return {
     name: rawData.name,
-    unitType: rawData.unitType as any,
+    unitType: rawData.unitType as Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput['set'],
     wideArea: rawData.wideArea,
     region: rawData.region,
     addressDetail: rawData.addressDetail,
