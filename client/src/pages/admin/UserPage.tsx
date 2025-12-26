@@ -50,6 +50,7 @@ const UserPage = (): ReactElement => {
     rejectUser,
     approveUsersBulk,
     rejectUsersBulk,
+    pendingCount,
   } = useUserManagement({
     ...searchParams,
     status: searchParams.status === 'ALL' ? undefined : searchParams.status,
@@ -57,9 +58,6 @@ const UserPage = (): ReactElement => {
     category: searchParams.category || undefined,
     availableOn: searchParams.availableOn || undefined,
   });
-
-  // 승인 대기 유저 수 계산
-  const pendingCount = users.filter((u) => u.status === 'PENDING').length;
 
   // 검색 핸들러
   const handleSearch = (newParams: SearchParams): void => {

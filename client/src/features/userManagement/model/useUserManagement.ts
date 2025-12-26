@@ -33,6 +33,7 @@ interface UseUserManagementReturn {
   rejectUser: (id: number) => Promise<void>;
   approveUsersBulk: (ids: number[]) => Promise<void>;
   rejectUsersBulk: (ids: number[]) => Promise<void>;
+  pendingCount: number;
 }
 
 export const useUserManagement = (searchParams: SearchParams = {}): UseUserManagementReturn => {
@@ -55,6 +56,18 @@ export const useUserManagement = (searchParams: SearchParams = {}): UseUserManag
       }),
   });
 
+  // 승인 대기 유저 수 조회 (전체)
+  const { data: pendingResponse } = useQuery({
+    queryKey: ['adminUsersPendingCount'],
+    queryFn: () =>
+      userManagementApi.getUsers({
+        status: 'PENDING',
+        page: 1,
+        limit: 1,
+      }),
+    staleTime: 30 * 1000, // 30초
+  });
+
   // 데이터 추출
   const users: User[] = Array.isArray(response?.data) ? response.data : [];
   const meta: PaginationMeta = response?.meta || {
@@ -63,6 +76,7 @@ export const useUserManagement = (searchParams: SearchParams = {}): UseUserManag
     limit: 20,
     lastPage: 1,
   };
+  const pendingCount = pendingResponse?.meta?.total || 0;
 
   // 유저 수정
   const updateMutation = useMutation({
@@ -146,6 +160,7 @@ export const useUserManagement = (searchParams: SearchParams = {}): UseUserManag
     setPage,
     isLoading,
     isError,
+    pendingCount,
     // Actions
     updateUser: updateMutation.mutate,
     deleteUser: deleteMutation.mutate,
