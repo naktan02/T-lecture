@@ -1,6 +1,7 @@
 // src/entities/user/ui/UserBasicFields.tsx
 import { ChangeEvent } from 'react';
 import { InputField } from '../../../shared/ui';
+import { formatPhoneNumber } from '../../../shared/utils';
 
 interface UserBasicForm {
   name: string;
@@ -85,9 +86,14 @@ export const UserBasicFields: React.FC<UserBasicFieldsProps> = ({
       <InputField
         label="연락처"
         required
-        placeholder="010-1234-5678"
+        placeholder="숫자만 입력하세요 (자동 포맷팅)"
         value={form.phoneNumber}
-        onChange={onChange('phoneNumber')}
+        onChange={(e) => {
+          const formatted = formatPhoneNumber(e.target.value);
+          // 가짜 이벤트 객체를 만들어 전달 (UserBasicFields가 onChange(field)(e) 형태를 사용하므로)
+          e.target.value = formatted;
+          onChange('phoneNumber')(e);
+        }}
       />
     </>
   );

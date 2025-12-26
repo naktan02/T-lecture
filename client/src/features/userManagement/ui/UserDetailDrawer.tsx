@@ -5,6 +5,7 @@ import { Button, InputField } from '../../../shared/ui';
 import { userManagementApi, User, UpdateUserDto } from '../api/userManagementApi';
 import { getTeams, getVirtues, Team, Virtue } from '../../settings/settingsApi';
 import { AvailabilityCalendar } from './AvailabilityCalendar';
+import { formatPhoneNumber } from '../../../shared/utils';
 
 // Daum 우편번호 서비스 타입 정의
 declare global {
@@ -374,7 +375,12 @@ export const UserDetailDrawer = ({
                       label="연락처"
                       name="phoneNumber"
                       value={formData.phoneNumber}
-                      onChange={handleChange}
+                      onChange={(e) => {
+                        const formatted = formatPhoneNumber(e.target.value);
+                        handleChange({
+                          target: { name: 'phoneNumber', value: formatted },
+                        } as any);
+                      }}
                     />
                     <div className="col-span-2">
                       <label className="text-sm font-medium">이메일</label>
