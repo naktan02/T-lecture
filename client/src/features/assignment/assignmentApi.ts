@@ -71,12 +71,11 @@ export interface AssignmentCandidatesResponse {
 }
 
 export interface AutoAssignmentResult {
-  assignedCount: number;
-  assignments: Array<{
-    unitScheduleId: number;
-    instructorId: number;
-    instructorName: string;
-  }>;
+  summary: {
+    created: number;
+    skipped: number;
+  };
+  data: unknown[];
 }
 
 export interface CancelAssignmentResponse {
@@ -130,5 +129,46 @@ export const cancelAssignmentApi = async (
     body: JSON.stringify({ unitScheduleId, instructorId }),
   });
   if (!res.ok) throw new Error('배정 취소에 실패했습니다.');
+  return res.json();
+};
+
+/**
+ * 자동 배정 미리보기 (저장 안 함)
+ */
+export interface PreviewAssignment {
+  unitScheduleId: number;
+  instructorId: number;
+  trainingLocationId: number | null;
+  role: string;
+}
+
+export interface PreviewResult {
+  previewAssignments: PreviewAssignment[];
+  assignedCount: number;
+}
+
+export const postAutoAssignmentPreview = async (
+  startDate: string,
+  endDate: string,
+): Promise<PreviewResult> => {
+  const res = await apiClient('/api/v1/assignments/preview', {
+    method: 'POST',
+    body: JSON.stringify({ startDate, endDate }),
+  });
+  if (!res.ok) throw new Error('자동 배정 미리보기 실패');
+  return res.json();
+};
+
+/**
+ * 배정 일괄 저장
+ */
+export const bulkSaveAssignmentsApi = async (
+  assignments: PreviewAssignment[],
+): Promise<{ summary: { created: number; skipped: number } }> => {
+  const res = await apiClient('/api/v1/assignments/bulk-save', {
+    method: 'POST',
+    body: JSON.stringify({ assignments }),
+  });
+  if (!res.ok) throw new Error('배정 저장에 실패했습니다.');
   return res.json();
 };

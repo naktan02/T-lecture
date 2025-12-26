@@ -27,13 +27,15 @@ model InstructorAvailability {
 }
 
 model InstructorUnitAssignment {
-  userId         Int
-  unitScheduleId Int
-  classification AssignmentCategory? @map("배치분류")
-  state          AssignmentState     @default(Pending) @map("배정상태")
+  userId             Int
+  unitScheduleId     Int
+  trainingLocationId Int?                @map("교육장id")
+  classification     AssignmentCategory? @map("배치분류")
+  state              AssignmentState     @default(Pending) @map("배정상태")
 
-  User         User         @relation(fields: [userId], references: [id])
-  UnitSchedule UnitSchedule @relation(fields: [unitScheduleId], references: [id])
+  User             User              @relation(fields: [userId], references: [id])
+  UnitSchedule     UnitSchedule      @relation(fields: [unitScheduleId], references: [id])
+  TrainingLocation TrainingLocation? @relation(fields: [trainingLocationId], references: [id])
 
   messageAssignments MessageAssignment[]
 

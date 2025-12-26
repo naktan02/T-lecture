@@ -50,7 +50,7 @@ export const areaRestrictionFilter: AssignmentFilter = {
 
 /**
  * 주강사 필수 필터
- * - 각 날짜에 주강사 최소 1명 확보 필요
+ * - 각 날짜/장소에 주강사(Main) 최소 1명 확보 필요
  */
 export const mainInstructorFilter: AssignmentFilter = {
   id: 'MAIN_REQUIRED',
@@ -91,10 +91,28 @@ export const traineeFilter: AssignmentFilter = {
 };
 
 /**
+ * 이미 배정된 강사 필터
+ * - 해당 날짜에 이미 다른 스케줄에 배정된 강사 제외
+ */
+export const alreadyAssignedFilter: AssignmentFilter = {
+  id: 'ALREADY_ASSIGNED',
+  name: '중복 배정 방지 필터',
+  description: '해당 날짜에 이미 배정된 강사 제외',
+  check(candidate: InstructorCandidate, context: AssignmentContext): boolean {
+    // 같은 날짜에 이미 배정된 강사인지 확인
+    const isAlreadyAssigned = context.currentAssignments.some(
+      (a) => a.date === context.currentScheduleDate && a.instructorId === candidate.userId,
+    );
+    return !isAlreadyAssigned; // 배정되지 않은 경우만 통과
+  },
+};
+
+/**
  * 모든 필터 목록
  */
 export const allFilters: AssignmentFilter[] = [
   availabilityFilter,
+  alreadyAssignedFilter, // 중복 배정 방지 (가용일 다음에 체크)
   distanceFilter,
   areaRestrictionFilter,
   mainInstructorFilter,

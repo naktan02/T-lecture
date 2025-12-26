@@ -49,6 +49,7 @@ interface InstructorWithData {
 interface AssignmentResult {
   unitScheduleId: number;
   instructorId: number;
+  trainingLocationId: number | null;
   role: string;
 }
 
@@ -92,28 +93,46 @@ class AssignmentAlgorithm {
     const result = this.engine.execute(units, candidates);
 
     // 3. 결과 변환 (기존 형식으로)
-    return result.assignments.map((a) => ({
-      unitScheduleId: a.unitScheduleId,
-      instructorId: a.instructorId,
-      role: a.classification === 'Confirmed' ? 'Main' : 'Main', // 일단 모두 Main
-    }));
+    // uniqueScheduleId = (원본scheduleId * 1000) + locationIndex
+    return result.assignments.map((a) => {
+      const originalScheduleId = Math.floor(a.unitScheduleId / 1000);
+      const locationIndex = a.unitScheduleId % 1000;
+      // locationIndex → trainingLocationId 매핑은 rawUnits에서 추출해야 함
+      // 일단 유닛 찾아서 해당 장소 ID 가져오기
+      const unit = rawUnits.find((u) => u.schedules.some((s) => s.id === originalScheduleId));
+      const trainingLocationId = unit?.trainingLocations[locationIndex]?.id ?? null;
+
+      return {
+        unitScheduleId: originalScheduleId,
+        instructorId: a.instructorId,
+        trainingLocationId,
+        role: 'Main', // 일단 모두 Main
+      };
+    });
   }
 
   /**
    * 부대 데이터 변환
+   * - 장소별로 스케줄 분리하여 배정
+   * - uniqueScheduleId = (원본scheduleId * 1000) + locationIndex
    */
   private transformUnits(rawUnits: UnitWithSchedules[]): UnitData[] {
     return rawUnits.map((unit) => {
-      const totalRequired = unit.trainingLocations.reduce(
-        (sum, loc) => sum + (loc.instructorsNumbers || 0),
-        0,
-      );
+      // 장소별로 스케줄 분리
+      const schedules: ScheduleData[] = [];
 
-      const schedules: ScheduleData[] = unit.schedules.map((s) => ({
-        id: s.id,
-        date: s.date,
-        requiredCount: totalRequired,
-      }));
+      for (const schedule of unit.schedules) {
+        for (let locIdx = 0; locIdx < unit.trainingLocations.length; locIdx++) {
+          const loc = unit.trainingLocations[locIdx];
+          // 장소별 고유 스케줄 ID: (원본ID * 1000) + 장소인덱스
+          const uniqueScheduleId = schedule.id * 1000 + locIdx;
+          schedules.push({
+            id: uniqueScheduleId,
+            date: schedule.date,
+            requiredCount: loc.instructorsNumbers || 2, // 해당 장소 필요인원
+          });
+        }
+      }
 
       return {
         id: unit.id,

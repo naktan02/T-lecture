@@ -36,12 +36,14 @@ export const UnassignedUnitDetailModal: React.FC<Props> = ({ unit, onClose }) =>
               📍 {unit.region} | 📅 {unit.uniqueDates.length}일 | 👤 총 {unit.totalRequired}명 필요
             </p>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="small"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
           >
             ✕
-          </button>
+          </Button>
         </div>
 
         {/* Body */}

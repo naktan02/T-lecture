@@ -52,7 +52,8 @@ model TrainingLocation {
   instructorsNumbers     Int?     @map("투입강사수")
   note                   String?  @map("특이사항")
 
-  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  unit        Unit                       @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  assignments InstructorUnitAssignment[]
 
   @@map("교육장소")
 }

@@ -148,11 +148,18 @@ class AssignmentDTO {
     });
   }
 
-  toHierarchicalResponse(unitsWithAssignments: UnitRaw[]) {
+  /**
+   * 계층형 응답 변환 (상태 필터링 지원)
+   * @param stateFilter - 'Pending' | 'Accepted' | 'all' (default: 'all')
+   */
+  toHierarchicalResponse(
+    unitsWithAssignments: UnitRaw[],
+    stateFilter: 'Pending' | 'Accepted' | 'all' = 'all',
+  ) {
     return unitsWithAssignments.map((unit) => {
       let totalRequired = 0;
       let totalAssigned = 0;
-
+      const assignedInstructorIds = new Set<number>();
       // 1. 교육장소별 데이터 구성
       const locations =
         unit.trainingLocations && unit.trainingLocations.length > 0
@@ -167,10 +174,18 @@ class AssignmentDTO {
         const dates = unit.schedules.map((schedule: ScheduleRaw) => {
           const dateStr = toKSTDateString(schedule.date);
 
+          // 해당 장소(loc.id)에 배정된 강사만 필터링 (상태 필터 적용)
           const assignedInstructors = (schedule.assignments || [])
-            .filter((a: AssignmentRaw) => a.state === 'Pending' || a.state === 'Accepted')
+            .filter(
+              (a: AssignmentRaw) =>
+                (stateFilter === 'all'
+                  ? a.state === 'Pending' || a.state === 'Accepted'
+                  : a.state === stateFilter) &&
+                (a.trainingLocationId === loc.id || a.trainingLocationId === null),
+            )
             .map((assign: AssignmentRaw) => {
               totalAssigned++;
+              assignedInstructorIds.add(assign.userId);
               return {
                 assignmentId: assign.unitScheduleId + '-' + assign.userId,
                 unitScheduleId: assign.unitScheduleId,
@@ -178,6 +193,7 @@ class AssignmentDTO {
                 name: assign.User.name,
                 team: assign.User.instructor?.team?.name || '소속없음',
                 role: assign.classification,
+                trainingLocationId: assign.trainingLocationId,
               };
             });
 
@@ -208,8 +224,9 @@ class AssignmentDTO {
         region: `${unit.wideArea} ${unit.region}`,
         period: `${startDate} ~ ${endDate}`,
         totalRequired,
-        totalAssigned,
-        progress: totalRequired > 0 ? Math.round((totalAssigned / totalRequired) * 100) : 0,
+        totalAssigned: assignedInstructorIds.size,
+        progress:
+          totalRequired > 0 ? Math.round((assignedInstructorIds.size / totalRequired) * 100) : 0,
         trainingLocations: trainingLocations,
       };
     });

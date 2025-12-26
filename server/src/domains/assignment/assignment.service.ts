@@ -60,6 +60,65 @@ class AssignmentService {
   }
 
   /**
+   * 자동 배정 미리보기 (저장 안 함)
+   */
+  async previewAutoAssignments(startDate: Date, endDate: Date) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new AppError('유효하지 않은 날짜 형식입니다.', 400, 'VALIDATION_ERROR');
+    }
+    if (start > end) {
+      throw new AppError('시작일은 종료일보다 클 수 없습니다.', 400, 'VALIDATION_ERROR');
+    }
+
+    const units = await assignmentRepository.findScheduleCandidates(start, end);
+    const instructors = await instructorRepository.findAvailableInPeriod(
+      start.toISOString(),
+      end.toISOString(),
+    );
+
+    if (!units || units.length === 0) {
+      throw new AppError('해당 기간에 조회되는 부대 일정이 없습니다.', 404, 'NO_UNITS');
+    }
+    if (!instructors || instructors.length === 0) {
+      throw new AppError('해당 기간에 배정 가능한 강사가 없습니다.', 404, 'NO_INSTRUCTORS');
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const matchResults = assignmentAlgorithm.execute(units as any, instructors as any);
+
+    if (!matchResults || matchResults.length === 0) {
+      throw new AppError('배정 가능한 매칭 결과가 없습니다.', 404, 'NO_MATCHES');
+    }
+
+    // 미리보기용: 저장하지 않고 결과만 반환
+    return {
+      previewAssignments: matchResults,
+      assignedCount: matchResults.length,
+    };
+  }
+
+  /**
+   * 배정 일괄 저장
+   */
+  async bulkSaveAssignments(
+    assignments: Array<{
+      unitScheduleId: number;
+      instructorId: number;
+      trainingLocationId?: number | null;
+    }>,
+  ) {
+    if (!assignments || assignments.length === 0) {
+      throw new AppError('저장할 배정이 없습니다.', 400, 'VALIDATION_ERROR');
+    }
+
+    const summary = await assignmentRepository.createAssignmentsBulk(assignments);
+    return { summary };
+  }
+
+  /**
    * 임시 배정 응답 (수락/거절)
    */
   async respondToAssignment(

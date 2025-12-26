@@ -48,7 +48,8 @@ interface UseAssignmentReturn {
   unassignedUnits: UnitSchedule[]; // raw data (하위 호환성)
   groupedUnassignedUnits: GroupedUnassignedUnit[]; // 부대별 그룹화
   availableInstructors: Instructor[];
-  assignments: AssignmentData[];
+  assignments: AssignmentData[]; // 임시 배정 (Pending)
+  confirmedAssignments: AssignmentData[]; // 확정 배정 (Accepted)
   fetchData: () => Promise<void>;
   executeAutoAssign: () => Promise<void>;
   saveAssignments: () => Promise<void>;
@@ -67,6 +68,7 @@ export const useAssignment = (): UseAssignmentReturn => {
   });
 
   const [assignments, setAssignments] = useState<AssignmentData[]>([]);
+  const [confirmedAssignments, setConfirmedAssignments] = useState<AssignmentData[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,7 +86,12 @@ export const useAssignment = (): UseAssignmentReturn => {
         units: data.unassignedUnits || [],
         instructors: data.availableInstructors || [],
       });
-      setAssignments([]); // 초기화
+
+      // 배정 현황 설정 (상태별 분리)
+      const pending = (data as any).pendingAssignments || [];
+      const accepted = (data as any).acceptedAssignments || [];
+      setAssignments(pending); // 임시 배정
+      setConfirmedAssignments(accepted); // 확정 배정
     } catch (err) {
       setError((err as Error).message || '데이터 조회 실패');
     } finally {
@@ -92,23 +99,21 @@ export const useAssignment = (): UseAssignmentReturn => {
     }
   }, [dateRange]);
 
-  // 2. 자동 배정 실행 (API 호출)
-  // UI에서 ConfirmModal로 확인하므로 여기서는 바로 실행
+  // 2. 자동 배정 실행 (DB에 바로 저장)
   const executeAutoAssign = async (): Promise<void> => {
     setLoading(true);
     try {
       const startStr = dateRange.startDate.toISOString().split('T')[0];
       const endStr = dateRange.endDate.toISOString().split('T')[0];
 
-      // 서버 API 호출 -> 계층형 결과 수신
+      // 서버 API 호출 -> 바로 저장됨
       const result = await postAutoAssignment(startStr, endStr);
-      logger.debug('서버 응답 데이터:', result);
-      const resultData = (result as unknown as { data?: AssignmentData[] }).data;
-      if (!resultData) {
-        logger.error('데이터 구조가 이상합니다!', result);
-      }
-      setAssignments(resultData || []);
-      showSuccess('배정이 완료되었습니다.');
+
+      logger.debug('자동 배정 결과:', result);
+      showSuccess(`${result.summary.created}건 배정 완료! (${result.summary.skipped}건 건너뜀)`);
+
+      // 배정 결과 설정 (result.data에 계층형 배정 데이터가 있음)
+      setAssignments(result.data as AssignmentData[]);
     } catch (err) {
       logger.error(err);
       showError((err as Error).message);
@@ -117,10 +122,9 @@ export const useAssignment = (): UseAssignmentReturn => {
     }
   };
 
-  // 3. 저장 로직 (이미 서버에 저장된 상태를  불러오므로 여기선 새로고침 정도만)
+  // 3. 저장은 이미 자동 배정에서 처리됨 (빈 함수 유지 for 인터페이스 호환)
   const saveAssignments = async (): Promise<void> => {
-    showInfo('서버에 이미 저장된 상태입니다. (재조회)');
-    fetchData();
+    showInfo('자동 배정 시 이미 저장되었습니다.');
   };
 
   const removeAssignment = async (unitScheduleId: number, instructorId: number): Promise<void> => {
@@ -152,6 +156,7 @@ export const useAssignment = (): UseAssignmentReturn => {
     groupedUnassignedUnits,
     availableInstructors: sourceData.instructors,
     assignments,
+    confirmedAssignments,
     fetchData,
     executeAutoAssign,
     saveAssignments,

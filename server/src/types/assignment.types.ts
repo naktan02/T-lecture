@@ -52,6 +52,7 @@ export interface ScheduleRaw {
 export interface AssignmentRaw {
   unitScheduleId: number;
   userId: number;
+  trainingLocationId?: number | null;
   state: string;
   classification?: string | null;
   User: {

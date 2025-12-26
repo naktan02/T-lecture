@@ -200,12 +200,14 @@ interface AssignmentGroupDetailModalProps {
   group: AssignmentGroup;
   onClose: () => void;
   onRemove?: (unitScheduleId: number, instructorId: number) => void;
+  availableInstructors?: any[];
 }
 
 export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProps> = ({
   group,
   onClose,
   onRemove,
+  availableInstructors = [],
 }) => {
   const [addPopupTarget, setAddPopupTarget] = useState<AddPopupTarget | null>(null);
 
@@ -325,7 +327,11 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
 
       {/* 4. 강사 추가 팝업 */}
       {addPopupTarget && (
-        <InstructorSelectionPopup target={addPopupTarget} onClose={() => setAddPopupTarget(null)} />
+        <InstructorSelectionPopup
+          target={addPopupTarget}
+          allAvailableInstructors={availableInstructors}
+          onClose={() => setAddPopupTarget(null)}
+        />
       )}
       {/* 5. 삭제 확인 모달 */}
       <ConfirmModal

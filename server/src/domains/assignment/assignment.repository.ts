@@ -5,6 +5,7 @@ import { Prisma, AssignmentState } from '@prisma/client';
 interface MatchResult {
   unitScheduleId: number;
   instructorId: number;
+  trainingLocationId?: number | null;
   role?: string;
 }
 
@@ -75,27 +76,33 @@ class AssignmentRepository {
   async createAssignmentsBulk(matchResults: MatchResult[]): Promise<BulkCreateSummary> {
     const summary: BulkCreateSummary = { requested: matchResults.length, created: 0, skipped: 0 };
 
-    await prisma.$transaction(async (tx) => {
-      for (const match of matchResults) {
-        try {
-          await tx.instructorUnitAssignment.create({
-            data: {
+    // 트랜잭션 없이 개별 처리 (upsert로 중복 방지)
+    for (const match of matchResults) {
+      try {
+        await prisma.instructorUnitAssignment.upsert({
+          where: {
+            unitScheduleId_userId: {
               unitScheduleId: match.unitScheduleId,
               userId: match.instructorId,
-              classification: 'Temporary',
-              state: 'Pending',
             },
-          });
-          summary.created += 1;
-        } catch (e) {
-          if ((e as PrismaError).code === 'P2002') {
-            summary.skipped += 1;
-            continue;
-          }
-          throw e;
-        }
+          },
+          create: {
+            unitScheduleId: match.unitScheduleId,
+            userId: match.instructorId,
+            trainingLocationId: match.trainingLocationId ?? null,
+            classification: 'Temporary',
+            state: 'Pending',
+          },
+          update: {
+            // 이미 존재하면 아무것도 업데이트하지 않음 (skip)
+          },
+        });
+        summary.created += 1;
+      } catch (e) {
+        // 다른 에러는 skip하고 계속 진행
+        summary.skipped += 1;
       }
-    });
+    }
     return summary;
   }
 

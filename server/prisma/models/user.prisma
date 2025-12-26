@@ -1,8 +1,8 @@
 enum UserCategory {
-  Main
-  Co
-  Assistant
-  Practicum
+  Main // 주강사
+  Co // 부강사
+  Assistant // 보조강사
+  Practicum // 실습강
 
   @@map("분류__t")
 }

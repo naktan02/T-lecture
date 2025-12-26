@@ -42,7 +42,7 @@ export const respondAssignment = asyncHandler(async (req: Request, res: Response
   res.json(result);
 });
 
-// [배정 후보 데이터 조회] (부대 + 강사)
+// [배정 후보 데이터 조회] (부대 + 강사 + 기존 배정)
 export const getCandidates = asyncHandler(async (req: Request, res: Response) => {
   const { startDate, endDate } = req.query || {};
 
@@ -57,7 +57,15 @@ export const getCandidates = asyncHandler(async (req: Request, res: Response) =>
 
   const responseData = assignmentDTO.toCandidateResponse(unitsRaw, instructorsRaw);
 
-  res.json(responseData);
+  // 배정 현황을 상태별로 분리
+  const pendingAssignments = assignmentDTO.toHierarchicalResponse(unitsRaw, 'Pending');
+  const acceptedAssignments = assignmentDTO.toHierarchicalResponse(unitsRaw, 'Accepted');
+
+  res.json({
+    ...responseData,
+    pendingAssignments, // 임시 배정 (배정 작업 공간)
+    acceptedAssignments, // 확정 배정 (확정 배정 완료)
+  });
 });
 
 //자동 배정 실행
@@ -104,6 +112,48 @@ export const cancelAssignmentByAdmin = asyncHandler(async (req: Request, res: Re
   res.json(result);
 });
 
+// [자동 배정 미리보기] (저장 안 함)
+export const previewAutoAssign = asyncHandler(async (req: Request, res: Response) => {
+  const { startDate, endDate } = req.body;
+
+  if (!startDate || !endDate) {
+    throw new AppError('기간(startDate, endDate)이 필요합니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  const s = new Date(startDate);
+  const e = new Date(endDate);
+
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) {
+    throw new AppError('유효하지 않은 날짜 형식입니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  logger.info('[assignment.previewAutoAssign] Start', {
+    userId: req.user!.id,
+    startDate,
+    endDate,
+  });
+
+  const result = await assignmentService.previewAutoAssignments(s, e);
+  res.status(200).json(result);
+});
+
+// [배정 일괄 저장]
+export const bulkSaveAssignments = asyncHandler(async (req: Request, res: Response) => {
+  const { assignments } = req.body;
+
+  if (!assignments || !Array.isArray(assignments)) {
+    throw new AppError('저장할 배정 목록(assignments)이 필요합니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  logger.info('[assignment.bulkSave]', {
+    userId: req.user!.id,
+    count: assignments.length,
+  });
+
+  const result = await assignmentService.bulkSaveAssignments(assignments);
+  res.status(200).json(result);
+});
+
 // CommonJS 호환
 module.exports = {
   getWorkHistory,
@@ -111,5 +161,7 @@ module.exports = {
   respondAssignment,
   getCandidates,
   autoAssign,
+  previewAutoAssign,
+  bulkSaveAssignments,
   cancelAssignmentByAdmin,
 };

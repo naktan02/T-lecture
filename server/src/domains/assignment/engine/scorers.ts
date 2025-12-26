@@ -21,18 +21,29 @@ export const applicationCountScorer: AssignmentScorer = {
 
 /**
  * 형평성 스코어러
- * - 최근 배정이 적을수록 높은 점수
+ * - 이번 실행 중 배정이 적을수록 높은 점수
+ * - 기존 배정 횟수도 고려
  */
 export const fairnessScorer: AssignmentScorer = {
   id: 'FAIRNESS',
   name: '형평성 점수',
-  description: '최근 배정이 적을수록 높은 점수',
-  defaultWeight: 15,
+  description: '배정이 적을수록 높은 점수',
+  defaultWeight: 20, // 가중치 증가
   calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
-    const count = candidate.recentAssignmentCount;
-    const avg = context.avgAssignmentCount || 1;
-    if (count >= avg) return 0; // 평균 이상이면 보너스 없음
-    return ((avg - count) / avg) * 5; // 부족할수록 높은 점수
+    // 1. 이번 실행 중 배정된 횟수 (현재 context에서)
+    const runtimeAssignments = context.currentAssignments.filter(
+      (a) => a.instructorId === candidate.userId,
+    ).length;
+
+    // 2. 기존 배정 횟수 (DB에서)
+    const existingCount = candidate.recentAssignmentCount;
+
+    // 3. 총 배정 횟수
+    const totalCount = runtimeAssignments + existingCount;
+
+    // 4. 배정 횟수가 많을수록 점수 감소 (각 배정당 -2점)
+    const penalty = totalCount * 2;
+    return Math.max(0, 10 - penalty); // 0~10점, 5번 이상이면 0점
   },
 };
 

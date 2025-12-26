@@ -52,59 +52,99 @@ async function main() {
   console.log('👥 Creating 25 instructors...');
 
   const instructors = [];
+  // 40명 강사 - Main 15명, Co 10명, Assistant 10명, Practicum 5명
+  // 일부 강사는 팀에 속하지 않음 (null)
   const teams = [
-    team1,
-    team1,
+    // Main 15명 (팀 골고루 분배, 일부는 팀 없음)
     team1,
     team1,
     team1,
     team2,
     team2,
     team2,
+    team3,
+    team3,
+    team3,
+    null,
+    null,
+    null,
+    team1,
     team2,
-    team2,
+    team3,
+    // Co 10명 (일부는 팀 없음)
     team1,
     team1,
     team2,
     team2,
     team3,
     team3,
+    null,
+    null,
+    team1,
+    team2,
+    // Assistant 10명 (일부는 팀 없음)
+    team1,
+    team2,
     team3,
-    team3,
-    team3,
-    team3,
+    null,
+    null,
     team1,
     team2,
     team3,
     team1,
     team2,
+    // Practicum 5명 (일부는 팀 없음)
+    team1,
+    team2,
+    null,
+    team3,
+    null,
   ];
   const categories = [
+    // Main 15명 (주강사)
     'Main',
     'Main',
     'Main',
     'Main',
-    'Main', // 5명 주강사
+    'Main',
+    'Main',
+    'Main',
+    'Main',
+    'Main',
+    'Main',
+    'Main',
+    'Main',
+    'Main',
+    'Main',
+    'Main',
+    // Co 10명 (부강사)
     'Co',
     'Co',
     'Co',
     'Co',
-    'Co', // 5명 부강사
+    'Co',
+    'Co',
+    'Co',
+    'Co',
+    'Co',
+    'Co',
+    // Assistant 10명 (보조강사)
     'Assistant',
     'Assistant',
     'Assistant',
     'Assistant',
-    'Assistant', // 5명 보조강사
     'Assistant',
     'Assistant',
     'Assistant',
     'Assistant',
-    'Assistant', // 5명 보조강사
+    'Assistant',
+    'Assistant',
+    // Practicum 5명 (실습강사)
     'Practicum',
     'Practicum',
     'Practicum',
     'Practicum',
-    'Practicum', // 5명 실습강사
+    'Practicum',
   ];
   const locations = [
     '서울시 강남구',
@@ -128,48 +168,77 @@ async function main() {
     '경상남도 부산시',
     '부산시 해운대구',
     '서울시 강서구',
+    '서울시 종로구',
+    '서울시 서초구',
+    '서울시 영등포구',
     '경기도 용인시',
-    '충청남도 세종시',
+    '경기도 안양시',
+    '경기도 부천시',
+    '경기도 화성시',
+    '인천시 연수구',
     '강원도 강릉시',
+    '충청남도 아산시',
+    '충청북도 충주시',
+    '대전시 동구',
+    '전라북도 익산시',
+    '전라남도 순천시',
+    '경상북도 포항시',
+    '경상남도 창원시',
+    '부산시 사하구',
+    '울산시 남구',
     '제주시',
   ];
 
-  // 가용일 패턴 (12/15 기준으로 offset)
-  // 그룹별로 다른 기간에 가능하도록 분배
+  // 가용일 패턴 (12/15 기준으로 offset) - 40명 강사 전체 커버
+  // Main 강사들은 넓은 범위로 설정 (12/15~1/20)
   const availabilityPatterns = [
-    // 그룹 1 (강사 1-5): 12/15~12/25 (11일)
-    { startOffset: 0, endOffset: 10 },
-    { startOffset: 0, endOffset: 10 },
-    { startOffset: 0, endOffset: 10 },
-    { startOffset: 0, endOffset: 10 },
-    { startOffset: 0, endOffset: 10 },
-    // 그룹 2 (강사 6-10): 12/20~12/31 (12일)
-    { startOffset: 5, endOffset: 16 },
-    { startOffset: 5, endOffset: 16 },
-    { startOffset: 5, endOffset: 16 },
-    { startOffset: 5, endOffset: 16 },
-    { startOffset: 5, endOffset: 16 },
-    // 그룹 3 (강사 11-15): 12/25~1/05 (12일)
-    { startOffset: 10, endOffset: 21 },
-    { startOffset: 10, endOffset: 21 },
-    { startOffset: 10, endOffset: 21 },
-    { startOffset: 10, endOffset: 21 },
-    { startOffset: 10, endOffset: 21 },
-    // 그룹 4 (강사 16-20): 1/01~1/12 (12일)
-    { startOffset: 17, endOffset: 28 },
-    { startOffset: 17, endOffset: 28 },
-    { startOffset: 17, endOffset: 28 },
-    { startOffset: 17, endOffset: 28 },
-    { startOffset: 17, endOffset: 28 },
-    // 그룹 5 (강사 21-25): 12/18~1/08 (22일, 넓은 범위)
-    { startOffset: 3, endOffset: 24 },
-    { startOffset: 3, endOffset: 24 },
-    { startOffset: 3, endOffset: 24 },
-    { startOffset: 3, endOffset: 24 },
-    { startOffset: 3, endOffset: 24 },
+    // Main 15명: 12/15~1/20 (36일간 넓은 가용일)
+    { startOffset: 0, endOffset: 36 },
+    { startOffset: 0, endOffset: 36 },
+    { startOffset: 0, endOffset: 36 },
+    { startOffset: 0, endOffset: 36 },
+    { startOffset: 0, endOffset: 36 },
+    { startOffset: 0, endOffset: 36 },
+    { startOffset: 0, endOffset: 36 },
+    { startOffset: 0, endOffset: 36 },
+    { startOffset: 0, endOffset: 36 },
+    { startOffset: 0, endOffset: 36 },
+    { startOffset: 0, endOffset: 36 },
+    { startOffset: 0, endOffset: 36 },
+    { startOffset: 0, endOffset: 36 },
+    { startOffset: 0, endOffset: 36 },
+    { startOffset: 0, endOffset: 36 },
+    // Co 10명: 12/20~1/15 (27일)
+    { startOffset: 5, endOffset: 31 },
+    { startOffset: 5, endOffset: 31 },
+    { startOffset: 5, endOffset: 31 },
+    { startOffset: 5, endOffset: 31 },
+    { startOffset: 5, endOffset: 31 },
+    { startOffset: 5, endOffset: 31 },
+    { startOffset: 5, endOffset: 31 },
+    { startOffset: 5, endOffset: 31 },
+    { startOffset: 5, endOffset: 31 },
+    { startOffset: 5, endOffset: 31 },
+    // Assistant 10명: 12/18~1/10 (24일)
+    { startOffset: 3, endOffset: 26 },
+    { startOffset: 3, endOffset: 26 },
+    { startOffset: 3, endOffset: 26 },
+    { startOffset: 3, endOffset: 26 },
+    { startOffset: 3, endOffset: 26 },
+    { startOffset: 3, endOffset: 26 },
+    { startOffset: 3, endOffset: 26 },
+    { startOffset: 3, endOffset: 26 },
+    { startOffset: 3, endOffset: 26 },
+    { startOffset: 3, endOffset: 26 },
+    // Practicum 5명: 12/22~1/08 (18일)
+    { startOffset: 7, endOffset: 24 },
+    { startOffset: 7, endOffset: 24 },
+    { startOffset: 7, endOffset: 24 },
+    { startOffset: 7, endOffset: 24 },
+    { startOffset: 7, endOffset: 24 },
   ];
 
-  for (let i = 1; i <= 25; i++) {
+  for (let i = 1; i <= 40; i++) {
     const pattern = availabilityPatterns[i - 1];
     const availabilitiesData = [];
 
@@ -188,7 +257,7 @@ async function main() {
         status: 'APPROVED',
         instructor: {
           create: {
-            teamId: teams[i - 1].id,
+            teamId: teams[i - 1]?.id ?? null,
             category: categories[i - 1],
             location: locations[i - 1],
             isTeamLeader: i === 1 || i === 6 || i === 15,

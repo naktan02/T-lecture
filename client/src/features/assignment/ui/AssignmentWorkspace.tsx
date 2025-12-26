@@ -40,6 +40,7 @@ export const AssignmentWorkspace: React.FC = () => {
     groupedUnassignedUnits,
     availableInstructors,
     assignments,
+    confirmedAssignments,
     fetchData,
     executeAutoAssign,
     saveAssignments,
@@ -353,9 +354,9 @@ export const AssignmentWorkspace: React.FC = () => {
                         <div className="flex justify-between text-xs mb-1">
                           <span className="text-gray-600">배정 현황</span>
                           <span
-                            className={`font-bold ${group.progress === 100 ? 'text-green-600' : 'text-orange-500'}`}
+                            className={`font-bold ${group.totalAssigned > 0 ? 'text-green-600' : 'text-gray-400'}`}
                           >
-                            {group.totalAssigned} / {group.totalRequired}명 ({group.progress}%)
+                            {group.totalAssigned}명 배정
                           </span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
@@ -378,9 +379,34 @@ export const AssignmentWorkspace: React.FC = () => {
               <span>✅ 확정 배정 완료</span>
             </div>
             <div className="flex-1 p-4 overflow-y-auto bg-gray-50/50">
-              <div className="flex flex-col items-center justify-center h-full text-gray-400 text-sm">
-                <span>아직 확정된 배정이 없습니다.</span>
-              </div>
+              {confirmedAssignments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-gray-400 text-sm">
+                  <span>아직 확정된 배정이 없습니다.</span>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {confirmedAssignments.map((group) => (
+                    <div
+                      key={group.unitId}
+                      onClick={() => setDetailModalData(group)}
+                      className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 border-l-blue-500"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="font-bold text-gray-800 text-lg">{group.unitName}</h3>
+                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                            {group.region}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-400">{group.period}</span>
+                      </div>
+                      <div className="text-sm text-green-600 font-bold">
+                        {group.totalAssigned}명 확정
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -426,6 +452,7 @@ export const AssignmentWorkspace: React.FC = () => {
           group={detailModalData as any}
           onClose={() => setDetailModalData(null)}
           onRemove={removeAssignment}
+          availableInstructors={availableInstructors}
         />
       )}
 

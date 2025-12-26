@@ -16,6 +16,8 @@ import {
 import { allFilters } from './filters';
 import { allScorers } from './scorers';
 import { allPostProcessors } from './post-processors';
+import logger from '../../../config/logger';
+import DEBUG from '../../../config/debug';
 
 export class AssignmentEngine {
   private filters: AssignmentFilter[] = [];
@@ -109,8 +111,27 @@ export class AssignmentEngine {
           avgAssignmentCount,
         };
 
+        // DEBUG: 스케줄 처리 시작 로그
+        if (DEBUG.ASSIGNMENT) {
+          logger.debug(
+            `[스케줄 처리] Unit: ${unit.name}, Schedule: ${schedule.id}, Date: ${context.currentScheduleDate}, Required: ${schedule.requiredCount}, 현재 배정된 강사 수: ${currentAssignments.length}`,
+          );
+        }
+
         // 1. Hard 필터 적용
         const filtered = candidates.filter((c) => this.filters.every((f) => f.check(c, context)));
+
+        // DEBUG: 필터 결과 로깅
+        if (DEBUG.ASSIGNMENT) {
+          logger.debug(`[필터 결과] 후보: ${candidates.length}명 → 통과: ${filtered.length}명`);
+          // 필터별 통과 수 체크 (모든 후보가 필터링됐을 때만)
+          if (filtered.length === 0 && candidates.length > 0) {
+            for (const filter of this.filters) {
+              const passCount = candidates.filter((c) => filter.check(c, context)).length;
+              logger.debug(`  - ${filter.name}: ${passCount}/${candidates.length} 통과`);
+            }
+          }
+        }
 
         // 2. Soft 점수 계산
         const scored = filtered.map((c) => ({
@@ -131,6 +152,13 @@ export class AssignmentEngine {
             score: selected.score,
           };
           assignments.push(assignment);
+
+          // DEBUG: 배정 로그
+          if (DEBUG.ASSIGNMENT) {
+            logger.debug(
+              `[배정] ${selected.candidate.name} (ID:${selected.candidate.userId}) → Schedule:${schedule.id}, Date:${context.currentScheduleDate}`,
+            );
+          }
 
           // context 업데이트 (연속성 계산용)
           currentAssignments.push({
