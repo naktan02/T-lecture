@@ -14,9 +14,16 @@ interface TrainingLocation {
   originalPlace?: string | null;
 }
 
+interface Assignment {
+  userId: number;
+  trainingLocationId?: number | null;
+  state: string;
+}
+
 interface Schedule {
   id: number;
   date: Date;
+  assignments?: Assignment[];
 }
 
 interface UnitWithSchedules {
@@ -126,10 +133,25 @@ class AssignmentAlgorithm {
           const loc = unit.trainingLocations[locIdx];
           // 장소별 고유 스케줄 ID: (원본ID * 1000) + 장소인덱스
           const uniqueScheduleId = schedule.id * 1000 + locIdx;
+
+          // 기존 배정 수 계산 (Pending만 - Accepted는 이미 확정이므로 제외)
+          const existingAssignments = (schedule.assignments || []).filter(
+            (a) =>
+              a.state === 'Pending' &&
+              (a.trainingLocationId === loc.id || a.trainingLocationId === null),
+          ).length;
+
+          const required = (loc.instructorsNumbers || 2) - existingAssignments;
+
+          // DEBUG: 필요인원 계산 로그
+          console.log(
+            `[DEBUG Algorithm] Unit:${unit.id} Schedule:${schedule.id} Loc:${loc.id} - needed:${loc.instructorsNumbers || 2} existing:${existingAssignments} required:${required > 0 ? required : 0}`,
+          );
+
           schedules.push({
             id: uniqueScheduleId,
             date: schedule.date,
-            requiredCount: loc.instructorsNumbers || 2, // 해당 장소 필요인원
+            requiredCount: required > 0 ? required : 0, // 음수 방지
           });
         }
       }

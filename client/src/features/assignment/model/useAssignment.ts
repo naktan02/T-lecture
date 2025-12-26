@@ -4,10 +4,11 @@ import {
   getAssignmentCandidates,
   postAutoAssignment,
   cancelAssignmentApi,
+  sendTemporaryMessagesApi,
   UnitSchedule,
   Instructor,
 } from '../assignmentApi';
-import { logger, showSuccess, showError, showInfo, showConfirm } from '../../../shared/utils';
+import { logger, showSuccess, showError } from '../../../shared/utils';
 import {
   groupUnassignedUnits,
   GroupedUnassignedUnit,
@@ -52,7 +53,7 @@ interface UseAssignmentReturn {
   confirmedAssignments: AssignmentData[]; // 확정 배정 (Accepted)
   fetchData: () => Promise<void>;
   executeAutoAssign: () => Promise<void>;
-  saveAssignments: () => Promise<void>;
+  sendTemporaryMessages: () => Promise<void>;
   removeAssignment: (unitScheduleId: number, instructorId: number) => Promise<void>;
 }
 
@@ -72,13 +73,21 @@ export const useAssignment = (): UseAssignmentReturn => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 로컬 날짜를 YYYY-MM-DD 문자열로 변환 (타임존 문제 방지)
+  const toLocalDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // 1. 데이터 조회
   const fetchData = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError(null);
     try {
-      const startStr = dateRange.startDate.toISOString().split('T')[0];
-      const endStr = dateRange.endDate.toISOString().split('T')[0];
+      const startStr = toLocalDateString(dateRange.startDate);
+      const endStr = toLocalDateString(dateRange.endDate);
 
       const data = await getAssignmentCandidates(startStr, endStr);
 
@@ -103,8 +112,8 @@ export const useAssignment = (): UseAssignmentReturn => {
   const executeAutoAssign = async (): Promise<void> => {
     setLoading(true);
     try {
-      const startStr = dateRange.startDate.toISOString().split('T')[0];
-      const endStr = dateRange.endDate.toISOString().split('T')[0];
+      const startStr = toLocalDateString(dateRange.startDate);
+      const endStr = toLocalDateString(dateRange.endDate);
 
       // 서버 API 호출 -> 바로 저장됨
       const result = await postAutoAssignment(startStr, endStr);
@@ -112,8 +121,8 @@ export const useAssignment = (): UseAssignmentReturn => {
       logger.debug('자동 배정 결과:', result);
       showSuccess(`${result.summary.created}건 배정 완료! (${result.summary.skipped}건 건너뜀)`);
 
-      // 배정 결과 설정 (result.data에 계층형 배정 데이터가 있음)
-      setAssignments(result.data as AssignmentData[]);
+      // 전체 데이터 새로고침 (pendingAssignments, acceptedAssignments 포함)
+      await fetchData();
     } catch (err) {
       logger.error(err);
       showError((err as Error).message);
@@ -122,26 +131,32 @@ export const useAssignment = (): UseAssignmentReturn => {
     }
   };
 
-  // 3. 저장은 이미 자동 배정에서 처리됨 (빈 함수 유지 for 인터페이스 호환)
-  const saveAssignments = async (): Promise<void> => {
-    showInfo('자동 배정 시 이미 저장되었습니다.');
+  // 3. 임시 배정 메시지 일괄 발송
+  const sendTemporaryMessages = async (): Promise<void> => {
+    setLoading(true);
+    try {
+      const result = await sendTemporaryMessagesApi();
+      showSuccess(result.message);
+    } catch (err) {
+      showError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
-
+  // 배정 취소 (모달에서 확인 후 호출됨)
   const removeAssignment = async (unitScheduleId: number, instructorId: number): Promise<void> => {
-    showConfirm('배정을 취소하시겠습니까?', async () => {
-      try {
-        setLoading(true);
-        await cancelAssignmentApi(unitScheduleId, instructorId);
-        showSuccess('배정이 취소되었습니다.');
+    try {
+      setLoading(true);
+      await cancelAssignmentApi(unitScheduleId, instructorId);
+      showSuccess('배정이 취소되었습니다.');
 
-        // 화면 갱신을 위해 데이터 재조회
-        await fetchData();
-      } catch (e) {
-        showError((e as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    });
+      // 화면 갱신을 위해 데이터 재조회
+      await fetchData();
+    } catch (e) {
+      showError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 부대별 그룹화 (유틸 함수 사용)
@@ -159,7 +174,7 @@ export const useAssignment = (): UseAssignmentReturn => {
     confirmedAssignments,
     fetchData,
     executeAutoAssign,
-    saveAssignments,
+    sendTemporaryMessages,
     removeAssignment,
   };
 };

@@ -6,6 +6,11 @@ async function main() {
   console.log('🧹 Cleaning up previous data...');
 
   try {
+    // 메시지 관련 테이블 먼저 삭제 (FK 참조 때문에)
+    await prisma.messageAssignment.deleteMany();
+    await prisma.messageReceipt.deleteMany();
+    await prisma.message.deleteMany();
+
     await prisma.instructorUnitAssignment.deleteMany();
     await prisma.instructorUnitDistance.deleteMany();
     await prisma.instructorAvailability.deleteMany();
@@ -40,9 +45,8 @@ async function main() {
   if (!virtue2) virtue2 = await prisma.virtue.create({ data: { name: '책임' } });
 
   // ===== 날짜 기준: 12/15 ~ 1/15 범위로 설정 =====
-  // 현재 날짜 기준으로 이전/이후 모두 포함
-  const dec15 = new Date('2025-12-15');
-  dec15.setHours(0, 0, 0, 0);
+  // UTC 기준으로 날짜 생성 (타임존 문제 방지)
+  const dec15 = new Date('2025-12-15T00:00:00Z'); // UTC 00:00
 
   console.log('📅 Date range: 2025-12-15 ~ 2026-01-15');
 

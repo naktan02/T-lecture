@@ -172,3 +172,17 @@ export const bulkSaveAssignmentsApi = async (
   if (!res.ok) throw new Error('배정 저장에 실패했습니다.');
   return res.json();
 };
+
+/**
+ * 임시 배정 메시지 일괄 발송
+ */
+export const sendTemporaryMessagesApi = async (): Promise<{ count: number; message: string }> => {
+  const res = await apiClient('/api/v1/messages/send/temporary', {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || '메시지 발송에 실패했습니다.');
+  }
+  return res.json();
+};

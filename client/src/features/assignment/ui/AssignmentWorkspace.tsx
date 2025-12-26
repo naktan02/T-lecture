@@ -43,7 +43,7 @@ export const AssignmentWorkspace: React.FC = () => {
     confirmedAssignments,
     fetchData,
     executeAutoAssign,
-    saveAssignments,
+    sendTemporaryMessages,
     removeAssignment,
   } = useAssignment();
 
@@ -315,8 +315,8 @@ export const AssignmentWorkspace: React.FC = () => {
                   자동 배정
                 </Button>
                 {assignments.length > 0 && (
-                  <Button size="xsmall" onClick={saveAssignments}>
-                    저장
+                  <Button size="xsmall" onClick={sendTemporaryMessages}>
+                    📩 일괄 임시 메시지 전송
                   </Button>
                 )}
               </div>

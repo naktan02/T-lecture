@@ -220,6 +220,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
     if (removeTarget && onRemove) {
       onRemove(removeTarget.unitScheduleId, removeTarget.instructorId);
       logger.debug('Remove:', removeTarget.unitScheduleId, removeTarget.instructorId);
+      // 모달은 열린 상태 유지 (부모의 fetchData로 데이터 갱신)
     }
     setRemoveTarget(null);
   };

@@ -15,9 +15,9 @@ import {
 const toKSTDateString = (date: Date | string | null | undefined): string | null => {
   if (!date) return null;
   const d = new Date(date);
-  // 한국 시간(UTC+9) 오프셋 적용
-  const kstDate = new Date(d.getTime() + 9 * 60 * 60 * 1000);
-  return kstDate.toISOString().split('T')[0];
+  // 한국 시간대로 변환 후 날짜만 추출
+  const kstDateStr = d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+  return kstDateStr;
 };
 
 /**

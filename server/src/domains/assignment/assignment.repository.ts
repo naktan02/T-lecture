@@ -25,15 +25,23 @@ interface PrismaError extends Error {
 class AssignmentRepository {
   /**
    * 특정 기간 내 활성화된(Active) 배정 날짜 목록 조회
+   * 날짜는 KST 기준으로 조회 (DB에 저장된 날짜도 KST 00:00 기준)
    */
   async findScheduleCandidates(startDate: Date | string, endDate: Date | string) {
+    // KST 기준 날짜로 변환 (UTC 기준으로 -9시간 → KST 00:00 = UTC 전날 15:00)
+    const startKST = new Date(startDate);
+    startKST.setUTCHours(-9, 0, 0, 0); // KST 00:00 = UTC -9시간
+
+    const endKST = new Date(endDate);
+    endKST.setUTCHours(23 - 9, 59, 59, 999); // KST 23:59:59 = UTC 14:59:59
+
     return await prisma.unit.findMany({
       where: {
         schedules: {
           some: {
             date: {
-              gte: new Date(startDate),
-              lte: new Date(endDate),
+              gte: startKST,
+              lte: endKST,
             },
           },
         },
@@ -43,8 +51,8 @@ class AssignmentRepository {
         schedules: {
           where: {
             date: {
-              gte: new Date(startDate),
-              lte: new Date(endDate),
+              gte: startKST,
+              lte: endKST,
             },
           },
           orderBy: { date: 'asc' },
