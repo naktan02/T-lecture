@@ -1,7 +1,13 @@
 // src/entities/user/ui/InstructorFields.tsx
 import React, { ChangeEvent } from 'react';
-import { InputField, SelectField } from '../../../shared/ui';
+import { SelectField } from '../../../shared/ui';
 import { InstructorMetaResponse } from '../../../features/auth/authApi';
+
+declare global {
+  interface Window {
+    daum: any;
+  }
+}
 
 // InstructorMetaResponse를 InstructorOptions로 사용
 type InstructorOptions = InstructorMetaResponse;
@@ -31,6 +37,38 @@ export const InstructorFields: React.FC<InstructorFieldsProps> = ({
   onChange,
   onToggleVirtue,
 }) => {
+  // Daum Postcode 스크립트 로드
+  React.useEffect(() => {
+    const script = document.createElement('script');
+    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  const handleAddressSearch = () => {
+    if (!window.daum || !window.daum.Postcode) {
+      alert('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+
+    new window.daum.Postcode({
+      oncomplete: function (data: any) {
+        const fullAddress = data.roadAddress || data.jibunAddress;
+
+        // 가짜 이벤트 객체 생성하여 state 업데이트
+        const fakeEvent = {
+          target: { value: fullAddress, type: 'text' },
+        } as ChangeEvent<HTMLInputElement>;
+
+        onChange('address')(fakeEvent);
+      },
+    }).open();
+  };
+
   return (
     <div className="p-5 bg-gray-50 rounded-lg border border-gray-200">
       <h3 className="font-bold mb-4 text-sm text-gray-700">강사 활동 정보</h3>
@@ -40,13 +78,30 @@ export const InstructorFields: React.FC<InstructorFieldsProps> = ({
       ) : (
         <div className="space-y-4">
           {/* 거주지 주소 */}
-          <InputField
-            label="거주지 주소"
-            required
-            placeholder="시/군/구까지 포함하여 입력하세요"
-            value={form.address}
-            onChange={onChange('address') as (e: ChangeEvent<HTMLInputElement>) => void}
-          />
+
+          {/* 거주지 주소 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              거주지 주소 <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                readOnly
+                placeholder="주소 검색을 클릭하여 주소를 입력하세요"
+                value={form.address}
+                onClick={handleAddressSearch}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none cursor-pointer"
+              />
+              <button
+                type="button"
+                onClick={handleAddressSearch}
+                className="px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-700 whitespace-nowrap"
+              >
+                주소 검색
+              </button>
+            </div>
+          </div>
 
           {/* 팀 */}
           <SelectField
