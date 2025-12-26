@@ -10,8 +10,60 @@ interface UserFilters {
 }
 
 class AdminRepository {
-  // 전체 유저 목록 조회
-  async findAll(filters: UserFilters = {}) {
+  // 전체 유저 목록 조회 (페이지네이션 지원)
+  async findAll(filters: UserFilters = {}, page = 1, limit = 20) {
+    const { status, name, onlyAdmins, onlyInstructors } = filters;
+
+    const where: Prisma.UserWhereInput = {};
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (name) {
+      where.name = { contains: name };
+    }
+
+    if (onlyAdmins) {
+      where.admin = { isNot: null };
+    }
+    if (onlyInstructors) {
+      where.instructor = { isNot: null };
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { id: 'desc' },
+        include: {
+          instructor: {
+            include: {
+              team: true,
+            },
+          },
+          admin: true,
+        },
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return {
+      data: users,
+      meta: {
+        total,
+        page,
+        limit,
+        lastPage: Math.ceil(total / limit) || 1,
+      },
+    };
+  }
+
+  // 전체 유저 목록 조회 (페이지네이션 없음 - 기존 호환)
+  async findAllWithoutPagination(filters: UserFilters = {}) {
     const { status, name, onlyAdmins, onlyInstructors } = filters;
 
     const where: Prisma.UserWhereInput = {};

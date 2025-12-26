@@ -101,20 +101,36 @@ interface UpdateUserDto {
   status?: string;
   address?: string;
   isTeamLeader?: boolean;
+  // 관리자 직접 관리 필드 (강사용)
+  category?: 'Main' | 'Co' | 'Assistant' | 'Practicum';
+  teamId?: number | null;
+  generation?: number | null;
+  restrictedArea?: string | null;
+}
+
+interface PaginationQuery extends QueryFilters {
+  page?: number | string;
+  limit?: number | string;
 }
 
 class AdminService {
-  // 모든 유저 조회
-  async getAllUsers(query: QueryFilters) {
+  // 모든 유저 조회 (페이지네이션 지원)
+  async getAllUsers(query: PaginationQuery) {
     const filters = normalizeFilters(query);
-    const users = await adminRepository.findAll(filters);
+    const page = typeof query.page === 'string' ? parseInt(query.page, 10) : query.page || 1;
+    const limit = typeof query.limit === 'string' ? parseInt(query.limit, 10) : query.limit || 20;
 
-    return users.map(mapUserForAdmin);
+    const result = await adminRepository.findAll(filters, page, limit);
+
+    return {
+      data: result.data.map(mapUserForAdmin),
+      meta: result.meta,
+    };
   }
 
-  // 승인 대기 유저 조회
+  // 승인 대기 유저 조회 (페이지네이션 없음 - 기존 호환)
   async getPendingUsers() {
-    const users = await adminRepository.findAll({ status: 'PENDING' });
+    const users = await adminRepository.findAllWithoutPagination({ status: 'PENDING' });
     return users.map(mapUserForAdmin);
   }
 
@@ -130,15 +146,56 @@ class AdminService {
   async updateUser(id: number | string, dto: UpdateUserDto) {
     assertDtoObject(dto);
 
-    const { name, phoneNumber, status, address, isTeamLeader } = dto;
+    const {
+      name,
+      phoneNumber,
+      status,
+      address,
+      isTeamLeader,
+      category,
+      teamId,
+      generation,
+      restrictedArea,
+    } = dto;
 
     assertStringOrUndefined(name, 'name');
     assertStringOrUndefined(phoneNumber, 'phoneNumber');
     assertStringOrUndefined(address, 'address');
     assertValidStatusOrUndefined(status);
+    if (
+      restrictedArea !== undefined &&
+      restrictedArea !== null &&
+      typeof restrictedArea !== 'string'
+    ) {
+      throw new AppError('restrictedArea는 문자열이어야 합니다.', 400, 'INVALID_INPUT');
+    }
 
     if (isTeamLeader !== undefined && typeof isTeamLeader !== 'boolean') {
       throw new AppError('isTeamLeader는 boolean이어야 합니다.', 400, 'INVALID_INPUT');
+    }
+
+    const validCategories = ['Main', 'Co', 'Assistant', 'Practicum'] as const;
+    if (
+      category !== undefined &&
+      !validCategories.includes(category as (typeof validCategories)[number])
+    ) {
+      throw new AppError('잘못된 강사 분류입니다.', 400, 'INVALID_CATEGORY');
+    }
+
+    if (
+      teamId !== undefined &&
+      teamId !== null &&
+      (typeof teamId !== 'number' || !Number.isInteger(teamId))
+    ) {
+      throw new AppError('teamId는 정수여야 합니다.', 400, 'INVALID_TEAM_ID');
+    }
+
+    if (
+      generation !== undefined &&
+      generation !== null &&
+      (typeof generation !== 'number' || !Number.isInteger(generation))
+    ) {
+      throw new AppError('generation은 정수여야 합니다.', 400, 'INVALID_GENERATION');
     }
 
     const hasAny =
@@ -146,7 +203,11 @@ class AdminService {
       phoneNumber !== undefined ||
       status !== undefined ||
       address !== undefined ||
-      isTeamLeader !== undefined;
+      isTeamLeader !== undefined ||
+      category !== undefined ||
+      teamId !== undefined ||
+      generation !== undefined ||
+      restrictedArea !== undefined;
 
     if (!hasAny) {
       throw new AppError('수정할 값이 없습니다.', 400, 'NO_UPDATE_FIELDS');
@@ -171,6 +232,23 @@ class AdminService {
       }
       if (typeof isTeamLeader === 'boolean') {
         instructorData.isTeamLeader = isTeamLeader;
+      }
+      // 관리자 직접 관리 필드
+      if (category !== undefined) {
+        instructorData.category = category as any;
+      }
+      if (teamId !== undefined) {
+        if (teamId === null) {
+          instructorData.team = { disconnect: true };
+        } else {
+          instructorData.team = { connect: { id: teamId } };
+        }
+      }
+      if (generation !== undefined) {
+        instructorData.generation = generation;
+      }
+      if (restrictedArea !== undefined) {
+        instructorData.restrictedArea = restrictedArea;
       }
     }
 

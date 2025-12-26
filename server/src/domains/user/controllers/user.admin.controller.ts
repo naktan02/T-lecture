@@ -24,15 +24,17 @@ function parseUserIdParam(req: Request): number {
   return userId;
 }
 
-// ✅ 전체 사용자 조회
+// ✅ 전체 사용자 조회 (페이지네이션 지원)
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
-  const { status, name, role } = req.query;
-  const users = await adminService.getAllUsers({
+  const { status, name, role, page, limit } = req.query;
+  const result = await adminService.getAllUsers({
     status: typeof status === 'string' ? status : undefined,
     name: typeof name === 'string' ? name : undefined,
     role: typeof role === 'string' ? role : undefined,
+    page: typeof page === 'string' ? page : undefined,
+    limit: typeof limit === 'string' ? limit : undefined,
   });
-  res.json(users);
+  res.json(result);
 });
 
 // ✅ 대기 사용자 조회
