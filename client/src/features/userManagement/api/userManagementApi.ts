@@ -10,6 +10,25 @@ export interface UserFilters {
   limit?: number;
 }
 
+export interface VirtueInfo {
+  virtueId: number;
+  virtue: {
+    id: number;
+    name: string | null;
+  };
+}
+
+export interface AvailabilityInfo {
+  id: number;
+  availableOn: string; // ISO date
+}
+
+export interface InstructorStatsInfo {
+  instructorId: number;
+  legacyPracticumCount: number;
+  autoPromotionEnabled: boolean;
+}
+
 export interface InstructorInfo {
   userId: number;
   category?: 'Main' | 'Co' | 'Assistant' | 'Practicum' | null;
@@ -25,6 +44,10 @@ export interface InstructorInfo {
     id: number;
     name?: string | null;
   } | null;
+  // 연관 데이터
+  virtues?: VirtueInfo[];
+  availabilities?: AvailabilityInfo[];
+  instructorStats?: InstructorStatsInfo[];
 }
 
 export interface AdminInfo {

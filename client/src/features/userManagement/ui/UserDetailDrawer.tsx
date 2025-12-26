@@ -425,6 +425,74 @@ export const UserDetailDrawer = ({
                     </div>
                   </div>
                 </section>
+
+                {/* 강의 가능 덕목 */}
+                <section className="bg-white p-5 rounded-xl border shadow-sm">
+                  <h3 className="font-bold mb-4">📚 강의 가능 덕목</h3>
+                  {boundUser?.instructor?.virtues && boundUser.instructor.virtues.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {boundUser.instructor.virtues.map((v) => (
+                        <span
+                          key={v.virtueId}
+                          className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm"
+                        >
+                          {v.virtue?.name || `덕목 ${v.virtueId}`}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 text-sm">등록된 덕목이 없습니다.</p>
+                  )}
+                </section>
+
+                {/* 근무 가능일 */}
+                <section className="bg-white p-5 rounded-xl border shadow-sm">
+                  <h3 className="font-bold mb-4">📅 근무 가능일</h3>
+                  {boundUser?.instructor?.availabilities &&
+                  boundUser.instructor.availabilities.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {boundUser.instructor.availabilities.slice(0, 10).map((a) => (
+                        <span
+                          key={a.id}
+                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
+                        >
+                          {new Date(a.availableOn).toLocaleDateString('ko-KR')}
+                        </span>
+                      ))}
+                      {boundUser.instructor.availabilities.length > 10 && (
+                        <span className="px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-sm">
+                          + {boundUser.instructor.availabilities.length - 10}개 더
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 text-sm">등록된 근무 가능일이 없습니다.</p>
+                  )}
+                </section>
+
+                {/* 강사 통계 */}
+                {boundUser?.instructor?.instructorStats &&
+                  boundUser.instructor.instructorStats.length > 0 && (
+                    <section className="bg-white p-5 rounded-xl border shadow-sm">
+                      <h3 className="font-bold mb-4">📊 강사 통계</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm text-gray-500">레거시 실습 횟수</label>
+                          <p className="font-semibold">
+                            {boundUser.instructor.instructorStats[0]?.legacyPracticumCount ?? 0}회
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-sm text-gray-500">자동 승급 활성화</label>
+                          <p className="font-semibold">
+                            {boundUser.instructor.instructorStats[0]?.autoPromotionEnabled
+                              ? '예'
+                              : '아니오'}
+                          </p>
+                        </div>
+                      </div>
+                    </section>
+                  )}
               </div>
             )}
 

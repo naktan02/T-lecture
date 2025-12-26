@@ -134,9 +134,9 @@ class AdminService {
     return users.map(mapUserForAdmin);
   }
 
-  // 단일 유저 조회
+  // 단일 유저 조회 (모든 연관 데이터 포함)
   async getUserById(id: number | string) {
-    const user = await userRepository.findById(id);
+    const user = await userRepository.findByIdWithDetails(id);
     if (!user) throw new AppError('해당 회원을 찾을 수 없습니다.', 404, 'USER_NOT_FOUND');
 
     return mapUserForAdmin(user);
