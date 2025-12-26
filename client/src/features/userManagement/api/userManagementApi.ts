@@ -95,6 +95,7 @@ export interface UpdateUserDto {
   generation?: number | null;
   restrictedArea?: string | null;
   availabilities?: string[];
+  profileCompleted?: boolean;
 }
 
 export interface UserActionResponse {

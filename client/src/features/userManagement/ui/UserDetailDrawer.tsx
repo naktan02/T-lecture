@@ -239,6 +239,9 @@ export const UserDetailDrawer = ({
       if (formData.restrictedArea !== (boundUser.instructor.restrictedArea || '')) {
         updateData.restrictedArea = formData.restrictedArea || null;
       }
+      if (formData.profileCompleted !== (boundUser.instructor.profileCompleted || false)) {
+        updateData.profileCompleted = formData.profileCompleted;
+      }
 
       // 근무 가능일 비교 및 업데이트
       const originalDates =
@@ -510,30 +513,6 @@ export const UserDetailDrawer = ({
                         >
                           🔍 주소 검색
                         </button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-sm font-medium">위도</label>
-                        <input
-                          type="text"
-                          name="lat"
-                          value={formData.lat}
-                          onChange={handleChange}
-                          className="w-full mt-1 p-2 border rounded-lg text-sm"
-                          placeholder="위도"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">경도</label>
-                        <input
-                          type="text"
-                          name="lng"
-                          value={formData.lng}
-                          onChange={handleChange}
-                          className="w-full mt-1 p-2 border rounded-lg text-sm"
-                          placeholder="경도"
-                        />
                       </div>
                     </div>
                   </div>
