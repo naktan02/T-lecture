@@ -637,37 +637,6 @@ export const UserDetailDrawer = ({
                     )}
                   </div>
                 </section>
-
-                {/* 강사 통계 */}
-                <section className="bg-white p-4 rounded-xl border shadow-sm">
-                  <h3 className="font-bold mb-4">📊 강사 통계</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-sm font-medium">레거시 실습 횟수</label>
-                      <input
-                        type="number"
-                        name="legacyPracticumCount"
-                        value={formData.legacyPracticumCount}
-                        onChange={handleChange}
-                        className="w-full mt-1 p-2 border rounded-lg"
-                        min="0"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 pt-6">
-                      <input
-                        type="checkbox"
-                        id="autoPromotionEnabled"
-                        name="autoPromotionEnabled"
-                        checked={formData.autoPromotionEnabled}
-                        onChange={handleChange}
-                        className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                      />
-                      <label htmlFor="autoPromotionEnabled" className="text-sm font-medium">
-                        자동 승급 활성화
-                      </label>
-                    </div>
-                  </div>
-                </section>
               </div>
             )}
 
