@@ -9,11 +9,7 @@ import { AvailabilityCalendar } from './AvailabilityCalendar';
 // Daum 우편번호 서비스 타입 정의
 declare global {
   interface Window {
-    daum: {
-      Postcode: new (options: { oncomplete: (data: DaumPostcodeData) => void }) => {
-        open: () => void;
-      };
-    };
+    daum: any;
   }
 }
 

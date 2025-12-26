@@ -7,6 +7,7 @@ interface UserBasicForm {
   email: string;
   code: string;
   password: string;
+  passwordConfirm: string;
   phoneNumber: string;
 }
 
@@ -70,6 +71,15 @@ export const UserBasicFields: React.FC<UserBasicFieldsProps> = ({
         placeholder="영문, 숫자, 특수문자 포함 8자 이상"
         value={form.password}
         onChange={onChange('password')}
+      />
+
+      <InputField
+        label="비밀번호 확인"
+        type="password"
+        required
+        placeholder="비밀번호를 한번 더 입력해주세요"
+        value={form.passwordConfirm}
+        onChange={onChange('passwordConfirm')}
       />
 
       <InputField
