@@ -1,13 +1,7 @@
 // client/src/features/userManagement/model/useUserManagement.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, Dispatch, SetStateAction } from 'react';
-import {
-  userManagementApi,
-  User,
-  UserFilters,
-  UpdateUserDto,
-  PaginationMeta,
-} from '../api/userManagementApi';
+import { userManagementApi, User, UpdateUserDto, PaginationMeta } from '../api/userManagementApi';
 import { showSuccess, showError } from '../../../shared/utils';
 
 interface SearchParams {
