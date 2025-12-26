@@ -8,6 +8,11 @@ import {
   Instructor,
 } from '../assignmentApi';
 import { logger, showSuccess, showError, showInfo, showConfirm } from '../../../shared/utils';
+import {
+  groupUnassignedUnits,
+  GroupedUnassignedUnit,
+  LocationSchedule,
+} from './groupUnassignedUnits';
 
 interface DateRange {
   startDate: Date;
@@ -32,12 +37,16 @@ export interface AssignmentData {
   [key: string]: unknown;
 }
 
+// 타입은 groupUnassignedUnits.ts에서 re-export
+export type { GroupedUnassignedUnit, LocationSchedule };
+
 interface UseAssignmentReturn {
   dateRange: DateRange;
   setDateRange: React.Dispatch<React.SetStateAction<DateRange>>;
   loading: boolean;
   error: string | null;
-  unassignedUnits: UnitSchedule[];
+  unassignedUnits: UnitSchedule[]; // raw data (하위 호환성)
+  groupedUnassignedUnits: GroupedUnassignedUnit[]; // 부대별 그룹화
   availableInstructors: Instructor[];
   assignments: AssignmentData[];
   fetchData: () => Promise<void>;
@@ -84,30 +93,28 @@ export const useAssignment = (): UseAssignmentReturn => {
   }, [dateRange]);
 
   // 2. 자동 배정 실행 (API 호출)
+  // UI에서 ConfirmModal로 확인하므로 여기서는 바로 실행
   const executeAutoAssign = async (): Promise<void> => {
-    // UI에서 확인 모달 처리하므로 여기서 confirm 제거
-    showConfirm('현재 조건으로 자동 배정을 실행하시겠습니까?', async () => {
-      setLoading(true);
-      try {
-        const startStr = dateRange.startDate.toISOString().split('T')[0];
-        const endStr = dateRange.endDate.toISOString().split('T')[0];
+    setLoading(true);
+    try {
+      const startStr = dateRange.startDate.toISOString().split('T')[0];
+      const endStr = dateRange.endDate.toISOString().split('T')[0];
 
-        // 서버 API 호출 -> 계층형 결과 수신
-        const result = await postAutoAssignment(startStr, endStr);
-        logger.debug('서버 응답 데이터:', result);
-        const resultData = (result as unknown as { data?: AssignmentData[] }).data;
-        if (!resultData) {
-          logger.error('데이터 구조가 이상합니다!', result);
-        }
-        setAssignments(resultData || []);
-        showSuccess('배정이 완료되었습니다.');
-      } catch (err) {
-        logger.error(err);
-        showError((err as Error).message);
-      } finally {
-        setLoading(false);
+      // 서버 API 호출 -> 계층형 결과 수신
+      const result = await postAutoAssignment(startStr, endStr);
+      logger.debug('서버 응답 데이터:', result);
+      const resultData = (result as unknown as { data?: AssignmentData[] }).data;
+      if (!resultData) {
+        logger.error('데이터 구조가 이상합니다!', result);
       }
-    });
+      setAssignments(resultData || []);
+      showSuccess('배정이 완료되었습니다.');
+    } catch (err) {
+      logger.error(err);
+      showError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 3. 저장 로직 (이미 서버에 저장된 상태를  불러오므로 여기선 새로고침 정도만)
@@ -133,12 +140,16 @@ export const useAssignment = (): UseAssignmentReturn => {
     });
   };
 
+  // 부대별 그룹화 (유틸 함수 사용)
+  const groupedUnassignedUnits = groupUnassignedUnits(sourceData.units);
+
   return {
     dateRange,
     setDateRange,
     loading,
     error,
     unassignedUnits: sourceData.units,
+    groupedUnassignedUnits,
     availableInstructors: sourceData.instructors,
     assignments,
     fetchData,

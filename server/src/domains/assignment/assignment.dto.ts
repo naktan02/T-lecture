@@ -168,7 +168,7 @@ class AssignmentDTO {
           const dateStr = toKSTDateString(schedule.date);
 
           const assignedInstructors = (schedule.assignments || [])
-            .filter((a: AssignmentRaw) => a.state === 'Active')
+            .filter((a: AssignmentRaw) => a.state === 'Pending' || a.state === 'Accepted')
             .map((assign: AssignmentRaw) => {
               totalAssigned++;
               return {

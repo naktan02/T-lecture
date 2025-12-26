@@ -4,6 +4,8 @@ import { useState, useRef, ChangeEvent, MouseEvent } from 'react';
 import { useAssignment } from '../model/useAssignment';
 import { Button, MiniCalendar, ConfirmModal } from '../../../shared/ui';
 import { AssignmentDetailModal, AssignmentGroupDetailModal } from './AssignmentDetailModal';
+import { UnassignedUnitDetailModal } from './UnassignedUnitDetailModal';
+import { GroupedUnassignedUnit } from '../model/useAssignment';
 
 interface SelectedItem {
   type: 'UNIT' | 'INSTRUCTOR';
@@ -35,7 +37,7 @@ export const AssignmentWorkspace: React.FC = () => {
     setDateRange,
     loading,
     error,
-    unassignedUnits,
+    groupedUnassignedUnits,
     availableInstructors,
     assignments,
     fetchData,
@@ -87,10 +89,27 @@ export const AssignmentWorkspace: React.FC = () => {
     }
     if (dates && e) {
       const rect = e.currentTarget.getBoundingClientRect();
+      const popupHeight = 320;
+      const popupWidth = 240;
+
+      // 기본 위치: 요소 오른쪽
+      let posX = rect.right + 10;
+      let posY = rect.top;
+
+      // 하단 경계 체크: 팝업이 화면 아래로 넘어가면 위로 조정
+      if (rect.top + popupHeight > window.innerHeight) {
+        posY = Math.max(10, window.innerHeight - popupHeight - 10);
+      }
+
+      // 우측 경계 체크: 팝업이 화면 오른쪽으로 넘어가면 왼쪽에 표시
+      if (rect.right + popupWidth + 10 > window.innerWidth) {
+        posX = Math.max(10, rect.left - popupWidth - 10);
+      }
+
       setCalendarPopup({
         visible: true,
-        x: rect.right + 10,
-        y: rect.top,
+        x: posX,
+        y: posY,
         dates: dates,
       });
     }
@@ -132,7 +151,7 @@ export const AssignmentWorkspace: React.FC = () => {
           </Button>
           <button
             onClick={handleAutoAssignClick}
-            disabled={loading || unassignedUnits.length === 0}
+            disabled={loading || groupedUnassignedUnits.length === 0}
             className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 
                            disabled:bg-gray-300 disabled:cursor-not-allowed
                            shadow-sm transition-all text-sm font-bold flex items-center gap-2"
@@ -173,40 +192,50 @@ export const AssignmentWorkspace: React.FC = () => {
       <div className="flex-1 p-4 grid grid-cols-1 md:grid-cols-2 gap-4 overflow-hidden bg-gray-100">
         {/* Left Column */}
         <div className="flex flex-col gap-4 overflow-hidden">
-          {/* Panel 1: 미배정 부대 */}
+          {/* Panel 1: 미배정 부대 (교육단위별 그룹화) */}
           <div className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
             <div className="p-3 bg-red-50 border-b border-red-100 border-l-4 border-l-red-500 font-bold text-gray-700 flex justify-between items-center">
-              <span className="flex items-center gap-2">📋 배정 대상 부대 (미배정)</span>
+              <span className="flex items-center gap-2">📋 배정 대상 부대 (부대별)</span>
               <span className="text-xs bg-white px-2 py-0.5 rounded-full border border-red-200 text-red-600 font-bold">
-                {unassignedUnits.length}건
+                {groupedUnassignedUnits.length}개 부대
               </span>
             </div>
             <div className="flex-1 p-4 overflow-y-auto bg-gray-50/50">
-              <div className="space-y-2">
-                {unassignedUnits.map((unit) => (
+              <div className="space-y-3">
+                {groupedUnassignedUnits.map((unit) => (
                   <div
-                    key={unit.id}
+                    key={unit.unitId}
                     onClick={() => setSelectedItem({ ...unit, type: 'UNIT' })}
-                    className="bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-red-300 transition-all border-l-4 border-l-transparent hover:border-l-red-400 group"
+                    className="bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-md hover:border-red-300 transition-all border-l-4 border-l-transparent hover:border-l-red-400 group"
                   >
-                    <div className="font-bold text-gray-800 text-sm flex justify-between items-center mb-1">
+                    <div className="font-bold text-gray-800 text-sm flex justify-between items-center mb-2">
                       <div className="flex items-center gap-2">
                         <span>{unit.unitName}</span>
-                        {unit.originalPlace && (
-                          <span className="text-[11px] font-normal text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-                            {unit.originalPlace}
+                        {unit.locations.length > 1 && (
+                          <span className="text-[10px] font-normal text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
+                            {unit.locations.length}개 장소
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-gray-500 font-normal">
-                        {unit.date} {unit.time}
+                      <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded font-bold border border-blue-100 text-xs">
+                        총 {unit.totalRequired}명 필요
                       </span>
                     </div>
-                    <div className="text-xs text-gray-500 mt-1 flex justify-between items-end">
-                      <span>📍 {unit.location}</span>
-                      <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded font-bold border border-blue-100">
-                        필요 인원: {unit.instructorsNumbers}명
-                      </span>
+                    <div className="text-xs text-gray-500 mb-2">📍 {unit.region}</div>
+                    <div className="flex flex-wrap gap-1">
+                      {unit.uniqueDates.slice(0, 5).map((date, idx) => (
+                        <span
+                          key={idx}
+                          className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded"
+                        >
+                          {date}
+                        </span>
+                      ))}
+                      {unit.uniqueDates.length > 5 && (
+                        <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">
+                          +{unit.uniqueDates.length - 5}일
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -377,6 +406,19 @@ export const AssignmentWorkspace: React.FC = () => {
             className="shadow-2xl border-blue-200 ring-2 ring-blue-100 bg-white"
           />
         </div>
+      )}
+
+      {/* 미배정 부대 상세 모달 */}
+      {selectedItem && selectedItem.type === 'UNIT' && (
+        <UnassignedUnitDetailModal
+          unit={selectedItem as unknown as GroupedUnassignedUnit}
+          onClose={() => setSelectedItem(null)}
+        />
+      )}
+
+      {/* 강사 상세 모달 */}
+      {selectedItem && selectedItem.type === 'INSTRUCTOR' && (
+        <AssignmentDetailModal item={selectedItem as any} onClose={() => setSelectedItem(null)} />
       )}
 
       {detailModalData && (

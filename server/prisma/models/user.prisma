@@ -67,6 +67,7 @@ model Instructor {
   virtues         InstructorVirtue[]
   distances       InstructorUnitDistance[]
   instructorStats InstructorStats[]
+  priorityCredit  InstructorPriorityCredit?
 
   @@map("강사")
 }

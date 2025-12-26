@@ -4,6 +4,7 @@
 export { getDeviceId } from './deviceId';
 export { logger } from './logger';
 export { formatDateToString, formatDay, parseStringToDate } from './dateFormat';
+export { formatBool, formatTimeDisplay, formatDateDisplay, formatCount } from './formatters';
 export {
   getHolidaysForMonth,
   isHoliday,

@@ -29,8 +29,8 @@ class UnitService {
 
   /**
    * 부대 단건 등록 (일정 자동 생성 포함)
-   * - educationStart ~ educationEnd 사이의 모든 날짜를 일정으로 생성
-   * - excludedStart ~ excludedEnd 범위의 날짜는 isExcluded: true로 설정
+   * - educationStart ~ educationEnd 사이의 날짜를 일정으로 생성
+   * - excludedDates는 제외하고 교육 가능한 날만 스케줄에 추가
    */
   async registerSingleUnit(rawData: RawUnitInput) {
     try {
@@ -223,7 +223,6 @@ class UnitService {
       // excludedDates가 없고 schedules 배열이 있으면 그것으로 업데이트
       schedules = rawData.schedules.map((s) => ({
         date: typeof s.date === 'string' ? new Date(s.date) : s.date,
-        isExcluded: s.isExcluded ?? false,
       }));
     }
     // schedules가 undefined이면 updateUnitWithNested에서 기존 일정 유지
@@ -323,7 +322,7 @@ class UnitService {
   }
 
   /**
-   * 교육 기간에서 일정 자동 계산 (isExcluded 포함)
+   * 교육 기간에서 일정 자동 계산 (제외된 날짜는 스킵)
    */
   _calculateSchedules(
     start: string | Date | undefined,
@@ -339,10 +338,12 @@ class UnitService {
     const current = new Date(startDate);
     while (current <= endDate) {
       const dateStr = current.toISOString().split('T')[0];
-      schedules.push({
-        date: new Date(current),
-        isExcluded: excludedSet.has(dateStr),
-      });
+      // 제외된 날짜는 스케줄에 추가하지 않음
+      if (!excludedSet.has(dateStr)) {
+        schedules.push({
+          date: new Date(current),
+        });
+      }
       current.setDate(current.getDate() + 1);
     }
     return schedules;
