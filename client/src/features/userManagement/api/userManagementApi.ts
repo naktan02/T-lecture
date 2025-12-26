@@ -8,7 +8,8 @@ export interface UserFilters {
   name?: string; // 검색어
   teamId?: string | number;
   category?: string; // Main | Co | Assistant | Practicum
-  availableOn?: string; // YYYY-MM-DD
+  availableFrom?: string; // YYYY-MM-DD
+  availableTo?: string; // YYYY-MM-DD
   page?: number;
   limit?: number;
 }
@@ -110,7 +111,8 @@ export const userManagementApi = {
     if (filters.name) params.append('name', filters.name);
     if (filters.teamId) params.append('teamId', String(filters.teamId));
     if (filters.category) params.append('category', filters.category);
-    if (filters.availableOn) params.append('availableOn', filters.availableOn);
+    if (filters.availableFrom) params.append('availableFrom', filters.availableFrom);
+    if (filters.availableTo) params.append('availableTo', filters.availableTo);
     if (filters.page) params.append('page', String(filters.page));
     if (filters.limit) params.append('limit', String(filters.limit));
 

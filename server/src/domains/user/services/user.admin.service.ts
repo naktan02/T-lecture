@@ -36,6 +36,10 @@ interface QueryFilters {
   role?: string;
   onlyAdmins?: boolean;
   onlyInstructors?: boolean;
+  teamId?: string | number;
+  category?: string;
+  availableFrom?: string;
+  availableTo?: string;
 }
 
 interface RepoFilters {
@@ -46,17 +50,12 @@ interface RepoFilters {
   onlyNormal?: boolean;
   teamId?: number;
   category?: UserCategory;
-  availableOn?: string;
+  availableFrom?: string;
+  availableTo?: string;
 }
 
 // querystring을 repo가 이해하는 형태로 변환
-function normalizeFilters(
-  query: QueryFilters & {
-    teamId?: string | number;
-    category?: string;
-    availableOn?: string;
-  } = {},
-): RepoFilters {
+function normalizeFilters(query: QueryFilters = {}): RepoFilters {
   const filters: RepoFilters = {};
 
   // status 처리: 'ALL'이면 필터 없음, 없으면 모든 상태 조회
@@ -89,9 +88,12 @@ function normalizeFilters(
     filters.category = query.category as UserCategory;
   }
 
-  // 근무 가능일 필터
-  if (query.availableOn) {
-    filters.availableOn = query.availableOn;
+  // 근무 가능일 기간 필터
+  if (query.availableFrom) {
+    filters.availableFrom = query.availableFrom;
+  }
+  if (query.availableTo) {
+    filters.availableTo = query.availableTo;
   }
 
   return filters;

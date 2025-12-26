@@ -9,7 +9,8 @@ interface SearchFilters {
   name: string;
   teamId: string;
   category: string;
-  availableOn: string;
+  availableFrom: string;
+  availableTo: string;
 }
 
 interface UserToolbarProps {
@@ -47,7 +48,8 @@ const INITIAL_FILTERS: SearchFilters = {
   name: '',
   teamId: '',
   category: '',
-  availableOn: '',
+  availableFrom: '',
+  availableTo: '',
 };
 
 export const UserToolbar = ({
@@ -269,16 +271,26 @@ export const UserToolbar = ({
               </select>
             </div>
 
-            {/* 근무 가능일 */}
-            <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">근무 가능일</label>
-              <input
-                type="date"
-                name="availableOn"
-                value={filters.availableOn}
-                onChange={handleChange}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-green-500"
-              />
+            {/* 근무 가능 기간 */}
+            <div className="col-span-2">
+              <label className="text-xs font-medium text-gray-600 mb-1 block">근무 가능 기간</label>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="date"
+                  name="availableFrom"
+                  value={filters.availableFrom}
+                  onChange={handleChange}
+                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-green-500"
+                />
+                <span className="text-gray-400">~</span>
+                <input
+                  type="date"
+                  name="availableTo"
+                  value={filters.availableTo}
+                  onChange={handleChange}
+                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
             </div>
           </div>
 
@@ -346,11 +358,20 @@ export const UserToolbar = ({
               </button>
             </span>
           )}
-          {filters.availableOn && (
+          {(filters.availableFrom || filters.availableTo) && (
             <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 rounded text-xs text-blue-700">
-              📅 {new Date(filters.availableOn).toLocaleDateString('ko-KR')} 근무가능
+              📅{' '}
+              {filters.availableFrom && new Date(filters.availableFrom).toLocaleDateString('ko-KR')}
+              {filters.availableFrom && filters.availableTo && ' ~ '}
+              {filters.availableTo &&
+                new Date(filters.availableTo).toLocaleDateString('ko-KR')}{' '}
+              근무가능
               <button
-                onClick={() => handleQuickFilter('availableOn', '')}
+                onClick={() => {
+                  const newFilters = { ...filters, availableFrom: '', availableTo: '' };
+                  setFilters(newFilters);
+                  onSearch(newFilters);
+                }}
                 className="hover:text-red-500"
               >
                 ×

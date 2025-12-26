@@ -14,7 +14,8 @@ interface SearchParams {
   name: string;
   teamId: string;
   category: string;
-  availableOn: string;
+  availableFrom: string;
+  availableTo: string;
 }
 
 const UserPage = (): ReactElement => {
@@ -24,7 +25,8 @@ const UserPage = (): ReactElement => {
     name: '',
     teamId: '',
     category: '',
-    availableOn: '',
+    availableFrom: '',
+    availableTo: '',
   });
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -56,7 +58,8 @@ const UserPage = (): ReactElement => {
     status: searchParams.status === 'ALL' ? undefined : searchParams.status,
     teamId: searchParams.teamId || undefined,
     category: searchParams.category || undefined,
-    availableOn: searchParams.availableOn || undefined,
+    availableFrom: searchParams.availableFrom || undefined,
+    availableTo: searchParams.availableTo || undefined,
   });
 
   // 검색 핸들러

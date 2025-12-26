@@ -26,11 +26,16 @@ function parseUserIdParam(req: Request): number {
 
 // ✅ 전체 사용자 조회 (페이지네이션 지원)
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
-  const { status, name, role, page, limit } = req.query;
+  const { status, name, role, page, limit, teamId, category, availableFrom, availableTo } =
+    req.query;
   const result = await adminService.getAllUsers({
     status: typeof status === 'string' ? status : undefined,
     name: typeof name === 'string' ? name : undefined,
     role: typeof role === 'string' ? role : undefined,
+    teamId: typeof teamId === 'string' ? teamId : undefined,
+    category: typeof category === 'string' ? category : undefined,
+    availableFrom: typeof availableFrom === 'string' ? availableFrom : undefined,
+    availableTo: typeof availableTo === 'string' ? availableTo : undefined,
     page: typeof page === 'string' ? page : undefined,
     limit: typeof limit === 'string' ? limit : undefined,
   });

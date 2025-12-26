@@ -10,14 +10,24 @@ interface UserFilters {
   onlyNormal?: boolean; // 예비강사 (일반 유저)
   teamId?: number;
   category?: UserCategory;
-  availableOn?: string; // YYYY-MM-DD 형식
+  availableFrom?: string; // YYYY-MM-DD 형식
+  availableTo?: string; // YYYY-MM-DD 형식
 }
 
 class AdminRepository {
   // 전체 유저 목록 조회 (페이지네이션 지원)
   async findAll(filters: UserFilters = {}, page = 1, limit = 20) {
-    const { status, name, onlyAdmins, onlyInstructors, onlyNormal, teamId, category, availableOn } =
-      filters;
+    const {
+      status,
+      name,
+      onlyAdmins,
+      onlyInstructors,
+      onlyNormal,
+      teamId,
+      category,
+      availableFrom,
+      availableTo,
+    } = filters;
 
     const where: Prisma.UserWhereInput = {};
 
@@ -32,49 +42,61 @@ class AdminRepository {
     if (onlyAdmins) {
       where.admin = { isNot: null };
     }
-    if (onlyInstructors) {
-      where.instructor = { isNot: null };
-    }
+
     if (onlyNormal) {
       // 예비강사: instructor가 없는 유저 (admin도 아닌)
       where.instructor = null;
       where.admin = null;
     }
 
+    // instructor 조건을 별도로 빌드 (강사 전용 필터들)
+    const instructorConditions: Prisma.InstructorWhereInput = {};
+    let hasInstructorFilter = false;
+
     // 팀 필터
     if (teamId) {
-      where.instructor = {
-        ...((where.instructor as Prisma.InstructorWhereInput) || {}),
-        teamId: teamId,
-      };
+      instructorConditions.teamId = teamId;
+      hasInstructorFilter = true;
     }
 
     // 카테고리 필터
     if (category) {
-      where.instructor = {
-        ...((where.instructor as Prisma.InstructorWhereInput) || {}),
-        category: category,
-      };
+      instructorConditions.category = category;
+      hasInstructorFilter = true;
     }
 
-    // 근무 가능일 필터
-    if (availableOn) {
-      const targetDate = new Date(availableOn);
-      targetDate.setHours(0, 0, 0, 0);
-      const nextDate = new Date(targetDate);
-      nextDate.setDate(nextDate.getDate() + 1);
+    // 근무 가능일 기간 필터
+    if (availableFrom || availableTo) {
+      const fromDate = availableFrom ? new Date(availableFrom) : undefined;
+      const toDate = availableTo ? new Date(availableTo) : undefined;
 
-      where.instructor = {
-        ...((where.instructor as Prisma.InstructorWhereInput) || {}),
-        availabilities: {
-          some: {
-            availableOn: {
-              gte: targetDate,
-              lt: nextDate,
-            },
-          },
+      if (fromDate) fromDate.setHours(0, 0, 0, 0);
+      if (toDate) {
+        toDate.setHours(23, 59, 59, 999);
+      }
+
+      const dateCondition: Prisma.DateTimeFilter = {};
+      if (fromDate) dateCondition.gte = fromDate;
+      if (toDate) dateCondition.lte = toDate;
+
+      instructorConditions.availabilities = {
+        some: {
+          availableOn: dateCondition,
         },
       };
+      hasInstructorFilter = true;
+    }
+
+    // 강사 필터 조건 적용
+    // onlyNormal이 아니고 (onlyInstructors 또는 강사 관련 필터가 있을 때)
+    if (!onlyNormal && (onlyInstructors || hasInstructorFilter)) {
+      if (hasInstructorFilter) {
+        // 강사 관련 필터가 있으면 해당 조건으로 필터링
+        where.instructor = instructorConditions;
+      } else {
+        // onlyInstructors만 있으면 강사 존재 여부만 확인
+        where.instructor = { isNot: null };
+      }
     }
 
     const skip = (page - 1) * limit;

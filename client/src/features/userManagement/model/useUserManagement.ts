@@ -16,7 +16,8 @@ interface SearchParams {
   name?: string;
   teamId?: string | number;
   category?: string;
-  availableOn?: string;
+  availableFrom?: string;
+  availableTo?: string;
 }
 
 interface UseUserManagementReturn {
