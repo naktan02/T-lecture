@@ -239,9 +239,7 @@ export const UserDetailDrawer = ({
       if (formData.restrictedArea !== (boundUser.instructor.restrictedArea || '')) {
         updateData.restrictedArea = formData.restrictedArea || null;
       }
-      if (formData.profileCompleted !== (boundUser.instructor.profileCompleted || false)) {
-        updateData.profileCompleted = formData.profileCompleted;
-      }
+      // profileCompleted는 백엔드에서 자동 계산되므로 제외
 
       // 근무 가능일 비교 및 업데이트
       const originalDates =
@@ -588,18 +586,24 @@ export const UserDetailDrawer = ({
                         placeholder="배정 제한 지역 입력"
                       />
                     </div>
-                    <div className="col-span-2 flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="profileCompleted"
-                        name="profileCompleted"
-                        checked={formData.profileCompleted}
-                        onChange={handleChange}
-                        className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                      />
-                      <label htmlFor="profileCompleted" className="text-sm font-medium">
-                        프로필 완료
-                      </label>
+                    <div className="col-span-2 mt-2">
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-700">프로필 상태</span>
+                          {boundUser?.instructor?.profileCompleted ? (
+                            <span className="px-2 py-0.5 text-xs font-bold text-green-700 bg-green-100 rounded-full border border-green-200">
+                              완료됨
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 text-xs font-bold text-amber-700 bg-amber-100 rounded-full border border-amber-200">
+                              미완료
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-gray-400">
+                          * 필수 정보가 입력되면 자동 완료
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </section>

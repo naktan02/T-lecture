@@ -299,6 +299,23 @@ class AdminService {
         instructorData.restrictedArea = restrictedArea;
       }
 
+      // 프로필 완료 여부 자동 계산
+      // 필수 필드: 주소, 분류, 팀, 기수 (추후 덕목, 근무가능일 추가 고려)
+      // null 체크 주의: teamId나 generation이 0일 경우는 없다고 가정 (ID는 1부터, 기수는 1부터)
+      const finalLocation = address !== undefined ? address : user.instructor!.location;
+      const finalCategory = category !== undefined ? category : user.instructor!.category;
+      const finalTeamId = teamId !== undefined ? teamId : user.instructor!.teamId;
+      const finalGeneration = generation !== undefined ? generation : user.instructor!.generation;
+
+      const isProfileComplete = !!(
+        finalLocation &&
+        finalCategory &&
+        finalTeamId &&
+        finalGeneration
+      );
+
+      instructorData.profileCompleted = isProfileComplete;
+
       // 근무 가능일 업데이트 (별도 트랜잭션 처리)
       if (availabilities && user.instructor) {
         await adminRepository.updateInstructorAvailabilities(
