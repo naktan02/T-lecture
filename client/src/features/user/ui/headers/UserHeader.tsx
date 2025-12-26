@@ -2,6 +2,7 @@
 import React from 'react';
 import { CommonHeader } from '../../../../shared/ui';
 import { useCurrentUser } from '../../../auth/model/useCurrentUser';
+import { useAuth } from '../../../auth/model/useAuth';
 
 interface NavLink {
   label: string;
@@ -10,11 +11,17 @@ interface NavLink {
 
 export const UserHeader: React.FC = () => {
   const userLabel = useCurrentUser();
+  const { isInstructor } = useAuth();
 
   const links: NavLink[] = [
     { label: '내 정보', path: '/user-main/profile' },
     { label: '신청 현황', path: '/user-main/status' },
   ];
+
+  // 강사인 경우에만 일정 관리 메뉴 추가
+  if (isInstructor) {
+    links.push({ label: '일정 관리', path: '/instructor/schedule' });
+  }
 
   return <CommonHeader title="T-Lecture" userLabel={userLabel} links={links} />;
 };

@@ -13,6 +13,7 @@ interface TrainingLocationData {
   originalPlace?: string | null;
   changedPlace?: string | null;
   plannedCount?: number | string | null;
+  actualCount?: number | string | null;
   instructorsNumbers?: number | string | null;
   hasInstructorLounge?: boolean | string;
   hasWomenRestroom?: boolean | string;
@@ -47,6 +48,7 @@ class UnitRepository {
       originalPlace: loc.originalPlace || null,
       changedPlace: loc.changedPlace || null,
       plannedCount: safeInt(loc.plannedCount),
+      actualCount: safeInt(loc.actualCount),
       instructorsNumbers: safeInt(loc.instructorsNumbers),
       hasInstructorLounge: safeBool(loc.hasInstructorLounge),
       hasWomenRestroom: safeBool(loc.hasWomenRestroom),
@@ -256,12 +258,19 @@ class UnitRepository {
   }
 
   /**
-   * 부대 다건 일괄 삭제 (JS 기능 유지)
+   * 부대 다건 일괄 삭제 (ID 목록)
    */
   async deleteManyUnits(ids: (number | string)[]) {
     return prisma.unit.deleteMany({
       where: { id: { in: ids.map(Number) } },
     });
+  }
+
+  /**
+   * 필터 조건에 맞는 모든 부대 삭제
+   */
+  async deleteUnitsByFilter(where: Prisma.UnitWhereInput) {
+    return prisma.unit.deleteMany({ where });
   }
 
   // --- 거리 배치용 ---

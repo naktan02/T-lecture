@@ -72,8 +72,9 @@ model Instructor {
 }
 
 model Team {
-  id   Int     @id @default(autoincrement())
-  name String? @map("team_name")
+  id        Int       @id @default(autoincrement())
+  name      String?   @map("team_name")
+  deletedAt DateTime? @map("deleted_at")
 
   instructors Instructor[]
 
@@ -94,7 +95,7 @@ model InstructorVirtue {
   virtueId     Int @map("덕목id")
 
   instructor Instructor @relation(fields: [instructorId], references: [userId])
-  virtue     Virtue     @relation(fields: [virtueId], references: [id])
+  virtue     Virtue     @relation(fields: [virtueId], references: [id], onDelete: Cascade)
 
   @@id([instructorId, virtueId]) // 동일 (강사,덕목) 중복 방지
   @@map("강사가능덕목")

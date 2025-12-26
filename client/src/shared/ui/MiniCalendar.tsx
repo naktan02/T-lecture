@@ -1,97 +1,86 @@
 // client/src/shared/ui/MiniCalendar.tsx
-import React from 'react';
-import Calendar from 'react-calendar';
-import 'react-calendar/dist/Calendar.css';
+import React, { useMemo } from 'react';
+import { BaseCalendar } from './BaseCalendar';
 
 interface MiniCalendarProps {
   availableDates?: string[];
   className?: string;
+  /**
+   * 캘린더 너비
+   * - 고정 크기: '240px', '300px' 등
+   * - 반응형: '100%' (부모 div 꽉 채움)
+   * - 최대 크기 제한: 'max-w-sm', 'max-w-md' 등 (Tailwind 클래스로 제어)
+   */
   width?: string;
-}
-
-interface TileArgs {
-  date: Date;
-  view: string;
+  year?: number;
+  month?: number;
 }
 
 /**
- * 읽기 전용 미니 캘린더
+ * 읽기 전용 미니 캘린더 (BaseCalendar 기반)
  * @param availableDates - ['2025-05-01', '2025-05-02'] 형태의 날짜 배열
  * @param className - 추가 스타일 클래스
- * @param width - 캘린더 너비 (예: '240px', '100%', '18rem')
+ * @param width - 캘린더 너비 (기본: '100%' - 반응형)
+ * @param year - 표시할 연도 (기본: 현재)
+ * @param month - 표시할 월 (기본: 현재)
  */
 export const MiniCalendar: React.FC<MiniCalendarProps> = ({
   availableDates = [],
   className = '',
-  width = '240px',
+  width = '100%', // 기본값을 100%로 변경 (반응형)
+  year,
+  month,
 }) => {
+  const today = new Date();
+  const displayYear = year ?? today.getFullYear();
+  const displayMonth = month ?? today.getMonth() + 1;
+
+  // availableDates를 selectedDays(day 숫자 배열)로 변환
+  const selectedDays = useMemo(() => {
+    return availableDates
+      .map((dateStr) => {
+        const date = new Date(dateStr);
+        // 현재 표시 중인 월의 날짜만 포함
+        if (date.getFullYear() === displayYear && date.getMonth() + 1 === displayMonth) {
+          return date.getDate();
+        }
+        return null;
+      })
+      .filter((day): day is number => day !== null);
+  }, [availableDates, displayYear, displayMonth]);
+
   return (
     <div
       className={`mini-calendar-wrapper bg-white rounded-lg shadow-xl border border-gray-200 p-2 ${className}`}
-      style={{ width: width }}
+      style={{ width: width, maxWidth: '100%' }} // maxWidth 추가로 overflow 방지
     >
       <style>{`
-                /* 캘린더 본체는 부모(wrapper) 너비를 가득 채우도록 설정 */
-                .mini-calendar-wrapper .react-calendar { 
-                    width: 100%; 
-                    border: none; 
-                    font-family: sans-serif;
-                    background: transparent;
-                }
-                
-                /* 상단 네비게이션 크기 조절 */
-                .mini-calendar-wrapper .react-calendar__navigation {
-                    height: 30px;
-                    margin-bottom: 10px;
-                }
-                .mini-calendar-wrapper .react-calendar__navigation button {
-                    font-size: 14px;
-                    min-width: 24px;
-                }
+        /* MiniCalendar 전용 크기 조정 */
+        .mini-calendar-wrapper .react-calendar__navigation {
+          height: 30px;
+          margin-bottom: 8px;
+        }
+        .mini-calendar-wrapper .react-calendar__navigation button {
+          font-size: 13px;
+          min-width: 24px;
+        }
+        .mini-calendar-wrapper .react-calendar__tile {
+          padding: 4px 2px;
+          font-size: 11px;
+          height: 34px;
+        }
+        .mini-calendar-wrapper .react-calendar__month-view__weekdays {
+          font-size: 10px;
+        }
+      `}</style>
 
-                /* 날짜 타일 크기 및 폰트 */
-                .mini-calendar-wrapper .react-calendar__tile {
-                    padding: 4px 2px;
-                    font-size: 11px;
-                    height: 34px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-
-                /* 선택된 날짜 (가능일) 하이라이트 */
-                .highlight-date {
-                    background: #3b82f6 !important;
-                    color: white !important;
-                    border-radius: 50%;
-                    font-weight: bold;
-                }
-
-                /* 주말 색상 */
-                .react-calendar__month-view__days__day--weekend {
-                    color: #d10000;
-                }
-            `}</style>
-
-      <Calendar
-        view="month"
-        tileClassName={({ date, view }: TileArgs): string | null => {
-          if (view === 'month') {
-            // 로컬 시간대 이슈 방지
-            const offset = date.getTimezoneOffset() * 60000;
-            const dateStr = new Date(date.getTime() - offset).toISOString().split('T')[0];
-
-            if (availableDates.includes(dateStr)) {
-              return 'highlight-date';
-            }
-          }
-          return null;
-        }}
-        formatDay={(_locale: string | undefined, date: Date): string => date.getDate().toString()}
-        minDetail="month"
-        next2Label={null}
-        prev2Label={null}
+      <BaseCalendar
+        year={displayYear}
+        month={displayMonth}
+        selectedDays={selectedDays}
+        readOnly={true}
         showNeighboringMonth={false}
+        size="small"
       />
     </div>
   );

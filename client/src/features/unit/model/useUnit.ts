@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { unitApi, UnitData } from '../api/unitApi';
 import { useState, Dispatch, SetStateAction } from 'react';
+import { showSuccess, showError } from '../../../shared/utils';
 
 interface SearchParams {
   keyword?: string;
@@ -37,7 +38,11 @@ interface UseUnitReturn {
   setPage: Dispatch<SetStateAction<number>>;
   isLoading: boolean;
   isError: boolean;
-  deleteUnits: (ids: (number | string)[]) => Promise<unknown>;
+  deleteUnits: (
+    ids: (number | string)[],
+    selectAll?: boolean,
+    filters?: SearchParams,
+  ) => Promise<unknown>;
   registerUnit: (data: UnitData) => Promise<unknown>;
   updateUnit: (params: { id: number | string; data: unknown }) => void;
   deleteUnit: (id: number | string) => void;
@@ -65,18 +70,16 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number | string; data: unknown }) => {
-      return Promise.all([
-        unitApi.updateUnitBasic(id, data as Record<string, unknown>),
-        unitApi.updateUnitOfficer(id, data as Record<string, unknown>),
-      ]);
+      return unitApi.updateUnit(id, data as Record<string, unknown>);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
+      queryClient.invalidateQueries({ queryKey: ['unitDetail'] });
       alert('부대 정보가 성공적으로 수정되었습니다.');
     },
     onError: (err) => {
       console.error(err);
-      alert('수정 중 오류가 발생했습니다.');
+      showError('수정 중 오류가 발생했습니다.');
     },
   });
 
@@ -84,7 +87,7 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
     mutationFn: unitApi.deleteUnit,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
-      alert('삭제되었습니다.');
+      showSuccess('삭제되었습니다.');
     },
   });
 
@@ -92,27 +95,35 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
     mutationFn: unitApi.uploadExcel,
     onSuccess: (res: { message?: string }) => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
-      alert(res.message || '업로드가 완료되었습니다.');
+      showSuccess(res.message || '업로드가 완료되었습니다.');
     },
-    onError: () => alert('업로드 실패'),
+    onError: () => showError('업로드 실패'),
   });
 
   const registerMutation = useMutation({
     mutationFn: unitApi.registerUnit,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
-      alert('등록되었습니다.');
+      showSuccess('등록되었습니다.');
     },
-    onError: (err: Error) => alert(err.message || '등록 실패'),
+    onError: (err: Error) => showError(err.message || '등록 실패'),
   });
 
   const deleteManyMutation = useMutation({
-    mutationFn: unitApi.deleteUnits,
+    mutationFn: ({
+      ids,
+      selectAll,
+      filters,
+    }: {
+      ids: (number | string)[];
+      selectAll?: boolean;
+      filters?: SearchParams;
+    }) => unitApi.deleteUnits(ids, selectAll, filters),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
       return res;
     },
-    onError: (err: Error) => alert('삭제 중 오류가 발생했습니다: ' + err.message),
+    onError: (err: Error) => showError('삭제 중 오류가 발생했습니다: ' + err.message),
   });
 
   return {
@@ -123,7 +134,8 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
     isLoading,
     isError,
     // Actions
-    deleteUnits: deleteManyMutation.mutateAsync,
+    deleteUnits: (ids, selectAll, filters) =>
+      deleteManyMutation.mutateAsync({ ids, selectAll, filters }),
     registerUnit: registerMutation.mutateAsync,
     updateUnit: updateMutation.mutate,
     deleteUnit: deleteMutation.mutate,

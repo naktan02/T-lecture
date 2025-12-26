@@ -13,10 +13,12 @@
   "dependencies": {
     "@tanstack/react-query": "^5.90.12",
     "date-fns": "^4.1.0",
+    "date-holidays": "^3.26.6",
     "jwt-decode": "^4.0.0",
     "react": "latest",
     "react-calendar": "^5.0.0",
     "react-dom": "latest",
+    "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.9.6",
     "uuid": "^13.0.0"
   },

@@ -1,4 +1,5 @@
 // client/src/shared/apiClient.ts
+import { showError } from './utils';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -26,10 +27,21 @@ export interface ApiClientOptions extends RequestInit {
 
 export const apiClient = async (url: string, options: ApiClientOptions = {}): Promise<Response> => {
   const token = localStorage.getItem('accessToken');
+
+  // FormData인 경우 Content-Type을 설정하지 않음 (브라우저가 자동 설정)
+  const isFormData = options.body instanceof FormData;
+
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string>),
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+    ...((options.headers as Record<string, string>) || {}),
   };
+
+  // undefined 값을 가진 헤더 제거
+  Object.keys(headers).forEach((key) => {
+    if (headers[key] === undefined || headers[key] === 'undefined') {
+      delete headers[key];
+    }
+  });
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -85,7 +97,8 @@ export const apiClient = async (url: string, options: ApiClientOptions = {}): Pr
         processQueue(err as Error, null);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('userRole');
-        alert('세션이 만료되었습니다. 다시 로그인해주세요.');
+        localStorage.removeItem('isInstructor');
+        showError('세션이 만료되었습니다. 다시 로그인해주세요.');
         window.location.href = '/login';
         return Promise.reject(err);
       } finally {

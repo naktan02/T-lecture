@@ -11,6 +11,7 @@ interface User {
   email: string;
   isAdmin?: boolean;
   adminLevel?: string;
+  isInstructor?: boolean;
 }
 
 type UserRoleType = 'SUPER_ADMIN' | 'ADMIN' | 'USER';
@@ -18,10 +19,11 @@ type UserRoleType = 'SUPER_ADMIN' | 'ADMIN' | 'USER';
 export const useAuth = () => {
   const navigate = useNavigate();
 
-  // 현재 저장된 role 가져오기
+  // 현재 저장된 role 및 강사 여부 가져오기
   const userRole = localStorage.getItem('userRole') as UserRoleType | null;
   const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
   const isSuperAdmin = userRole === 'SUPER_ADMIN';
+  const isInstructor = localStorage.getItem('isInstructor') === 'true';
 
   const loginMutation = useMutation({
     mutationFn: loginApi,
@@ -32,6 +34,7 @@ export const useAuth = () => {
 
       const role = determineUserRole(user);
       localStorage.setItem('userRole', role);
+      localStorage.setItem('isInstructor', String(!!user.isInstructor));
 
       handleNavigation(role, variables.loginType, navigate);
     },
@@ -57,6 +60,7 @@ export const useAuth = () => {
     userRole,
     isAdmin,
     isSuperAdmin,
+    isInstructor,
   };
 };
 

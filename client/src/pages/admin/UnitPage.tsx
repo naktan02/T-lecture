@@ -1,10 +1,11 @@
 // client/src/pages/admin/UnitPage.tsx
-import React, { useState, ReactElement } from 'react';
+import { useState, ReactElement } from 'react';
 import { AdminHeader } from '../../features/admin/ui/headers/AdminHeader';
 import { useUnit } from '../../features/unit/model/useUnit';
 import { UnitToolbar } from '../../features/unit/ui/UnitToolbar';
 import { UnitList } from '../../features/unit/ui/UnitList';
 import { UnitDetailDrawer } from '../../features/unit/ui/UnitDetailDrawer';
+import { ConfirmModal, Pagination } from '../../shared/ui';
 
 interface SearchParams {
   keyword: string;
@@ -30,6 +31,11 @@ const UnitPage = (): ReactElement => {
 
   // ✅ 다중 선택 상태 관리
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  // 전체 페이지 데이터 선택 여부
+  const [selectAll, setSelectAll] = useState(false);
+
+  // ✅ 삭제 확인 모달 상태
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const {
     units,
@@ -49,6 +55,7 @@ const UnitPage = (): ReactElement => {
     setSearchParams(newParams);
     setPage(1);
     setSelectedIds([]); // 검색 시 선택 초기화
+    setSelectAll(false);
   };
 
   // ✅ 개별 선택 토글
@@ -58,7 +65,7 @@ const UnitPage = (): ReactElement => {
     );
   };
 
-  // ✅ 전체 선택 토글
+  // ✅ 전체 선택 토글 (현재 페이지)
   const handleToggleAll = (isChecked: boolean): void => {
     if (isChecked) {
       // 현재 페이지의 모든 ID 선택
@@ -66,61 +73,103 @@ const UnitPage = (): ReactElement => {
       setSelectedIds(allIds);
     } else {
       setSelectedIds([]);
+      setSelectAll(false);
     }
+  };
+
+  // ✅ 검색된 모든 데이터 선택
+  const handleSelectAllData = () => {
+    setSelectAll(true);
   };
 
   // ✅ 선택 삭제 핸들러
   const handleDeleteSelected = async (): Promise<void> => {
     if (selectedIds.length === 0) return;
-    if (window.confirm(`선택한 ${selectedIds.length}개 부대를 삭제하시겠습니까?`)) {
-      try {
-        await deleteUnits(selectedIds);
-        setSelectedIds([]);
-        alert('삭제되었습니다.');
-      } catch (e) {
-        console.error(e);
-      }
+    try {
+      // selectAll이 true이면 전체 삭제 요청, 아니면 ID 목록 삭제
+      await deleteUnits(selectedIds, selectAll, searchParams);
+      setSelectedIds([]);
+      setSelectAll(false);
+      setShowDeleteConfirm(false);
+    } catch (e) {
+      console.error(e);
     }
   };
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+    <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
       <AdminHeader />
 
-      <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-6 flex flex-col min-h-0">
+      <main className="flex-1 w-full max-w-7xl mx-auto p-3 md:p-6 flex flex-col min-h-0">
         {/* 툴바 영역 */}
-        <div className="shrink-0 flex flex-col md:flex-row justify-between items-end gap-4 mb-4">
-          <div className="w-full">
-            <UnitToolbar
-              onSearch={handleSearch}
-              onUploadExcel={uploadExcel}
-              onCreate={() => {
-                setSelectedUnit(null);
-                setIsDrawerOpen(true);
-              }}
-              totalCount={meta?.total || 0}
-            />
-          </div>
+        <div className="shrink-0 mb-3 md:mb-4">
+          <UnitToolbar
+            onSearch={handleSearch}
+            onUploadExcel={uploadExcel}
+            onCreate={() => {
+              setSelectedUnit(null);
+              setIsDrawerOpen(true);
+            }}
+            totalCount={meta?.total || 0}
+          />
         </div>
 
-        {/* ✅ 선택 삭제 버튼 (선택된 항목이 있을 때만 표시) */}
+        {/* 선택 삭제 바 */}
         {selectedIds.length > 0 && (
-          <div className="shrink-0 mb-2 flex justify-between items-center bg-blue-50 p-2 px-4 rounded border border-blue-100 text-blue-800 text-sm">
-            <span>{selectedIds.length}개 항목이 선택됨</span>
-            <button
-              onClick={handleDeleteSelected}
-              className="px-3 py-1 bg-white border border-red-200 text-red-600 rounded hover:bg-red-50 font-medium text-xs"
-            >
-              선택 삭제 🗑️
-            </button>
+          <div className="shrink-0 mb-3 flex flex-col gap-2">
+            <div className="flex flex-wrap gap-y-2 justify-between items-center bg-green-50 p-3 px-4 rounded-xl border border-green-200">
+              <div className="flex flex-wrap items-center gap-2 mr-2">
+                <span className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold shrink-0">
+                  {selectAll ? meta?.total : selectedIds.length}
+                </span>
+                <span className="text-sm text-green-800 font-medium whitespace-nowrap">
+                  {selectAll ? `전체 ${meta?.total}개 데이터가 선택되었습니다.` : '개 선택됨'}
+                </span>
+                {!selectAll && meta?.total > selectedIds.length && (
+                  <button
+                    onClick={handleSelectAllData}
+                    className="ml-2 sm:ml-4 text-sm text-blue-600 underline hover:text-blue-800 font-bold whitespace-nowrap"
+                  >
+                    검색된 모든 데이터 {meta?.total}개 선택하기
+                  </button>
+                )}
+                {selectAll && (
+                  <button
+                    onClick={() => {
+                      setSelectAll(false);
+                      setSelectedIds([]);
+                    }}
+                    className="ml-2 sm:ml-4 text-sm text-gray-500 underline hover:text-gray-700 whitespace-nowrap"
+                  >
+                    선택 해제
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-red-500 text-white rounded-lg 
+                            hover:bg-red-600 active:scale-95 transition-all text-sm font-medium shrink-0 ml-auto md:ml-0"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+                삭제
+              </button>
+            </div>
           </div>
         )}
 
         {/* 리스트 영역 */}
-        <div className="flex-1 min-h-0 bg-white rounded-xl shadow-sm border border-gray-200 relative">
+        <div className="flex-1 min-h-0 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {isLoading ? (
-            <div className="flex justify-center items-center h-full text-gray-500">
-              데이터를 불러오는 중입니다...
+            <div className="flex flex-col items-center justify-center h-full gap-3">
+              <div className="w-10 h-10 border-4 border-gray-200 border-t-green-500 rounded-full animate-spin" />
+              <p className="text-sm text-gray-500">데이터를 불러오는 중...</p>
             </div>
           ) : (
             <UnitList
@@ -137,24 +186,8 @@ const UnitPage = (): ReactElement => {
         </div>
 
         {/* 페이지네이션 */}
-        <div className="shrink-0 py-4 flex justify-center items-center gap-4">
-          <button
-            onClick={() => setPage((p: number) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="px-3 py-1 border rounded bg-white disabled:opacity-50"
-          >
-            이전
-          </button>
-          <span className="text-sm text-gray-600">
-            Page {page} / {meta?.lastPage || 1}
-          </span>
-          <button
-            onClick={() => setPage((p: number) => p + 1)}
-            disabled={page >= (meta?.lastPage || 1)}
-            className="px-3 py-1 border rounded bg-white disabled:opacity-50"
-          >
-            다음
-          </button>
+        <div className="shrink-0 py-3 md:py-4">
+          <Pagination currentPage={page} totalPage={meta?.lastPage || 1} onPageChange={setPage} />
         </div>
       </main>
 
@@ -165,6 +198,22 @@ const UnitPage = (): ReactElement => {
         onRegister={registerUnit}
         onUpdate={updateUnit}
         onDelete={deleteUnit}
+      />
+
+      {/* 삭제 확인 모달 */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="부대 삭제"
+        message={
+          selectAll
+            ? `전체 ${meta?.total}개 데이터를 모두 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`
+            : `선택한 ${selectedIds.length}개 부대를 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.`
+        }
+        confirmText="삭제"
+        cancelText="취소"
+        confirmVariant="danger"
+        onConfirm={handleDeleteSelected}
+        onCancel={() => setShowDeleteConfirm(false)}
       />
     </div>
   );
