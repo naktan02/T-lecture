@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Button, InputField } from '../../../shared/ui';
 import { userManagementApi, User, UpdateUserDto } from '../api/userManagementApi';
 import { getTeams, getVirtues, Team, Virtue } from '../../settings/settingsApi';
+import { AvailabilityCalendar } from './AvailabilityCalendar';
 
 // Daum 우편번호 서비스 타입 정의
 declare global {
@@ -196,25 +197,6 @@ export const UserDetailDrawer = ({
     setSelectedVirtues((prev) =>
       prev.includes(virtueId) ? prev.filter((id) => id !== virtueId) : [...prev, virtueId],
     );
-  };
-
-  // 날짜 추가 핸들러
-  const handleDateAdd = () => {
-    const input = document.getElementById('new-date-input') as HTMLInputElement;
-    if (!input || !input.value) return;
-
-    if (availableDates.includes(input.value)) {
-      alert('이미 등록된 날짜입니다.');
-      return;
-    }
-
-    setAvailableDates((prev) => [...prev, input.value].sort());
-    input.value = ''; // 초기화
-  };
-
-  // 날짜 삭제 핸들러
-  const handleDateRemove = (dateToRemove: string) => {
-    setAvailableDates((prev) => prev.filter((date) => date !== dateToRemove));
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -711,103 +693,26 @@ export const UserDetailDrawer = ({
               <div className="space-y-4">
                 <section className="bg-white p-4 rounded-xl border shadow-sm">
                   <h3 className="font-bold mb-3">📅 근무 가능일 관리</h3>
+                  <p className="text-sm text-gray-600 mb-4 ml-1">
+                    캘린더에서 근무 가능한 날짜를 선택해주세요.{' '}
+                    <span className="text-blue-500 font-medium">
+                      (선택된 날짜 {availableDates.length}일)
+                    </span>
+                  </p>
 
-                  {/* 날짜 추가 UI */}
-                  <div className="flex gap-2 mb-4">
-                    <input
-                      type="date"
-                      id="new-date-input"
-                      className="flex-1 p-2 border rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleDateAdd}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium whitespace-nowrap"
-                    >
-                      + 날짜 추가
-                    </button>
-                  </div>
-
-                  {availableDates.length > 0 ? (
-                    <div className="space-y-2">
-                      <p className="text-sm text-gray-600 mb-3 flex justify-between items-center">
-                        <span>
-                          총{' '}
-                          <span className="font-bold text-green-600">{availableDates.length}</span>
-                          개의 근무 가능일이 선택되었습니다.
-                        </span>
-                        <span className="text-xs text-blue-500">
-                          * 저장 버튼을 눌러야 반영됩니다.
-                        </span>
-                      </p>
-                      <div className="max-h-[300px] overflow-y-auto border rounded-lg">
-                        <table className="w-full text-sm">
-                          <thead className="bg-gray-50 sticky top-0">
-                            <tr>
-                              <th className="py-2 px-3 text-left font-medium text-gray-600">
-                                날짜
-                              </th>
-                              <th className="py-2 px-3 text-left font-medium text-gray-600">
-                                요일
-                              </th>
-                              <th className="py-2 px-3 text-center font-medium text-gray-600">
-                                관리
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y">
-                            {availableDates.map((dateStr) => {
-                              const date = new Date(dateStr);
-                              const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-                              return (
-                                <tr key={dateStr} className="hover:bg-gray-50">
-                                  <td className="py-2 px-3">{dateStr}</td>
-                                  <td className="py-2 px-3">
-                                    <span
-                                      className={`px-2 py-0.5 rounded text-xs ${
-                                        date.getDay() === 0
-                                          ? 'bg-red-100 text-red-600'
-                                          : date.getDay() === 6
-                                            ? 'bg-blue-100 text-blue-600'
-                                            : 'bg-gray-100 text-gray-600'
-                                      }`}
-                                    >
-                                      {dayNames[date.getDay()]}요일
-                                    </span>
-                                  </td>
-                                  <td className="py-2 px-3 text-center">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDateRemove(dateStr)}
-                                      className="text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded transition-colors"
-                                    >
-                                      삭제
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-gray-400 border rounded-lg border-dashed">
-                      <p className="text-4xl mb-2">📅</p>
-                      <p>등록된 근무 가능일이 없습니다.</p>
-                      <p className="text-xs mt-1">위에서 날짜를 선택하여 추가해주세요.</p>
-                    </div>
-                  )}
+                  <AvailabilityCalendar
+                    availableDates={availableDates}
+                    onDateChange={setAvailableDates}
+                  />
                 </section>
 
                 <section className="bg-blue-50 p-4 rounded-xl border border-blue-200">
                   <h3 className="font-bold mb-2 text-blue-800">💡 안내</h3>
                   <ul className="list-disc list-inside text-sm text-blue-700 space-y-1">
+                    <li>날짜를 클릭하면 선택/해제됩니다.</li>
                     <li>
-                      근무 가능일을 추가하거나 삭제한 후 반드시 하단의 <strong>[저장]</strong>{' '}
-                      버튼을 눌러주세요.
+                      변경 후 반드시 하단의 <strong>[저장]</strong> 버튼을 눌러야 반영됩니다.
                     </li>
-                    <li>강사 앱에서도 근무 가능일을 직접 관리할 수 있습니다.</li>
                   </ul>
                 </section>
               </div>
