@@ -3,6 +3,7 @@ import { useEffect, useState, ChangeEvent, FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button, InputField } from '../../../shared/ui';
 import { userManagementApi, User, UpdateUserDto } from '../api/userManagementApi';
+import { getTeams, getVirtues, Team, Virtue } from '../../settings/settingsApi';
 
 interface UserDetailDrawerProps {
   isOpen: boolean;
@@ -18,13 +19,20 @@ interface FormData {
   name: string;
   phoneNumber: string;
   status: string;
+  // 강사 기본 정보
   address: string;
-  // 강사 관리자 직접 관리 필드
+  lat: string;
+  lng: string;
+  // 강사 관리 필드
   category: string;
   teamId: string;
   generation: string;
   isTeamLeader: boolean;
   restrictedArea: string;
+  profileCompleted: boolean;
+  // 강사 통계
+  legacyPracticumCount: string;
+  autoPromotionEnabled: boolean;
 }
 
 const INITIAL_FORM: FormData = {
@@ -32,11 +40,16 @@ const INITIAL_FORM: FormData = {
   phoneNumber: '',
   status: 'APPROVED',
   address: '',
+  lat: '',
+  lng: '',
   category: '',
   teamId: '',
   generation: '',
   isTeamLeader: false,
   restrictedArea: '',
+  profileCompleted: false,
+  legacyPracticumCount: '0',
+  autoPromotionEnabled: true,
 };
 
 const STATUS_OPTIONS = [
@@ -54,6 +67,10 @@ const CATEGORY_OPTIONS = [
   { value: 'Practicum', label: '실습' },
 ];
 
+// 팀과 덕목은 API에서 동적으로 로드
+
+type TabKey = 'basic' | 'instructor' | 'availability' | 'admin';
+
 export const UserDetailDrawer = ({
   isOpen,
   onClose,
@@ -63,8 +80,9 @@ export const UserDetailDrawer = ({
   onApprove,
   onReject,
 }: UserDetailDrawerProps) => {
-  const [activeTab, setActiveTab] = useState<'basic' | 'instructor' | 'admin'>('basic');
+  const [activeTab, setActiveTab] = useState<TabKey>('basic');
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM);
+  const [selectedVirtues, setSelectedVirtues] = useState<number[]>([]);
 
   const userId = initialUser?.id;
 
@@ -76,6 +94,20 @@ export const UserDetailDrawer = ({
     staleTime: 0,
   });
 
+  // 팀 목록 조회
+  const { data: teams = [] } = useQuery<Team[]>({
+    queryKey: ['teams'],
+    queryFn: getTeams,
+    staleTime: 5 * 60 * 1000, // 5분
+  });
+
+  // 덕목 목록 조회
+  const { data: virtues = [] } = useQuery<Virtue[]>({
+    queryKey: ['virtues'],
+    queryFn: getVirtues,
+    staleTime: 5 * 60 * 1000, // 5분
+  });
+
   // 바인딩 대상 유저
   const boundUser = detailUser ?? initialUser;
 
@@ -85,6 +117,7 @@ export const UserDetailDrawer = ({
 
     if (!initialUser) {
       setFormData({ ...INITIAL_FORM });
+      setSelectedVirtues([]);
       setActiveTab('basic');
       return;
     }
@@ -96,12 +129,22 @@ export const UserDetailDrawer = ({
       phoneNumber: target.userphoneNumber || '',
       status: target.status || 'APPROVED',
       address: target.instructor?.location || '',
+      lat: target.instructor?.lat?.toString() || '',
+      lng: target.instructor?.lng?.toString() || '',
       category: target.instructor?.category || '',
       teamId: target.instructor?.teamId?.toString() || '',
       generation: target.instructor?.generation?.toString() || '',
       isTeamLeader: target.instructor?.isTeamLeader || false,
       restrictedArea: target.instructor?.restrictedArea || '',
+      profileCompleted: target.instructor?.profileCompleted || false,
+      legacyPracticumCount:
+        target.instructor?.instructorStats?.[0]?.legacyPracticumCount?.toString() || '0',
+      autoPromotionEnabled: target.instructor?.instructorStats?.[0]?.autoPromotionEnabled ?? true,
     });
+
+    // 덕목 설정
+    const virtueIds = target.instructor?.virtues?.map((v) => v.virtueId) || [];
+    setSelectedVirtues(virtueIds);
 
     setActiveTab('basic');
   }, [isOpen, initialUser, boundUser]);
@@ -118,6 +161,12 @@ export const UserDetailDrawer = ({
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
+  };
+
+  const handleVirtueToggle = (virtueId: number) => {
+    setSelectedVirtues((prev) =>
+      prev.includes(virtueId) ? prev.filter((id) => id !== virtueId) : [...prev, virtueId],
+    );
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -191,9 +240,10 @@ export const UserDetailDrawer = ({
   const isAdmin = !!boundUser?.admin;
   const isPending = boundUser?.status === 'PENDING';
 
-  const tabs: { key: 'basic' | 'instructor' | 'admin'; label: string; show: boolean }[] = [
+  const tabs: { key: TabKey; label: string; show: boolean }[] = [
     { key: 'basic', label: '기본 정보', show: true },
     { key: 'instructor', label: '강사 정보', show: isInstructor },
+    { key: 'availability', label: '근무 가능일', show: isInstructor },
     { key: 'admin', label: '관리자 정보', show: isAdmin },
   ];
 
@@ -201,7 +251,7 @@ export const UserDetailDrawer = ({
     <>
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40" onClick={onClose} />
 
-      <div className="fixed inset-0 md:inset-y-0 md:left-auto md:right-0 z-50 w-full md:w-[600px] bg-white shadow-2xl flex flex-col">
+      <div className="fixed inset-0 md:inset-y-0 md:left-auto md:right-0 z-50 w-full md:w-[650px] bg-white shadow-2xl flex flex-col">
         {/* 헤더 */}
         <div className="px-4 md:px-6 py-3 md:py-4 border-b flex justify-between items-center bg-white shrink-0">
           <div className="flex items-center gap-3">
@@ -219,7 +269,7 @@ export const UserDetailDrawer = ({
               </svg>
             </button>
             <h2 className="text-lg md:text-xl font-bold">
-              {initialUser ? '유저 정보' : '유저 상세'}
+              {initialUser ? '유저 정보 관리' : '유저 상세'}
             </h2>
             {isPending && (
               <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full">
@@ -251,7 +301,7 @@ export const UserDetailDrawer = ({
                 key={tab.key}
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex-1 min-w-[100px] py-3 px-4 font-medium text-sm md:text-base border-b-2 whitespace-nowrap transition-colors ${
+                className={`flex-1 min-w-[80px] py-3 px-3 font-medium text-sm border-b-2 whitespace-nowrap transition-colors ${
                   activeTab === tab.key
                     ? 'border-green-500 text-green-600 bg-white'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -263,12 +313,16 @@ export const UserDetailDrawer = ({
         </div>
 
         {/* 콘텐츠 */}
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
-          <form id="user-form" onSubmit={handleSubmit} className="space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50">
+          <form id="user-form" onSubmit={handleSubmit} className="space-y-4">
+            {/* ===== 기본 정보 탭 ===== */}
             {activeTab === 'basic' && (
-              <div className="space-y-6">
-                <section className="bg-white p-5 rounded-xl border shadow-sm">
-                  <h3 className="font-bold mb-4">👤 기본 정보</h3>
+              <div className="space-y-4">
+                <section className="bg-white p-4 rounded-xl border shadow-sm">
+                  <h3 className="font-bold mb-4 flex items-center gap-2">
+                    👤 기본 정보
+                    <span className="text-xs text-gray-400 font-normal">ID: {boundUser?.id}</span>
+                  </h3>
                   <div className="grid grid-cols-2 gap-4">
                     <InputField
                       label="이름"
@@ -288,8 +342,9 @@ export const UserDetailDrawer = ({
                         type="text"
                         value={boundUser?.userEmail || '-'}
                         disabled
-                        className="w-full mt-1 p-2 border rounded-lg bg-gray-100 text-gray-500"
+                        className="w-full mt-1 p-2 border rounded-lg bg-gray-100 text-gray-500 text-sm"
                       />
+                      <p className="text-xs text-gray-400 mt-1">이메일은 변경할 수 없습니다.</p>
                     </div>
                     <div className="col-span-2">
                       <label className="text-sm font-medium">상태</label>
@@ -308,15 +363,38 @@ export const UserDetailDrawer = ({
                     </div>
                   </div>
                 </section>
+
+                {/* 유저 유형 표시 */}
+                <section className="bg-white p-4 rounded-xl border shadow-sm">
+                  <h3 className="font-bold mb-3">🏷️ 유저 유형</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {isInstructor && (
+                      <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                        강사
+                      </span>
+                    )}
+                    {isAdmin && (
+                      <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                        {boundUser?.admin?.level === 'SUPER' ? '슈퍼 관리자' : '관리자'}
+                      </span>
+                    )}
+                    {!isInstructor && !isAdmin && (
+                      <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
+                        일반 유저
+                      </span>
+                    )}
+                  </div>
+                </section>
               </div>
             )}
 
+            {/* ===== 강사 정보 탭 ===== */}
             {activeTab === 'instructor' && isInstructor && (
-              <div className="space-y-6">
-                {/* 일반 강사 정보 */}
-                <section className="bg-white p-5 rounded-xl border shadow-sm">
-                  <h3 className="font-bold mb-4">📍 강사 기본 정보</h3>
-                  <div className="space-y-4">
+              <div className="space-y-4">
+                {/* 강사 기본 정보 */}
+                <section className="bg-white p-4 rounded-xl border shadow-sm">
+                  <h3 className="font-bold mb-4">📍 위치 정보</h3>
+                  <div className="space-y-3">
                     <div>
                       <label className="text-sm font-medium">주소</label>
                       <input
@@ -325,38 +403,40 @@ export const UserDetailDrawer = ({
                         value={formData.address}
                         onChange={handleChange}
                         className="w-full mt-1 p-2 border rounded-lg"
+                        placeholder="주소 입력"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-sm font-medium">위도</label>
                         <input
                           type="text"
-                          value={boundUser?.instructor?.lat ?? '-'}
-                          disabled
-                          className="w-full mt-1 p-2 border rounded-lg bg-gray-100 text-gray-500"
+                          name="lat"
+                          value={formData.lat}
+                          onChange={handleChange}
+                          className="w-full mt-1 p-2 border rounded-lg text-sm"
+                          placeholder="위도"
                         />
                       </div>
                       <div>
                         <label className="text-sm font-medium">경도</label>
                         <input
                           type="text"
-                          value={boundUser?.instructor?.lng ?? '-'}
-                          disabled
-                          className="w-full mt-1 p-2 border rounded-lg bg-gray-100 text-gray-500"
+                          name="lng"
+                          value={formData.lng}
+                          onChange={handleChange}
+                          className="w-full mt-1 p-2 border rounded-lg text-sm"
+                          placeholder="경도"
                         />
                       </div>
                     </div>
                   </div>
                 </section>
 
-                {/* 관리자 직접 관리 섹션 */}
-                <section className="bg-blue-50 p-5 rounded-xl border border-blue-200 shadow-sm">
-                  <h3 className="font-bold mb-4 text-blue-800">🔧 관리자 직접 관리 필드</h3>
-                  <p className="text-xs text-blue-600 mb-4">
-                    아래 필드들은 관리자만 수정할 수 있습니다.
-                  </p>
-                  <div className="grid grid-cols-2 gap-4">
+                {/* 강사 조직 정보 */}
+                <section className="bg-white p-4 rounded-xl border shadow-sm">
+                  <h3 className="font-bold mb-4">🏢 조직 정보</h3>
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-sm font-medium">분류</label>
                       <select
@@ -384,20 +464,20 @@ export const UserDetailDrawer = ({
                       />
                     </div>
                     <div>
-                      <label className="text-sm font-medium">팀 ID</label>
-                      <input
-                        type="number"
+                      <label className="text-sm font-medium">소속 팀</label>
+                      <select
                         name="teamId"
                         value={formData.teamId}
                         onChange={handleChange}
                         className="w-full mt-1 p-2 border rounded-lg"
-                        placeholder="팀 ID 입력"
-                      />
-                      {boundUser?.instructor?.team && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          현재: {boundUser.instructor.team.name}
-                        </p>
-                      )}
+                      >
+                        <option value="">미지정</option>
+                        {teams.map((team) => (
+                          <option key={team.id} value={team.id.toString()}>
+                            {team.name || `팀 ${team.id}`}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div className="flex items-center gap-2 pt-6">
                       <input
@@ -423,93 +503,177 @@ export const UserDetailDrawer = ({
                         placeholder="배정 제한 지역 입력"
                       />
                     </div>
+                    <div className="col-span-2 flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="profileCompleted"
+                        name="profileCompleted"
+                        checked={formData.profileCompleted}
+                        onChange={handleChange}
+                        className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                      />
+                      <label htmlFor="profileCompleted" className="text-sm font-medium">
+                        프로필 완료
+                      </label>
+                    </div>
                   </div>
                 </section>
 
                 {/* 강의 가능 덕목 */}
-                <section className="bg-white p-5 rounded-xl border shadow-sm">
-                  <h3 className="font-bold mb-4">📚 강의 가능 덕목</h3>
-                  {boundUser?.instructor?.virtues && boundUser.instructor.virtues.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {boundUser.instructor.virtues.map((v) => (
-                        <span
-                          key={v.virtueId}
-                          className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm"
+                <section className="bg-white p-4 rounded-xl border shadow-sm">
+                  <h3 className="font-bold mb-3">📚 강의 가능 덕목</h3>
+                  <p className="text-xs text-gray-500 mb-3">
+                    강사가 강의할 수 있는 덕목을 선택하세요.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {virtues.length > 0 ? (
+                      virtues.map((virtue) => (
+                        <button
+                          key={virtue.id}
+                          type="button"
+                          onClick={() => handleVirtueToggle(virtue.id)}
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                            selectedVirtues.includes(virtue.id)
+                              ? 'bg-green-500 text-white'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
                         >
-                          {v.virtue?.name || `덕목 ${v.virtueId}`}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-400 text-sm">등록된 덕목이 없습니다.</p>
-                  )}
-                </section>
-
-                {/* 근무 가능일 */}
-                <section className="bg-white p-5 rounded-xl border shadow-sm">
-                  <h3 className="font-bold mb-4">📅 근무 가능일</h3>
-                  {boundUser?.instructor?.availabilities &&
-                  boundUser.instructor.availabilities.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {boundUser.instructor.availabilities.slice(0, 10).map((a) => (
-                        <span
-                          key={a.id}
-                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
-                        >
-                          {new Date(a.availableOn).toLocaleDateString('ko-KR')}
-                        </span>
-                      ))}
-                      {boundUser.instructor.availabilities.length > 10 && (
-                        <span className="px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-sm">
-                          + {boundUser.instructor.availabilities.length - 10}개 더
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-gray-400 text-sm">등록된 근무 가능일이 없습니다.</p>
-                  )}
+                          {virtue.name || `덕목 ${virtue.id}`}
+                        </button>
+                      ))
+                    ) : (
+                      <p className="text-gray-400 text-sm">
+                        등록된 덕목이 없습니다. 시스템 설정에서 덕목을 추가해주세요.
+                      </p>
+                    )}
+                  </div>
                 </section>
 
                 {/* 강사 통계 */}
-                {boundUser?.instructor?.instructorStats &&
-                  boundUser.instructor.instructorStats.length > 0 && (
-                    <section className="bg-white p-5 rounded-xl border shadow-sm">
-                      <h3 className="font-bold mb-4">📊 강사 통계</h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm text-gray-500">레거시 실습 횟수</label>
-                          <p className="font-semibold">
-                            {boundUser.instructor.instructorStats[0]?.legacyPracticumCount ?? 0}회
-                          </p>
-                        </div>
-                        <div>
-                          <label className="text-sm text-gray-500">자동 승급 활성화</label>
-                          <p className="font-semibold">
-                            {boundUser.instructor.instructorStats[0]?.autoPromotionEnabled
-                              ? '예'
-                              : '아니오'}
-                          </p>
-                        </div>
-                      </div>
-                    </section>
-                  )}
+                <section className="bg-white p-4 rounded-xl border shadow-sm">
+                  <h3 className="font-bold mb-4">📊 강사 통계</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-medium">레거시 실습 횟수</label>
+                      <input
+                        type="number"
+                        name="legacyPracticumCount"
+                        value={formData.legacyPracticumCount}
+                        onChange={handleChange}
+                        className="w-full mt-1 p-2 border rounded-lg"
+                        min="0"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 pt-6">
+                      <input
+                        type="checkbox"
+                        id="autoPromotionEnabled"
+                        name="autoPromotionEnabled"
+                        checked={formData.autoPromotionEnabled}
+                        onChange={handleChange}
+                        className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                      />
+                      <label htmlFor="autoPromotionEnabled" className="text-sm font-medium">
+                        자동 승급 활성화
+                      </label>
+                    </div>
+                  </div>
+                </section>
               </div>
             )}
 
+            {/* ===== 근무 가능일 탭 ===== */}
+            {activeTab === 'availability' && isInstructor && (
+              <div className="space-y-4">
+                <section className="bg-white p-4 rounded-xl border shadow-sm">
+                  <h3 className="font-bold mb-3">📅 등록된 근무 가능일</h3>
+                  {boundUser?.instructor?.availabilities &&
+                  boundUser.instructor.availabilities.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-sm text-gray-600 mb-3">
+                        총{' '}
+                        <span className="font-bold text-green-600">
+                          {boundUser.instructor.availabilities.length}
+                        </span>
+                        개의 근무 가능일이 등록되어 있습니다.
+                      </p>
+                      <div className="max-h-[300px] overflow-y-auto border rounded-lg">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 sticky top-0">
+                            <tr>
+                              <th className="py-2 px-3 text-left font-medium text-gray-600">
+                                날짜
+                              </th>
+                              <th className="py-2 px-3 text-left font-medium text-gray-600">
+                                요일
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y">
+                            {boundUser.instructor.availabilities.map((a) => {
+                              const date = new Date(a.availableOn);
+                              const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+                              return (
+                                <tr key={a.id} className="hover:bg-gray-50">
+                                  <td className="py-2 px-3">{date.toLocaleDateString('ko-KR')}</td>
+                                  <td className="py-2 px-3">
+                                    <span
+                                      className={`px-2 py-0.5 rounded text-xs ${
+                                        date.getDay() === 0
+                                          ? 'bg-red-100 text-red-600'
+                                          : date.getDay() === 6
+                                            ? 'bg-blue-100 text-blue-600'
+                                            : 'bg-gray-100 text-gray-600'
+                                      }`}
+                                    >
+                                      {dayNames[date.getDay()]}요일
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-400">
+                      <p className="text-4xl mb-2">📅</p>
+                      <p>등록된 근무 가능일이 없습니다.</p>
+                    </div>
+                  )}
+                </section>
+
+                <section className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                  <h3 className="font-bold mb-2 text-blue-800">💡 안내</h3>
+                  <p className="text-sm text-blue-700">
+                    근무 가능일은 강사 앱에서 직접 등록/관리할 수 있습니다. 관리자가 직접 일정을
+                    추가하려면 별도의 일정 관리 기능을 이용해주세요.
+                  </p>
+                </section>
+              </div>
+            )}
+
+            {/* ===== 관리자 정보 탭 ===== */}
             {activeTab === 'admin' && isAdmin && (
-              <div className="space-y-6">
-                <section className="bg-white p-5 rounded-xl border shadow-sm">
+              <div className="space-y-4">
+                <section className="bg-white p-4 rounded-xl border shadow-sm">
                   <h3 className="font-bold mb-4">🛡️ 관리자 정보</h3>
                   <div>
                     <label className="text-sm font-medium">관리자 레벨</label>
-                    <input
-                      type="text"
-                      value={boundUser?.admin?.level === 'SUPER' ? '슈퍼 관리자' : '일반 관리자'}
-                      disabled
-                      className="w-full mt-1 p-2 border rounded-lg bg-gray-100 text-gray-500"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      관리자 권한은 슈퍼 관리자 페이지에서 변경할 수 있습니다.
+                    <div className="mt-2 flex items-center gap-3">
+                      <span
+                        className={`px-4 py-2 rounded-lg font-medium ${
+                          boundUser?.admin?.level === 'SUPER'
+                            ? 'bg-purple-100 text-purple-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {boundUser?.admin?.level === 'SUPER' ? '🔥 슈퍼 관리자' : '👤 일반 관리자'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-3">
+                      관리자 권한 변경은 슈퍼 관리자 페이지 (/admin/super)에서 할 수 있습니다.
                     </p>
                   </div>
                 </section>
@@ -519,14 +683,14 @@ export const UserDetailDrawer = ({
         </div>
 
         {/* 푸터 */}
-        <div className="px-6 py-4 border-t bg-white flex justify-between shrink-0">
+        <div className="px-4 md:px-6 py-3 md:py-4 border-t bg-white flex justify-between shrink-0">
           {initialUser && (
             <button
               type="button"
               onClick={() => onDelete(initialUser.id)}
-              className="text-red-500 hover:text-red-700"
+              className="text-red-500 hover:text-red-700 text-sm"
             >
-              삭제
+              유저 삭제
             </button>
           )}
 
@@ -539,7 +703,7 @@ export const UserDetailDrawer = ({
                 <button
                   type="button"
                   onClick={handleApprove}
-                  className="px-5 py-2 bg-amber-500 text-white rounded font-medium hover:bg-amber-600"
+                  className="px-4 py-2 bg-amber-500 text-white rounded font-medium hover:bg-amber-600 text-sm"
                 >
                   승인
                 </button>
@@ -551,7 +715,7 @@ export const UserDetailDrawer = ({
             <button
               type="submit"
               form="user-form"
-              className="px-5 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700"
+              className="px-4 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700 text-sm"
             >
               저장
             </button>
