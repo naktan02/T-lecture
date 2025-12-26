@@ -240,6 +240,32 @@ class AdminRepository {
       where: { userId: Number(userId) },
     });
   }
+
+  // 강사 근무 가능일 업데이트 (기존 삭제 후 재생성)
+  async updateInstructorAvailabilities(instructorId: number, availabilities: string[]) {
+    return await prisma.$transaction(async (tx) => {
+      // 기존 근무 가능일 전체 삭제
+      await tx.instructorAvailability.deleteMany({
+        where: { instructorId },
+      });
+
+      // 새로운 근무 가능일 생성
+      if (availabilities.length > 0) {
+        await tx.instructorAvailability.createMany({
+          data: availabilities.map((date) => ({
+            instructorId,
+            availableOn: new Date(date),
+          })),
+        });
+      }
+
+      // 결과 반환 (생성된 목록 조회)
+      return await tx.instructorAvailability.findMany({
+        where: { instructorId },
+        orderBy: { availableOn: 'asc' },
+      });
+    });
+  }
 }
 
 export default new AdminRepository();

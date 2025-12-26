@@ -94,6 +94,7 @@ export interface UpdateUserDto {
   teamId?: number | null;
   generation?: number | null;
   restrictedArea?: string | null;
+  availabilities?: string[];
 }
 
 export interface UserActionResponse {

@@ -198,6 +198,7 @@ class AdminService {
       teamId,
       generation,
       restrictedArea,
+      availabilities,
     } = dto;
 
     assertStringOrUndefined(name, 'name');
@@ -214,6 +215,10 @@ class AdminService {
 
     if (isTeamLeader !== undefined && typeof isTeamLeader !== 'boolean') {
       throw new AppError('isTeamLeader는 boolean이어야 합니다.', 400, 'INVALID_INPUT');
+    }
+
+    if (availabilities !== undefined && !Array.isArray(availabilities)) {
+      throw new AppError('availabilities는 배열이어야 합니다.', 400, 'INVALID_INPUT');
     }
 
     const validCategories = ['Main', 'Co', 'Assistant', 'Practicum'] as const;
@@ -249,7 +254,8 @@ class AdminService {
       category !== undefined ||
       teamId !== undefined ||
       generation !== undefined ||
-      restrictedArea !== undefined;
+      restrictedArea !== undefined ||
+      availabilities !== undefined;
 
     if (!hasAny) {
       throw new AppError('수정할 값이 없습니다.', 400, 'NO_UPDATE_FIELDS');
@@ -292,11 +298,20 @@ class AdminService {
       if (restrictedArea !== undefined) {
         instructorData.restrictedArea = restrictedArea;
       }
+
+      // 근무 가능일 업데이트 (별도 트랜잭션 처리)
+      if (availabilities && user.instructor) {
+        await adminRepository.updateInstructorAvailabilities(
+          user.instructor.userId,
+          availabilities,
+        );
+      }
     }
 
     const updatedUser = await userRepository.update(id, userData, instructorData);
 
-    return mapUserForAdmin(updatedUser);
+    // 업데이트된 availabilities를 포함해서 반환하기 위해 다시 조회 (선택사항)
+    return await this.getUserById(id);
   }
 
   // 유저 삭제
