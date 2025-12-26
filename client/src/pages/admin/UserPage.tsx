@@ -16,6 +16,7 @@ interface SearchParams {
   category: string;
   availableFrom: string;
   availableTo: string;
+  profileIncomplete: boolean;
 }
 
 const UserPage = (): ReactElement => {
@@ -27,6 +28,7 @@ const UserPage = (): ReactElement => {
     category: '',
     availableFrom: '',
     availableTo: '',
+    profileIncomplete: false,
   });
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -60,6 +62,7 @@ const UserPage = (): ReactElement => {
     category: searchParams.category || undefined,
     availableFrom: searchParams.availableFrom || undefined,
     availableTo: searchParams.availableTo || undefined,
+    profileIncomplete: searchParams.profileIncomplete || undefined,
   });
 
   // 검색 핸들러

@@ -11,6 +11,7 @@ interface SearchFilters {
   category: string;
   availableFrom: string;
   availableTo: string;
+  profileIncomplete: boolean;
 }
 
 interface UserToolbarProps {
@@ -50,6 +51,7 @@ const INITIAL_FILTERS: SearchFilters = {
   category: '',
   availableFrom: '',
   availableTo: '',
+  profileIncomplete: false,
 };
 
 export const UserToolbar = ({
@@ -96,6 +98,7 @@ export const UserToolbar = ({
   const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
     if (key === 'status') return value !== 'ALL';
     if (key === 'name') return false; // 검색어는 제외
+    if (key === 'profileIncomplete') return value === true;
     return value !== '';
   }).length;
 
@@ -292,6 +295,20 @@ export const UserToolbar = ({
                 />
               </div>
             </div>
+
+            {/* 정보 입력 미완료 */}
+            <div className="col-span-2">
+              <label className="flex items-center gap-2 cursor-pointer mt-2">
+                <input
+                  type="checkbox"
+                  name="profileIncomplete"
+                  checked={filters.profileIncomplete}
+                  onChange={(e) => setFilters({ ...filters, profileIncomplete: e.target.checked })}
+                  className="w-4 h-4 text-amber-500 border-gray-300 rounded focus:ring-amber-500"
+                />
+                <span className="text-sm text-gray-700">📝 정보 입력 미완료 강사만 보기</span>
+              </label>
+            </div>
           </div>
 
           {/* 버튼 */}
@@ -369,6 +386,21 @@ export const UserToolbar = ({
               <button
                 onClick={() => {
                   const newFilters = { ...filters, availableFrom: '', availableTo: '' };
+                  setFilters(newFilters);
+                  onSearch(newFilters);
+                }}
+                className="hover:text-red-500"
+              >
+                ×
+              </button>
+            </span>
+          )}
+          {filters.profileIncomplete && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 rounded text-xs text-amber-700">
+              📝 정보 입력 미완료
+              <button
+                onClick={() => {
+                  const newFilters = { ...filters, profileIncomplete: false };
                   setFilters(newFilters);
                   onSearch(newFilters);
                 }}

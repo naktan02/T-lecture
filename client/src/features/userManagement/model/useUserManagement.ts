@@ -18,6 +18,7 @@ interface SearchParams {
   category?: string;
   availableFrom?: string;
   availableTo?: string;
+  profileIncomplete?: boolean;
 }
 
 interface UseUserManagementReturn {

@@ -40,6 +40,7 @@ interface QueryFilters {
   category?: string;
   availableFrom?: string;
   availableTo?: string;
+  profileIncomplete?: string; // 'true' or 'false' from query string
 }
 
 interface RepoFilters {
@@ -52,6 +53,7 @@ interface RepoFilters {
   category?: UserCategory;
   availableFrom?: string;
   availableTo?: string;
+  profileIncomplete?: boolean;
 }
 
 // querystring을 repo가 이해하는 형태로 변환
@@ -94,6 +96,11 @@ function normalizeFilters(query: QueryFilters = {}): RepoFilters {
   }
   if (query.availableTo) {
     filters.availableTo = query.availableTo;
+  }
+
+  // 정보 입력 미완료 강사 필터
+  if (query.profileIncomplete === 'true') {
+    filters.profileIncomplete = true;
   }
 
   return filters;

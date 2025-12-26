@@ -10,6 +10,7 @@ export interface UserFilters {
   category?: string; // Main | Co | Assistant | Practicum
   availableFrom?: string; // YYYY-MM-DD
   availableTo?: string; // YYYY-MM-DD
+  profileIncomplete?: boolean; // 정보 입력 미완료 강사
   page?: number;
   limit?: number;
 }
@@ -113,6 +114,7 @@ export const userManagementApi = {
     if (filters.category) params.append('category', filters.category);
     if (filters.availableFrom) params.append('availableFrom', filters.availableFrom);
     if (filters.availableTo) params.append('availableTo', filters.availableTo);
+    if (filters.profileIncomplete) params.append('profileIncomplete', 'true');
     if (filters.page) params.append('page', String(filters.page));
     if (filters.limit) params.append('limit', String(filters.limit));
 

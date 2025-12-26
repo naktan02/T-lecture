@@ -12,6 +12,7 @@ interface UserFilters {
   category?: UserCategory;
   availableFrom?: string; // YYYY-MM-DD 형식
   availableTo?: string; // YYYY-MM-DD 형식
+  profileIncomplete?: boolean; // 정보 입력 미완료 강사
 }
 
 class AdminRepository {
@@ -27,6 +28,7 @@ class AdminRepository {
       category,
       availableFrom,
       availableTo,
+      profileIncomplete,
     } = filters;
 
     const where: Prisma.UserWhereInput = {};
@@ -62,6 +64,12 @@ class AdminRepository {
     // 카테고리 필터
     if (category) {
       instructorConditions.category = category;
+      hasInstructorFilter = true;
+    }
+
+    // 정보 입력 미완료 강사 필터
+    if (profileIncomplete) {
+      instructorConditions.profileCompleted = false;
       hasInstructorFilter = true;
     }
 
