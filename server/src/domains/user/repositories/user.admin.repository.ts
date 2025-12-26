@@ -1,18 +1,23 @@
 // server/src/domains/user/repositories/user.admin.repository.ts
 import prisma from '../../../libs/prisma';
-import { AdminLevel, UserStatus, Prisma } from '@prisma/client';
+import { AdminLevel, UserStatus, Prisma, UserCategory } from '@prisma/client';
 
 interface UserFilters {
   status?: UserStatus;
   name?: string;
   onlyAdmins?: boolean;
   onlyInstructors?: boolean;
+  onlyNormal?: boolean; // 예비강사 (일반 유저)
+  teamId?: number;
+  category?: UserCategory;
+  availableOn?: string; // YYYY-MM-DD 형식
 }
 
 class AdminRepository {
   // 전체 유저 목록 조회 (페이지네이션 지원)
   async findAll(filters: UserFilters = {}, page = 1, limit = 20) {
-    const { status, name, onlyAdmins, onlyInstructors } = filters;
+    const { status, name, onlyAdmins, onlyInstructors, onlyNormal, teamId, category, availableOn } =
+      filters;
 
     const where: Prisma.UserWhereInput = {};
 
@@ -21,7 +26,7 @@ class AdminRepository {
     }
 
     if (name) {
-      where.name = { contains: name };
+      where.OR = [{ name: { contains: name } }, { userEmail: { contains: name } }];
     }
 
     if (onlyAdmins) {
@@ -29,6 +34,47 @@ class AdminRepository {
     }
     if (onlyInstructors) {
       where.instructor = { isNot: null };
+    }
+    if (onlyNormal) {
+      // 예비강사: instructor가 없는 유저 (admin도 아닌)
+      where.instructor = null;
+      where.admin = null;
+    }
+
+    // 팀 필터
+    if (teamId) {
+      where.instructor = {
+        ...((where.instructor as Prisma.InstructorWhereInput) || {}),
+        teamId: teamId,
+      };
+    }
+
+    // 카테고리 필터
+    if (category) {
+      where.instructor = {
+        ...((where.instructor as Prisma.InstructorWhereInput) || {}),
+        category: category,
+      };
+    }
+
+    // 근무 가능일 필터
+    if (availableOn) {
+      const targetDate = new Date(availableOn);
+      targetDate.setHours(0, 0, 0, 0);
+      const nextDate = new Date(targetDate);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      where.instructor = {
+        ...((where.instructor as Prisma.InstructorWhereInput) || {}),
+        availabilities: {
+          some: {
+            availableOn: {
+              gte: targetDate,
+              lt: nextDate,
+            },
+          },
+        },
+      };
     }
 
     const skip = (page - 1) * limit;

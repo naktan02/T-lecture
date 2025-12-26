@@ -12,6 +12,9 @@ interface SearchParams {
   status: string;
   role: string;
   name: string;
+  teamId: string;
+  category: string;
+  availableOn: string;
 }
 
 const UserPage = (): ReactElement => {
@@ -19,6 +22,9 @@ const UserPage = (): ReactElement => {
     status: 'ALL',
     role: '',
     name: '',
+    teamId: '',
+    category: '',
+    availableOn: '',
   });
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -47,6 +53,9 @@ const UserPage = (): ReactElement => {
   } = useUserManagement({
     ...searchParams,
     status: searchParams.status === 'ALL' ? undefined : searchParams.status,
+    teamId: searchParams.teamId || undefined,
+    category: searchParams.category || undefined,
+    availableOn: searchParams.availableOn || undefined,
   });
 
   // 승인 대기 유저 수 계산

@@ -14,6 +14,9 @@ interface SearchParams {
   status?: string;
   role?: string;
   name?: string;
+  teamId?: string | number;
+  category?: string;
+  availableOn?: string;
 }
 
 interface UseUserManagementReturn {

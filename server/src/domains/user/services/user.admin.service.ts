@@ -1,7 +1,15 @@
 import adminRepository from '../repositories/user.admin.repository';
 import userRepository from '../repositories/user.repository';
 import AppError from '../../../common/errors/AppError';
-import { UserStatus, AdminLevel, Prisma, User, Instructor, Admin } from '@prisma/client';
+import {
+  UserStatus,
+  AdminLevel,
+  Prisma,
+  User,
+  Instructor,
+  Admin,
+  UserCategory,
+} from '@prisma/client';
 
 const ALLOWED_USER_STATUS = ['PENDING', 'APPROVED', 'RESTING', 'INACTIVE'] as const;
 
@@ -35,17 +43,25 @@ interface RepoFilters {
   name?: string;
   onlyAdmins?: boolean;
   onlyInstructors?: boolean;
+  onlyNormal?: boolean;
+  teamId?: number;
+  category?: UserCategory;
+  availableOn?: string;
 }
 
 // querystring을 repo가 이해하는 형태로 변환
-function normalizeFilters(query: QueryFilters = {}): RepoFilters {
+function normalizeFilters(
+  query: QueryFilters & {
+    teamId?: string | number;
+    category?: string;
+    availableOn?: string;
+  } = {},
+): RepoFilters {
   const filters: RepoFilters = {};
 
-  // status 처리: 'ALL'이면 필터 없음, 없으면 APPROVED 기본값
+  // status 처리: 'ALL'이면 필터 없음, 없으면 모든 상태 조회
   if (query.status && query.status !== 'ALL') {
     filters.status = query.status as UserStatus;
-  } else if (!query.status) {
-    filters.status = UserStatus.APPROVED;
   }
 
   // name 처리
@@ -59,6 +75,23 @@ function normalizeFilters(query: QueryFilters = {}): RepoFilters {
     filters.onlyAdmins = true;
   } else if (role === 'INSTRUCTOR') {
     filters.onlyInstructors = true;
+  } else if (role === 'NORMAL') {
+    filters.onlyNormal = true;
+  }
+
+  // 팀 필터
+  if (query.teamId) {
+    filters.teamId = Number(query.teamId);
+  }
+
+  // 카테고리 필터
+  if (query.category && ['Main', 'Co', 'Assistant', 'Practicum'].includes(query.category)) {
+    filters.category = query.category as UserCategory;
+  }
+
+  // 근무 가능일 필터
+  if (query.availableOn) {
+    filters.availableOn = query.availableOn;
   }
 
   return filters;
