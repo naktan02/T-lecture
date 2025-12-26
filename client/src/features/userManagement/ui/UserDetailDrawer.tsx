@@ -5,6 +5,25 @@ import { Button, InputField } from '../../../shared/ui';
 import { userManagementApi, User, UpdateUserDto } from '../api/userManagementApi';
 import { getTeams, getVirtues, Team, Virtue } from '../../settings/settingsApi';
 
+// Daum 우편번호 서비스 타입 정의
+declare global {
+  interface Window {
+    daum: {
+      Postcode: new (options: { oncomplete: (data: DaumPostcodeData) => void }) => {
+        open: () => void;
+      };
+    };
+  }
+}
+
+interface DaumPostcodeData {
+  roadAddress: string;
+  jibunAddress: string;
+  bname: string;
+  buildingName: string;
+  zonecode: string;
+}
+
 interface UserDetailDrawerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -397,14 +416,77 @@ export const UserDetailDrawer = ({
                   <div className="space-y-3">
                     <div>
                       <label className="text-sm font-medium">주소</label>
-                      <input
-                        type="text"
-                        name="address"
-                        value={formData.address}
-                        onChange={handleChange}
-                        className="w-full mt-1 p-2 border rounded-lg"
-                        placeholder="주소 입력"
-                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          name="address"
+                          value={formData.address}
+                          readOnly
+                          className="flex-1 mt-1 p-2 border rounded-lg bg-gray-50 cursor-pointer"
+                          placeholder="주소 검색 버튼을 눌러주세요"
+                          onClick={() => {
+                            // 스크립트 로드 확인 후 실행
+                            if (!window.daum?.Postcode) {
+                              const script = document.createElement('script');
+                              script.src =
+                                '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+                              script.onload = () => {
+                                new window.daum.Postcode({
+                                  oncomplete: function (data: DaumPostcodeData) {
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      address: data.roadAddress || data.jibunAddress,
+                                    }));
+                                  },
+                                }).open();
+                              };
+                              document.head.appendChild(script);
+                            } else {
+                              new window.daum.Postcode({
+                                oncomplete: function (data: DaumPostcodeData) {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    address: data.roadAddress || data.jibunAddress,
+                                  }));
+                                },
+                              }).open();
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!window.daum?.Postcode) {
+                              const script = document.createElement('script');
+                              script.src =
+                                '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+                              script.onload = () => {
+                                new window.daum.Postcode({
+                                  oncomplete: function (data: DaumPostcodeData) {
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      address: data.roadAddress || data.jibunAddress,
+                                    }));
+                                  },
+                                }).open();
+                              };
+                              document.head.appendChild(script);
+                            } else {
+                              new window.daum.Postcode({
+                                oncomplete: function (data: DaumPostcodeData) {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    address: data.roadAddress || data.jibunAddress,
+                                  }));
+                                },
+                              }).open();
+                            }
+                          }}
+                          className="mt-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium whitespace-nowrap"
+                        >
+                          🔍 주소 검색
+                        </button>
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
