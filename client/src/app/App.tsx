@@ -15,6 +15,7 @@ import UserMainHome from '../pages/user/UserMainPage';
 import SuperAdminPage from '../pages/admin/SuperAdminPage';
 import AssignmentPage from '../pages/admin/AssignmentPage';
 import UnitPage from '../pages/admin/UnitPage';
+import UserPage from '../pages/admin/UserPage';
 import SettingsPage from '../pages/admin/SettingsPage';
 
 function App(): ReactElement {
@@ -42,6 +43,9 @@ function App(): ReactElement {
 
           {/* 부대 관리 */}
           <Route path="/admin/units" element={<UnitPage />} />
+
+          {/* 유저 관리 */}
+          <Route path="/admin/users" element={<UserPage />} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/login" replace />} />

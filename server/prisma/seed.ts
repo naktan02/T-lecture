@@ -55,26 +55,46 @@ async function main() {
     logger.info('.env에 SUPER_ADMIN 정보가 없어 관리자 생성을 건너뜁니다.');
   }
 
-  // 2. 소속팀(Team) 시딩
+  // 2. 소속팀(Team) 시딩 - 실제 운영 구조 기반
   logger.info('소속팀 데이터 생성 중...');
-  const teams = ['1팀', '2팀', '3팀', '4팀', '5팀'];
-  for (const teamName of teams) {
+  const teams = [
+    { id: 1, name: '서울 1팀' },
+    { id: 2, name: '서울 2팀' },
+    { id: 3, name: '경기 북부팀' },
+    { id: 4, name: '경기 남부팀' },
+    { id: 5, name: '인천팀' },
+    { id: 6, name: '강원팀' },
+    { id: 7, name: '충청팀' },
+    { id: 8, name: '전라팀' },
+    { id: 9, name: '경상팀' },
+    { id: 10, name: '제주팀' },
+  ];
+  for (const team of teams) {
     await prisma.team.upsert({
-      where: { id: teams.indexOf(teamName) + 1 },
-      update: { name: teamName },
-      create: { name: teamName },
+      where: { id: team.id },
+      update: { name: team.name },
+      create: { id: team.id, name: team.name },
     });
   }
   logger.info(`소속팀 ${teams.length}개 생성 완료`);
 
-  // 3. 덕목(Virtue) 시딩 - 강의 가능 과목
+  // 3. 덕목(Virtue) 시딩 - 인성교육 8대 덕목
   logger.info('덕목(강의 가능 과목) 데이터 생성 중...');
-  const virtues = ['예', '효', '정직', '책임', '존중', '배려', '소통', '협동'];
-  for (const virtueName of virtues) {
+  const virtues = [
+    { id: 1, name: '예' },
+    { id: 2, name: '효' },
+    { id: 3, name: '정직' },
+    { id: 4, name: '책임' },
+    { id: 5, name: '존중' },
+    { id: 6, name: '배려' },
+    { id: 7, name: '소통' },
+    { id: 8, name: '협동' },
+  ];
+  for (const virtue of virtues) {
     await prisma.virtue.upsert({
-      where: { id: virtues.indexOf(virtueName) + 1 },
-      update: { name: virtueName },
-      create: { name: virtueName },
+      where: { id: virtue.id },
+      update: { name: virtue.name },
+      create: { id: virtue.id, name: virtue.name },
     });
   }
   logger.info(`덕목 ${virtues.length}개 생성 완료`);

@@ -22,6 +22,30 @@ class UserRepository {
     });
   }
 
+  // ID로 사용자 찾기 (모든 연관 데이터 포함 - 관리자 상세 조회용)
+  async findByIdWithDetails(id: number | string) {
+    return await prisma.user.findUnique({
+      where: { id: Number(id) },
+      include: {
+        admin: true,
+        instructor: {
+          include: {
+            team: true,
+            virtues: {
+              include: {
+                virtue: true,
+              },
+            },
+            availabilities: {
+              orderBy: { availableOn: 'asc' },
+            },
+            instructorStats: true,
+          },
+        },
+      },
+    });
+  }
+
   // 유저 정보 수정 (User + Instructor 트랜잭션 처리)
   async update(
     id: number | string,

@@ -3,6 +3,8 @@
 
 export { getDeviceId } from './deviceId';
 export { logger } from './logger';
+export * from './formatPhoneNumber';
+
 export { formatDateToString, formatDay, parseStringToDate } from './dateFormat';
 export {
   getHolidaysForMonth,
