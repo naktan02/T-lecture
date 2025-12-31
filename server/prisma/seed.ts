@@ -9,6 +9,8 @@ const prisma = new PrismaClient();
 async function main() {
   const email = process.env.SUPER_ADMIN_EMAIL;
   const password = process.env.SUPER_ADMIN_PASSWORD;
+  const generalEmail = process.env.GENERAL_ADMIN_EMAIL;
+  const generalPassword = process.env.GENERAL_ADMIN_PASSWORD;
 
   // 1. 슈퍼 관리자 생성 로직
   if (email && password) {
@@ -53,6 +55,51 @@ async function main() {
     }
   } else {
     logger.info('.env에 SUPER_ADMIN 정보가 없어 관리자 생성을 건너뜁니다.');
+  }
+
+  // 1-2. 일반 관리자 생성 로직
+  if (generalEmail && generalPassword) {
+    const existing = await prisma.admin.findFirst({
+      where: { level: 'GENERAL', user: { userEmail: generalEmail } },
+      include: { user: true },
+    });
+
+    if (existing) {
+      logger.warn(`이미 일반 관리자(${existing.user.userEmail})가 존재합니다.`);
+    } else {
+      const existingUser = await prisma.user.findUnique({
+        where: { userEmail: generalEmail },
+      });
+
+      let user;
+      if (existingUser) {
+        logger.warn('동일 이메일 유저가 이미 있으므로 해당 계정을 GENERAL ADMIN으로 설정합니다.');
+        user = existingUser;
+      } else {
+        const hashed = await bcrypt.hash(generalPassword, 10);
+        user = await prisma.user.create({
+          data: {
+            userEmail: generalEmail,
+            password: hashed,
+            name: '일반관리자',
+            userphoneNumber: '000-0000-0000',
+            status: 'APPROVED',
+          },
+        });
+      }
+
+      await prisma.admin.upsert({
+        where: { userId: user.id },
+        update: { level: 'GENERAL' },
+        create: {
+          userId: user.id,
+          level: 'GENERAL',
+        },
+      });
+      logger.info(`GENERAL ADMIN 생성 완료: ${generalEmail}`);
+    }
+  } else {
+    logger.info('.env에 GENERAL_ADMIN 정보가 없어 일반 관리자 생성을 건너뜁니다.');
   }
 
   // 2. 소속팀(Team) 시딩 - 실제 운영 구조 기반
