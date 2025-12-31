@@ -192,7 +192,8 @@ class AssignmentDTO {
                 instructorId: assign.userId,
                 name: assign.User.name,
                 team: assign.User.instructor?.team?.name || '소속없음',
-                role: assign.classification,
+                role: assign.role, // Head, Supervisor, or null
+                category: assign.User.instructor?.category || null, // Main, Co, Assistant, Practicum
                 trainingLocationId: assign.trainingLocationId,
               };
             });

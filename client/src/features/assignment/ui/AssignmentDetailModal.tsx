@@ -42,6 +42,8 @@ interface Instructor {
   instructorId: number;
   name: string;
   team: string;
+  role?: string | null; // Head, Supervisor, or null
+  category?: string | null; // Main, Co, Assistant, Practicum
 }
 
 interface DateInfo {
@@ -68,6 +70,7 @@ interface AddPopupTarget {
   unitScheduleId: number;
   date: string;
   locationName: string;
+  trainingLocationId: number;
 }
 
 // --- Helper: Boolean Formatter ---
@@ -200,6 +203,11 @@ interface AssignmentGroupDetailModalProps {
   group: AssignmentGroup;
   onClose: () => void;
   onRemove?: (unitScheduleId: number, instructorId: number) => void;
+  onAdd?: (
+    unitScheduleId: number,
+    instructorId: number,
+    trainingLocationId: number | null,
+  ) => Promise<void>;
   availableInstructors?: any[];
 }
 
@@ -207,6 +215,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
   group,
   onClose,
   onRemove,
+  onAdd,
   availableInstructors = [],
 }) => {
   const [addPopupTarget, setAddPopupTarget] = useState<AddPopupTarget | null>(null);
@@ -254,9 +263,26 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
               key={loc.id}
               className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
             >
-              <div className="bg-indigo-50 px-4 py-3 border-b border-indigo-100 flex items-center gap-2">
-                <span className="text-lg">🏫</span>
-                <h3 className="font-bold text-indigo-900">{loc.name}</h3>
+              <div className="bg-indigo-50 px-4 py-3 border-b border-indigo-100">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🏫</span>
+                  <h3 className="font-bold text-indigo-900">{loc.name}</h3>
+                </div>
+                {/* 총괄/책임강사 표시 */}
+                {(() => {
+                  const headInstructor = loc.dates
+                    .flatMap((d) => d.instructors)
+                    .find((i) => i.role === 'Head' || i.role === 'Supervisor');
+                  if (headInstructor) {
+                    return (
+                      <div className="mt-1 text-sm text-gray-600">
+                        {headInstructor.role === 'Head' ? '👑 총괄강사' : '📋 책임강사'}:{' '}
+                        <span className="font-semibold text-gray-800">{headInstructor.name}</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               <div className="divide-y divide-gray-100">
@@ -273,29 +299,70 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                     </div>
 
                     <div className="flex-1 flex flex-wrap gap-2 items-center">
-                      {dateInfo.instructors.map((inst) => (
-                        <div
-                          key={inst.instructorId}
-                          className="group relative flex items-center gap-2 bg-white border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm hover:border-indigo-300 hover:shadow transition-all"
-                        >
-                          <div>
-                            <div className="text-sm font-bold text-gray-800">{inst.name}</div>
-                            <div className="text-[10px] text-gray-500">{inst.team}</div>
-                          </div>
-
-                          <button
-                            onClick={() =>
-                              setRemoveTarget({
-                                unitScheduleId: dateInfo.unitScheduleId,
-                                instructorId: inst.instructorId,
-                              })
-                            }
-                            className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-600"
+                      {/* 카테고리 우선 정렬: Main > Co > Assistant > Practicum, 같은 카테고리 내 역할순 */}
+                      {[...dateInfo.instructors]
+                        .sort((a, b) => {
+                          const categoryOrder: Record<string, number> = {
+                            Main: 0,
+                            Co: 1,
+                            Assistant: 2,
+                            Practicum: 3,
+                          };
+                          const aCat = categoryOrder[a.category ?? ''] ?? 4;
+                          const bCat = categoryOrder[b.category ?? ''] ?? 4;
+                          if (aCat !== bCat) return aCat - bCat;
+                          // 같은 카테고리면 역할순
+                          const roleOrder = { Head: 0, Supervisor: 1 };
+                          const aRole = a.role
+                            ? (roleOrder[a.role as keyof typeof roleOrder] ?? 2)
+                            : 2;
+                          const bRole = b.role
+                            ? (roleOrder[b.role as keyof typeof roleOrder] ?? 2)
+                            : 2;
+                          if (aRole !== bRole) return aRole - bRole;
+                          return a.instructorId - b.instructorId;
+                        })
+                        .map((inst) => (
+                          <div
+                            key={inst.instructorId}
+                            className={`group relative flex items-center gap-2 border px-3 py-1.5 rounded-lg shadow-sm hover:shadow transition-all ${
+                              inst.role === 'Head'
+                                ? 'bg-amber-50 border-amber-400 hover:border-amber-500'
+                                : inst.role === 'Supervisor'
+                                  ? 'bg-blue-50 border-blue-300 hover:border-blue-400'
+                                  : 'bg-white border-gray-200 hover:border-indigo-300'
+                            }`}
                           >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-sm font-bold text-gray-800">{inst.name}</span>
+                                {inst.role === 'Head' && (
+                                  <span className="px-1.5 py-0.5 text-[10px] font-bold bg-amber-500 text-white rounded">
+                                    총괄
+                                  </span>
+                                )}
+                                {inst.role === 'Supervisor' && (
+                                  <span className="px-1.5 py-0.5 text-[10px] font-bold bg-blue-500 text-white rounded">
+                                    책임
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-gray-500">{inst.team}</div>
+                            </div>
+
+                            <button
+                              onClick={() =>
+                                setRemoveTarget({
+                                  unitScheduleId: dateInfo.unitScheduleId,
+                                  instructorId: inst.instructorId,
+                                })
+                              }
+                              className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-600"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
 
                       <button
                         onClick={() =>
@@ -303,6 +370,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                             unitScheduleId: dateInfo.unitScheduleId,
                             date: dateInfo.date,
                             locationName: loc.name,
+                            trainingLocationId: loc.id,
                           })
                         }
                         className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 text-gray-400 flex items-center justify-center hover:border-indigo-400 hover:text-indigo-500 hover:bg-indigo-50 transition-all"
@@ -332,6 +400,10 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
           target={addPopupTarget}
           allAvailableInstructors={availableInstructors}
           onClose={() => setAddPopupTarget(null)}
+          onAdd={async (inst) => {
+            if (!onAdd) return;
+            await onAdd(addPopupTarget.unitScheduleId, inst.id, addPopupTarget.trainingLocationId);
+          }}
         />
       )}
       {/* 5. 삭제 확인 모달 */}

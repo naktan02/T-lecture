@@ -112,9 +112,13 @@ export const cancelAssignmentByAdmin = asyncHandler(async (req: Request, res: Re
   res.json(result);
 });
 
-// [자동 배정 미리보기] (저장 안 함)
+// [자동 배정 미리보기]
 export const previewAutoAssign = asyncHandler(async (req: Request, res: Response) => {
-  const { startDate, endDate } = req.body;
+  const { startDate, endDate, debugTopK: bodyDebugTopK } = req.body;
+  const queryDebugTopK = req.query.debugTopK;
+
+  // debugTopK: query 또는 body에서 받음 (기본값 0)
+  const debugTopK = Number(queryDebugTopK ?? bodyDebugTopK ?? 0) || 0;
 
   if (!startDate || !endDate) {
     throw new AppError('기간(startDate, endDate)이 필요합니다.', 400, 'VALIDATION_ERROR');
@@ -131,9 +135,10 @@ export const previewAutoAssign = asyncHandler(async (req: Request, res: Response
     userId: req.user!.id,
     startDate,
     endDate,
+    debugTopK,
   });
 
-  const result = await assignmentService.previewAutoAssignments(s, e);
+  const result = await assignmentService.previewAutoAssignments(s, e, debugTopK);
   res.status(200).json(result);
 });
 

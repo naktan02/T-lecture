@@ -2,6 +2,7 @@
 // 배정 알고리즘 Hard 필터 모음
 
 import { AssignmentFilter, InstructorCandidate, AssignmentContext } from './assignment.types';
+import { FILTER_CONFIG } from './config-loader';
 
 /**
  * 가용일 필터
@@ -107,14 +108,52 @@ export const alreadyAssignedFilter: AssignmentFilter = {
   },
 };
 
+export const canceledBlockFilter: AssignmentFilter = {
+  id: 'CANCELED_BLOCK',
+  name: '취소자 재배정 방지 필터',
+  description: '관리자 취소(Canceled) 이력이 있는 강사는 해당 일정에 재배정하지 않음',
+  check(candidate: InstructorCandidate, context: AssignmentContext): boolean {
+    const map = context.blockedInstructorIdsBySchedule;
+    if (!map) return true;
+
+    // uniqueScheduleId = (원본 scheduleId * 1000) + locIdx
+    const originalScheduleId = Math.floor(context.currentScheduleId / 1000);
+    const blocked = map.get(originalScheduleId);
+    if (!blocked) return true;
+    return !blocked.has(candidate.userId);
+  },
+};
+
+/**
+ * 실습강사 거리 제한 필터 (Practicum)
+ * - 실습강사는 집에서 가까운 곳만 배정
+ */
+export const internDistanceFilter: AssignmentFilter = {
+  id: 'INTERN_DISTANCE',
+  name: '실습강사 거리 제한',
+  description: `실습강사는 집에서 ${FILTER_CONFIG.internMaxDistanceKm}km 이내만 배정`,
+  check(candidate: InstructorCandidate, context: AssignmentContext): boolean {
+    // Practicum이 아니면 통과
+    if (candidate.category !== 'Practicum') return true;
+
+    // 거리 확인 (설정값 사용)
+    const maxDistance = FILTER_CONFIG.internMaxDistanceKm;
+    const key = `${candidate.userId}-${context.currentUnitId}`;
+    const distance = context.instructorDistances.get(key) ?? Infinity;
+    return distance <= maxDistance;
+  },
+};
+
 /**
  * 모든 필터 목록
  */
 export const allFilters: AssignmentFilter[] = [
   availabilityFilter,
-  alreadyAssignedFilter, // 중복 배정 방지 (가용일 다음에 체크)
+  alreadyAssignedFilter,
+  canceledBlockFilter,
   distanceFilter,
   areaRestrictionFilter,
+  internDistanceFilter,
   mainInstructorFilter,
   traineeFilter,
 ];

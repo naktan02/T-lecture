@@ -55,10 +55,12 @@ export interface AssignmentRaw {
   trainingLocationId?: number | null;
   state: string;
   classification?: string | null;
+  role?: string | null; // Head, Supervisor, or null
   User: {
     name: string | null;
     instructor?: {
       team?: { name: string | null } | null;
+      category?: string | null;
     } | null;
   };
 }

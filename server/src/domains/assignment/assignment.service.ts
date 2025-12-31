@@ -9,6 +9,12 @@ import assignmentDTO from './assignment.dto';
  * 강사 배정 비즈니스 로직 전담 Service
  */
 class AssignmentService {
+  private subtractMonths(base: Date, months: number): Date {
+    const d = new Date(base);
+    d.setMonth(d.getMonth() - months);
+    return d;
+  }
+
   /**
    * 배정 후보 데이터 조회 (Raw Data 반환)
    */
@@ -43,9 +49,47 @@ class AssignmentService {
       throw new AppError('해당 기간에 배정 가능한 강사가 없습니다.', 404, 'NO_INSTRUCTORS');
     }
 
-    // 2) 알고리즘 실행
+    const traineesPerInstructor = await assignmentRepository.getSystemConfigNumber(
+      'TRAINEES_PER_INSTRUCTOR',
+      36,
+    );
+
+    const scheduleIds = Array.from(
+      new Set(units.flatMap((u) => (u.schedules || []).map((s) => s.id))),
+    );
+    const blockedInstructorIdsBySchedule =
+      await assignmentRepository.findCanceledInstructorIdsByScheduleIds(scheduleIds);
+
+    // ===== 최근 통계(공정성/패널티) =====
+    // 엔진 config에서 사용 중인 값과 맞춰서 우선 하드코딩(추후 SystemConfig로 빼도 됨)
+    // NOTE: 운영 중 튜닝 가능한 값들은 SystemConfig에서 가져오고, 없으면 기본값을 사용한다.
+    const fairnessLookbackMonths = await assignmentRepository.getSystemConfigNumber(
+      'FAIRNESS_LOOKBACK_MONTHS',
+      3,
+    );
+    const rejectionPenaltyMonths = await assignmentRepository.getSystemConfigNumber(
+      'REJECTION_PENALTY_MONTHS',
+      6,
+    );
+    const instructorIds = Array.from(new Set(instructors.map((i: any) => i.userId)));
+    const assignmentSince = this.subtractMonths(start, fairnessLookbackMonths);
+    const rejectionSince = this.subtractMonths(start, rejectionPenaltyMonths);
+
+    const { recentAssignmentCountByInstructorId, recentRejectionCountByInstructorId } =
+      await assignmentRepository.getInstructorRecentStats(
+        instructorIds,
+        assignmentSince,
+        rejectionSince,
+      );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const matchResults = assignmentAlgorithm.execute(units as any, instructors as any);
+    const matchResult = assignmentAlgorithm.execute(units as any, instructors as any, {
+      traineesPerInstructor,
+      blockedInstructorIdsBySchedule,
+      recentAssignmentCountByInstructorId,
+      recentRejectionCountByInstructorId,
+    });
+
+    const { assignments: matchResults } = matchResult;
 
     // DEBUG: 엔진 결과 확인
     console.log(`[DEBUG Engine] matchResults count: ${matchResults?.length ?? 0}`);
@@ -67,8 +111,11 @@ class AssignmentService {
 
   /**
    * 자동 배정 미리보기 (저장 안 함)
+   * @param startDate 시작일
+   * @param endDate 종료일
+   * @param debugTopK 디버그용 상위 K명 breakdown 수집 (0이면 수집 안 함)
    */
-  async previewAutoAssignments(startDate: Date, endDate: Date) {
+  async previewAutoAssignments(startDate: Date, endDate: Date, debugTopK = 0) {
     const start = new Date(startDate);
     const end = new Date(endDate);
 
@@ -92,17 +139,54 @@ class AssignmentService {
       throw new AppError('해당 기간에 배정 가능한 강사가 없습니다.', 404, 'NO_INSTRUCTORS');
     }
 
+    const traineesPerInstructor = await assignmentRepository.getSystemConfigNumber(
+      'TRAINEES_PER_INSTRUCTOR',
+      36,
+    );
+    const scheduleIds = Array.from(
+      new Set(units.flatMap((u) => (u.schedules || []).map((s) => s.id))),
+    );
+    const blockedInstructorIdsBySchedule =
+      await assignmentRepository.findCanceledInstructorIdsByScheduleIds(scheduleIds);
+
+    const fairnessLookbackMonths = await assignmentRepository.getSystemConfigNumber(
+      'FAIRNESS_LOOKBACK_MONTHS',
+      3,
+    );
+    const rejectionPenaltyMonths = await assignmentRepository.getSystemConfigNumber(
+      'REJECTION_PENALTY_MONTHS',
+      6,
+    );
+    const instructorIds = Array.from(new Set(instructors.map((i: any) => i.userId)));
+    const assignmentSince = this.subtractMonths(start, fairnessLookbackMonths);
+    const rejectionSince = this.subtractMonths(start, rejectionPenaltyMonths);
+
+    const { recentAssignmentCountByInstructorId, recentRejectionCountByInstructorId } =
+      await assignmentRepository.getInstructorRecentStats(
+        instructorIds,
+        assignmentSince,
+        rejectionSince,
+      );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const matchResults = assignmentAlgorithm.execute(units as any, instructors as any);
+    const matchResult = assignmentAlgorithm.execute(units as any, instructors as any, {
+      traineesPerInstructor,
+      blockedInstructorIdsBySchedule,
+      recentAssignmentCountByInstructorId,
+      recentRejectionCountByInstructorId,
+      debugTopK, // 디버그용 상위 K명 breakdown 수집
+    });
+
+    const { assignments: matchResults, debug } = matchResult;
 
     if (!matchResults || matchResults.length === 0) {
       throw new AppError('배정 가능한 매칭 결과가 없습니다.', 404, 'NO_MATCHES');
     }
 
-    // 미리보기용: 저장하지 않고 결과만 반환
+    // 미리보기용: 저장하지 않고 결과만 반환 (debug 포함 가능)
     return {
       previewAssignments: matchResults,
       assignedCount: matchResults.length,
+      debug, // 디버그 정보 (있으면 포함)
     };
   }
 

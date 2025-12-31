@@ -6,7 +6,7 @@ interface MatchResult {
   unitScheduleId: number;
   instructorId: number;
   trainingLocationId?: number | null;
-  role?: string;
+  role?: string | null;
 }
 
 interface BulkCreateSummary {
@@ -27,6 +27,89 @@ class AssignmentRepository {
    * 특정 기간 내 활성화된(Active) 배정 날짜 목록 조회
    * 날짜는 KST 기준으로 조회 (DB에 저장된 날짜도 KST 00:00 기준)
    */
+  async getSystemConfigNumber(key: string, defaultValue: number): Promise<number> {
+    const cfg = await prisma.systemConfig.findUnique({ where: { key } });
+    if (!cfg?.value) return defaultValue;
+    const parsed = Number(cfg.value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
+  }
+
+  async getInstructorRecentStats(
+    instructorIds: number[],
+    assignmentSince: Date,
+    rejectionSince: Date,
+  ): Promise<{
+    recentAssignmentCountByInstructorId: Map<number, number>;
+    recentRejectionCountByInstructorId: Map<number, number>;
+  }> {
+    const recentAssignmentCountByInstructorId = new Map<number, number>();
+    const recentRejectionCountByInstructorId = new Map<number, number>();
+
+    if (!instructorIds || instructorIds.length === 0) {
+      return { recentAssignmentCountByInstructorId, recentRejectionCountByInstructorId };
+    }
+
+    // 1) 최근 배정(Pending/Accepted)
+    const assignmentAgg = await prisma.instructorUnitAssignment.groupBy({
+      by: ['userId'],
+      where: {
+        userId: { in: instructorIds },
+        state: { in: ['Pending', 'Accepted'] },
+        UnitSchedule: {
+          date: { gte: assignmentSince },
+        },
+      },
+      _count: { _all: true },
+    });
+
+    for (const r of assignmentAgg) {
+      recentAssignmentCountByInstructorId.set(r.userId, r._count._all);
+    }
+
+    // 2) 최근 거절(Rejected)
+    const rejectionAgg = await prisma.instructorUnitAssignment.groupBy({
+      by: ['userId'],
+      where: {
+        userId: { in: instructorIds },
+        state: 'Rejected',
+        UnitSchedule: {
+          date: { gte: rejectionSince },
+        },
+      },
+      _count: { _all: true },
+    });
+
+    for (const r of rejectionAgg) {
+      recentRejectionCountByInstructorId.set(r.userId, r._count._all);
+    }
+
+    return { recentAssignmentCountByInstructorId, recentRejectionCountByInstructorId };
+  }
+
+  async findCanceledInstructorIdsByScheduleIds(
+    scheduleIds: number[],
+  ): Promise<Map<number, Set<number>>> {
+    const map = new Map<number, Set<number>>();
+    if (!scheduleIds || scheduleIds.length === 0) return map;
+    const rows = await prisma.instructorUnitAssignment.findMany({
+      where: {
+        unitScheduleId: { in: scheduleIds },
+        state: 'Canceled',
+      },
+      select: {
+        unitScheduleId: true,
+        userId: true,
+      },
+    });
+
+    for (const r of rows) {
+      if (!map.has(r.unitScheduleId)) map.set(r.unitScheduleId, new Set<number>());
+      map.get(r.unitScheduleId)!.add(r.userId);
+    }
+
+    return map;
+  }
+
   async findScheduleCandidates(startDate: Date | string, endDate: Date | string) {
     // KST 기준 날짜로 변환 (UTC 기준으로 -9시간 → KST 00:00 = UTC 전날 15:00)
     const startKST = new Date(startDate);
@@ -82,36 +165,43 @@ class AssignmentRepository {
 
   // 자동 배정 결과를 DB에 일괄 생성
   async createAssignmentsBulk(matchResults: MatchResult[]): Promise<BulkCreateSummary> {
-    const summary: BulkCreateSummary = { requested: matchResults.length, created: 0, skipped: 0 };
+    const requested = matchResults.length;
+    if (requested === 0) return { requested: 0, created: 0, skipped: 0 };
 
-    // 트랜잭션 없이 개별 처리 (upsert로 중복 방지)
-    for (const match of matchResults) {
-      try {
-        await prisma.instructorUnitAssignment.upsert({
-          where: {
-            unitScheduleId_userId: {
-              unitScheduleId: match.unitScheduleId,
-              userId: match.instructorId,
-            },
-          },
-          create: {
-            unitScheduleId: match.unitScheduleId,
-            userId: match.instructorId,
-            trainingLocationId: match.trainingLocationId ?? null,
-            classification: 'Temporary',
-            state: 'Pending',
-          },
-          update: {
-            // 이미 존재하면 아무것도 업데이트하지 않음 (skip)
-          },
-        });
-        summary.created += 1;
-      } catch (e) {
-        // 다른 에러는 skip하고 계속 진행
-        summary.skipped += 1;
-      }
+    // (A) 입력 중복 제거: 같은 (unitScheduleId, instructorId)가 여러 번 들어오면
+    //     createMany 전에 dedupe해서 불필요한 work 및 결과 혼선을 줄인다.
+    const uniqueMap = new Map<string, MatchResult>();
+    for (const m of matchResults) {
+      const key = `${m.unitScheduleId}:${m.instructorId}`;
+      if (!uniqueMap.has(key)) uniqueMap.set(key, m);
     }
-    return summary;
+    const uniqueMatches = Array.from(uniqueMap.values());
+
+    // createMany는 기본적으로 update를 하지 않으므로
+    // 기존 row(Rejected/Canceled 등)를 절대 건드리지 않음.
+    // skipDuplicates는 동일 PK가 이미 있으면 그 row는 스킵.
+    // 트랜잭션으로 묶어서 실패 시 0건 저장(부분 저장 방지).
+    const created = await prisma.$transaction(async (tx) => {
+      const res = await tx.instructorUnitAssignment.createMany({
+        data: uniqueMatches.map((match) => ({
+          unitScheduleId: match.unitScheduleId,
+          userId: match.instructorId,
+          trainingLocationId: match.trainingLocationId ?? null,
+          classification: 'Temporary',
+          state: 'Pending',
+          role: match.role as 'Head' | 'Supervisor' | undefined,
+        })),
+        skipDuplicates: true,
+      });
+      // Prisma createMany의 count는 "실제로 insert된 row 수"
+      return res.count;
+    });
+    // skipped는 (dedupe 이후 요청 수) - (실제 insert 수) + (dedupe로 제거된 중복 수)
+    const dedupedRequested = uniqueMatches.length;
+    const inputDupRemoved = requested - dedupedRequested;
+    const skipped = Math.max(dedupedRequested - created, 0) + inputDupRemoved;
+
+    return { requested, created, skipped };
   }
 
   // 배정 상태 업데이트

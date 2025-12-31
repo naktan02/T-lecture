@@ -186,3 +186,23 @@ export const sendTemporaryMessagesApi = async (): Promise<{ count: number; messa
   }
   return res.json();
 };
+// 임시 배정 추가
+export const addAssignmentApi = async (
+  unitScheduleId: number,
+  instructorId: number,
+  trainingLocationId: number | null,
+) => {
+  const res = await apiClient('/api/v1/assignments/bulk-save', {
+    method: 'POST',
+    body: JSON.stringify({
+      assignments: [
+        { unitScheduleId, instructorId, trainingLocationId },
+      ],
+    }),
+  });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(`[${res.status}] ${msg}`);
+  }
+  return res; 
+};

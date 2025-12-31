@@ -1,11 +1,13 @@
 // src/features/assignment/ui/AssignmentWorkspace.tsx
 
-import { useState, useRef, ChangeEvent, MouseEvent } from 'react';
+import { useState, useRef, ChangeEvent, MouseEvent, useEffect } from 'react';
 import { useAssignment } from '../model/useAssignment';
 import { Button, MiniCalendar, ConfirmModal } from '../../../shared/ui';
 import { AssignmentDetailModal, AssignmentGroupDetailModal } from './AssignmentDetailModal';
 import { UnassignedUnitDetailModal } from './UnassignedUnitDetailModal';
 import { GroupedUnassignedUnit } from '../model/useAssignment';
+
+
 
 interface SelectedItem {
   type: 'UNIT' | 'INSTRUCTOR';
@@ -45,11 +47,27 @@ export const AssignmentWorkspace: React.FC = () => {
     executeAutoAssign,
     sendTemporaryMessages,
     removeAssignment,
+    addAssignment 
   } = useAssignment();
 
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
   const [showAutoAssignConfirm, setShowAutoAssignConfirm] = useState(false);
-  const [detailModalData, setDetailModalData] = useState<AssignmentGroup | null>(null);
+
+  type ModalKey = { unitId: number; bucket: 'PENDING' | 'ACCEPTED' } | null;
+  const [detailModalKey, setDetailModalKey] = useState<ModalKey>(null);
+
+  const currentGroup =
+    detailModalKey?.bucket === 'PENDING'
+      ? assignments.find((g) => g.unitId === detailModalKey.unitId)
+      : detailModalKey?.bucket === 'ACCEPTED'
+        ? confirmedAssignments.find((g) => g.unitId === detailModalKey.unitId)
+        : null;
+
+  useEffect(() => {
+    if (detailModalKey && !currentGroup) {
+      setDetailModalKey(null);
+    }
+  }, [detailModalKey, currentGroup]);
 
   const [calendarPopup, setCalendarPopup] = useState<CalendarPopup>({
     visible: false,
@@ -332,7 +350,7 @@ export const AssignmentWorkspace: React.FC = () => {
                   {assignments.map((group) => (
                     <div
                       key={group.unitId}
-                      onClick={() => setDetailModalData(group)}
+                      onClick={() => setDetailModalKey({ unitId: group.unitId, bucket: 'PENDING' })}
                       className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 border-l-indigo-500"
                     >
                       <div className="flex justify-between items-start mb-2">
@@ -388,7 +406,7 @@ export const AssignmentWorkspace: React.FC = () => {
                   {confirmedAssignments.map((group) => (
                     <div
                       key={group.unitId}
-                      onClick={() => setDetailModalData(group)}
+                      onClick={() => setDetailModalKey({ unitId: group.unitId, bucket: 'ACCEPTED' })}
                       className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 border-l-blue-500"
                     >
                       <div className="flex justify-between items-start mb-2">
@@ -447,11 +465,12 @@ export const AssignmentWorkspace: React.FC = () => {
         <AssignmentDetailModal item={selectedItem as any} onClose={() => setSelectedItem(null)} />
       )}
 
-      {detailModalData && (
+      {detailModalKey && currentGroup && (
         <AssignmentGroupDetailModal
-          group={detailModalData as any}
-          onClose={() => setDetailModalData(null)}
+          group={currentGroup as any}
+          onClose={() => setDetailModalKey(null)}
           onRemove={removeAssignment}
+          onAdd={addAssignment}
           availableInstructors={availableInstructors}
         />
       )}

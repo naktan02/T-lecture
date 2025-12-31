@@ -7,6 +7,7 @@ import {
   sendTemporaryMessagesApi,
   UnitSchedule,
   Instructor,
+  addAssignmentApi
 } from '../assignmentApi';
 import { logger, showSuccess, showError } from '../../../shared/utils';
 import {
@@ -51,6 +52,7 @@ interface UseAssignmentReturn {
   availableInstructors: Instructor[];
   assignments: AssignmentData[]; // 임시 배정 (Pending)
   confirmedAssignments: AssignmentData[]; // 확정 배정 (Accepted)
+  addAssignment: (unitScheduleId: number, instructorId: number, trainingLocationId: number | null) => Promise<void>
   fetchData: () => Promise<void>;
   executeAutoAssign: () => Promise<void>;
   sendTemporaryMessages: () => Promise<void>;
@@ -158,7 +160,22 @@ export const useAssignment = (): UseAssignmentReturn => {
       setLoading(false);
     }
   };
-
+  const addAssignment = async (
+    unitScheduleId: number,
+    instructorId: number,
+    trainingLocationId: number | null,
+  ): Promise<void> => {
+    try {
+      setLoading(true);
+      await addAssignmentApi(unitScheduleId, instructorId, trainingLocationId);
+      showSuccess('강사가 추가 배정되었습니다.');
+      await fetchData();
+    } catch (e) {
+      showError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
   // 부대별 그룹화 (유틸 함수 사용)
   const groupedUnassignedUnits = groupUnassignedUnits(sourceData.units);
 
@@ -176,5 +193,6 @@ export const useAssignment = (): UseAssignmentReturn => {
     executeAutoAssign,
     sendTemporaryMessages,
     removeAssignment,
+    addAssignment,
   };
 };

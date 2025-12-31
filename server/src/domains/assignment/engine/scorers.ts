@@ -2,6 +2,23 @@
 // 배정 알고리즘 Soft 스코어러 모음
 
 import { AssignmentScorer, InstructorCandidate, AssignmentContext } from './assignment.types';
+import {
+  SCORER_WEIGHTS,
+  CONSECUTIVE_SCORING,
+  FAIRNESS_SCORING,
+  OPPORTUNITY_COST_CONFIG,
+} from './config-loader';
+
+/**
+ * 월별 가능일 수 계산
+ * - candidate.availableDates: 'YYYY-MM-DD'
+ * - context.targetMonth: 'YYYY-MM'
+ */
+function getMonthlyAvailCount(candidate: InstructorCandidate, context: AssignmentContext): number {
+  const m = context.targetMonth;
+  if (!m) return 0;
+  return (candidate.availableDates || []).reduce((acc, d) => (d.startsWith(m) ? acc + 1 : acc), 0);
+}
 
 /**
  * 신청 횟수 스코어러
@@ -13,7 +30,7 @@ export const applicationCountScorer: AssignmentScorer = {
   description: '해당 월 가능일 등록 수가 많을수록 높은 점수',
   defaultWeight: 10,
   calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
-    const count = candidate.monthlyAvailabilityCount;
+    const count = getMonthlyAvailCount(candidate, context);
     const max = context.maxMonthlyAvailCount || 1;
     return (count / max) * 5; // 0~5점
   },
@@ -48,32 +65,48 @@ export const fairnessScorer: AssignmentScorer = {
 };
 
 /**
- * 연속 배정 스코어러
- * - 같은 부대에 연속으로 배정되면 보너스
+ * 연속 배정 스코어러 (2박3일 등 연속 일정 우선)
+ * - 같은 부대에 연속으로 배정되면 매우 높은 보너스
+ * - 연속 일수가 많을수록 더 높은 점수
  */
 export const consecutiveDaysScorer: AssignmentScorer = {
   id: 'CONSECUTIVE',
   name: '연속 배정 보너스',
-  description: '같은 부대에 연속으로 배정되면 보너스',
-  defaultWeight: 20,
+  description: '같은 부대에 연속으로 배정되면 보너스 (2박3일 우선)',
+  defaultWeight: 100, // 가중치 대폭 증가 (연속 배정 최우선)
   calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
     const { currentAssignments, currentScheduleDate, currentUnitId } = context;
 
-    // 같은 부대에 이미 배정된 날짜 확인
+    // 같은 부대에 이 강사가 이미 배정된 배정들
     const sameUnitAssignments = currentAssignments.filter(
       (a) => a.unitId === currentUnitId && a.instructorId === candidate.userId,
     );
 
     if (sameUnitAssignments.length === 0) return 0;
 
-    // 연속 여부 체크 (하루 차이)
+    // 현재 날짜
     const targetMs = new Date(currentScheduleDate).getTime();
-    const isConsecutive = sameUnitAssignments.some((a) => {
-      const diff = Math.abs(new Date(a.date).getTime() - targetMs);
-      return diff === 24 * 60 * 60 * 1000; // 1일
-    });
+    const oneDayMs = 24 * 60 * 60 * 1000;
 
-    return isConsecutive ? 5 : 0;
+    // 연속 일수 계산 (이전/이후 모두 체크)
+    let consecutiveDays = 1; // 자기 자신 포함
+    const assignedDatesMs = sameUnitAssignments.map((a) => new Date(a.date).getTime());
+
+    // 전날에 배정이 있는지
+    const hasPrevDay = assignedDatesMs.some((d) => targetMs - d === oneDayMs);
+    // 다음날에 배정이 있는지
+    const hasNextDay = assignedDatesMs.some((d) => d - targetMs === oneDayMs);
+
+    if (hasPrevDay) consecutiveDays++;
+    if (hasNextDay) consecutiveDays++;
+
+    // 연속 일수에 따른 점수 (연속 2일이면 7점, 3일이면 10점)
+    // 2박3일 전체 연속이면 매우 높은 점수를 받아 거의 확정적으로 선택됨
+    if (consecutiveDays >= 3) return 10; // 3일 연속 → 최대 점수
+    if (consecutiveDays >= 2) return 7; // 2일 연속 → 높은 점수
+    if (hasPrevDay || hasNextDay) return 5; // 1일 연속 → 기본 보너스
+
+    return 0;
   },
 };
 
@@ -142,6 +175,35 @@ export const penaltyScorer: AssignmentScorer = {
 };
 
 /**
+ * 기회비용 스코어러
+ * - 남은 희소 슬롯을 많이 커버하는 강사는 지금 배정하면 손해
+ * - 범용 자원 아끼기 (희소 자원 먼저 사용)
+ */
+export const opportunityCostScorer: AssignmentScorer = {
+  id: 'OPPORTUNITY_COST',
+  name: '기회비용 점수',
+  description: '희소 슬롯 많이 커버하는 강사 감점 (범용 자원 아끼기)',
+  defaultWeight: -5, // 음수: 희소 자원 아끼기
+  calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
+    const remainingSlots = context.remainingSlotsByInstructor?.get(candidate.userId) ?? 0;
+    const totalRemaining = context.totalRemainingSlots ?? 1;
+
+    // 남은 슬롯이 평균 이상이면 지금 쓰면 손해 → 감점
+    const avgRemaining = totalRemaining / (context.remainingSlotsByInstructor?.size || 1);
+
+    if (remainingSlots > avgRemaining * 1.5) {
+      // 평균 1.5배 이상 커버 가능 → 큰 감점
+      return 3;
+    } else if (remainingSlots > avgRemaining) {
+      // 평균 이상 → 작은 감점
+      return 1.5;
+    }
+    // 평균 이하 → 감점 없음 (희소 자원)
+    return 0;
+  },
+};
+
+/**
  * 모든 스코어러 목록
  */
 export const allScorers: AssignmentScorer[] = [
@@ -152,4 +214,5 @@ export const allScorers: AssignmentScorer[] = [
   distanceScorer,
   priorityScorer,
   penaltyScorer,
+  opportunityCostScorer,
 ];

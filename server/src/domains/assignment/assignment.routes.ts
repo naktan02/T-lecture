@@ -25,7 +25,7 @@ router.get('/candidates', auth, requireRole('ADMIN'), assignmentController.getCa
 // 관리자: 자동배정 실행
 router.post('/auto-assign', auth, requireRole('ADMIN'), assignmentController.autoAssign);
 
-// 관리자: 자동배정 미리보기 (저장 안 함)
+// 관리자: 자동배정 미리보기
 router.post('/preview', auth, requireRole('ADMIN'), assignmentController.previewAutoAssign);
 
 // 관리자: 배정 일괄 저장

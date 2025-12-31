@@ -20,6 +20,11 @@ export interface AssignmentContext {
   // 계산된 통계
   maxMonthlyAvailCount: number;
   avgAssignmentCount: number;
+  blockedInstructorIdsBySchedule?: Map<number, Set<number>>;
+
+  // 기회비용 계산용 (Slack 기반)
+  remainingSlotsByInstructor?: Map<number, number>; // instructorId → 남은 배정 가능 슬롯 수
+  totalRemainingSlots?: number; // 전체 남은 슬롯 수
 }
 
 export interface AssignmentConfig {
@@ -65,6 +70,9 @@ export interface AssignmentData {
   teamId: number | null;
   state: AssignmentState;
   classification: AssignmentCategory | null;
+  // 역할 결정용
+  isTeamLeader?: boolean;
+  generation?: number | null;
 }
 
 // =========================================
@@ -90,6 +98,47 @@ export interface LocationData {
   id: number;
   name: string;
   instructorsNumbers: number | null;
+}
+
+// =========================================
+// Bundle Types (Slack 기반 배정용)
+// =========================================
+
+/**
+ * 연속 일정 묶음 (2박3일 등)
+ * - 같은 부대의 연속된 날짜를 하나의 묶음으로 관리
+ */
+export interface ScheduleBundle {
+  bundleId: string; // `${unitId}_${startDate}`
+  unitId: number;
+  unitName: string;
+  region: string;
+  schedules: ScheduleData[]; // 연속된 스케줄들
+  dates: string[]; // 'YYYY-MM-DD' 배열
+  requiredPerDay: number; // 각 날짜별 필요 인원
+  totalRequired: number; // 전체 필요 인원
+  trainingLocations: LocationData[];
+}
+
+/**
+ * 묶음별 Slack 정보
+ * - Slack = 가능 인원 - 필요 인원
+ * - 낮을수록 위험 → 먼저 처리
+ */
+export interface BundleSlackInfo {
+  bundle: ScheduleBundle;
+
+  // 전체 연속 가능한 강사 ID 목록
+  fullBundleCandidateIds: number[];
+
+  // Slack 계산 (날짜별 min)
+  minSlack: number; // min_over_days(available - required)
+
+  // 겹치는 날짜 병목 페널티
+  overlapPenalty: number;
+
+  // 최종 위험도 (낮을수록 위험)
+  riskScore: number; // minSlack - overlapPenalty
 }
 
 // =========================================
@@ -135,7 +184,69 @@ export interface AssignmentResult {
   instructorId: number;
   score: number;
   classification?: AssignmentCategory;
+  role?: 'Head' | 'Supervisor' | null;
 }
+
+// =========================================
+// Debug/Breakdown Types (분석용)
+// =========================================
+
+/**
+ * 개별 스코어러의 점수 분해
+ */
+export interface ScoreBreakdown {
+  scorerId: string;
+  scorerName: string;
+  weight: number;
+  raw: number; // scorer.calculate 결과
+  weighted: number; // weight * raw
+}
+
+/**
+ * 디버그용 후보자 정보
+ */
+export interface DebugCandidateInfo {
+  userId: number;
+  name: string;
+  totalScore: number;
+  monthlyAvailCount: number;
+  recentAssignmentCount: number;
+  recentRejectionCount: number;
+  priorityCredits: number;
+  tieRand: number; // deterministic 0~1
+  breakdown: ScoreBreakdown[];
+}
+
+/**
+ * 디버그용 스케줄 정보
+ */
+export interface DebugScheduleInfo {
+  uniqueScheduleId: number;
+  date: string; // YYYY-MM-DD
+  required: number;
+  candidatesTotal: number;
+  candidatesAfterFilter: number;
+  topK: number;
+  topCandidates: DebugCandidateInfo[];
+  selected: Array<{
+    userId: number;
+    name: string;
+    totalScore: number;
+  }>;
+}
+
+/**
+ * 엔진 디버그 결과
+ * - 배정 후 분석/감사/튜닝용
+ * - debugTopK > 0일 때만 생성됨
+ */
+export interface EngineDebugResult {
+  schedules: DebugScheduleInfo[];
+}
+
+// =========================================
+// Engine Result
+// =========================================
 
 export interface EngineResult {
   assignments: AssignmentResult[];
@@ -144,4 +255,9 @@ export interface EngineResult {
     totalUnassigned: number;
     byUnit: Record<number, number>;
   };
+  /**
+   * 디버그/감사/튜닝용 (옵션)
+   * - debugTopK > 0으로 호출 시에만 포함
+   */
+  debug?: EngineDebugResult;
 }

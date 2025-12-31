@@ -16,7 +16,7 @@ interface InstructorSelectionPopupProps {
   target: Target;
   allAvailableInstructors: any[];
   onClose: () => void;
-  onAdd?: (instructor: Instructor) => void;
+  onAdd?: (instructor: Instructor) => Promise<void>;
 }
 
 type TabType = 'AVAILABLE' | 'ALL';
@@ -25,7 +25,7 @@ export const InstructorSelectionPopup: React.FC<InstructorSelectionPopupProps> =
   target,
   allAvailableInstructors = [],
   onClose,
-  onAdd: _onAdd,
+  onAdd,
 }) => {
   const [tab, setTab] = useState<TabType>('AVAILABLE');
   const [search, setSearch] = useState<string>('');
@@ -39,11 +39,16 @@ export const InstructorSelectionPopup: React.FC<InstructorSelectionPopupProps> =
   const handleSearchChange = (e: ChangeEvent<HTMLInputElement>): void => {
     setSearch(e.target.value);
   };
+const handleSelectInstructor = async (inst: Instructor) => {
+  if (!onAdd) return;         
+  await onAdd(inst);       
+  onClose();               
+};
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-transparent">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
       {/* 팝업 본체 */}
-      <div className="bg-white w-[400px] rounded-lg shadow-2xl border border-gray-300 flex flex-col overflow-hidden animate-fadeInScale">
+      <div className="bg-white w-full max-w-[420px] max-h-[80vh] rounded-lg shadow-2xl border border-gray-300 flex flex-col overflow-hidden">
         <div className="bg-gray-800 text-white px-4 py-3 flex justify-between items-center">
           <h3 className="font-bold text-sm">강사 추가 ({target.date})</h3>
           <Button
@@ -75,7 +80,7 @@ export const InstructorSelectionPopup: React.FC<InstructorSelectionPopupProps> =
         </div>
 
         {/* 검색 & 리스트 */}
-        <div className="p-4 flex-1 flex flex-col h-[300px]">
+        <div className="p-4 flex-1 flex flex-col min-h-0">
           <div className="mb-2">
             <input
               type="text"
@@ -86,7 +91,7 @@ export const InstructorSelectionPopup: React.FC<InstructorSelectionPopupProps> =
             />
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-1">
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-1">
             {filteredList.map((inst) => (
               <div
                 key={inst.id}
@@ -100,8 +105,7 @@ export const InstructorSelectionPopup: React.FC<InstructorSelectionPopupProps> =
                   size="xsmall"
                   variant="outline"
                   onClick={() => {
-                    alert(`${inst.name} 강사를 추가합니다.`);
-                    onClose();
+                    handleSelectInstructor(inst);
                   }}
                 >
                   선택
