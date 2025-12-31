@@ -3,16 +3,14 @@
 import { useState, useRef, ChangeEvent, MouseEvent, useEffect } from 'react';
 import { useAssignment } from '../model/useAssignment';
 import { Button, MiniCalendar, ConfirmModal } from '../../../shared/ui';
-import { AssignmentDetailModal, AssignmentGroupDetailModal } from './AssignmentDetailModal';
+import { AssignmentGroupDetailModal } from './AssignmentDetailModal';
 import { UnassignedUnitDetailModal } from './UnassignedUnitDetailModal';
-import { GroupedUnassignedUnit } from '../model/useAssignment';
 
-
-
-interface SelectedItem {
-  type: 'UNIT' | 'INSTRUCTOR';
-  [key: string]: unknown;
-}
+// ID 기반 선택 키
+type SelectionKey =
+  | { type: 'UNIT'; unitId: number }
+  | { type: 'INSTRUCTOR'; instructorId: number }
+  | null;
 
 interface CalendarPopup {
   visible: boolean;
@@ -47,14 +45,26 @@ export const AssignmentWorkspace: React.FC = () => {
     executeAutoAssign,
     sendTemporaryMessages,
     removeAssignment,
-    addAssignment 
+    addAssignment,
   } = useAssignment();
 
-  const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
+  // ID 기반 선택 (스냅샷 대신 ID만 저장)
+  const [selectionKey, setSelectionKey] = useState<SelectionKey>(null);
   const [showAutoAssignConfirm, setShowAutoAssignConfirm] = useState(false);
 
   type ModalKey = { unitId: number; bucket: 'PENDING' | 'ACCEPTED' } | null;
   const [detailModalKey, setDetailModalKey] = useState<ModalKey>(null);
+
+  // 실시간 데이터 조회 (ID로 최신 데이터 찾기)
+  const selectedUnit =
+    selectionKey?.type === 'UNIT'
+      ? groupedUnassignedUnits.find((u) => u.unitId === selectionKey.unitId)
+      : null;
+
+  const selectedInstructor =
+    selectionKey?.type === 'INSTRUCTOR'
+      ? availableInstructors.find((i) => i.id === selectionKey.instructorId)
+      : null;
 
   const currentGroup =
     detailModalKey?.bucket === 'PENDING'
@@ -62,6 +72,16 @@ export const AssignmentWorkspace: React.FC = () => {
       : detailModalKey?.bucket === 'ACCEPTED'
         ? confirmedAssignments.find((g) => g.unitId === detailModalKey.unitId)
         : null;
+
+  // 데이터 삭제 시 모달 자동 닫기
+  useEffect(() => {
+    if (selectionKey?.type === 'UNIT' && !selectedUnit) {
+      setSelectionKey(null);
+    }
+    if (selectionKey?.type === 'INSTRUCTOR' && !selectedInstructor) {
+      setSelectionKey(null);
+    }
+  }, [selectionKey, selectedUnit, selectedInstructor]);
 
   useEffect(() => {
     if (detailModalKey && !currentGroup) {
@@ -224,7 +244,7 @@ export const AssignmentWorkspace: React.FC = () => {
                 {groupedUnassignedUnits.map((unit) => (
                   <div
                     key={unit.unitId}
-                    onClick={() => setSelectedItem({ ...unit, type: 'UNIT' })}
+                    onClick={() => setSelectionKey({ type: 'UNIT', unitId: unit.unitId })}
                     className="bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-md hover:border-red-300 transition-all border-l-4 border-l-transparent hover:border-l-red-400 group"
                   >
                     <div className="font-bold text-gray-800 text-sm flex justify-between items-center mb-2">
@@ -280,7 +300,7 @@ export const AssignmentWorkspace: React.FC = () => {
                   {availableInstructors.map((inst) => (
                     <div
                       key={inst.id}
-                      onClick={() => setSelectedItem({ ...inst, type: 'INSTRUCTOR' })}
+                      onClick={() => setSelectionKey({ type: 'INSTRUCTOR', instructorId: inst.id })}
                       className="relative bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-slate-400 transition-all border-l-4 border-l-transparent hover:border-l-slate-600"
                     >
                       <div className="font-bold text-gray-800 text-sm flex items-center gap-2">
@@ -406,7 +426,9 @@ export const AssignmentWorkspace: React.FC = () => {
                   {confirmedAssignments.map((group) => (
                     <div
                       key={group.unitId}
-                      onClick={() => setDetailModalKey({ unitId: group.unitId, bucket: 'ACCEPTED' })}
+                      onClick={() =>
+                        setDetailModalKey({ unitId: group.unitId, bucket: 'ACCEPTED' })
+                      }
                       className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 border-l-blue-500"
                     >
                       <div className="flex justify-between items-start mb-2">
@@ -430,8 +452,7 @@ export const AssignmentWorkspace: React.FC = () => {
         </div>
       </div>
 
-      {/* 모달 */}
-      <AssignmentDetailModal item={selectedItem} onClose={() => setSelectedItem(null)} />
+      {/* 캘린더 팝업 (Overlay) */}
 
       {/* 캘린더 팝업 (Overlay) */}
       {calendarPopup.visible && (
@@ -453,17 +474,11 @@ export const AssignmentWorkspace: React.FC = () => {
       )}
 
       {/* 미배정 부대 상세 모달 */}
-      {selectedItem && selectedItem.type === 'UNIT' && (
-        <UnassignedUnitDetailModal
-          unit={selectedItem as unknown as GroupedUnassignedUnit}
-          onClose={() => setSelectedItem(null)}
-        />
+      {selectedUnit && (
+        <UnassignedUnitDetailModal unit={selectedUnit} onClose={() => setSelectionKey(null)} />
       )}
 
-      {/* 강사 상세 모달 */}
-      {selectedItem && selectedItem.type === 'INSTRUCTOR' && (
-        <AssignmentDetailModal item={selectedItem as any} onClose={() => setSelectedItem(null)} />
-      )}
+      {/* 강사 상세 모달 - 현재는 별도 모달 없음, 필요시 추가 */}
 
       {detailModalKey && currentGroup && (
         <AssignmentGroupDetailModal
