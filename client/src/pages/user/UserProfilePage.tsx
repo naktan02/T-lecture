@@ -24,7 +24,7 @@ declare global {
 const UserProfilePage: React.FC = () => {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
-  const { user: currentUser } = useAuthGuard('USER'); // 현재 로그인 유저 정보 (role 등 확인용)
+  const { shouldRender } = useAuthGuard('USER'); // 현재 로그인 유저 정보 (role 등 확인용)
 
   // 폼 상태
   const [formData, setFormData] = useState<UpdateProfilePayload>({});
@@ -227,7 +227,7 @@ const UserProfilePage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <ContentWrapper title="내 정보">
+      <ContentWrapper>
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
         </div>
@@ -237,7 +237,7 @@ const UserProfilePage: React.FC = () => {
 
   if (error || !user) {
     return (
-      <ContentWrapper title="내 정보">
+      <ContentWrapper>
         <div className="text-red-500 text-center py-8">사용자 정보를 불러오는데 실패했습니다.</div>
       </ContentWrapper>
     );
@@ -246,8 +246,10 @@ const UserProfilePage: React.FC = () => {
   const isInstructor = !!user.instructor;
   const isAdmin = !!user.admin;
 
+  if (!shouldRender) return null;
+
   return (
-    <ContentWrapper title="내 정보">
+    <ContentWrapper>
       <div className="max-w-4xl mx-auto space-y-6">
         {/* 상단 헤더 카드 */}
         <div className="bg-white shadow rounded-lg overflow-hidden">
