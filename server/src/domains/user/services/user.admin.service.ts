@@ -273,8 +273,9 @@ class AdminService {
     const isInstructor = !!user.instructor;
 
     if (isInstructor) {
-      if (address !== undefined) {
-        instructorData.location = address;
+      // 주소가 변경된 경우에만 lat/lng 초기화
+      if (address !== undefined && address !== user.instructor!.location) {
+        instructorData.location = address === '' ? null : address;
         instructorData.lat = null;
         instructorData.lng = null;
       }
@@ -296,7 +297,7 @@ class AdminService {
         instructorData.generation = generation;
       }
       if (restrictedArea !== undefined) {
-        instructorData.restrictedArea = restrictedArea;
+        instructorData.restrictedArea = restrictedArea === '' ? null : restrictedArea;
       }
 
       // 프로필 완료 여부 자동 계산
