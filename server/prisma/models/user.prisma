@@ -57,6 +57,7 @@ model Instructor {
   restrictedArea   String?       @map("제한지역") @db.Text
   lat              Float?        @map("위도")
   lng              Float?        @map("경도")
+  hasCar           Boolean       @default(false) @map("자차여부")
   profileCompleted Boolean       @default(false) @map("강사프로필완료")
 
   // relations

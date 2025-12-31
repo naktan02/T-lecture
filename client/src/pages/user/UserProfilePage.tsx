@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getMyProfile,
@@ -7,13 +7,41 @@ import {
 } from '../../features/user/api/user.me.api';
 import { ContentWrapper } from '../../shared/ui';
 import { showSuccess, showError } from '../../shared/utils';
+import {
+  sendVerificationCode,
+  verifyEmailCode,
+  getInstructorMeta,
+} from '../../features/auth/authApi';
+import { useAuthGuard } from '../../features/auth/model/useAuthGuard';
+
+// Daum Postcode 타입 정의 (간략)
+declare global {
+  interface Window {
+    daum: any;
+  }
+}
 
 const UserProfilePage: React.FC = () => {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
+  const { user: currentUser } = useAuthGuard('USER'); // 현재 로그인 유저 정보 (role 등 확인용)
 
   // 폼 상태
   const [formData, setFormData] = useState<UpdateProfilePayload>({});
+
+  // 비밀번호 확인용 상태
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [passwordMismatch, setPasswordMismatch] = useState(false);
+
+  // 이메일 인증 관련 상태
+  const [emailCode, setEmailCode] = useState('');
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [emailVerificationMsg, setEmailVerificationMsg] = useState('');
+
+  // 메타데이터 상태 (덕목 목록)
+  const [virtueOptions, setVirtueOptions] = useState<{ id: number; name: string }[]>([]);
 
   const {
     data: user,
@@ -24,12 +52,43 @@ const UserProfilePage: React.FC = () => {
     queryFn: getMyProfile,
   });
 
+  // 메타데이터 로드
+  useEffect(() => {
+    if (user?.instructor) {
+      getInstructorMeta().then((meta) => {
+        // null safe mapping
+        const options = meta.virtues.map((v) => ({
+          id: v.id,
+          name: v.name || '이름 없음',
+        }));
+        setVirtueOptions(options);
+      });
+    }
+  }, [user]);
+
+  // Daum Postcode 스크립트 로드
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
   const updateMutation = useMutation({
     mutationFn: updateMyProfile,
     onSuccess: () => {
       showSuccess('프로필이 수정되었습니다.');
       queryClient.invalidateQueries({ queryKey: ['myProfile'] });
       setIsEditing(false);
+      // 상태 초기화
+      setPasswordConfirm('');
+      setPasswordMismatch(false);
+      setEmailCode('');
+      setIsEmailVerified(false);
+      setEmailVerificationMsg('');
     },
     onError: (err: any) => {
       showError(err.message || '프로필 수정에 실패했습니다.');
@@ -43,24 +102,127 @@ const UserProfilePage: React.FC = () => {
         phoneNumber: user.userphoneNumber || '',
         address: user.instructor?.location || '',
         email: user.userEmail,
-        password: '', // 비밀번호는 비워둠
+        password: '',
+        restrictedArea: user.instructor?.restrictedArea || '',
+        hasCar: user.instructor?.hasCar || false,
+        virtueIds: user.instructor?.virtues?.map((v) => v.virtue.id) || [],
       });
       setIsEditing(true);
+      // 초기화
+      setPasswordConfirm('');
+      setIsEmailVerified(false);
+      setEmailVerificationMsg('');
+      if (user.userEmail) {
+        // 기존 이메일은 이미 인증된 상태로 간주하지만, 수정 시 다시 인증해야 함
+        // 여기서는 "변경 시에만 인증" 로직을 따름
+      }
     }
   };
 
   const handleCancelClick = () => {
     setIsEditing(false);
+    setPasswordConfirm('');
+    setEmailCode('');
+    setEmailVerificationMsg('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 유효성 검사
+    if (formData.password && formData.password !== passwordConfirm) {
+      alert('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    // 이메일 변경 시 인증 확인
+    if (formData.email !== user?.userEmail && !isEmailVerified) {
+      alert('이메일 변경 시 인증이 필요합니다.');
+      return;
+    }
+
     updateMutation.mutate(formData);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (name === 'password') {
+      setPasswordMismatch(value !== passwordConfirm);
+    }
+  };
+
+  const handlePasswordConfirmChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPasswordConfirm(value);
+    setPasswordMismatch(formData.password !== value);
+  };
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: checked }));
+  };
+
+  // 덕목 멀티 셀렉트 핸들러
+  const handleVirtueToggle = (virtueId: number) => {
+    setFormData((prev) => {
+      const currentIds = prev.virtueIds || [];
+      const exists = currentIds.includes(virtueId);
+      const newIds = exists
+        ? currentIds.filter((id) => id !== virtueId)
+        : [...currentIds, virtueId];
+      return { ...prev, virtueIds: newIds };
+    });
+  };
+
+  // 주소 검색 핸들러
+  const handleAddressSearch = () => {
+    if (window.daum && window.daum.Postcode) {
+      new window.daum.Postcode({
+        oncomplete: function (data: any) {
+          // 팝업에서 검색결과 항목을 클릭했을때 실행할 코드를 작성하는 부분.
+          // 예제를 참고하여 다양한 주소 조합을 적용할 수 있습니다.
+          const fullAddress = data.address; // 기본 주소
+          setFormData((prev) => ({ ...prev, address: fullAddress }));
+        },
+      }).open();
+    } else {
+      alert('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+    }
+  };
+
+  // 이메일 인증 발송
+  const handleSendCode = async () => {
+    if (!formData.email) return;
+    try {
+      setIsSendingCode(true);
+      await sendVerificationCode(formData.email);
+      setEmailVerificationMsg('인증번호가 발송되었습니다.');
+      setIsEmailVerified(false);
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setIsSendingCode(false);
+    }
+  };
+
+  // 이메일 인증 확인
+  const handleVerifyCode = async () => {
+    if (!formData.email || !emailCode) return;
+    try {
+      setIsVerifyingCode(true);
+      await verifyEmailCode(formData.email, emailCode);
+      setIsEmailVerified(true);
+      setEmailVerificationMsg('인증되었습니다.');
+    } catch (e: any) {
+      setIsEmailVerified(false);
+      alert(e.message);
+    } finally {
+      setIsVerifyingCode(false);
+    }
   };
 
   if (isLoading) {
@@ -214,36 +376,106 @@ const UserProfilePage: React.FC = () => {
                   )}
                 </div>
 
-                <div className="sm:col-span-3">
+                {/* 이메일 섹션 (인증 포함) */}
+                <div className="sm:col-span-full border-t border-gray-100 pt-4">
                   <label className="block text-sm font-medium text-gray-700">이메일</label>
                   {isEditing ? (
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email || ''}
-                      onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-                    />
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="email"
+                          name="email"
+                          value={formData.email || ''}
+                          onChange={(e) => {
+                            handleInputChange(e);
+                            setIsEmailVerified(false);
+                            setEmailVerificationMsg('');
+                          }}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                        />
+                        {formData.email !== user.userEmail && (
+                          <button
+                            type="button"
+                            onClick={handleSendCode}
+                            disabled={isSendingCode || isEmailVerified}
+                            className="mt-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap disabled:opacity-50"
+                          >
+                            {isSendingCode
+                              ? '발송 중'
+                              : isEmailVerified
+                                ? '인증됨'
+                                : '인증번호 발송'}
+                          </button>
+                        )}
+                      </div>
+                      {/* 인증번호 입력창 */}
+                      {formData.email !== user.userEmail && !isEmailVerified && (
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="인증번호 입력"
+                            value={emailCode}
+                            onChange={(e) => setEmailCode(e.target.value)}
+                            className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleVerifyCode}
+                            disabled={isVerifyingCode}
+                            className="bg-indigo-600 text-white hover:bg-indigo-700 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap disabled:opacity-50"
+                          >
+                            확인
+                          </button>
+                        </div>
+                      )}
+                      {emailVerificationMsg && (
+                        <p
+                          className={`text-xs ${
+                            isEmailVerified ? 'text-green-600' : 'text-blue-600'
+                          }`}
+                        >
+                          {emailVerificationMsg}
+                        </p>
+                      )}
+                    </div>
                   ) : (
-                    <div className="mt-1 text-sm text-gray-500">{user.userEmail}</div>
+                    <div className="mt-1 text-sm text-gray-900">{user.userEmail}</div>
                   )}
                 </div>
 
-                <div className="sm:col-span-3">
-                  <label className="block text-sm font-medium text-gray-700">새 비밀번호</label>
-                  {isEditing ? (
-                    <input
-                      type="password"
-                      name="password"
-                      placeholder="변경시에만 입력해주세요"
-                      value={formData.password || ''}
-                      onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-                    />
-                  ) : (
-                    <div className="mt-1 text-sm text-gray-400">********</div>
-                  )}
-                </div>
+                {/* 비밀번호 변경 섹션 */}
+                {isEditing && (
+                  <div className="sm:col-span-full border-t border-gray-100 pt-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">비밀번호 변경</h4>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div>
+                        <input
+                          type="password"
+                          name="password"
+                          autoComplete="new-password"
+                          placeholder="새 비밀번호 (변경시에만 입력)"
+                          value={formData.password || ''}
+                          onChange={handleInputChange}
+                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="password"
+                          placeholder="새 비밀번호 확인"
+                          autoComplete="new-password"
+                          value={passwordConfirm}
+                          onChange={handlePasswordConfirmChange}
+                          disabled={!formData.password}
+                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border disabled:bg-gray-100"
+                        />
+                      </div>
+                    </div>
+                    {passwordMismatch && (
+                      <p className="mt-1 text-xs text-red-600">비밀번호가 일치하지 않습니다.</p>
+                    )}
+                  </div>
+                )}
 
                 {/* 강사 전용 필드 */}
                 {isInstructor && (
@@ -257,16 +489,69 @@ const UserProfilePage: React.FC = () => {
                         활동 지역 (주소)
                       </label>
                       {isEditing ? (
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            name="address"
+                            readOnly
+                            value={formData.address || ''}
+                            onChange={handleInputChange}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-50 sm:text-sm p-2 border cursor-pointer"
+                            onClick={handleAddressSearch}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddressSearch}
+                            className="mt-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap"
+                          >
+                            주소 검색
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="mt-1 text-sm text-gray-900">
+                          {user.instructor?.location || '-'}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <label className="block text-sm font-medium text-gray-700">제한 지역</label>
+                      {isEditing ? (
                         <input
                           type="text"
-                          name="address"
-                          value={formData.address || ''}
+                          name="restrictedArea"
+                          value={formData.restrictedArea || ''}
                           onChange={handleInputChange}
+                          placeholder="예: 서울 강남구"
                           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
                         />
                       ) : (
                         <div className="mt-1 text-sm text-gray-900">
-                          {user.instructor?.location || '-'}
+                          {user.instructor?.restrictedArea || '없음'}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <label className="block text-sm font-medium text-gray-700">자차 여부</label>
+                      {isEditing ? (
+                        <div className="mt-2">
+                          <label className="inline-flex items-center">
+                            <input
+                              type="checkbox"
+                              name="hasCar"
+                              checked={formData.hasCar || false}
+                              onChange={handleCheckboxChange}
+                              className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                            />
+                            <span className="ml-2 text-sm text-gray-600">
+                              자차 보유 및 운행 가능
+                            </span>
+                          </label>
+                        </div>
+                      ) : (
+                        <div className="mt-1 text-sm text-gray-900">
+                          {user.instructor?.hasCar ? '보유' : '미보유'}
                         </div>
                       )}
                     </div>
@@ -290,61 +575,49 @@ const UserProfilePage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="sm:col-span-3">
-                      <label className="block text-sm font-medium text-gray-700">제한 지역</label>
-                      <div className="mt-1 text-sm text-gray-900">
-                        {user.instructor?.restrictedArea || '없음'}
-                      </div>
-                    </div>
-
                     <div className="sm:col-span-full">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         강의 가능 과목(덕목)
                       </label>
-                      <div className="flex flex-wrap gap-2">
-                        {user.instructor?.virtues && user.instructor.virtues.length > 0 ? (
-                          user.instructor.virtues.map((v) => (
-                            <span
-                              key={v.virtue.id}
-                              className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                      {isEditing ? (
+                        <div className="flex flex-wrap gap-2 p-2 border rounded-md border-gray-200 bg-gray-50">
+                          {virtueOptions.map((v) => (
+                            <label
+                              key={v.id}
+                              className="inline-flex items-center mr-3 mb-2 cursor-pointer"
                             >
-                              {v.virtue.name}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-sm text-gray-500">-</span>
-                        )}
-                      </div>
+                              <input
+                                type="checkbox"
+                                value={v.id}
+                                checked={formData.virtueIds?.includes(v.id) || false}
+                                onChange={() => handleVirtueToggle(v.id)}
+                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                              />
+                              <span className="ml-1.5 text-sm text-gray-700">{v.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {user.instructor?.virtues && user.instructor.virtues.length > 0 ? (
+                            user.instructor.virtues.map((v) => (
+                              <span
+                                key={v.virtue.id}
+                                className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                              >
+                                {v.virtue.name}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-sm text-gray-500">-</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </>
                 )}
               </div>
             </form>
-
-            {/* 통계 섹션 (강사만) */}
-            {isInstructor && user.instructor?.instructorStats && (
-              <div className="bg-white shadow rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-100">
-                  활동 통계
-                </h3>
-                <dl className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                  <div className="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden sm:p-6">
-                    <dt className="text-sm font-medium text-gray-500 truncate">기존 실습 횟수</dt>
-                    <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                      {user.instructor.instructorStats[0]?.legacyPracticumCount || 0}
-                    </dd>
-                  </div>
-                  <div className="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden sm:p-6">
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      자동 승급 대상 여부
-                    </dt>
-                    <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                      {user.instructor.instructorStats[0]?.autoPromotionEnabled ? '대상' : '비대상'}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            )}
           </div>
         </div>
       </div>

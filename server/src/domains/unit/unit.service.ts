@@ -139,13 +139,24 @@ class UnitService {
   async modifyUnitBasicInfo(id: number | string, rawData: UnitBasicInfoInput) {
     const updateData: Prisma.UnitUpdateInput = {};
 
-    if (rawData.name !== undefined) updateData.name = rawData.name;
+    if (rawData.name !== undefined) updateData.name = rawData.name === '' ? null : rawData.name;
     if (rawData.unitType !== undefined) updateData.unitType = rawData.unitType;
-    if (rawData.wideArea !== undefined) updateData.wideArea = rawData.wideArea;
-    if (rawData.region !== undefined) updateData.region = rawData.region;
+    if (rawData.wideArea !== undefined)
+      updateData.wideArea = rawData.wideArea === '' ? null : rawData.wideArea;
+    if (rawData.region !== undefined)
+      updateData.region = rawData.region === '' ? null : rawData.region;
 
-    if (rawData.addressDetail) {
-      updateData.addressDetail = rawData.addressDetail;
+    // 기존 정보 조회하여 주소 변경 여부 확인
+    const existingUnit = await unitRepository.findUnitWithRelations(id);
+    if (!existingUnit) {
+      throw new AppError('해당 부대를 찾을 수 없습니다.', 404, 'UNIT_NOT_FOUND');
+    }
+
+    if (
+      rawData.addressDetail !== undefined &&
+      rawData.addressDetail !== existingUnit.addressDetail
+    ) {
+      updateData.addressDetail = rawData.addressDetail === '' ? null : rawData.addressDetail;
       updateData.lat = null;
       updateData.lng = null;
     }
@@ -158,9 +169,9 @@ class UnitService {
    */
   async modifyUnitContactInfo(id: number | string, rawData: UnitContactInput) {
     const updateData = {
-      officerName: rawData.officerName,
-      officerPhone: rawData.officerPhone,
-      officerEmail: rawData.officerEmail,
+      officerName: rawData.officerName === '' ? null : rawData.officerName,
+      officerPhone: rawData.officerPhone === '' ? null : rawData.officerPhone,
+      officerEmail: rawData.officerEmail === '' ? null : rawData.officerEmail,
     };
     return await unitRepository.updateUnitById(id, updateData);
   }
@@ -184,7 +195,7 @@ class UnitService {
         rawData.unitType as Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput['set'];
     if (rawData.wideArea !== undefined) unitUpdateData.wideArea = rawData.wideArea;
     if (rawData.region !== undefined) unitUpdateData.region = rawData.region;
-    if (rawData.addressDetail !== undefined) {
+    if (rawData.addressDetail !== undefined && rawData.addressDetail !== unit.addressDetail) {
       unitUpdateData.addressDetail = rawData.addressDetail;
       unitUpdateData.lat = null;
       unitUpdateData.lng = null;

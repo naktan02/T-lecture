@@ -9,6 +9,9 @@ interface UpdateProfileDto {
   address?: string;
   email?: string;
   password?: string;
+  restrictedArea?: string; // 강사 제한 지역
+  hasCar?: boolean; // 강사 자차 여부
+  virtueIds?: number[]; // 강사 가능 덕목 ID 목록
 }
 
 class UserMeService {
@@ -34,7 +37,7 @@ class UserMeService {
       throw new AppError('요청 바디 형식이 올바르지 않습니다.', 400, 'INVALID_BODY');
     }
 
-    const { name, phoneNumber, address, email, password } = dto;
+    const { name, phoneNumber, address, email, password, restrictedArea, hasCar, virtueIds } = dto;
 
     if (name !== undefined && name !== null && typeof name !== 'string') {
       throw new AppError('name은 문자열이어야 합니다.', 400, 'INVALID_NAME');
@@ -61,13 +64,16 @@ class UserMeService {
       phoneNumber !== undefined ||
       address !== undefined ||
       email !== undefined ||
-      password !== undefined;
+      password !== undefined ||
+      restrictedArea !== undefined ||
+      hasCar !== undefined ||
+      virtueIds !== undefined;
 
     if (!hasAnyField) {
       throw new AppError('수정할 값이 없습니다.', 400, 'NO_UPDATE_FIELDS');
     }
 
-    const user = await userRepository.findById(userId);
+    const user = await userRepository.findByIdWithDetails(userId);
     if (!user) {
       throw new AppError('사용자 정보를 찾을 수 없습니다.', 404, 'USER_NOT_FOUND');
     }
@@ -94,10 +100,31 @@ class UserMeService {
     const instructorData: Prisma.InstructorUpdateInput = {};
     const isInstructor = !!user.instructor;
 
-    if (isInstructor && address !== undefined) {
-      instructorData.location = address;
-      instructorData.lat = null;
-      instructorData.lng = null;
+    if (isInstructor) {
+      // 주소가 변경된 경우에만 lat/lng 초기화
+      if (address !== undefined && address !== user.instructor?.location) {
+        instructorData.location = address === '' ? null : address;
+        instructorData.lat = null;
+        instructorData.lng = null;
+      }
+
+      if (restrictedArea !== undefined) {
+        instructorData.restrictedArea = restrictedArea === '' ? null : restrictedArea;
+      }
+      if (hasCar !== undefined) {
+        instructorData.hasCar = hasCar;
+      }
+      if (virtueIds !== undefined && Array.isArray(virtueIds)) {
+        // 기존 덕목 관계 삭제 후 새로 연결
+        // Prisma transaction은 repository 레벨에서 처리하는 것이 좋으나
+        // 여기서는 서비스 레벨에서 update의 nested write를 활용
+        instructorData.virtues = {
+          deleteMany: {}, // 기존 연결 모두 삭제
+          create: virtueIds.map((id) => ({
+            virtue: { connect: { id } },
+          })),
+        };
+      }
     }
 
     const updatedUser = await userRepository.update(userId, userData, instructorData);

@@ -41,6 +41,7 @@ export interface InstructorProfile {
   restrictedArea: string | null;
   lat: number | null;
   lng: number | null;
+  hasCar: boolean;
   profileCompleted: boolean;
   virtues?: InstructorVirtue[];
   availabilities?: InstructorAvailability[];
@@ -63,6 +64,9 @@ export interface UpdateProfilePayload {
   address?: string; // 강사 활동 지역
   email?: string;
   password?: string;
+  restrictedArea?: string; // 강사 제한 지역
+  hasCar?: boolean; // 강사 자차 여부
+  virtueIds?: number[]; // 강사 가능 덕목 ID 목록
 }
 
 // 내 정보 조회
