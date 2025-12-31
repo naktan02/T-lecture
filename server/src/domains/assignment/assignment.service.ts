@@ -305,6 +305,13 @@ class AssignmentService {
       UnitSchedule: { date: { gte: today } },
     });
   }
+
+  /**
+   * 스케줄 슬롯 배정 막기/해제
+   */
+  async toggleScheduleBlock(unitScheduleId: number, isBlocked: boolean) {
+    return await assignmentRepository.updateScheduleBlock(unitScheduleId, isBlocked);
+  }
 }
 
 export default new AssignmentService();

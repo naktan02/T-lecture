@@ -39,6 +39,14 @@ router.patch(
   assignmentController.cancelAssignmentByAdmin,
 );
 
+// 관리자: 스케줄 배정 막기/해제
+router.patch(
+  '/:unitScheduleId/block',
+  auth,
+  requireRole('ADMIN'),
+  assignmentController.blockSchedule,
+);
+
 export default router;
 
 // CommonJS 호환

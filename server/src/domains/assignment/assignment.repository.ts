@@ -286,6 +286,16 @@ class AssignmentRepository {
       },
     });
   }
+
+  /**
+   * 스케줄 배정 막기/해제
+   */
+  async updateScheduleBlock(unitScheduleId: number, isBlocked: boolean) {
+    return await prisma.unitSchedule.update({
+      where: { id: unitScheduleId },
+      data: { isBlocked },
+    });
+  }
 }
 
 export default new AssignmentRepository();

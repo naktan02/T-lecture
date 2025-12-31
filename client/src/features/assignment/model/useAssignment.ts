@@ -7,7 +7,8 @@ import {
   sendTemporaryMessagesApi,
   UnitSchedule,
   Instructor,
-  addAssignmentApi
+  addAssignmentApi,
+  blockScheduleApi,
 } from '../assignmentApi';
 import { logger, showSuccess, showError } from '../../../shared/utils';
 import {
@@ -52,7 +53,13 @@ interface UseAssignmentReturn {
   availableInstructors: Instructor[];
   assignments: AssignmentData[]; // 임시 배정 (Pending)
   confirmedAssignments: AssignmentData[]; // 확정 배정 (Accepted)
-  addAssignment: (unitScheduleId: number, instructorId: number, trainingLocationId: number | null) => Promise<void>
+  addAssignment: (
+    unitScheduleId: number,
+    instructorId: number,
+    trainingLocationId: number | null,
+  ) => Promise<void>;
+  blockSchedule: (unitScheduleId: number) => Promise<void>; // 배정 막기
+  unblockSchedule: (unitScheduleId: number) => Promise<void>; // 배정 막기 해제
   fetchData: () => Promise<void>;
   executeAutoAssign: () => Promise<void>;
   sendTemporaryMessages: () => Promise<void>;
@@ -176,6 +183,35 @@ export const useAssignment = (): UseAssignmentReturn => {
       setLoading(false);
     }
   };
+
+  // 배정 막기
+  const blockSchedule = async (unitScheduleId: number): Promise<void> => {
+    try {
+      setLoading(true);
+      await blockScheduleApi(unitScheduleId, true);
+      showSuccess('해당 슬롯의 추가 배정이 막혔습니다.');
+      await fetchData();
+    } catch (e) {
+      showError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 배정 막기 해제
+  const unblockSchedule = async (unitScheduleId: number): Promise<void> => {
+    try {
+      setLoading(true);
+      await blockScheduleApi(unitScheduleId, false);
+      showSuccess('배정 막기가 해제되었습니다.');
+      await fetchData();
+    } catch (e) {
+      showError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 부대별 그룹화 (유틸 함수 사용)
   const groupedUnassignedUnits = groupUnassignedUnits(sourceData.units);
 
@@ -194,5 +230,7 @@ export const useAssignment = (): UseAssignmentReturn => {
     sendTemporaryMessages,
     removeAssignment,
     addAssignment,
+    blockSchedule,
+    unblockSchedule,
   };
 };

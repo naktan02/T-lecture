@@ -17,6 +17,7 @@ interface InstructorSelectionPopupProps {
   allAvailableInstructors: any[];
   onClose: () => void;
   onAdd?: (instructor: Instructor) => Promise<void>;
+  onBlock?: () => Promise<void>; // 배정 막기 콜백
 }
 
 type TabType = 'AVAILABLE' | 'ALL';
@@ -26,6 +27,7 @@ export const InstructorSelectionPopup: React.FC<InstructorSelectionPopupProps> =
   allAvailableInstructors = [],
   onClose,
   onAdd,
+  onBlock,
 }) => {
   const [tab, setTab] = useState<TabType>('AVAILABLE');
   const [search, setSearch] = useState<string>('');
@@ -34,16 +36,29 @@ export const InstructorSelectionPopup: React.FC<InstructorSelectionPopupProps> =
   const availableForDate = instructors.filter((inst) => inst.availableDates?.includes(target.date));
 
   const list = tab === 'AVAILABLE' ? availableForDate : instructors;
-  const filteredList = list.filter((i) => i.name?.includes(search));
+  // 이름 또는 팀명으로 검색
+  const filteredList = list.filter(
+    (i) =>
+      i.name?.toLowerCase().includes(search.toLowerCase()) ||
+      i.team?.toLowerCase().includes(search.toLowerCase()) ||
+      i.teamName?.toLowerCase().includes(search.toLowerCase()),
+  );
 
   const handleSearchChange = (e: ChangeEvent<HTMLInputElement>): void => {
     setSearch(e.target.value);
   };
-const handleSelectInstructor = async (inst: Instructor) => {
-  if (!onAdd) return;         
-  await onAdd(inst);       
-  onClose();               
-};
+
+  const handleSelectInstructor = async (inst: Instructor) => {
+    if (!onAdd) return;
+    await onAdd(inst);
+    onClose();
+  };
+
+  const handleBlockAssignment = async () => {
+    if (!onBlock) return;
+    await onBlock();
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
@@ -84,7 +99,7 @@ const handleSelectInstructor = async (inst: Instructor) => {
           <div className="mb-2">
             <input
               type="text"
-              placeholder="강사명 검색..."
+              placeholder="강사명 또는 팀명 검색..."
               className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-indigo-500"
               value={search}
               onChange={handleSearchChange}
@@ -92,6 +107,24 @@ const handleSelectInstructor = async (inst: Instructor) => {
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto space-y-1">
+            {/* 배정 막기 옵션 (제일 상단) */}
+            {onBlock && (
+              <div className="flex justify-between items-center p-2 bg-red-50 hover:bg-red-100 rounded cursor-pointer group border border-red-200 mb-2">
+                <div>
+                  <div className="text-sm font-bold text-red-700">🚫 추가 배정 막기</div>
+                  <div className="text-xs text-red-500">이 슬롯에 더 이상 배정하지 않음</div>
+                </div>
+                <Button
+                  size="xsmall"
+                  variant="outline"
+                  className="border-red-300 text-red-600 hover:bg-red-100"
+                  onClick={handleBlockAssignment}
+                >
+                  선택
+                </Button>
+              </div>
+            )}
+
             {filteredList.map((inst) => (
               <div
                 key={inst.id}
@@ -99,7 +132,7 @@ const handleSelectInstructor = async (inst: Instructor) => {
               >
                 <div>
                   <div className="text-sm font-bold text-gray-800">{inst.name}</div>
-                  <div className="text-xs text-gray-500">{inst.team}</div>
+                  <div className="text-xs text-gray-500">{inst.team || inst.teamName}</div>
                 </div>
                 <Button
                   size="xsmall"

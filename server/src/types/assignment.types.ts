@@ -46,6 +46,7 @@ export interface TrainingLocationRaw {
 export interface ScheduleRaw {
   id: number;
   date: Date | null;
+  isBlocked?: boolean;
   assignments?: AssignmentRaw[];
 }
 

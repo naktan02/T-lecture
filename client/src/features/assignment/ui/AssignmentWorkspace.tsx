@@ -3,7 +3,7 @@
 import { useState, useRef, ChangeEvent, MouseEvent, useEffect } from 'react';
 import { useAssignment } from '../model/useAssignment';
 import { Button, MiniCalendar, ConfirmModal } from '../../../shared/ui';
-import { AssignmentGroupDetailModal } from './AssignmentDetailModal';
+import { AssignmentDetailModal, AssignmentGroupDetailModal } from './AssignmentDetailModal';
 import { UnassignedUnitDetailModal } from './UnassignedUnitDetailModal';
 
 // ID 기반 선택 키
@@ -46,6 +46,8 @@ export const AssignmentWorkspace: React.FC = () => {
     sendTemporaryMessages,
     removeAssignment,
     addAssignment,
+    blockSchedule,
+    unblockSchedule,
   } = useAssignment();
 
   // ID 기반 선택 (스냅샷 대신 ID만 저장)
@@ -478,7 +480,13 @@ export const AssignmentWorkspace: React.FC = () => {
         <UnassignedUnitDetailModal unit={selectedUnit} onClose={() => setSelectionKey(null)} />
       )}
 
-      {/* 강사 상세 모달 - 현재는 별도 모달 없음, 필요시 추가 */}
+      {/* 강사 상세 모달 */}
+      {selectedInstructor && (
+        <AssignmentDetailModal
+          item={{ ...selectedInstructor, type: 'INSTRUCTOR' } as any}
+          onClose={() => setSelectionKey(null)}
+        />
+      )}
 
       {detailModalKey && currentGroup && (
         <AssignmentGroupDetailModal
@@ -486,6 +494,8 @@ export const AssignmentWorkspace: React.FC = () => {
           onClose={() => setDetailModalKey(null)}
           onRemove={removeAssignment}
           onAdd={addAssignment}
+          onBlock={blockSchedule}
+          onUnblock={unblockSchedule}
           availableInstructors={availableInstructors}
         />
       )}

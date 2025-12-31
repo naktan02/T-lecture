@@ -195,14 +195,27 @@ export const addAssignmentApi = async (
   const res = await apiClient('/api/v1/assignments/bulk-save', {
     method: 'POST',
     body: JSON.stringify({
-      assignments: [
-        { unitScheduleId, instructorId, trainingLocationId },
-      ],
+      assignments: [{ unitScheduleId, instructorId, trainingLocationId }],
     }),
   });
   if (!res.ok) {
     const msg = await res.text();
     throw new Error(`[${res.status}] ${msg}`);
   }
-  return res; 
+  return res;
+};
+
+/**
+ * 스케줄 배정 막기/해제
+ */
+export const blockScheduleApi = async (
+  unitScheduleId: number,
+  isBlocked: boolean,
+): Promise<{ message: string }> => {
+  const res = await apiClient(`/api/v1/assignments/${unitScheduleId}/block`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isBlocked }),
+  });
+  if (!res.ok) throw new Error('배정 막기에 실패했습니다.');
+  return res.json();
 };

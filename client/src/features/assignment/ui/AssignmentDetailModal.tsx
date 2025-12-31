@@ -208,6 +208,8 @@ interface AssignmentGroupDetailModalProps {
     instructorId: number,
     trainingLocationId: number | null,
   ) => Promise<void>;
+  onBlock?: (unitScheduleId: number) => Promise<void>; // 배정 막기
+  onUnblock?: (unitScheduleId: number) => Promise<void>; // 배정 막기 해제
   availableInstructors?: any[];
 }
 
@@ -216,6 +218,8 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
   onClose,
   onRemove,
   onAdd,
+  onBlock,
+  onUnblock,
   availableInstructors = [],
 }) => {
   const [addPopupTarget, setAddPopupTarget] = useState<AddPopupTarget | null>(null);
@@ -364,20 +368,38 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                           </div>
                         ))}
 
-                      <button
-                        onClick={() =>
-                          setAddPopupTarget({
-                            unitScheduleId: dateInfo.unitScheduleId,
-                            date: dateInfo.date,
-                            locationName: loc.name,
-                            trainingLocationId: loc.id,
-                          })
-                        }
-                        className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 text-gray-400 flex items-center justify-center hover:border-indigo-400 hover:text-indigo-500 hover:bg-indigo-50 transition-all"
-                        title="강사 추가"
-                      >
-                        +
-                      </button>
+                      {/* 배정 막기 표시 또는 + 버튼 */}
+                      {(dateInfo as any).isBlocked ? (
+                        <div
+                          className="group relative w-8 h-8 rounded-lg bg-red-100 border-2 border-red-300 text-red-500 flex items-center justify-center"
+                          title="배정이 막힌 슬롯"
+                        >
+                          🚫
+                          {/* X 버튼 (강사처럼 hover 시 나타남) */}
+                          <button
+                            onClick={() => onUnblock && onUnblock(dateInfo.unitScheduleId)}
+                            className="absolute -top-2 -right-2 bg-gray-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-gray-600"
+                            title="배정 막기 해제"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() =>
+                            setAddPopupTarget({
+                              unitScheduleId: dateInfo.unitScheduleId,
+                              date: dateInfo.date,
+                              locationName: loc.name,
+                              trainingLocationId: loc.id,
+                            })
+                          }
+                          className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 text-gray-400 flex items-center justify-center hover:border-indigo-400 hover:text-indigo-500 hover:bg-indigo-50 transition-all"
+                          title="강사 추가"
+                        >
+                          +
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -404,6 +426,13 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
             if (!onAdd) return;
             await onAdd(addPopupTarget.unitScheduleId, inst.id, addPopupTarget.trainingLocationId);
           }}
+          onBlock={
+            onBlock
+              ? async () => {
+                  await onBlock(addPopupTarget.unitScheduleId);
+                }
+              : undefined
+          }
         />
       )}
       {/* 5. 삭제 확인 모달 */}

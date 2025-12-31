@@ -59,9 +59,10 @@ model TrainingLocation {
 }
 
 model UnitSchedule {
-  id     Int       @id @default(autoincrement())
-  unitId Int       @map("부대id")
-  date   DateTime? @map("교육일")
+  id        Int       @id @default(autoincrement())
+  unitId    Int       @map("부대id")
+  date      DateTime? @map("교육일")
+  isBlocked Boolean   @default(false) @map("배정막기")
 
   unit        Unit                       @relation(fields: [unitId], references: [id], onDelete: Cascade)
   assignments InstructorUnitAssignment[]

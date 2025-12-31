@@ -159,6 +159,25 @@ export const bulkSaveAssignments = asyncHandler(async (req: Request, res: Respon
   res.status(200).json(result);
 });
 
+// [스케줄 배정 막기/해제]
+export const blockSchedule = asyncHandler(async (req: Request, res: Response) => {
+  const unitScheduleId = Number(req.params.unitScheduleId);
+  const { isBlocked } = req.body;
+
+  if (!Number.isFinite(unitScheduleId)) {
+    throw new AppError('unitScheduleId가 필요합니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  if (typeof isBlocked !== 'boolean') {
+    throw new AppError('isBlocked(boolean)가 필요합니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  const result = await assignmentService.toggleScheduleBlock(unitScheduleId, isBlocked);
+  res
+    .status(200)
+    .json({ message: isBlocked ? '배정이 막혔습니다.' : '배정 막기가 해제되었습니다.', result });
+});
+
 // CommonJS 호환
 module.exports = {
   getWorkHistory,
@@ -169,4 +188,5 @@ module.exports = {
   previewAutoAssign,
   bulkSaveAssignments,
   cancelAssignmentByAdmin,
+  blockSchedule,
 };

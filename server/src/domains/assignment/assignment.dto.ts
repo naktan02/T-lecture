@@ -201,6 +201,7 @@ class AssignmentDTO {
           return {
             date: dateStr,
             unitScheduleId: schedule.id,
+            isBlocked: schedule.isBlocked || false, // 배정 막기 상태
             requiredCount: loc.instructorsNumbers || 0,
             instructors: assignedInstructors,
           };
