@@ -197,19 +197,6 @@ class MessageService {
       throw error;
     }
   }
-
-  // 공지사항 작성
-  async createNotice(title: string, body: string) {
-    if (!title || !body) {
-      throw new AppError('제목과 본문을 모두 입력해주세요.', 400, 'VALIDATION_ERROR');
-    }
-    return await messageRepository.createNotice({ title, body });
-  }
-
-  // 공지사항 목록 조회
-  async getNotices() {
-    return await messageRepository.findAllNotices();
-  }
 }
 
 export default new MessageService();

@@ -1,5 +1,5 @@
 enum MessageType {
-  Notice
+
   Temporary
   Confirmed
 

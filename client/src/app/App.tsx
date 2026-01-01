@@ -17,6 +17,8 @@ import AssignmentPage from '../pages/admin/AssignmentPage';
 import UnitPage from '../pages/admin/UnitPage';
 import UserPage from '../pages/admin/UserPage';
 import SettingsPage from '../pages/admin/SettingsPage';
+import AdminNoticePage from '../pages/admin/NoticePage';
+import InstructorNoticePage from '../pages/instructor/NoticePage';
 
 function App(): ReactElement {
   return (
@@ -46,6 +48,10 @@ function App(): ReactElement {
 
           {/* 유저 관리 */}
           <Route path="/admin/users" element={<UserPage />} />
+
+          {/* 공지사항 관리 */}
+          <Route path="/admin/notices" element={<AdminNoticePage />} />
+          <Route path="/instructor/notices" element={<InstructorNoticePage />} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/login" replace />} />

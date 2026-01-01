@@ -1,11 +1,6 @@
 // src/domains/message/message.repository.ts
 import prisma from '../../libs/prisma';
 
-interface NoticeData {
-  title: string;
-  body: string;
-}
-
 interface MessageCreateData {
   type: 'Temporary' | 'Confirmed';
   body: string;
@@ -14,27 +9,6 @@ interface MessageCreateData {
 }
 
 class MessageRepository {
-  // 공지사항 생성
-  async createNotice(data: NoticeData) {
-    return await prisma.message.create({
-      data: {
-        type: 'Notice',
-        title: data.title,
-        body: data.body,
-        status: 'Sent',
-        createdAt: new Date(),
-      },
-    });
-  }
-
-  // 모든 공지사항 조회
-  async findAllNotices() {
-    return await prisma.message.findMany({
-      where: { type: 'Notice' },
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
   // 임시 메시지 발송 대상 조회
   async findTargetsForTemporaryMessage() {
     return await prisma.instructorUnitAssignment.findMany({

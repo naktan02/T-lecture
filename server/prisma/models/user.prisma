@@ -33,6 +33,7 @@ model User {
   messageReceipts MessageReceipt[]
   unitAssignments InstructorUnitAssignment[]
   refreshTokens   RefreshToken[]
+  notices         Notice[]
 
   @@map("user")
 }

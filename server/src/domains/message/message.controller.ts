@@ -5,23 +5,6 @@ import asyncHandler from '../../common/middlewares/asyncHandler';
 import AppError from '../../common/errors/AppError';
 import logger from '../../config/logger';
 
-// 공지사항 작성
-export const createNotice = asyncHandler(async (req: Request, res: Response) => {
-  const { title, body } = req.body;
-  if (!title || !body) {
-    throw new AppError('제목과 본문을 모두 입력해주세요.', 400, 'VALIDATION_ERROR');
-  }
-  logger.info('[Message] Creating notice...', { title });
-  const result = await messageService.createNotice(title, body);
-  res.status(201).json(result);
-});
-
-// 공지사항 목록 조회
-export const getNotices = asyncHandler(async (req: Request, res: Response) => {
-  const notices = await messageService.getNotices();
-  res.json(notices);
-});
-
 // 임시 배정 메시지 일괄 발송
 export const sendTemporaryMessages = asyncHandler(async (req: Request, res: Response) => {
   logger.info('[Message] Sending temporary messages...');
@@ -55,8 +38,6 @@ export const readMessage = asyncHandler(async (req: Request, res: Response) => {
 
 // CommonJS 호환
 module.exports = {
-  createNotice,
-  getNotices,
   sendTemporaryMessages,
   sendConfirmed,
   getMyMessages,

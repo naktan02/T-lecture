@@ -5,12 +5,6 @@ import { auth, requireRole } from '../../common/middlewares';
 
 const router = express.Router();
 
-// 공지사항 작성
-router.post('/notices', auth, requireRole('ADMIN'), messageController.createNotice);
-
-// 공지사항 조회
-router.get('/notices', auth, messageController.getNotices);
-
 // 임시 배정 메시지 발송
 router.post('/send/temporary', auth, requireRole('ADMIN'), messageController.sendTemporaryMessages);
 

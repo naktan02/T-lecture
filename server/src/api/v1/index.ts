@@ -11,6 +11,7 @@ import messageRoutes from '../../domains/message/message.routes';
 import distanceRoutes from '../../domains/distance/distance.routes';
 import unitRoutes from '../../domains/unit/unit.routes';
 import metadataRoutes from '../../domains/metadata/metadata.routes';
+import noticeRoutes from '../../domains/notice/notice.routes';
 
 const router = Router();
 
@@ -23,5 +24,6 @@ router.use('/messages', messageRoutes);
 router.use('/distance', distanceRoutes);
 router.use('/units', unitRoutes);
 router.use('/metadata', metadataRoutes);
+router.use('/notices', noticeRoutes);
 
 export default router;
