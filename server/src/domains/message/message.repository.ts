@@ -274,7 +274,14 @@ class MessageRepository {
       }),
     };
 
-    const [inquiries, total] = await Promise.all([
+    // 전체 대기중 개수 (필터 적용 전)
+    const waitingWhere = {
+      type: 'Inquiry' as const,
+      ...(authorId && { authorId }),
+      inquiryStatus: 'Waiting' as const,
+    };
+
+    const [inquiries, total, waitingCount] = await Promise.all([
       prisma.message.findMany({
         where,
         skip,
@@ -282,8 +289,9 @@ class MessageRepository {
         orderBy: [{ createdAt: 'desc' }],
       }),
       prisma.message.count({ where }),
+      prisma.message.count({ where: waitingWhere }),
     ]);
-    return { inquiries, total };
+    return { inquiries, total, waitingCount };
   }
 
   // 문의사항 단건 조회

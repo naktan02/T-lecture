@@ -355,7 +355,7 @@ class MessageService {
   }) {
     const { page = 1, limit = 10, authorId, status, search } = params;
     const skip = (page - 1) * limit;
-    const { inquiries, total } = await messageRepository.findAllInquiries({
+    const { inquiries, total, waitingCount } = await messageRepository.findAllInquiries({
       skip,
       take: limit,
       authorId,
@@ -393,6 +393,7 @@ class MessageService {
         total,
         page,
         lastPage: Math.ceil(total / limit),
+        waitingCount,
       },
     };
   }

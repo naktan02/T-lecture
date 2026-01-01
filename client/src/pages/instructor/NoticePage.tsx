@@ -22,7 +22,7 @@ const NoticePage = (): ReactElement => {
     try {
       const data = await noticeApi.getNotices({
         page,
-        limit: 10,
+        limit: 20,
         search: searchQuery || undefined,
       });
       setNotices(data.notices);
@@ -83,7 +83,7 @@ const NoticePage = (): ReactElement => {
               onNoticeClick={handleNoticeClick}
               currentPage={page}
               totalCount={totalCount}
-              pageSize={10}
+              pageSize={20}
             />
           </div>
 

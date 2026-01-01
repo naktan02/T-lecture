@@ -11,6 +11,7 @@ const AdminInquiryPage = (): ReactElement => {
   const [page, setPage] = useState(1);
   const [totalPage, setTotalPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [waitingCount, setWaitingCount] = useState(0);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'Waiting' | 'Answered'>('all');
@@ -21,13 +22,14 @@ const AdminInquiryPage = (): ReactElement => {
     try {
       const data = await inquiryApi.getInquiries({
         page,
-        limit: 10,
+        limit: 20,
         status: statusFilter === 'all' ? undefined : statusFilter,
         search: searchQuery || undefined,
       });
       setInquiries(data.inquiries);
       setTotalPage(data.meta.lastPage);
       setTotalCount(data.meta.total);
+      setWaitingCount(data.meta.waitingCount);
     } catch {
       alert('문의사항을 불러오는데 실패했습니다.');
     }
@@ -57,9 +59,6 @@ const AdminInquiryPage = (): ReactElement => {
     setPage(1);
     setSearchQuery(searchInput);
   };
-
-  // 대기중 개수
-  const waitingCount = inquiries.filter((i) => i.status === 'Waiting').length;
 
   return (
     <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
@@ -121,7 +120,7 @@ const AdminInquiryPage = (): ReactElement => {
               isAdmin={true}
               currentPage={page}
               totalCount={totalCount}
-              pageSize={10}
+              pageSize={20}
             />
           </div>
           {/* 페이지네이션 */}

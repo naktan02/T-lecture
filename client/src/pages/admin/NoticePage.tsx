@@ -22,7 +22,7 @@ const AdminNoticePage = (): ReactElement => {
       setIsLoading(true);
       const data = await noticeApi.getNotices({
         page,
-        limit: 10,
+        limit: 20,
         search: searchQuery || undefined,
       });
       setNotices(data.notices);
@@ -141,7 +141,7 @@ const AdminNoticePage = (): ReactElement => {
               isAdmin={true}
               currentPage={page}
               totalCount={totalCount}
-              pageSize={10}
+              pageSize={20}
             />
           </div>
           {/* 페이지네이션 */}

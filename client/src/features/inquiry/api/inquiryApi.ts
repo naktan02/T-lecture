@@ -22,6 +22,7 @@ export interface InquiryListResponse {
     total: number;
     page: number;
     lastPage: number;
+    waitingCount: number;
   };
 }
 
