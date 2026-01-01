@@ -10,6 +10,7 @@ const AdminNoticePage = (): ReactElement => {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [page, setPage] = useState(1);
   const [totalPage, setTotalPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -26,6 +27,7 @@ const AdminNoticePage = (): ReactElement => {
       });
       setNotices(data.notices);
       setTotalPage(data.meta.lastPage);
+      setTotalCount(data.meta.total);
     } catch (error) {
       console.error('Failed to fetch notices', error);
       alert('공지사항을 불러오는데 실패했습니다.');
@@ -133,7 +135,14 @@ const AdminNoticePage = (): ReactElement => {
         {/* 공지 목록 */}
         <div className="flex-1 min-h-0 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
           <div className="flex-1 overflow-auto">
-            <NoticeList notices={notices} onNoticeClick={handleEdit} isAdmin={true} />
+            <NoticeList
+              notices={notices}
+              onNoticeClick={handleEdit}
+              isAdmin={true}
+              currentPage={page}
+              totalCount={totalCount}
+              pageSize={10}
+            />
           </div>
           {/* 페이지네이션 */}
           <div className="border-t border-gray-200 p-3">

@@ -5,18 +5,24 @@ interface NoticeListProps {
   notices: Notice[];
   onNoticeClick: (id: number) => void;
   isAdmin?: boolean;
+  currentPage?: number;
+  totalCount?: number;
+  pageSize?: number;
 }
 
-// 7일 이내 생성된 공지인지 확인
-const isNewNotice = (createdAt: string): boolean => {
-  const noticeDate = new Date(createdAt);
-  const now = new Date();
-  const diffTime = now.getTime() - noticeDate.getTime();
-  const diffDays = diffTime / (1000 * 60 * 60 * 24);
-  return diffDays <= 7;
-};
+export const NoticeList = ({
+  notices,
+  onNoticeClick,
+  currentPage = 1,
+  totalCount = 0,
+  pageSize = 10,
+}: NoticeListProps): ReactElement => {
+  // NO 번호 계산: 최신 글이 가장 높은 번호
+  const getNoticeNumber = (index: number): number => {
+    // 전체 개수에서 (현재 페이지-1) * 페이지크기 + index를 뺀 값
+    return totalCount - ((currentPage - 1) * pageSize + index);
+  };
 
-export const NoticeList = ({ notices, onNoticeClick }: NoticeListProps): ReactElement => {
   return (
     <div className="overflow-x-auto">
       {/* 데스크톱 테이블 */}
@@ -63,7 +69,7 @@ export const NoticeList = ({ notices, onNoticeClick }: NoticeListProps): ReactEl
               </td>
             </tr>
           ) : (
-            notices.map((notice) => (
+            notices.map((notice, index) => (
               <tr
                 key={notice.id}
                 onClick={() => onNoticeClick(notice.id)}
@@ -77,18 +83,11 @@ export const NoticeList = ({ notices, onNoticeClick }: NoticeListProps): ReactEl
                       📌
                     </span>
                   ) : (
-                    notice.id
+                    getNoticeNumber(index)
                   )}
                 </td>
                 <td className="px-4 py-4 text-sm font-medium text-gray-900">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate max-w-md">{notice.title}</span>
-                    {isNewNotice(notice.createdAt) && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-red-500 text-white">
-                        N
-                      </span>
-                    )}
-                  </div>
+                  <span className="truncate max-w-md block">{notice.title}</span>
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                   {notice.author.name || '관리자'}
@@ -112,7 +111,7 @@ export const NoticeList = ({ notices, onNoticeClick }: NoticeListProps): ReactEl
             등록된 공지사항이 없습니다.
           </div>
         ) : (
-          notices.map((notice) => (
+          notices.map((notice, index) => (
             <div
               key={notice.id}
               onClick={() => onNoticeClick(notice.id)}
@@ -121,18 +120,13 @@ export const NoticeList = ({ notices, onNoticeClick }: NoticeListProps): ReactEl
               }`}
             >
               <div className="flex items-start gap-3">
-                {notice.isPinned && (
-                  <span className="flex-shrink-0 text-amber-500 text-lg">📌</span>
-                )}
+                <span className="flex-shrink-0 text-gray-400 text-sm min-w-[24px]">
+                  {notice.isPinned ? '📌' : getNoticeNumber(index)}
+                </span>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-sm font-medium text-gray-900 truncate">{notice.title}</h3>
-                    {isNewNotice(notice.createdAt) && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-red-500 text-white">
-                        N
-                      </span>
-                    )}
-                  </div>
+                  <h3 className="text-sm font-medium text-gray-900 truncate mb-1">
+                    {notice.title}
+                  </h3>
                   <div className="flex items-center gap-3 text-xs text-gray-500">
                     <span>{notice.author.name || '관리자'}</span>
                     <span>{new Date(notice.createdAt).toLocaleDateString()}</span>
