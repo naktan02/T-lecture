@@ -36,7 +36,6 @@ export const formatPlaceholders: Record<string, { key: string; label: string; ic
     { key: 'index', ...PLACEHOLDER_META.index },
     { key: 'placeName', ...PLACEHOLDER_META.placeName },
     { key: 'actualCount', ...PLACEHOLDER_META.actualCount },
-    { key: 'plannedCount', ...PLACEHOLDER_META.plannedCount },
     { key: 'hasInstructorLounge', ...PLACEHOLDER_META.hasInstructorLounge },
     { key: 'hasWomenRestroom', ...PLACEHOLDER_META.hasWomenRestroom },
     { key: 'allowsPhoneBeforeAfter', ...PLACEHOLDER_META.allowsPhoneBeforeAfter },

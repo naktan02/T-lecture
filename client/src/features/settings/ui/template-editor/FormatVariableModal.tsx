@@ -54,39 +54,69 @@ export const FormatVariableModal = ({
       if (info) {
         return `<span contenteditable="false" data-placeholder="${key}" class="format-placeholder-block">${info.icon} ${info.label}<button type="button" class="format-delete-btn">×</button></span>`;
       }
-      // 정보가 없어도 텍스트로 남기지 않고 🏷️ 아이콘이라도 붙여서 블록화
-      return `<span contenteditable="false" data-placeholder="${key}" class="format-placeholder-block">🏷️ ${key}<button type="button" class="format-delete-btn">×</button></span>`;
+      return `{${key}}`;
     });
     return html;
   };
   
-  // HTML을 텍스트로 변환
-  const htmlToText = (html: string): string => {
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = html;
+  // DOM을 직접 순회해서 텍스트로 직렬화 (엔터 중복/마지막 깨짐 방지)
+  const domToText = (root: HTMLElement): string => {
+    const out: string[] = [];
 
-    // 플레이스홀더 블록을 텍스트로 변환
-    tempDiv.querySelectorAll('[data-placeholder]').forEach((block) => {
-      const key = block.getAttribute('data-placeholder');
-      if (key) {
-        block.parentNode?.replaceChild(document.createTextNode(`{${key}}`), block);
+    const pushNewlineOnce = () => {
+      if (out.length === 0) return out.push('\n');
+      if (out[out.length - 1] !== '\n') out.push('\n');
+    };
+
+    const walk = (node: Node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        out.push(node.textContent ?? '');
+        return;
       }
-    });
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
 
-    let result = tempDiv.innerHTML;
-    result = result.replace(/<br\s*\/?>/gi, '\n');
-    result = result.replace(/<\/div><div>/gi, '\n');
-    result = result.replace(/<div>/gi, '\n');
-    result = result.replace(/<\/div>/gi, '');
-    result = result.replace(/<\/p><p>/gi, '\n');
-    result = result.replace(/<p>/gi, '');
-    result = result.replace(/<\/p>/gi, '\n');
-    // HTML 태그 제거 및 엔티티 디코드
-    const textDiv = document.createElement('div');
-    textDiv.innerHTML = result;
-    return (textDiv.textContent || '').replace(/\n{4,}/g, '\n\n\n'); // trim() 제거하여 엔터 보존
+      const el = node as HTMLElement;
+
+      // placeholder block
+      const ph = el.getAttribute('data-placeholder');
+      if (ph) {
+        out.push(`{${ph}}`);
+        return;
+      }
+
+      const tag = el.tagName;
+
+      // <br>
+      if (tag === 'BR') {
+        pushNewlineOnce();
+        return;
+      }
+      // contentEditable Enter가 흔히 만드는 <div><br></div>는 "개행 1번"으로만 처리
+      if ((tag === 'DIV' || tag === 'P') && el.childNodes.length === 1) {
+        const only = el.childNodes[0] as Node;
+        if (only.nodeType === Node.ELEMENT_NODE && (only as HTMLElement).tagName === 'BR') {
+          pushNewlineOnce();
+          return;
+        }
+      }
+
+      // 일반 노드 순회
+      el.childNodes.forEach(walk);
+
+      // 블록 요소는 끝에서 개행 1번
+      if (tag === 'DIV' || tag === 'P') pushNewlineOnce();
+    };
+    root.childNodes.forEach(walk);
+
+    // 마지막이 개행이면 1개만 제거 (저장 시 "엔터가 하나 더 들어간 것처럼" 보이는 문제 방지)
+    if (out[out.length - 1] === '\n') out.pop();
+
+    return out.join('');
   };
-
+  const getCurrentTextFromDom = (): string => {
+    if (!editorRef.current) return formatValue;
+    return domToText(editorRef.current);
+  };
   // 에디터 초기화
   useEffect(() => {
     if (editorRef.current && !isInternalChange.current) {
@@ -98,10 +128,10 @@ export const FormatVariableModal = ({
 
   const handleInput = () => {
     if (editorRef.current) {
-      // HTML에서 텍스트를 추출하여 내부 상태(formatValue)만 업데이트
-      const text = htmlToText(editorRef.current.innerHTML);
+      // 내부 변경 플래그를 먼저 세우고(경합 방지) DOM에서 텍스트로 직렬화
+      isInternalChange.current = true;
+      const text = domToText(editorRef.current);
       setFormatValue(text);
-      isInternalChange.current = true; // useEffect에서 innerHTML이 덮어씌워지지 않게 함
     }
   };
 
@@ -117,6 +147,32 @@ export const FormatVariableModal = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0 || !editorRef.current) return;
+
+      const range = sel.getRangeAt(0);
+      // 편집기 밖이면 무시
+      if (!editorRef.current.contains(range.commonAncestorContainer)) return;
+
+      // 1) 현재 선택 영역 제거
+      range.deleteContents();
+
+      // 2) <br> 삽입
+      const br = document.createElement('br');
+      range.insertNode(br);
+
+      // 3) 커서를 <br> 뒤로 이동
+      range.setStartAfter(br);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+
+      // 4) 브라우저가 DOM을 정리한 뒤 직렬화(타이밍 안정화)
+      queueMicrotask(() => handleInput());
+      return;
+    }
     if (e.key === 'Delete' || e.key === 'Backspace') {
       const selection = window.getSelection();
       if (selection?.rangeCount) {
@@ -230,9 +286,8 @@ export const FormatVariableModal = ({
   };
 
   const handleConfirm = () => {
-    if (formatValue) {
-      onConfirm(formatValue);
-    }
+    const finalText = getCurrentTextFromDom();
+    if (finalText) onConfirm(finalText);
   };
 
   // 미리보기

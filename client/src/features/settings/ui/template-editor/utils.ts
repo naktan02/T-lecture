@@ -50,31 +50,59 @@ export function htmlToTemplate(html: string): string {
   const div = document.createElement('div');
   div.innerHTML = html;
 
-  div.querySelectorAll('.var-block').forEach((el) => {
-    const key = el.getAttribute('data-variable') || '';
-    const format = el.getAttribute('data-format');
-
-    let replacement = '';
-    if (format !== null) {
-      replacement = `{{${key}:format=${decodeURIComponent(format)}}}`;
-    } else {
-      replacement = `{{${key}}}`;
+  const out: string[] = [];
+  const pushNL = () => {
+    if (out.length === 0) return out.push('\n');
+    if (out[out.length - 1] !== '\n') out.push('\n');
+  };
+  
+  const walk = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      out.push(node.textContent ?? '');
+      return;
     }
-    el.replaceWith(replacement);
-  });
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
 
-  let text = div.innerHTML;
-  text = text.replace(/<br\s*\/?>/gi, '\n');
-  text = text.replace(/<\/div><div>/gi, '\n');
-  text = text.replace(/<div>/gi, '\n');
-  text = text.replace(/<\/div>/gi, '');
-  text = text.replace(/<\/p><p>/gi, '\n');
-  text = text.replace(/<p>/gi, '');
-  text = text.replace(/<\/p>/gi, '\n');
+    const el = node as HTMLElement;
 
-  const textDiv = document.createElement('div');
-  textDiv.innerHTML = text;
-  return (textDiv.textContent || '').replace(/\n{3,}/g, '\n\n'); // 불필요한 연속 줄바꿈 방지
+    // ✅ 변수 블록(span.var-block) → 템플릿 토큰으로 직렬화
+    if (el.classList.contains('var-block')) {
+      const key = el.getAttribute('data-variable') || '';
+      const format = el.getAttribute('data-format');
+      if (format) out.push(`{{${key}:format=${decodeURIComponent(format)}}}`);
+      else out.push(`{{${key}}}`);
+      return;
+    }
+
+    // ✅ br → 개행 1번
+    if (el.tagName === 'BR') {
+      pushNL();
+      return;
+    }
+
+    // ✅ Enter가 자주 만드는 <div><br></div> 는 개행 1번만
+    if ((el.tagName === 'DIV' || el.tagName === 'P') && el.childNodes.length === 1) {
+      const only = el.childNodes[0];
+      if (only.nodeType === Node.ELEMENT_NODE && (only as HTMLElement).tagName === 'BR') {
+        pushNL();
+        return;
+      }
+    }
+
+    // 일반 요소: 자식 순회
+    el.childNodes.forEach(walk);
+
+    // 블록 요소 끝에서는 개행(중복 방지)
+    if (el.tagName === 'DIV' || el.tagName === 'P') pushNL();
+  };
+
+  div.childNodes.forEach(walk);
+
+  // 끝 개행 1개 제거(원치 않는 “한 줄 더 내려감” 방지)
+  if (out[out.length - 1] === '\n') out.pop();
+
+  // 너무 많은 개행은 2개까지만(빈줄 유지)
+  return out.join('').replace(/\n{3,}/g, '\n\n');
 }
 
 /**

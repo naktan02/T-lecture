@@ -10,15 +10,28 @@ function parseInner(raw: string): { key: string; format?: string } {
   return { key, format };
 }
 
+function findTokenEnd(input: string, startAfterOpen: number): { end: number; consumeTo: number } | null {
+  // end: raw content가 끝나는 인덱스(= 닫힘 "}}" 시작 인덱스)
+  // consumeTo: 커서를 옮길 위치(= 닫힘 포함해서 소비한 뒤 위치)
+  for (let i = startAfterOpen; i < input.length - 1; i++) {
+    if (input[i] === '}' && input[i + 1] === '}') {
+      // 연속 '}' 런 길이 계산
+      let j = i;
+      while (j < input.length && input[j] === '}') j++;
+      const runLen = j - i;
+
+      // 런의 마지막 2개를 닫힘으로 사용
+      const end = j - 2;        // raw content는 여기까지 (exclusive)
+      const consumeTo = j;      // 런 전체 소비 (앞의 runLen-2는 raw에 포함됨)
+      return { end, consumeTo };
+    }
+  }
+  return null;
+}
+
 export function parseTemplateToTokens(input: string): Token[] {
   const tokens: Token[] = [];
 
-  /**
-   * ⚠️ IMPORTANT
-   * format 안에는 "{actualCount}" 같은 중괄호가 들어간다.
-   * "{{ ... }}" 토큰을 파싱할 때, '}' 하나로 닫히면 format이 잘려버린다.
-   * 따라서 반드시 "{{" ~ "}}" 쌍으로만 토큰을 끊는 안전한 스캐닝 방식으로 파싱한다.
-   */
   let cursor = 0;
 
   while (true) {
@@ -29,21 +42,21 @@ export function parseTemplateToTokens(input: string): Token[] {
       pushTextWithNewlines(tokens, input.slice(cursor, start));
     }
 
-    const end = input.indexOf('}}', start + 2);
-    if (end === -1) {
+    const found = findTokenEnd(input, start + 2);
+    if (!found) {
       // 닫힘이 없으면 나머지를 텍스트로 취급 (깨진 템플릿 방어)
       pushTextWithNewlines(tokens, input.slice(start));
       cursor = input.length;
       break;
     }
-
+    const { end, consumeTo } = found;
     const raw = input.slice(start + 2, end);
     const { key, format } = parseInner(raw);
 
     if (format !== undefined) tokens.push({ type: 'format', key, format });
     else tokens.push({ type: 'var', key });
 
-    cursor = end + 2;
+    cursor = consumeTo;
   }
   // 뒤의 일반 텍스트
   if (cursor < input.length) {
