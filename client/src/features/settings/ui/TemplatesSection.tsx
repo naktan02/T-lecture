@@ -10,7 +10,7 @@ import {
   formatPlaceholders,
   FormatVariableModal,
 } from './template-editor';
-import { parseTemplateToTokens } from './template-editor/parse';
+import { parseTemplateToTokens, tokensToTemplate } from './template-editor/parse';
 import type { VariableRegistry, Token, VariableDef } from './template-editor';
 
 const TEMPLATE_LABELS: Record<string, { name: string; description: string }> = {
@@ -114,28 +114,33 @@ export const TemplatesSection = (): ReactElement => {
     [registry, toFormatVar],
   );
 
-  // 포맷 수정 확정 (문자열 치환 방식)
+  // ✅ 포맷 수정 확정: 문자열 치환 금지 → 토큰 인덱스 기반 업데이트 + 직렬화
   const handleConfirmFormat = (newFormat: string) => {
     if (!formatEditInfo) return;
 
-    const { token } = formatEditInfo;
     const tokens = parseTemplateToTokens(editBody);
+    const idx = formatEditInfo.index;
 
-    const updatedTokens = tokens.map(t => {
-      if (t.type === 'format' && t.key === token.key) {
-        return { ...t, format: newFormat };
-      }
-      return t;
-    });
-    const newBody = updatedTokens.map(t => {
-      if (t.type === 'text') return t.text;
-      if (t.type === 'newline') return '\n';
-      if (t.type === 'var') return `{{${t.key}}}`;
-      if (t.type === 'format') return `{{${t.key}:format=${t.format}}}`;
-      return '';
-    }).join('');
+    // 1) index가 유효하면 그 자리만 수정
+    if (idx >= 0 && idx < tokens.length && tokens[idx].type === 'format') {
+      (tokens[idx] as Token & { type: 'format' }).format = newFormat;
+      setEditBody(tokensToTemplate(tokens));
+      setFormatEditInfo(null);
+      return;
+    }
 
-    setEditBody(newBody);
+    // 2) 방어: index가 -1 등으로 들어오면 (key+format)으로 정확히 찾아 수정
+    const fallbackIdx = tokens.findIndex(
+      (t) =>
+        t.type === 'format' &&
+        t.key === formatEditInfo.token.key &&
+        t.format === formatEditInfo.token.format,
+    );
+
+    if (fallbackIdx !== -1) {
+      (tokens[fallbackIdx] as Token & { type: 'format' }).format = newFormat;
+      setEditBody(tokensToTemplate(tokens));
+    }
     setFormatEditInfo(null);
   };
 
@@ -143,16 +148,16 @@ export const TemplatesSection = (): ReactElement => {
   const handleInsertFormat = useCallback(
     (varDef: VariableDef, callback: (format: string) => void) => {
       const tokens = parseTemplateToTokens(editBody);
-      const existingToken = tokens.find(
-        (t) => t.type === 'format' && t.key === varDef.key
-      ) as (Token & { type: 'format' }) | undefined;
+      const existingToken = tokens.find((t) => t.type === 'format' && t.key === varDef.key) as
+        | (Token & { type: 'format' })
+        | undefined;
 
       if (existingToken) {
         // 이미 본문에 해당 포맷이 있다면 해당 토큰 정보로 수정 모달 열기
-        setFormatEditInfo({ 
-          index: -1, 
-          token: existingToken, 
-          varDef: toFormatVar(varDef) 
+        setFormatEditInfo({
+          index: -1,
+          token: existingToken,
+          varDef: toFormatVar(varDef),
         });
       } else {
         // 새 포맷 삽입 모드

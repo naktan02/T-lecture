@@ -289,11 +289,22 @@ export function useTemplateEditor({
       const block = target.closest('.var-block') as HTMLElement;
       if (block && block.hasAttribute('data-format') && onEditFormat) {
         const key = block.getAttribute('data-variable') || '';
+        const fmtAttr = block.getAttribute('data-format') || '';
+        const clickedFormat = decodeURIComponent(fmtAttr);
+
         const tokens = parseTemplateToTokens(value);
-        const idx = tokens.findIndex((t) => t.type === 'format' && t.key === key);
-        if (idx !== -1) {
-          onEditFormat(idx, tokens[idx] as Token & { type: 'format' });
+
+        // ✅ 1순위: key + format 둘 다 일치하는 "정확한" 토큰을 찾는다
+        let idx = tokens.findIndex(
+          (t) => t.type === 'format' && t.key === key && t.format === clickedFormat,
+        );
+
+        // ✅ 2순위: 혹시 format이 미세하게 달라졌다면(공백/개행 등) key로 fallback
+        if (idx === -1) {
+          idx = tokens.findIndex((t) => t.type === 'format' && t.key === key);
         }
+
+        if (idx !== -1) onEditFormat(idx, tokens[idx] as Token & { type: 'format' });
       }
     },
     [syncToTemplate, onEditFormat, value],

@@ -13,33 +13,41 @@ function parseInner(raw: string): { key: string; format?: string } {
 export function parseTemplateToTokens(input: string): Token[] {
   const tokens: Token[] = [];
 
-  // \{\{([\s\S]*?)\}\} : 내부에 '}'가 있어도 non-greedy로 안전
-  const re = /\{\{([\s\S]*?)\}\}/g;
+  /**
+   * ⚠️ IMPORTANT
+   * format 안에는 "{actualCount}" 같은 중괄호가 들어간다.
+   * "{{ ... }}" 토큰을 파싱할 때, '}' 하나로 닫히면 format이 잘려버린다.
+   * 따라서 반드시 "{{" ~ "}}" 쌍으로만 토큰을 끊는 안전한 스캐닝 방식으로 파싱한다.
+   */
+  let cursor = 0;
 
-  let last = 0;
-  let m: RegExpExecArray | null;
-
-  while ((m = re.exec(input)) !== null) {
-    const start = m.index;
-    const end = re.lastIndex;
-
+  while (true) {
+    const start = input.indexOf('{{', cursor);
+    if (start === -1) break;
     // 앞의 일반 텍스트
-    if (start > last) {
-      pushTextWithNewlines(tokens, input.slice(last, start));
+    if (start > cursor) {
+      pushTextWithNewlines(tokens, input.slice(cursor, start));
     }
 
-    const raw = m[1] ?? '';
+    const end = input.indexOf('}}', start + 2);
+    if (end === -1) {
+      // 닫힘이 없으면 나머지를 텍스트로 취급 (깨진 템플릿 방어)
+      pushTextWithNewlines(tokens, input.slice(start));
+      cursor = input.length;
+      break;
+    }
+
+    const raw = input.slice(start + 2, end);
     const { key, format } = parseInner(raw);
 
     if (format !== undefined) tokens.push({ type: 'format', key, format });
     else tokens.push({ type: 'var', key });
 
-    last = end;
+    cursor = end + 2;
   }
-
   // 뒤의 일반 텍스트
-  if (last < input.length) {
-    pushTextWithNewlines(tokens, input.slice(last));
+  if (cursor < input.length) {
+    pushTextWithNewlines(tokens, input.slice(cursor));
   }
 
   // 텍스트 토큰 병합 정리
@@ -66,4 +74,21 @@ function compactTokens(tokens: Token[]): Token[] {
     }
   }
   return out;
+}
+
+
+/**
+ * ✅ Token[] → 템플릿 문자열 직렬화
+ * - 문자열 replace로 수정하지 않고, "토큰 단위"로 안전하게 재조립하기 위해 사용
+ */
+export function tokensToTemplate(tokens: Token[]): string {
+  return tokens
+    .map((t) => {
+      if (t.type === 'text') return t.text;
+      if (t.type === 'newline') return '\n';
+      if (t.type === 'var') return `{{${t.key}}}`;
+      if (t.type === 'format') return `{{${t.key}:format=${t.format}}}`;
+      return '';
+    })
+    .join('');
 }
