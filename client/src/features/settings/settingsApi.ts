@@ -1,5 +1,6 @@
 // client/src/features/settings/settingsApi.ts
 import { apiClient } from '../../shared/apiClient';
+import type { Token } from './ui/template-editor/types';
 
 // 타입 정의
 export interface Team {
@@ -12,10 +13,19 @@ export interface Virtue {
   name: string | null;
 }
 
+// MessageTemplate body는 JSONB로 Token 배열 형태
+export interface MessageTemplateBody {
+  tokens: Token[];
+}
+
+// 포맷 변수별 프리셋
+export type FormatPresets = Record<string, string>;
+
 export interface MessageTemplate {
   key: string;
   title: string;
-  body: string;
+  body: MessageTemplateBody;
+  formatPresets: FormatPresets | null;
   updatedAt: string;
 }
 
@@ -84,11 +94,12 @@ export const getTemplates = async (): Promise<MessageTemplate[]> => {
 export const updateTemplate = async (
   key: string,
   title: string,
-  body: string,
+  body: MessageTemplateBody,
+  formatPresets?: FormatPresets | null,
 ): Promise<MessageTemplate> => {
   const res = await apiClient(`/api/v1/metadata/templates/${key}`, {
     method: 'PUT',
-    body: JSON.stringify({ title, body }),
+    body: JSON.stringify({ title, body, formatPresets }),
   });
   return res.json();
 };

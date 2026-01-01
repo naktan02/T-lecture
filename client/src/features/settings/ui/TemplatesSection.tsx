@@ -2,7 +2,7 @@
 import { useState, ReactElement, useCallback } from 'react';
 import { useTemplates } from '../model/useSettings';
 import { Button } from '../../../shared/ui';
-import { MessageTemplate } from '../settingsApi';
+import { MessageTemplate, MessageTemplateBody } from '../settingsApi';
 import {
   TemplateEditor,
   variableConfig,
@@ -67,16 +67,22 @@ export const TemplatesSection = (): ReactElement => {
     categories: () => variableCategories,
   };
 
+  // API에서 Token[] 형태로 받아오므로, 에디터용 문자열로 변환
   const handleEdit = (template: MessageTemplate) => {
     setEditingKey(template.key);
     setEditTitle(template.title);
-    setEditBody(template.body);
+    // Token[] → 문자열 변환 (에디터용)
+    const bodyStr = template.body?.tokens ? tokensToTemplate(template.body.tokens) : '';
+    setEditBody(bodyStr);
   };
 
+  // 저장 시 문자열 → Token[] 변환
   const handleSave = async () => {
     if (!editingKey) return;
     try {
-      await updateTemplate({ key: editingKey, title: editTitle, body: editBody });
+      // 에디터 문자열을 Token[] 변환하여 저장
+      const body: MessageTemplateBody = { tokens: parseTemplateToTokens(editBody) };
+      await updateTemplate({ key: editingKey, title: editTitle, body });
       setEditingKey(null);
       setEditTitle('');
       setEditBody('');
@@ -266,7 +272,7 @@ export const TemplatesSection = (): ReactElement => {
                   <div>
                     <div className="text-xs text-gray-500 mb-1">본문</div>
                     <div className="text-sm text-gray-800 bg-gray-50 p-3 rounded whitespace-pre-wrap">
-                      {template.body}
+                      {template.body?.tokens ? tokensToTemplate(template.body.tokens) : ''}
                     </div>
                   </div>
                 </div>

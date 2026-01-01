@@ -1,4 +1,5 @@
 // server/src/domains/metadata/metadata.repository.ts
+import { Prisma } from '@prisma/client';
 import prisma from '../../libs/prisma';
 
 interface CategoryItem {
@@ -98,11 +99,23 @@ class MetadataRepository {
     });
   }
 
-  // 메시지 템플릿 수정
-  async updateMessageTemplate(key: string, title: string, body: string) {
+  // 메시지 템플릿 수정 (body와 formatPresets는 JSONB)
+  async updateMessageTemplate(
+    key: string,
+    title: string,
+    body: object,
+    formatPresets?: object | null,
+  ) {
     return prisma.messageTemplate.update({
       where: { key },
-      data: { title, body },
+      data: {
+        title,
+        body,
+        // undefined면 업데이트 안 함, null이면 Prisma.DbNull, 값 있으면 그대로
+        ...(formatPresets !== undefined && {
+          formatPresets: formatPresets === null ? Prisma.DbNull : formatPresets,
+        }),
+      },
     });
   }
 }

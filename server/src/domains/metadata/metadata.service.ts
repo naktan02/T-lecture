@@ -1,6 +1,7 @@
 // server/src/domains/metadata/metadata.service.ts
 import metadataRepository from './metadata.repository';
 import AppError from '../../common/errors/AppError';
+import type { MessageTemplateBody, FormatPresets } from '../../types/template.types';
 
 // 공통 유틸: 숫자 ID 파싱/검증
 const parseIntIdOrThrow = (raw: string | number, fieldName = 'id'): number => {
@@ -89,13 +90,21 @@ class MetadataService {
     return metadataRepository.deleteVirtue(virtueId);
   }
 
-  // 템플릿 수정
-  async updateMessageTemplate(key: string, title: string, body: string) {
+  // 템플릿 수정 (body와 formatPresets는 JSONB)
+  async updateMessageTemplate(
+    key: string,
+    title: string,
+    body: MessageTemplateBody,
+    formatPresets?: FormatPresets | null,
+  ) {
     const templateKey = requireNonEmptyString(key, 'key');
     const t = requireNonEmptyString(title, 'title');
-    const b = requireNonEmptyString(body, 'body');
 
-    return metadataRepository.updateMessageTemplate(templateKey, t, b);
+    if (!body || !Array.isArray(body.tokens)) {
+      throw new AppError('body.tokens 배열이 필요합니다.', 400, 'VALIDATION_ERROR');
+    }
+
+    return metadataRepository.updateMessageTemplate(templateKey, t, body, formatPresets);
   }
 }
 

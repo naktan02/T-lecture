@@ -55,10 +55,11 @@ model MessageAssignment {
 }
 
 model MessageTemplate {
-  key       String   @id @map("템플릿키") // 예: "TEMPORARY", "CONFIRMED_LEADER", "CONFIRMED_MEMBER"
-  title     String   @map("제목")
-  body      String   @map("본문") @db.Text // 긴 글 저장을 위해 Text 타입
-  updatedAt DateTime @updatedAt @map("수정일시")
+  key           String   @id @map("템플릿키") // 예: "TEMPORARY", "CONFIRMED_LEADER", "CONFIRMED_MEMBER"
+  title         String   @map("제목")
+  body          Json     @map("본문") @db.JsonB // Token[] 배열을 JSON으로 저장
+  formatPresets Json?    @map("포맷프리셋") @db.JsonB // 포맷 변수별 프리셋 저장
+  updatedAt     DateTime @updatedAt @map("수정일시")
 
   @@map("메시지_템플릿")
 }

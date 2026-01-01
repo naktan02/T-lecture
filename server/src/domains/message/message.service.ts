@@ -5,6 +5,7 @@ import AppError from '../../common/errors/AppError';
 import metadataRepository from '../metadata/metadata.repository';
 import { PrismaError } from '../../types/common.types';
 import { UserMessageGroup } from '../../types/message.types';
+import { tokensToTemplate, MessageTemplateBody } from '../../types/template.types';
 
 class MessageService {
   // 임시 배정 메시지 일괄 발송 (부대별로 별도 메시지)
@@ -123,8 +124,11 @@ class MessageService {
         'unit.officerPhone': unit.officerPhone || '',
       };
 
-      // self.schedules 포맷 변수 처리
-      const body = this.compileTemplateWithFormat(template.body, variables, {
+      // self.schedules 포맷 변수 처리 - JSONB body를 문자열로 변환
+      const templateBodyStr = tokensToTemplate(
+        (template.body as unknown as MessageTemplateBody).tokens,
+      );
+      const body = this.compileTemplateWithFormat(templateBodyStr, variables, {
         'self.schedules': scheduleDates,
       });
 
@@ -242,8 +246,11 @@ class MessageService {
         note: loc.note || '',
       }));
 
-      // 템플릿 치환 (포맷 변수 포함)
-      const body = this.compileTemplateWithFormat(targetTemplate.body, variables, {
+      // 템플릿 치환 (포맷 변수 포함) - JSONB body를 문자열로 변환
+      const targetBodyStr = tokensToTemplate(
+        (targetTemplate.body as unknown as MessageTemplateBody).tokens,
+      );
+      const body = this.compileTemplateWithFormat(targetBodyStr, variables, {
         locations: locationsList,
       });
 
