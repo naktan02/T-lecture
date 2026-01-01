@@ -195,6 +195,13 @@ async function main() {
     skipDuplicates: true,
   });
   logger.info('메시지 템플릿 생성 완료');
+
+  logger.info('');
+  logger.info('기본 시드 데이터 생성 완료!');
+  logger.info('');
+  logger.info('추가 시드 스크립트:');
+  logger.info('  - 유저 테스트 데이터: npx tsx prisma/seedUsers.ts');
+  logger.info('  - 공지사항 테스트 데이터: npx tsx prisma/seedNotices.ts');
 }
 
 main()

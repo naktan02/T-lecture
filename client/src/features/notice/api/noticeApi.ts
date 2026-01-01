@@ -28,6 +28,9 @@ export interface NoticeSearchParams {
   search?: string;
 }
 
+// API 경로: /api/v1/messages/notices (message 도메인에 통합됨)
+const BASE_PATH = '/api/v1/messages/notices';
+
 export const noticeApi = {
   getNotices: async (params: NoticeSearchParams = {}) => {
     const { page = 1, limit = 10, search } = params;
@@ -38,17 +41,17 @@ export const noticeApi = {
     if (search) {
       urlParams.append('search', search);
     }
-    const response = await apiClient(`/api/v1/notices?${urlParams.toString()}`);
+    const response = await apiClient(`${BASE_PATH}?${urlParams.toString()}`);
     return response.json() as Promise<NoticeListResponse>;
   },
 
   getNotice: async (id: number) => {
-    const response = await apiClient(`/api/v1/notices/${id}`);
+    const response = await apiClient(`${BASE_PATH}/${id}`);
     return response.json() as Promise<Notice>;
   },
 
   createNotice: async (data: { title: string; content: string; isPinned?: boolean }) => {
-    const response = await apiClient(`/api/v1/notices`, {
+    const response = await apiClient(`${BASE_PATH}`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -59,7 +62,7 @@ export const noticeApi = {
     id: number,
     data: { title?: string; content?: string; isPinned?: boolean },
   ) => {
-    const response = await apiClient(`/api/v1/notices/${id}`, {
+    const response = await apiClient(`${BASE_PATH}/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
@@ -67,13 +70,13 @@ export const noticeApi = {
   },
 
   deleteNotice: async (id: number) => {
-    await apiClient(`/api/v1/notices/${id}`, {
+    await apiClient(`${BASE_PATH}/${id}`, {
       method: 'DELETE',
     });
   },
 
   togglePin: async (id: number) => {
-    const response = await apiClient(`/api/v1/notices/${id}/pin`, {
+    const response = await apiClient(`${BASE_PATH}/${id}/pin`, {
       method: 'PATCH',
     });
     return response.json() as Promise<Notice>;

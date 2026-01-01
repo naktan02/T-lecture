@@ -2,6 +2,7 @@ enum MessageType {
 
   Temporary
   Confirmed
+  Notice     // 공지사항 타입 추가
 
   @@map("유형__t")
 }
@@ -19,10 +20,17 @@ model Message {
   id        Int            @id @default(autoincrement())
   type      MessageType?   @map("유형")
   title     String?        @map("제목")
-  body      String?        @map("본문")
+  body      String?        @map("본문") @db.Text
   status    MessageStatus? @map("상태")
-  createdAt DateTime?      @map("생성일시")
+  createdAt DateTime?      @default(now()) @map("생성일시")
 
+  // 공지사항 전용 필드
+  authorId  Int?           @map("작성자id")
+  viewCount Int            @default(0) @map("조회수")
+  isPinned  Boolean        @default(false) @map("상단고정")
+  updatedAt DateTime?      @updatedAt @map("수정일시")
+
+  // 관계
   assignments MessageAssignment[]
   receipts    MessageReceipt[]
 
@@ -62,3 +70,4 @@ model MessageTemplate {
 
   @@map("메시지_템플릿")
 }
+

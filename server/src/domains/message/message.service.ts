@@ -6,7 +6,23 @@ import metadataRepository from '../metadata/metadata.repository';
 import { PrismaError } from '../../types/common.types';
 import { UserMessageGroup } from '../../types/message.types';
 
+interface NoticeCreateData {
+  title: string;
+  content: string;
+  isPinned?: boolean;
+}
+
+interface NoticeGetParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
 class MessageService {
+  // ==========================================
+  // 기존 메시지 관련 메서드
+  // ==========================================
+
   // 임시 배정 메시지 일괄 발송
   async sendTemporaryMessages() {
     // 템플릿 조회
@@ -196,6 +212,118 @@ class MessageService {
       // 그 외 에러는 상위로 전파
       throw error;
     }
+  }
+
+  // ==========================================
+  // 공지사항 관련 메서드
+  // ==========================================
+
+  // 공지사항 생성
+  async createNotice(data: NoticeCreateData, authorId: number) {
+    if (!data.title || !data.content) {
+      throw new AppError('제목과 내용을 모두 입력해주세요.', 400, 'VALIDATION_ERROR');
+    }
+    const notice = await messageRepository.createNotice({
+      title: data.title,
+      content: data.content,
+      authorId,
+      isPinned: data.isPinned,
+    });
+
+    // 작성자 이름 조회
+    const author = await messageRepository.findAuthorById(authorId);
+    return this.formatNotice(notice, author?.name || null);
+  }
+
+  // 공지사항 목록 조회
+  async getNotices(params: NoticeGetParams = {}) {
+    const { page = 1, limit = 10, search } = params;
+    const skip = (page - 1) * limit;
+    const { notices, total } = await messageRepository.findAllNotices({
+      skip,
+      take: limit,
+      search,
+    });
+
+    // 작성자 이름 일괄 조회
+    const authorIds = [...new Set(notices.map((n) => n.authorId).filter(Boolean))] as number[];
+    const authorsMap = new Map<number, string | null>();
+    for (const authorId of authorIds) {
+      const author = await messageRepository.findAuthorById(authorId);
+      authorsMap.set(authorId, author?.name || null);
+    }
+
+    return {
+      notices: notices.map((n) =>
+        this.formatNotice(n, n.authorId ? authorsMap.get(n.authorId) || null : null),
+      ),
+      meta: {
+        total,
+        page,
+        lastPage: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  // 공지사항 단건 조회
+  async getNotice(id: number) {
+    const notice = await this.getNoticeHelper(id);
+    // 조회수 증가 비동기 처리
+    messageRepository.increaseViewCount(id).catch(() => {});
+
+    const author = notice.authorId ? await messageRepository.findAuthorById(notice.authorId) : null;
+    return this.formatNotice(notice, author?.name || null);
+  }
+
+  // 공지사항 수정
+  async updateNotice(id: number, data: { title?: string; content?: string; isPinned?: boolean }) {
+    await this.getNoticeHelper(id);
+    const updated = await messageRepository.updateNotice(id, data);
+    const author = updated.authorId
+      ? await messageRepository.findAuthorById(updated.authorId)
+      : null;
+    return this.formatNotice(updated, author?.name || null);
+  }
+
+  // 공지사항 삭제
+  async deleteNotice(id: number) {
+    await this.getNoticeHelper(id);
+    return await messageRepository.deleteNotice(id);
+  }
+
+  // 공지사항 고정 토글
+  async toggleNoticePin(id: number) {
+    await this.getNoticeHelper(id);
+    const toggled = await messageRepository.toggleNoticePin(id);
+    if (!toggled) throw new AppError('공지사항을 찾을 수 없습니다.', 404, 'NOTICE_NOT_FOUND');
+    const author = toggled.authorId
+      ? await messageRepository.findAuthorById(toggled.authorId)
+      : null;
+    return this.formatNotice(toggled, author?.name || null);
+  }
+
+  // Helper: 공지사항 존재 확인
+  private async getNoticeHelper(id: number) {
+    const notice = await messageRepository.findNoticeById(id);
+    if (!notice) {
+      throw new AppError('공지사항을 찾을 수 없습니다.', 404, 'NOTICE_NOT_FOUND');
+    }
+    return notice;
+  }
+
+  // Helper: 공지사항 응답 포맷
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private formatNotice(notice: any, authorName: string | null) {
+    return {
+      id: notice.id,
+      title: notice.title,
+      content: notice.body,
+      createdAt: notice.createdAt,
+      updatedAt: notice.updatedAt,
+      viewCount: notice.viewCount,
+      isPinned: notice.isPinned,
+      author: { name: authorName },
+    };
   }
 }
 
