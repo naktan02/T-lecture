@@ -75,50 +75,82 @@ class UnitService {
       throw new AppError('등록할 데이터가 없습니다.', 400, 'VALIDATION_ERROR');
     }
 
+    // 1. 모든 부대명 추출 (중복 제거)
+    const allNames = dataArray.map((d) => d.name?.trim()).filter((n): n is string => !!n);
+    const uniqueNames = Array.from(new Set(allNames));
+
+    if (uniqueNames.length === 0) {
+      throw new AppError('유효한 부대명이 없습니다.', 400, 'VALIDATION_ERROR');
+    }
+
+    // 2. 부대 일괄 조회 (Bulk Read)
+    const existingUnits = await unitRepository.findUnitsByNames(uniqueNames);
+    const existingUnitMap = new Map(existingUnits.map((u) => [u.name, u]));
+
     let created = 0;
     let updated = 0;
     let locationsAdded = 0;
     let locationsSkipped = 0;
-    const errors: { name: string; error: string }[] = [];
 
+    const newUnitPromises: Promise<any>[] = [];
+    const trainingLocationsToCreate: { unitId: number; location: any }[] = [];
+
+    // 3. 데이터 분류 및 처리
     for (const rawData of dataArray) {
-      try {
-        const unitName = rawData.name?.trim();
-        if (!unitName) {
-          errors.push({ name: '(부대명 없음)', error: '부대명은 필수입니다.' });
-          continue;
-        }
+      const unitName = rawData.name?.trim();
+      if (!unitName) continue;
 
-        // DB에서 같은 부대명 조회
-        const existingUnit = await unitRepository.findUnitByName(unitName);
+      const existingUnit = existingUnitMap.get(unitName);
 
-        if (existingUnit) {
-          // 기존 부대 → 교육장소만 추가 (중복 제외)
-          if (rawData.trainingLocations && rawData.trainingLocations.length > 0) {
-            const result = await unitRepository.addTrainingLocationsIfNotExists(
-              existingUnit.id,
-              rawData.trainingLocations,
-            );
-            locationsAdded += result.added;
-            locationsSkipped += result.skipped;
+      if (existingUnit) {
+        // [기존 부대] -> 교육장소 중복 체크 후 추가
+        updated++;
+
+        if (rawData.trainingLocations && rawData.trainingLocations.length > 0) {
+          // 기존 장소 이름 Set (DB에서 가져온 것)
+          const existingPlaceNames = new Set(
+            existingUnit.trainingLocations.map((l: any) => l.originalPlace),
+          );
+
+          for (const loc of rawData.trainingLocations) {
+            const placeName = loc.originalPlace;
+            // 메모리 상 중복 체크
+            if (placeName && existingPlaceNames.has(placeName)) {
+              locationsSkipped++;
+            } else {
+              // 신규 장소 매핑 대기 (엑셀 내 중복 방지 위해 Set에도 추가)
+              if (placeName) existingPlaceNames.add(placeName);
+              trainingLocationsToCreate.push({
+                unitId: existingUnit.id,
+                location: loc,
+              });
+              locationsAdded++;
+            }
           }
-          updated++;
-        } else {
-          // 새 부대 생성
-          await this.registerSingleUnit(rawData);
-          created++;
-          locationsAdded += rawData.trainingLocations?.length || 0;
         }
-      } catch (e: unknown) {
-        const name = rawData.name || '(부대명 없음)';
-        const message = e instanceof Error ? e.message : '알 수 없는 오류';
-        errors.push({ name, error: message });
+      } else {
+        // [신규 부대] -> 개별 등록 (병렬 처리)
+        // groupExcelRowsByUnit 덕분에 엑셀 내 부대명 중복은 없으므로 안전하게 생성 시도
+        newUnitPromises.push(this.registerSingleUnit(rawData));
+        created++;
+        locationsAdded += rawData.trainingLocations?.length || 0;
       }
     }
 
-    // 2. 비동기 좌표 변환 트리거 (응답 지연 없이 백그라운드 실행)
+    // 4. 실행
+    // 4-1. 신규 부대 등록 (병렬)
+    if (newUnitPromises.length > 0) {
+      await Promise.all(newUnitPromises);
+    }
+
+    // 4-2. 기존 부대 장소 일괄 추가 (Bulk Insert)
+    if (trainingLocationsToCreate.length > 0) {
+      await unitRepository.bulkAddTrainingLocations(trainingLocationsToCreate);
+    }
+
+    // 5. 비동기 좌표 변환 (백그라운드)
     this.updateUnitCoordsInBackground().catch((err) => {
-      console.error('[UnitService] Background geocoding failed:', err);
+      console.error('Background Geocoding Error:', err);
     });
 
     return {
@@ -126,7 +158,6 @@ class UnitService {
       updated,
       locationsAdded,
       locationsSkipped,
-      errors: errors.length > 0 ? errors : undefined,
     };
   }
 

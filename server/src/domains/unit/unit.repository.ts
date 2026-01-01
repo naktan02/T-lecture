@@ -161,6 +161,33 @@ class UnitRepository {
   // --- 등록 ---
 
   /**
+   * 부대명 목록으로 부대 일괄 조회 (Bulk Read)
+   */
+  async findUnitsByNames(names: string[]) {
+    return prisma.unit.findMany({
+      where: { name: { in: names } },
+      // 교육장소 중복 체크를 위해 가져옴
+      include: { trainingLocations: true },
+    });
+  }
+
+  /**
+   * 교육장소 일괄 생성 및 매핑 (Bulk Insert with Mapping)
+   */
+  async bulkAddTrainingLocations(items: { unitId: number; location: TrainingLocationData }[]) {
+    if (items.length === 0) return { count: 0 };
+
+    const dbData = items.map((item) => ({
+      ...this._mapLocationData(item.location, item.unitId),
+      unitId: item.unitId,
+    }));
+
+    return prisma.trainingLocation.createMany({
+      data: dbData,
+    });
+  }
+
+  /**
    * 부대 단건 DB 삽입 (Insert)
    */
   async insertOneUnit(data: Prisma.UnitCreateInput) {
