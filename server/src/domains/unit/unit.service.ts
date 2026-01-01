@@ -116,6 +116,11 @@ class UnitService {
       }
     }
 
+    // 2. 비동기 좌표 변환 트리거 (응답 지연 없이 백그라운드 실행)
+    this.updateUnitCoordsInBackground().catch((err) => {
+      console.error('[UnitService] Background geocoding failed:', err);
+    });
+
     return {
       created,
       updated,
@@ -123,6 +128,46 @@ class UnitService {
       locationsSkipped,
       errors: errors.length > 0 ? errors : undefined,
     };
+  }
+
+  /**
+   * 좌표가 없는 부대들을 찾아 Geocoding 수행 (비동기 처리용)
+   * - lat이 null이고 addressDetail이 있는 부대 대상
+   */
+  async updateUnitCoordsInBackground() {
+    console.log('[UnitService] Starting background geocoding...');
+
+    // 1. 좌표가 없는 부대 조회 (최대 100개씩 처리)
+    const units = await unitRepository.findUnitsWithoutCoords(100);
+    if (units.length === 0) {
+      console.log('[UnitService] No units needing geocoding.');
+      return;
+    }
+
+    console.log(`[UnitService] Found ${units.length} units to geocode.`);
+
+    // 2. 순차적으로 처리 (Rate Limit 고려)
+    let successCount = 0;
+
+    // geocoding.service를 동적 import 하거나 상단 import 사용
+    // 여기서는 상단에 import 했다고 가정하고 사용하지만,
+    // 실제로는 circular dependency 방지를 위해 필요시 동적 import 사용 가능
+    // (현재 구조상 unit.service -> geocoding.service는 문제 없음)
+    const geocodingService = require('../../infra/geocoding.service').default;
+
+    for (const unit of units) {
+      if (!unit.addressDetail) continue;
+
+      const coords = await geocodingService.addressToCoords(unit.addressDetail);
+      if (coords) {
+        await unitRepository.updateCoords(unit.id, coords.lat, coords.lng);
+        successCount++;
+        // 약간의 딜레이
+        await new Promise((r) => setTimeout(r, 100));
+      }
+    }
+
+    console.log(`[UnitService] Finished geocoding. Updated ${successCount}/${units.length} units.`);
   }
 
   /**

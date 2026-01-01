@@ -70,6 +70,14 @@ export function buildUnitWhere(query: UnitQuery = {}): Prisma.UnitWhereInput {
     });
   }
 
+  // 주소 오류 필터 (좌표 변환 실패한 부대 조회)
+  if (query.hasAddressError === 'true' || query.hasAddressError === true) {
+    conditions.push({
+      lat: null,
+      addressDetail: { not: null },
+    });
+  }
+
   return conditions.length > 0 ? { AND: conditions } : {};
 }
 

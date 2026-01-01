@@ -59,6 +59,19 @@ class UnitRepository {
     };
   }
 
+  /**
+   * 좌표(lat)가 없고 주소(addressDetail)만 있는 부대 조회 (Geocoding 대상)
+   */
+  async findUnitsWithoutCoords(take = 100) {
+    return prisma.unit.findMany({
+      where: {
+        lat: null,
+        addressDetail: { not: null }, // 주소는 있는데 좌표가 없는 경우
+      },
+      take,
+    });
+  }
+
   // --- 조회 ---
 
   /**

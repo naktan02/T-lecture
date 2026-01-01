@@ -106,6 +106,7 @@ export interface UnitQueryInput {
   endDate?: string;
   minPersonnel?: string | number;
   maxPersonnel?: string | number;
+  hasAddressError?: string | boolean; // 주소 오류(좌표 미변환) 필터
 }
 
 // Excel 파일 동적 데이터 - 다양한 속성 접근 필요
