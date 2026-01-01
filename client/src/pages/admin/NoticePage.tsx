@@ -13,13 +13,12 @@ const AdminNoticePage = (): ReactElement => {
   const [totalCount, setTotalCount] = useState(0);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
 
   const fetchNotices = useCallback(async () => {
     try {
-      setIsLoading(true);
       const data = await noticeApi.getNotices({
         page,
         limit: 20,
@@ -31,8 +30,6 @@ const AdminNoticePage = (): ReactElement => {
     } catch (error) {
       console.error('Failed to fetch notices', error);
       alert('공지사항을 불러오는데 실패했습니다.');
-    } finally {
-      setIsLoading(false);
     }
   }, [page, searchQuery]);
 
@@ -88,16 +85,6 @@ const AdminNoticePage = (): ReactElement => {
     } catch (error) {
       console.error(error);
       alert('삭제에 실패했습니다.');
-    }
-  };
-
-  const handleTogglePin = async (id: number) => {
-    try {
-      await noticeApi.togglePin(id);
-      fetchNotices();
-    } catch (error) {
-      console.error(error);
-      alert('고정 상태 변경에 실패했습니다.');
     }
   };
 
