@@ -1,6 +1,15 @@
 // client/src/features/settings/ui/template-editor/FormatVariableModal.tsx
 import { useState, useRef, useEffect, ReactElement, DragEvent } from 'react';
-import { VariableDefinition } from './variableConfig';
+import { PLACEHOLDER_META } from './registry';
+
+// 변수 정의 인터페이스 (로컬)
+interface VariableDefinition {
+  key: string;
+  label: string;
+  icon: string;
+  isFormatVariable?: boolean;
+  formatPlaceholders?: string[];
+}
 
 interface FormatVariableModalProps {
   variable: VariableDefinition;
@@ -8,16 +17,6 @@ interface FormatVariableModalProps {
   onConfirm: (format: string) => void;
   onCancel: () => void;
 }
-
-// 플레이스홀더 한글 라벨
-const PLACEHOLDER_LABELS: Record<string, { label: string; icon: string }> = {
-  index: { label: '순번', icon: '🔢' },
-  name: { label: '이름', icon: '👤' },
-  phone: { label: '전화번호', icon: '📱' },
-  category: { label: '분류', icon: '🏷️' },
-  virtues: { label: '가능과목', icon: '📚' },
-  location: { label: '장소', icon: '📍' },
-};
 
 /**
  * 포맷 변수 입력 모달 - 블록 코딩 스타일
@@ -30,50 +29,79 @@ export const FormatVariableModal = ({
 }: FormatVariableModalProps): ReactElement => {
   const editorRef = useRef<HTMLDivElement>(null);
   const isInternalChange = useRef(false);
-  const [formatValue, setFormatValue] = useState(
-    initialFormat || '{index}. {name}({category}) / {phone} / {virtues}',
-  );
+
+  // 변수 타입에 따라 기본 포맷 결정
+  const getDefaultFormat = (): string => {
+    if (variable.key === 'self.schedules') {
+      return '- {date} ({dayOfWeek}): {instructors}';
+    }
+    if (variable.key === 'locations') {
+      return '[{placeName}] 인원: {actualCount}명';
+    }
+    return '{index}. {name}({category}) / {phone} / {virtues}';
+  };
+
+  const [formatValue, setFormatValue] = useState(initialFormat || getDefaultFormat());
 
   const placeholders = variable.formatPlaceholders || [];
 
-  // 텍스트를 HTML로 변환 (플레이스홀더를 블록으로)
+  // 텍스트를 HTML로 변환 (플레이스홀더를 블록으로, 줄바꿈을 br로)
   const textToHtml = (text: string): string => {
     if (!text) return '';
-    return text.replace(/\{(\w+)\}/g, (_, key) => {
-      const info = PLACEHOLDER_LABELS[key];
+    let html = text.replace(/\n/g, '<br>');
+    html = html.replace(/\{(\w+)\}/g, (_, key) => {
+      const info = PLACEHOLDER_META[key]; // registry에서 참조
       if (info) {
         return `<span contenteditable="false" data-placeholder="${key}" class="format-placeholder-block">${info.icon} ${info.label}<button type="button" class="format-delete-btn">×</button></span>`;
       }
+      // 정보가 없어도 텍스트로 남기지 않고 🏷️ 아이콘이라도 붙여서 블록화
       return `<span contenteditable="false" data-placeholder="${key}" class="format-placeholder-block">🏷️ ${key}<button type="button" class="format-delete-btn">×</button></span>`;
     });
+    return html;
   };
-
+  
   // HTML을 텍스트로 변환
   const htmlToText = (html: string): string => {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = html;
 
-    const blocks = tempDiv.querySelectorAll('[data-placeholder]');
-    blocks.forEach((block) => {
+    // 플레이스홀더 블록을 텍스트로 변환
+    tempDiv.querySelectorAll('[data-placeholder]').forEach((block) => {
       const key = block.getAttribute('data-placeholder');
-      if (key) block.replaceWith(`{${key}}`);
+      if (key) {
+        block.parentNode?.replaceChild(document.createTextNode(`{${key}}`), block);
+      }
     });
 
-    return tempDiv.textContent || '';
+    let result = tempDiv.innerHTML;
+    result = result.replace(/<br\s*\/?>/gi, '\n');
+    result = result.replace(/<\/div><div>/gi, '\n');
+    result = result.replace(/<div>/gi, '\n');
+    result = result.replace(/<\/div>/gi, '');
+    result = result.replace(/<\/p><p>/gi, '\n');
+    result = result.replace(/<p>/gi, '');
+    result = result.replace(/<\/p>/gi, '\n');
+    // HTML 태그 제거 및 엔티티 디코드
+    const textDiv = document.createElement('div');
+    textDiv.innerHTML = result;
+    return (textDiv.textContent || '').replace(/\n{4,}/g, '\n\n\n'); // trim() 제거하여 엔터 보존
   };
 
   // 에디터 초기화
   useEffect(() => {
     if (editorRef.current && !isInternalChange.current) {
-      editorRef.current.innerHTML = textToHtml(formatValue);
+      const initialHtml = textToHtml(formatValue);
+      editorRef.current.innerHTML = initialHtml;
     }
     isInternalChange.current = false;
-  }, []);
+  }, [formatValue]);
 
   const handleInput = () => {
     if (editorRef.current) {
-      isInternalChange.current = true;
-      setFormatValue(htmlToText(editorRef.current.innerHTML));
+      // HTML에서 텍스트를 추출하여 내부 상태(formatValue)만 업데이트
+      const text = htmlToText(editorRef.current.innerHTML);
+      setFormatValue(text);
+      isInternalChange.current = true; // useEffect에서 innerHTML이 덮어씌워지지 않게 함
     }
   };
 
@@ -117,9 +145,9 @@ export const FormatVariableModal = ({
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     const placeholder = e.dataTransfer.getData('text/plain');
-    if (!placeholder || !PLACEHOLDER_LABELS[placeholder]) return;
+    if (!placeholder || !PLACEHOLDER_META[placeholder]) return;
 
-    const info = PLACEHOLDER_LABELS[placeholder];
+    const info = PLACEHOLDER_META[placeholder];
 
     // 드롭 위치 계산
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -161,7 +189,7 @@ export const FormatVariableModal = ({
     if (!editorRef.current) return;
     editorRef.current.focus();
 
-    const info = PLACEHOLDER_LABELS[placeholder];
+    const info = PLACEHOLDER_META[placeholder];
     if (!info) return;
 
     const selection = window.getSelection();
@@ -188,7 +216,7 @@ export const FormatVariableModal = ({
   };
 
   const insertPlaceholderAtEnd = (placeholder: string) => {
-    const info = PLACEHOLDER_LABELS[placeholder];
+    const info = PLACEHOLDER_META[placeholder];
     if (!info || !editorRef.current) return;
 
     const block = document.createElement('span');
@@ -202,13 +230,86 @@ export const FormatVariableModal = ({
   };
 
   const handleConfirm = () => {
-    if (formatValue.trim()) {
-      onConfirm(formatValue.trim());
+    if (formatValue) {
+      onConfirm(formatValue);
     }
   };
 
   // 미리보기
   const renderPreview = (): string => {
+    // 일정용 샘플 데이터 (self.schedules)
+    const hasDatePlaceholder =
+      formatValue.includes('{date}') || formatValue.includes('{dayOfWeek}');
+
+    if (hasDatePlaceholder) {
+      const scheduleSampleData = [
+        {
+          name: '유혜경',
+          date: '2024-11-17',
+          dayOfWeek: '일',
+          instructors: '도혜승(주), 유혜경(부), 김철수(보조)',
+        },
+        {
+          name: '유혜경',
+          date: '2024-11-18',
+          dayOfWeek: '월',
+          instructors: '도혜승(주), 유혜경(부), 박영희(실습)',
+        },
+        {
+          name: '유혜경',
+          date: '2024-11-19',
+          dayOfWeek: '화',
+          instructors: '유혜경(부), 김철수(보조)',
+        },
+      ];
+      return scheduleSampleData
+        .map((data) => {
+          let line = formatValue;
+          Object.entries(data).forEach(([key, value]) => {
+            line = line.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+          });
+          return line;
+        })
+        .join('\n');
+    }
+
+    // 장소 목록용 샘플 데이터
+    const hasLocationPlaceholder =
+      formatValue.includes('{placeName}') || formatValue.includes('{actualCount}');
+
+    if (hasLocationPlaceholder) {
+      const locationSampleData = [
+        {
+          index: '1',
+          placeName: '교육관',
+          actualCount: '75',
+          hasInstructorLounge: 'O',
+          hasWomenRestroom: 'O',
+          allowsPhoneBeforeAfter: '가능',
+          note: 'TV, 마이크 있음',
+        },
+        {
+          index: '2',
+          placeName: '체육관',
+          actualCount: '48',
+          hasInstructorLounge: 'X',
+          hasWomenRestroom: 'O',
+          allowsPhoneBeforeAfter: '불가',
+          note: '',
+        },
+      ];
+      return locationSampleData
+        .map((data) => {
+          let line = formatValue;
+          Object.entries(data).forEach(([key, value]) => {
+            line = line.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+          });
+          return line;
+        })
+        .join('\n');
+    }
+
+    // 기본 샘플 데이터
     const sampleData = [
       {
         index: '1',
@@ -342,7 +443,7 @@ export const FormatVariableModal = ({
             </label>
             <div className="flex flex-wrap gap-2">
               {placeholders.map((ph) => {
-                const info = PLACEHOLDER_LABELS[ph];
+                const info = PLACEHOLDER_META[ph];
                 if (!info) return null;
                 return (
                   <div

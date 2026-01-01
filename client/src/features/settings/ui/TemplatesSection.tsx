@@ -1,9 +1,17 @@
 // client/src/features/settings/ui/TemplatesSection.tsx
-import { useState, ReactElement } from 'react';
+import { useState, ReactElement, useCallback } from 'react';
 import { useTemplates } from '../model/useSettings';
-import { TemplateBlockEditor } from './TemplateBlockEditor';
 import { Button } from '../../../shared/ui';
 import { MessageTemplate } from '../settingsApi';
+import {
+  TemplateEditor,
+  variableConfig,
+  variableCategories,
+  formatPlaceholders,
+  FormatVariableModal,
+} from './template-editor';
+import { parseTemplateToTokens } from './template-editor/parse';
+import type { VariableRegistry, Token, VariableDef } from './template-editor';
 
 const TEMPLATE_LABELS: Record<string, { name: string; description: string }> = {
   TEMPORARY: {
@@ -20,11 +28,44 @@ const TEMPLATE_LABELS: Record<string, { name: string; description: string }> = {
   },
 };
 
+function normalizeKey(key: string) {
+  return key.trim();
+}
+
+// FormatVariableModal 변수 타입
+interface LegacyVariableDefinition {
+  key: string;
+  label: string;
+  icon: string;
+  isFormatVariable?: boolean;
+  formatPlaceholders?: string[];
+}
+
 export const TemplatesSection = (): ReactElement => {
   const { templates, isLoading, updateTemplate, isUpdating } = useTemplates();
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editBody, setEditBody] = useState('');
+
+  // 포맷 편집 모달 상태
+  const [formatEditInfo, setFormatEditInfo] = useState<{
+    index: number;
+    token: Token & { type: 'format' };
+    varDef: LegacyVariableDefinition;
+  } | null>(null);
+
+  // 포맷 삽입 모달 상태 (패널에서 클릭 시)
+  const [formatInsertInfo, setFormatInsertInfo] = useState<{
+    varDef: LegacyVariableDefinition;
+    callback: (format: string) => void;
+  } | null>(null);
+
+  const registry: VariableRegistry = {
+    list: () => variableConfig,
+    get: (key) => variableConfig.find((v) => normalizeKey(v.key) === key),
+    normalizeKey,
+    categories: () => variableCategories,
+  };
 
   const handleEdit = (template: MessageTemplate) => {
     setEditingKey(template.key);
@@ -32,10 +73,15 @@ export const TemplatesSection = (): ReactElement => {
     setEditBody(template.body);
   };
 
-  const handleSave = () => {
-    if (editingKey) {
-      updateTemplate({ key: editingKey, title: editTitle, body: editBody });
+  const handleSave = async () => {
+    if (!editingKey) return;
+    try {
+      await updateTemplate({ key: editingKey, title: editTitle, body: editBody });
       setEditingKey(null);
+      setEditTitle('');
+      setEditBody('');
+    } catch (e) {
+      console.error('템플릿 저장 실패:', e);
     }
   };
 
@@ -43,6 +89,85 @@ export const TemplatesSection = (): ReactElement => {
     setEditingKey(null);
     setEditTitle('');
     setEditBody('');
+  };
+
+  // 포맷 변수 → 레거시 형태 변환 (플레이스홀더 포함)
+  const toFormatVar = useCallback((varDef: VariableDef): LegacyVariableDefinition => {
+    const placeholders = formatPlaceholders[varDef.key] || [];
+    return {
+      key: varDef.key,
+      label: varDef.label,
+      icon: varDef.icon || '🏷️',
+      isFormatVariable: varDef.isFormat,
+      formatPlaceholders: placeholders.map((p) => p.key),
+    };
+  }, []);
+
+  // 편집 영역에서 포맷 클릭
+  const handleEditFormat = useCallback(
+    (index: number, token: Token & { type: 'format' }) => {
+      const varDef = registry.get(normalizeKey(token.key));
+      if (varDef) {
+        setFormatEditInfo({ index, token, varDef: toFormatVar(varDef) });
+      }
+    },
+    [registry, toFormatVar],
+  );
+
+  // 포맷 수정 확정 (문자열 치환 방식)
+  const handleConfirmFormat = (newFormat: string) => {
+    if (!formatEditInfo) return;
+
+    const { token } = formatEditInfo;
+    const tokens = parseTemplateToTokens(editBody);
+
+    const updatedTokens = tokens.map(t => {
+      if (t.type === 'format' && t.key === token.key) {
+        return { ...t, format: newFormat };
+      }
+      return t;
+    });
+    const newBody = updatedTokens.map(t => {
+      if (t.type === 'text') return t.text;
+      if (t.type === 'newline') return '\n';
+      if (t.type === 'var') return `{{${t.key}}}`;
+      if (t.type === 'format') return `{{${t.key}:format=${t.format}}}`;
+      return '';
+    }).join('');
+
+    setEditBody(newBody);
+    setFormatEditInfo(null);
+  };
+
+  // 패널에서 포맷 클릭 요청 (기존 있으면 수정, 없으면 삽입)
+  const handleInsertFormat = useCallback(
+    (varDef: VariableDef, callback: (format: string) => void) => {
+      const tokens = parseTemplateToTokens(editBody);
+      const existingToken = tokens.find(
+        (t) => t.type === 'format' && t.key === varDef.key
+      ) as (Token & { type: 'format' }) | undefined;
+
+      if (existingToken) {
+        // 이미 본문에 해당 포맷이 있다면 해당 토큰 정보로 수정 모달 열기
+        setFormatEditInfo({ 
+          index: -1, 
+          token: existingToken, 
+          varDef: toFormatVar(varDef) 
+        });
+      } else {
+        // 새 포맷 삽입 모드
+        setFormatInsertInfo({ varDef: toFormatVar(varDef), callback });
+      }
+    },
+    [toFormatVar, editBody],
+  );
+
+  // 포맷 삽입 확정
+  const handleConfirmInsert = (format: string) => {
+    if (formatInsertInfo?.callback) {
+      formatInsertInfo.callback(format);
+    }
+    setFormatInsertInfo(null);
   };
 
   const getTemplateInfo = (key: string) => {
@@ -54,12 +179,10 @@ export const TemplatesSection = (): ReactElement => {
   }
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-5xl">
       <div className="mb-6">
         <h2 className="text-xl font-bold text-gray-800">메시지 템플릿</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          강사에게 발송되는 메시지 템플릿을 관리합니다. 블럭을 드래그하여 순서를 변경할 수 있습니다.
-        </p>
+        <p className="text-sm text-gray-500 mt-1">강사에게 발송되는 메시지 템플릿을 관리합니다.</p>
       </div>
 
       <div className="space-y-6">
@@ -69,7 +192,6 @@ export const TemplatesSection = (): ReactElement => {
 
           return (
             <div key={template.key} className="bg-white rounded-lg border border-gray-200 p-6">
-              {/* 헤더 */}
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800">{info.name}</h3>
@@ -79,8 +201,7 @@ export const TemplatesSection = (): ReactElement => {
                     {new Date(template.updatedAt).toLocaleDateString('ko-KR')}
                   </p>
                 </div>
-                {/* 버튼 - 항상 같은 위치 */}
-                <div className="flex gap-2 flex-shrink-0">
+                <div className="flex gap-2">
                   {isEditing ? (
                     <>
                       <Button
@@ -109,7 +230,6 @@ export const TemplatesSection = (): ReactElement => {
               </div>
 
               {isEditing ? (
-                /* 편집 모드 */
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">제목</label>
@@ -123,11 +243,16 @@ export const TemplatesSection = (): ReactElement => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">본문</label>
-                    <TemplateBlockEditor value={editBody} onChange={setEditBody} />
+                    <TemplateEditor
+                      value={editBody}
+                      onChange={setEditBody}
+                      registry={registry}
+                      onEditFormat={handleEditFormat}
+                      onInsertFormat={handleInsertFormat}
+                    />
                   </div>
                 </div>
               ) : (
-                /* 보기 모드 */
                 <div className="space-y-3">
                   <div>
                     <div className="text-xs text-gray-500 mb-1">제목</div>
@@ -149,6 +274,28 @@ export const TemplatesSection = (): ReactElement => {
           <div className="text-center text-gray-500 py-8">등록된 템플릿이 없습니다.</div>
         )}
       </div>
+
+      {/* 포맷 편집 모달 (편집 영역 클릭) */}
+      {formatEditInfo && (
+        <FormatVariableModal
+          key={`edit-${formatEditInfo.varDef.key}`}
+          variable={formatEditInfo.varDef}
+          initialFormat={formatEditInfo.token.format}
+          onConfirm={handleConfirmFormat}
+          onCancel={() => setFormatEditInfo(null)}
+        />
+      )}
+
+      {/* 포맷 삽입 모달 (패널 클릭) */}
+      {formatInsertInfo && (
+        <FormatVariableModal
+          key={`insert-${formatInsertInfo.varDef.key}`}
+          variable={formatInsertInfo.varDef}
+          initialFormat=""
+          onConfirm={handleConfirmInsert}
+          onCancel={() => setFormatInsertInfo(null)}
+        />
+      )}
     </div>
   );
 };

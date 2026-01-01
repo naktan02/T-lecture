@@ -210,6 +210,7 @@ class AssignmentService {
 
   /**
    * 임시 배정 응답 (수락/거절)
+   * 수락 시: 해당 스케줄의 필요 인원이 모두 수락하면 자동 확정
    */
   async respondToAssignment(
     instructorId: number,
@@ -243,13 +244,42 @@ class AssignmentService {
 
     await assignmentRepository.updateStatusByKey(instructorId, Number(unitScheduleId), newState);
 
+    // 수락 시: 해당 스케줄의 자동 확정 체크
+    if (newState === 'Accepted') {
+      await this.checkAndAutoConfirm(Number(unitScheduleId));
+    }
+
     return {
       message: response === 'ACCEPT' ? '배정을 수락했습니다.' : '배정을 거절했습니다.',
     };
   }
 
   /**
+   * 스케줄의 필요 인원이 모두 수락되었는지 확인하고 자동 확정
+   */
+  private async checkAndAutoConfirm(unitScheduleId: number) {
+    const assignments = await assignmentRepository.getAssignmentsByScheduleId(unitScheduleId);
+
+    // 수락된 배정 수
+    const acceptedCount = assignments.filter((a) => a.state === 'Accepted').length;
+
+    // TODO: 필요 인원 수는 trainingLocation의 instructorsNumbers 합계
+    // 현재는 간단하게: Pending + Accepted 수가 모두 Accepted면 확정
+    const activeAssignments = assignments.filter(
+      (a) => a.state === 'Pending' || a.state === 'Accepted',
+    );
+    const allAccepted =
+      activeAssignments.length > 0 && activeAssignments.every((a) => a.state === 'Accepted');
+
+    if (allAccepted && acceptedCount > 0) {
+      // 모든 활성 배정을 Confirmed로 분류 변경
+      await assignmentRepository.updateClassificationBySchedule(unitScheduleId, 'Confirmed');
+    }
+  }
+
+  /**
    * 관리자 배정 취소
+   * 확정 상태에서 취소 시 해당 스케줄의 다른 배정들도 임시로 복귀
    */
   async cancelAssignment(
     userId: number,
@@ -273,11 +303,17 @@ class AssignmentService {
       throw new AppError('이 배정을 취소할 권한이 없습니다.', 403, 'FORBIDDEN');
     }
 
-    return await assignmentRepository.updateStatusByKey(
-      targetInstructorId,
-      unitScheduleId,
-      'Canceled',
-    );
+    // 확정 상태였으면 해당 스케줄의 다른 배정들을 임시로 복귀
+    const wasConfirmed = assignment.classification === 'Confirmed';
+
+    await assignmentRepository.updateStatusByKey(targetInstructorId, unitScheduleId, 'Canceled');
+
+    // 확정에서 인원이 삭제되면 해당 스케줄의 배정들을 임시로 복귀
+    if (wasConfirmed) {
+      await assignmentRepository.updateClassificationBySchedule(unitScheduleId, 'Temporary');
+    }
+
+    return { message: '배정이 취소되었습니다.' };
   }
 
   /**
@@ -311,6 +347,13 @@ class AssignmentService {
    */
   async toggleScheduleBlock(unitScheduleId: number, isBlocked: boolean) {
     return await assignmentRepository.updateScheduleBlock(unitScheduleId, isBlocked);
+  }
+
+  /**
+   * 내 배정 목록 조회 (강사용 - 메시지함에서 사용)
+   */
+  async getMyAssignments(userId: number) {
+    return await assignmentRepository.getMyAssignments(userId);
   }
 }
 

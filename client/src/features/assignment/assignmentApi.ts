@@ -219,3 +219,88 @@ export const blockScheduleApi = async (
   if (!res.ok) throw new Error('배정 막기에 실패했습니다.');
   return res.json();
 };
+
+/**
+ * 강사 배정 응답 (수락/거절)
+ */
+export const respondToAssignmentApi = async (
+  unitScheduleId: number,
+  response: 'ACCEPT' | 'REJECT',
+): Promise<{ message: string }> => {
+  const res = await apiClient(`/api/v1/assignments/${unitScheduleId}/response`, {
+    method: 'POST',
+    body: JSON.stringify({ response }),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || '응답 처리에 실패했습니다.');
+  }
+  return res.json();
+};
+
+// 내 배정 타입 정의
+export interface MyAssignment {
+  userId: number;
+  unitScheduleId: number;
+  trainingLocationId: number | null;
+  classification: 'Temporary' | 'Confirmed';
+  state: 'Pending' | 'Accepted' | 'Rejected' | 'Canceled';
+  role: string | null;
+  UnitSchedule: {
+    id: number;
+    date: string;
+    isBlocked: boolean;
+    unit: {
+      id: number;
+      name: string;
+      region: string;
+      wideArea: string;
+      addressDetail: string | null;
+      officerName: string | null;
+      officerPhone: string | null;
+      educationStart: string | null;
+      educationEnd: string | null;
+      trainingLocations: Array<{
+        id: number;
+        originalPlace: string;
+        instructorsNumbers: number;
+        plannedCount: number | null;
+        actualCount: number | null;
+      }>;
+    };
+    assignments: Array<{
+      userId: number;
+      state: string;
+      User: {
+        id: number;
+        name: string;
+        userphoneNumber: string | null;
+        instructor: {
+          category: string | null;
+          team: { name: string } | null;
+        } | null;
+      };
+    }>;
+  };
+  TrainingLocation: {
+    id: number;
+    originalPlace: string;
+  } | null;
+}
+
+export interface MyAssignmentsResponse {
+  temporary: MyAssignment[];
+  confirmed: MyAssignment[];
+  total: number;
+}
+
+/**
+ * 내 배정 목록 조회 (메시지함용)
+ */
+export const getMyAssignmentsApi = async (): Promise<MyAssignmentsResponse> => {
+  const res = await apiClient('/api/v1/assignments/my');
+  if (!res.ok) {
+    throw new Error('내 배정 목록을 불러오는데 실패했습니다.');
+  }
+  return res.json();
+};

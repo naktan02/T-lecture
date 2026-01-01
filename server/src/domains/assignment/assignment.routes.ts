@@ -8,13 +8,11 @@ const router = express.Router();
 // 강사: 내 배정 목록
 router.get('/', auth, requireRole('INSTRUCTOR'), assignmentController.getAssignments);
 
-// 강사: 배정 응답
-router.post(
-  '/:unitScheduleId/response',
-  auth,
-  requireRole('INSTRUCTOR'),
-  assignmentController.respondAssignment,
-);
+// 모든 사용자: 내 배정 목록 (메시지함용 - 임시/확정 분류 포함)
+router.get('/my', auth, assignmentController.getMyAssignments);
+
+// 모든 사용자: 배정 응답
+router.post('/:unitScheduleId/response', auth, assignmentController.respondAssignment);
 
 // 강사: 이력
 router.get('/history', auth, requireRole('INSTRUCTOR'), assignmentController.getWorkHistory);

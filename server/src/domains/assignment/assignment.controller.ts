@@ -178,6 +178,21 @@ export const blockSchedule = asyncHandler(async (req: Request, res: Response) =>
     .json({ message: isBlocked ? '배정이 막혔습니다.' : '배정 막기가 해제되었습니다.', result });
 });
 
+// [내 배정 목록 조회] (강사용 메시지함)
+export const getMyAssignments = asyncHandler(async (req: Request, res: Response) => {
+  const assignments = await assignmentService.getMyAssignments(req.user!.id);
+
+  // 임시/확정 분류별로 그룹화
+  const temporary = assignments.filter((a) => a.classification === 'Temporary');
+  const confirmed = assignments.filter((a) => a.classification === 'Confirmed');
+
+  res.json({
+    temporary,
+    confirmed,
+    total: assignments.length,
+  });
+});
+
 // CommonJS 호환
 module.exports = {
   getWorkHistory,
@@ -189,4 +204,5 @@ module.exports = {
   bulkSaveAssignments,
   cancelAssignmentByAdmin,
   blockSchedule,
+  getMyAssignments,
 };

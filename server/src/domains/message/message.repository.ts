@@ -49,7 +49,13 @@ class MessageRepository {
       include: {
         User: true,
         UnitSchedule: {
-          include: { unit: true },
+          include: {
+            unit: true,
+            assignments: {
+              where: { state: 'Pending' },
+              include: { User: { include: { instructor: true } } },
+            },
+          },
         },
       },
       orderBy: {
@@ -127,11 +133,27 @@ class MessageRepository {
     });
   }
 
-  // 내 메시지 목록 조회
+  // 내 메시지 목록 조회 (배정 정보 포함)
   async findMyMessages(userId: number) {
     return await prisma.messageReceipt.findMany({
       where: { userId: Number(userId) },
-      include: { message: true },
+      include: {
+        message: {
+          include: {
+            assignments: {
+              where: { userId: Number(userId) },
+              include: {
+                assignment: {
+                  select: {
+                    unitScheduleId: true,
+                    state: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       orderBy: { message: { createdAt: 'desc' } },
     });
   }

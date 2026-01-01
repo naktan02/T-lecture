@@ -1,8 +1,11 @@
 // prisma/seedunit.js
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcrypt');
 const prisma = new PrismaClient();
 
 async function main() {
+  // 비밀번호 해시 생성 (모든 강사 계정 공통 비밀번호: password123)
+  const hashedPassword = await bcrypt.hash('1234', 10);
   console.log('🧹 Cleaning up previous data...');
 
   try {
@@ -255,7 +258,7 @@ async function main() {
     const user = await prisma.user.create({
       data: {
         userEmail: `instructor${i}@test.com`,
-        password: '$2b$10$DUMMYHASHVALUE',
+        password: hashedPassword,
         name: `강사_${i}`,
         userphoneNumber: `010-0000-${String(i).padStart(4, '0')}`,
         status: 'APPROVED',

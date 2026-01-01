@@ -296,6 +296,134 @@ class AssignmentRepository {
       data: { isBlocked },
     });
   }
+
+  /**
+   * 강사 배정 응답 (수락/거절)
+   * Pending 상태에서만 응답 가능
+   */
+  async respondToAssignment(
+    userId: number,
+    unitScheduleId: number,
+    response: 'Accepted' | 'Rejected',
+  ) {
+    return await prisma.instructorUnitAssignment.update({
+      where: {
+        unitScheduleId_userId: {
+          userId: Number(userId),
+          unitScheduleId: Number(unitScheduleId),
+        },
+        state: 'Pending', // Pending 상태에서만 응답 가능
+      },
+      data: {
+        state: response,
+      },
+    });
+  }
+
+  /**
+   * 내 배정 목록 조회 (임시/확정 포함, 메시지 포함)
+   */
+  async getMyAssignments(userId: number) {
+    return await prisma.instructorUnitAssignment.findMany({
+      where: {
+        userId: Number(userId),
+        state: { in: ['Pending', 'Accepted', 'Rejected'] },
+      },
+      include: {
+        UnitSchedule: {
+          include: {
+            unit: {
+              include: {
+                trainingLocations: true,
+              },
+            },
+            assignments: {
+              where: { state: { in: ['Pending', 'Accepted'] } },
+              include: {
+                User: {
+                  include: {
+                    instructor: {
+                      include: { team: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        TrainingLocation: true,
+        messageAssignments: {
+          include: {
+            message: true,
+          },
+        },
+      },
+      orderBy: {
+        UnitSchedule: { date: 'asc' },
+      },
+    });
+  }
+
+  /**
+   * 특정 스케줄의 모든 배정 상태 조회 (관리자용)
+   * 필요 인원 대비 수락된 인원 수 확인용
+   */
+  async getAssignmentsByScheduleId(unitScheduleId: number) {
+    return await prisma.instructorUnitAssignment.findMany({
+      where: {
+        unitScheduleId: Number(unitScheduleId),
+      },
+      include: {
+        User: {
+          include: {
+            instructor: {
+              include: { team: true },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * 배정 분류(classification) 업데이트
+   * Temporary -> Confirmed 또는 그 반대로 변경
+   */
+  async updateClassification(
+    unitScheduleId: number,
+    userId: number,
+    classification: 'Temporary' | 'Confirmed',
+  ) {
+    return await prisma.instructorUnitAssignment.update({
+      where: {
+        unitScheduleId_userId: {
+          userId: Number(userId),
+          unitScheduleId: Number(unitScheduleId),
+        },
+      },
+      data: {
+        classification,
+      },
+    });
+  }
+
+  /**
+   * 스케줄의 모든 배정을 일괄 분류 업데이트
+   */
+  async updateClassificationBySchedule(
+    unitScheduleId: number,
+    classification: 'Temporary' | 'Confirmed',
+  ) {
+    return await prisma.instructorUnitAssignment.updateMany({
+      where: {
+        unitScheduleId: Number(unitScheduleId),
+        state: 'Accepted',
+      },
+      data: {
+        classification,
+      },
+    });
+  }
 }
 
 export default new AssignmentRepository();

@@ -1,0 +1,209 @@
+// features/settings/ui/template-editor/sample.ts
+// 미리보기용 샘플 데이터 렌더링
+
+import type { Token } from './types';
+
+/**
+ * 일반 변수용 샘플 데이터
+ */
+const SAMPLE_DATA: Record<string, string> = {
+  // 부대 정보
+  'unit.name': '제12사단',
+  'unit.region': '인제군',
+  'unit.wideArea': '강원도',
+  'unit.addressDetail': '인제읍 이평로 255',
+  'unit.officerName': '대위 이용준',
+  'unit.officerPhone': '010-6640-9433',
+  'unit.startDate': '2024-11-17',
+  'unit.endDate': '2024-11-19',
+  'unit.startTime': '09:00',
+  'unit.endTime': '16:00',
+
+  // 교육장소
+  'location.originalPlace': '교육관',
+  'location.changedPlace': '체육관',
+  'location.hasInstructorLounge': 'O',
+  'location.hasWomenRestroom': 'O',
+  'location.hasCateredMeals': 'X',
+  'location.hasHallLodging': 'O',
+  'location.allowsPhoneBeforeAfter': '가능',
+  'location.plannedCount': '75',
+  'location.actualCount': '75',
+  'location.note': 'TV, 마이크 있음',
+
+  // 본인 정보
+  'self.name': '유혜경',
+  'self.phone': '010-1234-5678',
+  'self.category': '부강사',
+  'self.position': '책임강사',
+  'self.virtues': '협력, 정의',
+};
+
+/**
+ * 포맷 변수용 샘플 데이터
+ */
+function renderFormatSample(key: string, format: string): string {
+  // self.schedules - 날짜별 강사 목록
+  if (key === 'self.schedules') {
+    const schedules = [
+      {
+        name: '유혜경',
+        date: '2024-11-17',
+        dayOfWeek: '일',
+        instructors: '도혜승(주), 유혜경(부), 김철수(보조)',
+      },
+      {
+        name: '유혜경',
+        date: '2024-11-18',
+        dayOfWeek: '월',
+        instructors: '도혜승(주), 유혜경(부)',
+      },
+      {
+        name: '유혜경',
+        date: '2024-11-19',
+        dayOfWeek: '화',
+        instructors: '유혜경(부), 김철수(보조)',
+      },
+    ];
+    return schedules
+      .map((s) => {
+        let line = format;
+        Object.entries(s).forEach(([k, v]) => {
+          line = line.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+        });
+        return line;
+      })
+      .join('\n');
+  }
+
+  // locations - 교육장소 목록
+  if (key === 'locations') {
+    const locations = [
+      {
+        index: '1',
+        placeName: '교육관',
+        actualCount: '75',
+        hasInstructorLounge: 'O',
+        hasWomenRestroom: 'O',
+        allowsPhoneBeforeAfter: '가능',
+        note: 'TV 있음',
+      },
+      {
+        index: '2',
+        placeName: '체육관',
+        actualCount: '48',
+        hasInstructorLounge: 'X',
+        hasWomenRestroom: 'O',
+        allowsPhoneBeforeAfter: '불가',
+        note: '',
+      },
+    ];
+    return locations
+      .map((loc) => {
+        let line = format;
+        Object.entries(loc).forEach(([k, v]) => {
+          line = line.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+        });
+        return line;
+      })
+      .join('\n');
+  }
+
+  // instructors - 강사 목록 (세로)
+  if (key === 'instructors') {
+    const instructors = [
+      { index: '1', name: '도혜승', phone: '010-6254-1209', category: '주', virtues: '협력, 정의' },
+      {
+        index: '2',
+        name: '유혜경',
+        phone: '010-1234-5678',
+        category: '부',
+        virtues: '리더십, 소통',
+      },
+    ];
+    return instructors
+      .map((inst) => {
+        let line = format;
+        Object.entries(inst).forEach(([k, v]) => {
+          line = line.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+        });
+        return line;
+      })
+      .join('\n');
+  }
+
+  // 알 수 없는 포맷 변수
+  return `[${key} 포맷]`;
+}
+
+/**
+ * 토큰 배열을 미리보기용 문자열로 변환
+ */
+export function renderPreview(tokens: Token[]): string {
+  let result = '';
+
+  for (const t of tokens) {
+    switch (t.type) {
+      case 'text':
+        result += t.text;
+        break;
+      case 'newline':
+        result += '\n';
+        break;
+      case 'var':
+        result += SAMPLE_DATA[t.key] ?? `[${t.key}]`;
+        break;
+      case 'format':
+        result += renderFormatSample(t.key, t.format);
+        break;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * 템플릿 문자열을 미리보기로 변환 (편의 함수)
+ */
+export function renderPreviewFromTemplate(template: string): string {
+  // 동적 import 피하기 위해 간단한 파싱 재구현
+  const tokens: Token[] = [];
+  const re = /\{\{([\s\S]*?)\}\}/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+
+  while ((m = re.exec(template)) !== null) {
+    if (m.index > last) {
+      const chunk = template.slice(last, m.index);
+      const parts = chunk.split('\n');
+      parts.forEach((part, i) => {
+        if (part) tokens.push({ type: 'text', text: part });
+        if (i < parts.length - 1) tokens.push({ type: 'newline' });
+      });
+    }
+
+    const raw = m[1] ?? '';
+    const idx = raw.indexOf(':format=');
+    if (idx === -1) {
+      tokens.push({ type: 'var', key: raw.trim() });
+    } else {
+      tokens.push({
+        type: 'format',
+        key: raw.slice(0, idx).trim(),
+        format: raw.slice(idx + ':format='.length),
+      });
+    }
+    last = re.lastIndex;
+  }
+
+  if (last < template.length) {
+    const chunk = template.slice(last);
+    const parts = chunk.split('\n');
+    parts.forEach((part, i) => {
+      if (part) tokens.push({ type: 'text', text: part });
+      if (i < parts.length - 1) tokens.push({ type: 'newline' });
+    });
+  }
+
+  return renderPreview(tokens);
+}

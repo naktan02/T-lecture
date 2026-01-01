@@ -13,13 +13,13 @@ interface NavLink {
 
 interface CommonHeaderProps {
   title: string;
-  userLabel: string;
+  userLabel?: string; // 선택적으로 변경
   links?: NavLink[];
 }
 
 /**
  * @param title - 왼쪽 상단 제목
- * @param userLabel - 오른쪽 유저 이름/직책
+ * @param userLabel - 오른쪽 유저 이름/직책 (선택적, 없으면 로그인된 사용자 이름 사용)
  * @param links - 네비게이션 메뉴 목록 [{ label: '메뉴명', path: '/이동경로' }]
  */
 export const CommonHeader = ({ title, userLabel, links = [] }: CommonHeaderProps) => {
@@ -27,6 +27,10 @@ export const CommonHeader = ({ title, userLabel, links = [] }: CommonHeaderProps
   const location = useLocation();
   const { logout, isAdmin, isSuperAdmin } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // userLabel이 없으면 localStorage에서 사용자 이름 가져오기
+  const userName = localStorage.getItem('userName') || '사용자';
+  const displayLabel = userLabel || userName;
 
   const handleLogout = (): void => {
     showConfirm('정말 로그아웃 하시겠습니까?', () => {
@@ -101,7 +105,7 @@ export const CommonHeader = ({ title, userLabel, links = [] }: CommonHeaderProps
 
           {/* 유저 라벨 */}
           <span className="hidden sm:inline text-xs md:text-sm font-medium border border-gray-600 rounded px-2 py-1 bg-gray-700">
-            {userLabel}
+            {displayLabel}
           </span>
 
           {/* 데스크톱 로그아웃 */}
@@ -218,7 +222,7 @@ export const CommonHeader = ({ title, userLabel, links = [] }: CommonHeaderProps
 
             {/* 하단 유저 정보 */}
             <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-gray-50">
-              <div className="text-xs text-gray-500">{userLabel}</div>
+              <div className="text-xs text-gray-500">{displayLabel}</div>
             </div>
           </div>
         </>
