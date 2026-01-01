@@ -1,7 +1,9 @@
 enum MessageType {
-  Notice
+
   Temporary
   Confirmed
+  Notice     // 공지사항 타입
+  Inquiry    // 문의사항 타입
 
   @@map("유형__t")
 }
@@ -15,14 +17,35 @@ enum MessageStatus {
   @@map("상태__t")
 }
 
+// 문의사항 상태
+enum InquiryStatus {
+  Waiting    // 답변 대기
+  Answered   // 답변 완료
+
+  @@map("문의상태__t")
+}
+
 model Message {
   id        Int            @id @default(autoincrement())
   type      MessageType?   @map("유형")
   title     String?        @map("제목")
-  body      String?        @map("본문")
+  body      String?        @map("본문") @db.Text
   status    MessageStatus? @map("상태")
-  createdAt DateTime?      @map("생성일시")
+  createdAt DateTime?      @default(now()) @map("생성일시")
 
+  // 공지사항 전용 필드
+  authorId  Int?           @map("작성자id")
+  viewCount Int            @default(0) @map("조회수")
+  isPinned  Boolean        @default(false) @map("상단고정")
+  updatedAt DateTime?      @updatedAt @map("수정일시")
+
+  // 문의사항 전용 필드
+  inquiryStatus InquiryStatus? @map("문의상태")
+  answer        String?        @map("답변") @db.Text
+  answeredBy    Int?           @map("답변자id")
+  answeredAt    DateTime?      @map("답변일시")
+
+  // 관계
   assignments MessageAssignment[]
   receipts    MessageReceipt[]
 
@@ -62,3 +85,5 @@ model MessageTemplate {
 
   @@map("메시지_템플릿")
 }
+
+

@@ -6,7 +6,23 @@ import metadataRepository from '../metadata/metadata.repository';
 import { PrismaError } from '../../types/common.types';
 import { UserMessageGroup } from '../../types/message.types';
 
+interface NoticeCreateData {
+  title: string;
+  content: string;
+  isPinned?: boolean;
+}
+
+interface NoticeGetParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
 class MessageService {
+  // ==========================================
+  // 기존 메시지 관련 메서드
+  // ==========================================
+
   // 임시 배정 메시지 일괄 발송
   async sendTemporaryMessages() {
     // 템플릿 조회
@@ -198,17 +214,258 @@ class MessageService {
     }
   }
 
-  // 공지사항 작성
-  async createNotice(title: string, body: string) {
-    if (!title || !body) {
-      throw new AppError('제목과 본문을 모두 입력해주세요.', 400, 'VALIDATION_ERROR');
+  // ==========================================
+  // 공지사항 관련 메서드
+  // ==========================================
+
+  // 공지사항 생성
+  async createNotice(data: NoticeCreateData, authorId: number) {
+    if (!data.title || !data.content) {
+      throw new AppError('제목과 내용을 모두 입력해주세요.', 400, 'VALIDATION_ERROR');
     }
-    return await messageRepository.createNotice({ title, body });
+    const notice = await messageRepository.createNotice({
+      title: data.title,
+      content: data.content,
+      authorId,
+      isPinned: data.isPinned,
+    });
+
+    // 작성자 이름 조회
+    const author = await messageRepository.findAuthorById(authorId);
+    return this.formatNotice(notice, author?.name || null);
   }
 
   // 공지사항 목록 조회
-  async getNotices() {
-    return await messageRepository.findAllNotices();
+  async getNotices(params: NoticeGetParams = {}) {
+    const { page = 1, limit = 10, search } = params;
+    const skip = (page - 1) * limit;
+    const { notices, total } = await messageRepository.findAllNotices({
+      skip,
+      take: limit,
+      search,
+    });
+
+    // 작성자 이름 일괄 조회
+    const authorIds = [...new Set(notices.map((n) => n.authorId).filter(Boolean))] as number[];
+    const authorsMap = new Map<number, string | null>();
+    for (const authorId of authorIds) {
+      const author = await messageRepository.findAuthorById(authorId);
+      authorsMap.set(authorId, author?.name || null);
+    }
+
+    return {
+      notices: notices.map((n) =>
+        this.formatNotice(n, n.authorId ? authorsMap.get(n.authorId) || null : null),
+      ),
+      meta: {
+        total,
+        page,
+        lastPage: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  // 공지사항 단건 조회
+  async getNotice(id: number) {
+    const notice = await this.getNoticeHelper(id);
+    // 조회수 증가 비동기 처리
+    messageRepository.increaseViewCount(id).catch(() => {});
+
+    const author = notice.authorId ? await messageRepository.findAuthorById(notice.authorId) : null;
+    return this.formatNotice(notice, author?.name || null);
+  }
+
+  // 공지사항 수정
+  async updateNotice(id: number, data: { title?: string; content?: string; isPinned?: boolean }) {
+    await this.getNoticeHelper(id);
+    const updated = await messageRepository.updateNotice(id, data);
+    const author = updated.authorId
+      ? await messageRepository.findAuthorById(updated.authorId)
+      : null;
+    return this.formatNotice(updated, author?.name || null);
+  }
+
+  // 공지사항 삭제
+  async deleteNotice(id: number) {
+    await this.getNoticeHelper(id);
+    return await messageRepository.deleteNotice(id);
+  }
+
+  // 공지사항 고정 토글
+  async toggleNoticePin(id: number) {
+    await this.getNoticeHelper(id);
+    const toggled = await messageRepository.toggleNoticePin(id);
+    if (!toggled) throw new AppError('공지사항을 찾을 수 없습니다.', 404, 'NOTICE_NOT_FOUND');
+    const author = toggled.authorId
+      ? await messageRepository.findAuthorById(toggled.authorId)
+      : null;
+    return this.formatNotice(toggled, author?.name || null);
+  }
+
+  // Helper: 공지사항 존재 확인
+  private async getNoticeHelper(id: number) {
+    const notice = await messageRepository.findNoticeById(id);
+    if (!notice) {
+      throw new AppError('공지사항을 찾을 수 없습니다.', 404, 'NOTICE_NOT_FOUND');
+    }
+    return notice;
+  }
+
+  // Helper: 공지사항 응답 포맷
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private formatNotice(notice: any, authorName: string | null) {
+    return {
+      id: notice.id,
+      title: notice.title,
+      content: notice.body,
+      createdAt: notice.createdAt,
+      updatedAt: notice.updatedAt,
+      viewCount: notice.viewCount,
+      isPinned: notice.isPinned,
+      author: { name: authorName },
+    };
+  }
+
+  // ==========================================
+  // 문의사항 관련 메서드
+  // ==========================================
+
+  // 문의사항 생성
+  async createInquiry(data: { title: string; content: string }, authorId: number) {
+    if (!data.title || !data.content) {
+      throw new AppError('제목과 내용을 모두 입력해주세요.', 400, 'VALIDATION_ERROR');
+    }
+    const inquiry = await messageRepository.createInquiry({
+      title: data.title,
+      content: data.content,
+      authorId,
+    });
+
+    const author = await messageRepository.findAuthorById(authorId);
+    return this.formatInquiry(inquiry, author?.name || null, null);
+  }
+
+  // 문의사항 목록 조회
+  async getInquiries(params: {
+    page?: number;
+    limit?: number;
+    authorId?: number;
+    status?: 'Waiting' | 'Answered';
+    search?: string;
+  }) {
+    const { page = 1, limit = 10, authorId, status, search } = params;
+    const skip = (page - 1) * limit;
+    const { inquiries, total, waitingCount } = await messageRepository.findAllInquiries({
+      skip,
+      take: limit,
+      authorId,
+      status,
+      search,
+    });
+
+    // 작성자 이름 일괄 조회
+    const authorIds = [...new Set(inquiries.map((i) => i.authorId).filter(Boolean))] as number[];
+    const authorsMap = new Map<number, string | null>();
+    for (const id of authorIds) {
+      const author = await messageRepository.findAuthorById(id);
+      authorsMap.set(id, author?.name || null);
+    }
+
+    // 답변자 이름 일괄 조회
+    const answererIds = [
+      ...new Set(inquiries.map((i) => i.answeredBy).filter(Boolean)),
+    ] as number[];
+    const answerersMap = new Map<number, string | null>();
+    for (const id of answererIds) {
+      const answerer = await messageRepository.findAuthorById(id);
+      answerersMap.set(id, answerer?.name || null);
+    }
+
+    return {
+      inquiries: inquiries.map((i) =>
+        this.formatInquiry(
+          i,
+          i.authorId ? authorsMap.get(i.authorId) || null : null,
+          i.answeredBy ? answerersMap.get(i.answeredBy) || null : null,
+        ),
+      ),
+      meta: {
+        total,
+        page,
+        lastPage: Math.ceil(total / limit),
+        waitingCount,
+      },
+    };
+  }
+
+  // 문의사항 단건 조회
+  async getInquiry(id: number, userId?: number, isAdmin?: boolean) {
+    const inquiry = await this.getInquiryHelper(id);
+
+    // 본인 문의 또는 관리자만 조회 가능
+    if (!isAdmin && inquiry.authorId !== userId) {
+      throw new AppError('문의사항을 조회할 권한이 없습니다.', 403, 'FORBIDDEN');
+    }
+
+    const author = inquiry.authorId
+      ? await messageRepository.findAuthorById(inquiry.authorId)
+      : null;
+    const answerer = inquiry.answeredBy
+      ? await messageRepository.findAuthorById(inquiry.answeredBy)
+      : null;
+    return this.formatInquiry(inquiry, author?.name || null, answerer?.name || null);
+  }
+
+  // 문의사항 답변 작성 (관리자)
+  async answerInquiry(id: number, answer: string, answeredBy: number) {
+    if (!answer) {
+      throw new AppError('답변 내용을 입력해주세요.', 400, 'VALIDATION_ERROR');
+    }
+    await this.getInquiryHelper(id);
+    const updated = await messageRepository.answerInquiry(id, { answer, answeredBy });
+
+    const author = updated.authorId
+      ? await messageRepository.findAuthorById(updated.authorId)
+      : null;
+    const answerer = await messageRepository.findAuthorById(answeredBy);
+    return this.formatInquiry(updated, author?.name || null, answerer?.name || null);
+  }
+
+  // 문의사항 삭제
+  async deleteInquiry(id: number, userId: number, isAdmin: boolean) {
+    const inquiry = await this.getInquiryHelper(id);
+
+    // 본인 문의 또는 관리자만 삭제 가능
+    if (!isAdmin && inquiry.authorId !== userId) {
+      throw new AppError('문의사항을 삭제할 권한이 없습니다.', 403, 'FORBIDDEN');
+    }
+
+    return await messageRepository.deleteInquiry(id);
+  }
+
+  // Helper: 문의사항 존재 확인
+  private async getInquiryHelper(id: number) {
+    const inquiry = await messageRepository.findInquiryById(id);
+    if (!inquiry) {
+      throw new AppError('문의사항을 찾을 수 없습니다.', 404, 'INQUIRY_NOT_FOUND');
+    }
+    return inquiry;
+  }
+
+  // Helper: 문의사항 응답 포맷
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private formatInquiry(inquiry: any, authorName: string | null, answererName: string | null) {
+    return {
+      id: inquiry.id,
+      title: inquiry.title,
+      content: inquiry.body,
+      createdAt: inquiry.createdAt,
+      status: inquiry.inquiryStatus,
+      author: { name: authorName },
+      answer: inquiry.answer,
+      answeredAt: inquiry.answeredAt,
+      answeredBy: { name: answererName },
+    };
   }
 }
 

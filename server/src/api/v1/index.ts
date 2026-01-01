@@ -11,6 +11,7 @@ import messageRoutes from '../../domains/message/message.routes';
 import distanceRoutes from '../../domains/distance/distance.routes';
 import unitRoutes from '../../domains/unit/unit.routes';
 import metadataRoutes from '../../domains/metadata/metadata.routes';
+// Notice routes are now integrated into message routes (/messages/notices)
 
 const router = Router();
 

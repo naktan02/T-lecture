@@ -16,6 +16,8 @@ export const AdminHeader: React.FC = () => {
     { label: '유저 관리', path: '/admin/users' },
     { label: '강사 배정', path: '/admin/assignments' },
     { label: '부대 관리', path: '/admin/units' },
+    { label: '공지사항', path: '/admin/notices' },
+    { label: '문의사항', path: '/admin/inquiries' },
     { label: '시스템 설정', path: '/admin/settings' },
   ];
 
