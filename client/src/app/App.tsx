@@ -19,6 +19,8 @@ import UserPage from '../pages/admin/UserPage';
 import SettingsPage from '../pages/admin/SettingsPage';
 import AdminNoticePage from '../pages/admin/NoticePage';
 import InstructorNoticePage from '../pages/instructor/NoticePage';
+import AdminInquiryPage from '../pages/admin/InquiryPage';
+import InstructorInquiryPage from '../pages/instructor/InquiryPage';
 
 function App(): ReactElement {
   return (
@@ -52,6 +54,10 @@ function App(): ReactElement {
           {/* 공지사항 관리 */}
           <Route path="/admin/notices" element={<AdminNoticePage />} />
           <Route path="/instructor/notices" element={<InstructorNoticePage />} />
+
+          {/* 문의사항 관리 */}
+          <Route path="/admin/inquiries" element={<AdminInquiryPage />} />
+          <Route path="/instructor/inquiries" element={<InstructorInquiryPage />} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/login" replace />} />

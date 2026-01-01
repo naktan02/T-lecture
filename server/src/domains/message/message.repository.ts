@@ -21,6 +21,20 @@ interface NoticeFindAllParams {
   search?: string;
 }
 
+interface InquiryCreateData {
+  title: string;
+  content: string;
+  authorId: number;
+}
+
+interface InquiryFindAllParams {
+  skip: number;
+  take: number;
+  authorId?: number; // 본인 문의만 조회 (강사용)
+  status?: 'Waiting' | 'Answered';
+  search?: string;
+}
+
 class MessageRepository {
   // ==========================================
   // 기존 메시지 관련 메서드
@@ -228,6 +242,74 @@ class MessageRepository {
     return await prisma.user.findUnique({
       where: { id: authorId },
       select: { name: true },
+    });
+  }
+
+  // ==========================================
+  // 문의사항 관련 메서드
+  // ==========================================
+
+  // 문의사항 생성
+  async createInquiry(data: InquiryCreateData) {
+    return await prisma.message.create({
+      data: {
+        type: 'Inquiry',
+        title: data.title,
+        body: data.content,
+        authorId: data.authorId,
+        inquiryStatus: 'Waiting',
+        status: 'Sent',
+      },
+    });
+  }
+
+  // 문의사항 목록 조회
+  async findAllInquiries({ skip, take, authorId, status, search }: InquiryFindAllParams) {
+    const where = {
+      type: 'Inquiry' as const,
+      ...(authorId && { authorId }),
+      ...(status && { inquiryStatus: status }),
+      ...(search && {
+        OR: [{ title: { contains: search } }, { body: { contains: search } }],
+      }),
+    };
+
+    const [inquiries, total] = await Promise.all([
+      prisma.message.findMany({
+        where,
+        skip,
+        take,
+        orderBy: [{ createdAt: 'desc' }],
+      }),
+      prisma.message.count({ where }),
+    ]);
+    return { inquiries, total };
+  }
+
+  // 문의사항 단건 조회
+  async findInquiryById(id: number) {
+    return await prisma.message.findFirst({
+      where: { id, type: 'Inquiry' },
+    });
+  }
+
+  // 문의사항 답변 작성
+  async answerInquiry(id: number, data: { answer: string; answeredBy: number }) {
+    return await prisma.message.update({
+      where: { id },
+      data: {
+        answer: data.answer,
+        answeredBy: data.answeredBy,
+        answeredAt: new Date(),
+        inquiryStatus: 'Answered',
+      },
+    });
+  }
+
+  // 문의사항 삭제
+  async deleteInquiry(id: number) {
+    return await prisma.message.delete({
+      where: { id },
     });
   }
 }

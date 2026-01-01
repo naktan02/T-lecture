@@ -43,6 +43,25 @@ router.delete('/notices/:id', auth, requireRole('ADMIN'), messageController.dele
 // 공지사항 고정 토글 (관리자 전용)
 router.patch('/notices/:id/pin', auth, requireRole('ADMIN'), messageController.toggleNoticePin);
 
+// ==========================================
+// 문의사항 관련 라우트 (/inquiries)
+// ==========================================
+
+// 문의사항 목록 조회 (인증 필요 - 관리자: 전체, 강사: 본인)
+router.get('/inquiries', auth, messageController.getInquiries);
+
+// 문의사항 단건 조회 (인증 필요)
+router.get('/inquiries/:id', auth, messageController.getInquiry);
+
+// 문의사항 생성 (인증 필요)
+router.post('/inquiries', auth, messageController.createInquiry);
+
+// 문의사항 답변 (관리자 전용)
+router.patch('/inquiries/:id/answer', auth, requireRole('ADMIN'), messageController.answerInquiry);
+
+// 문의사항 삭제 (인증 필요 - 본인 또는 관리자)
+router.delete('/inquiries/:id', auth, messageController.deleteInquiry);
+
 export default router;
 
 // CommonJS 호환
