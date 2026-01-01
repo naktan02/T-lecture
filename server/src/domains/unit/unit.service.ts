@@ -1,7 +1,7 @@
 // server/src/domains/unit/unit.service.ts
 import unitRepository from './unit.repository';
 import { buildPaging, buildUnitWhere } from './unit.filters';
-import { toCreateUnitDto, excelRowToRawUnit, RawUnitData } from './unit.mapper';
+import { toCreateUnitDto, groupExcelRowsByUnit, RawUnitData } from './unit.mapper';
 import AppError from '../../common/errors/AppError';
 import { Prisma, MilitaryType } from '@prisma/client';
 import { ScheduleInput, UnitQueryInput } from '../../types/unit.types';
@@ -58,15 +58,75 @@ class UnitService {
   }
 
   /**
-   * 엑셀 파일 처리 및 일괄 등록
+   * 엑셀 파일 처리 및 일괄 등록 (Upsert 로직)
+   * - 부대명이 DB에 없으면: 새 부대 생성
+   * - 부대명이 DB에 있으면: 기존 부대에 새 교육장소만 추가 (중복 제외)
    */
   async processExcelDataAndRegisterUnits(rawRows: Record<string, unknown>[]) {
-    const rawDataList = rawRows.map(excelRowToRawUnit);
-    return await this.registerMultipleUnits(rawDataList);
+    const rawDataList = groupExcelRowsByUnit(rawRows);
+    return await this.upsertMultipleUnits(rawDataList);
   }
 
   /**
-   * 일괄 등록 (내부 로직)
+   * Upsert 로직으로 부대 등록/업데이트
+   */
+  async upsertMultipleUnits(dataArray: RawUnitInput[]) {
+    if (!Array.isArray(dataArray) || dataArray.length === 0) {
+      throw new AppError('등록할 데이터가 없습니다.', 400, 'VALIDATION_ERROR');
+    }
+
+    let created = 0;
+    let updated = 0;
+    let locationsAdded = 0;
+    let locationsSkipped = 0;
+    const errors: { name: string; error: string }[] = [];
+
+    for (const rawData of dataArray) {
+      try {
+        const unitName = rawData.name?.trim();
+        if (!unitName) {
+          errors.push({ name: '(부대명 없음)', error: '부대명은 필수입니다.' });
+          continue;
+        }
+
+        // DB에서 같은 부대명 조회
+        const existingUnit = await unitRepository.findUnitByName(unitName);
+
+        if (existingUnit) {
+          // 기존 부대 → 교육장소만 추가 (중복 제외)
+          if (rawData.trainingLocations && rawData.trainingLocations.length > 0) {
+            const result = await unitRepository.addTrainingLocationsIfNotExists(
+              existingUnit.id,
+              rawData.trainingLocations,
+            );
+            locationsAdded += result.added;
+            locationsSkipped += result.skipped;
+          }
+          updated++;
+        } else {
+          // 새 부대 생성
+          await this.registerSingleUnit(rawData);
+          created++;
+          locationsAdded += rawData.trainingLocations?.length || 0;
+        }
+      } catch (e: unknown) {
+        const name = rawData.name || '(부대명 없음)';
+        const message = e instanceof Error ? e.message : '알 수 없는 오류';
+        errors.push({ name, error: message });
+      }
+    }
+
+    return {
+      created,
+      updated,
+      locationsAdded,
+      locationsSkipped,
+      errors: errors.length > 0 ? errors : undefined,
+    };
+  }
+
+  /**
+   * 일괄 등록 (내부 로직 - 기존 호환용)
    * 각 부대별로 registerSingleUnit을 호출하여 일정 자동 생성
    */
   async registerMultipleUnits(dataArray: RawUnitInput[]) {

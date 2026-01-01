@@ -92,6 +92,59 @@ class UnitRepository {
     });
   }
 
+  /**
+   * 부대명으로 조회 (교육장소 포함)
+   */
+  async findUnitByName(name: string) {
+    return prisma.unit.findFirst({
+      where: { name },
+      include: {
+        trainingLocations: true,
+        schedules: { orderBy: { date: 'asc' } },
+      },
+    });
+  }
+
+  /**
+   * 부대에 교육장소 추가 (중복 체크 후)
+   * @returns 추가된 교육장소 수
+   */
+  async addTrainingLocationsIfNotExists(
+    unitId: number,
+    locations: TrainingLocationData[],
+  ): Promise<{ added: number; skipped: number }> {
+    // 기존 교육장소 조회
+    const existingLocations = await prisma.trainingLocation.findMany({
+      where: { unitId },
+      select: { originalPlace: true },
+    });
+    const existingPlaces = new Set(existingLocations.map((l) => l.originalPlace));
+
+    let added = 0;
+    let skipped = 0;
+
+    for (const loc of locations) {
+      const place = loc.originalPlace || null;
+      if (place && existingPlaces.has(place)) {
+        skipped++;
+        continue;
+      }
+
+      // 새 교육장소 추가
+      const data = this._mapLocationData(loc, unitId);
+      await prisma.trainingLocation.create({
+        data: {
+          ...data,
+          unitId,
+        },
+      });
+      added++;
+      existingPlaces.add(place);
+    }
+
+    return { added, skipped };
+  }
+
   // --- 등록 ---
 
   /**
