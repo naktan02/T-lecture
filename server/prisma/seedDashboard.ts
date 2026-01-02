@@ -107,6 +107,34 @@ async function main() {
         });
       }
       createdUnits.push(unit);
+
+      // TrainingLocation 생성
+      const parseBool = (val: any) => val === 'O';
+
+      // 이미 존재하는지 확인하지 않고 create하면 에러날 수 있으므로 upsert나 create (test data라 그냥 create 시도하지만 중복 에러 가능성 있음)
+      // clear_dashboard_data.ts로 다 지우고 할 것이므로 create해도 됨.
+      // 하지만 unit이 이미 있으면(findFirst로 찾은 경우) trainingLocation도 있을 수 있음.
+      // 안전하게 deleteMany 후 create 또는 upsert? TrainingLocation은 id가 PK. unitId는 FK.
+      // unitId로 조회해서 있으면 skip?
+
+      await prisma.trainingLocation.deleteMany({ where: { unitId: unit.id } });
+
+      await prisma.trainingLocation.create({
+        data: {
+          unitId: unit.id,
+          originalPlace: row['기존교육장소'],
+          changedPlace: row['변경교육장소'],
+          hasInstructorLounge: parseBool(row['강사휴게실 여부']),
+          hasWomenRestroom: parseBool(row['여자화장실 여부']),
+          hasCateredMeals: parseBool(row['수탁급식여부']),
+          hasHallLodging: parseBool(row['회관숙박여부']),
+          allowsPhoneBeforeAfter: parseBool(row['사전사후 휴대폰 불출 여부']),
+          plannedCount: row['계획인원'] ? parseInt(row['계획인원']) : 0,
+          actualCount: row['참여인원'] ? parseInt(row['참여인원']) : 0,
+          instructorsNumbers: row['투입강사수'] ? parseInt(row['투입강사수']) : 0,
+          note: row['특이사항'],
+        },
+      });
     } catch (e) {
       // console.error(`부대 생성 실패: ${name}`, e);
     }

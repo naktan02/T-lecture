@@ -8,10 +8,13 @@ async function main() {
   const units = await prisma.unit.count();
   const schedules = await prisma.unitSchedule.count();
   const instructors = await prisma.instructor.count();
+  const trainingLocations = await prisma.trainingLocation.count();
 
   console.log('📊 DB Record Counts:');
   console.log(`- Instructors: ${instructors}`);
   console.log(`- Units: ${units}`);
+  console.log(`- TrainingLocations: ${trainingLocations}`);
+  console.log(`- UnitSchedules: ${schedules}`);
   console.log(`- UnitSchedules: ${schedules}`);
   console.log(`- InstructorUnitAssignments: ${assignments}`);
   console.log(`- InstructorUnitDistances: ${distances}`);

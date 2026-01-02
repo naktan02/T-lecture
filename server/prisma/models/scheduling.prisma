@@ -33,7 +33,7 @@ model InstructorUnitAssignment {
   state          AssignmentState     @default(Pending) @map("배정상태")
 
   User         User         @relation(fields: [userId], references: [id])
-  UnitSchedule UnitSchedule @relation(fields: [unitScheduleId], references: [id])
+  UnitSchedule UnitSchedule @relation(fields: [unitScheduleId], references: [id], onDelete: Cascade)
 
   messageAssignments MessageAssignment[]
 
