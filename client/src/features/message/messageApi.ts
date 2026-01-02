@@ -58,7 +58,7 @@ export const getNoticesApi = async (): Promise<Notice[]> => {
 
 // 확정 메시지 일괄 발송
 export const sendConfirmedMessagesApi = async (): Promise<{ createdCount: number }> => {
-  const res = await apiClient('/api/v1/messages/send-confirmed', {
+  const res = await apiClient('/api/v1/messages/send/confirmed', {
     method: 'POST',
   });
   if (!res.ok) {
