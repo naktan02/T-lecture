@@ -85,4 +85,8 @@ npm run dev
 # T-lecture/ 폴더로 이동 (cd ..)
 npm run dev:client
 ```
+```bash
+instructor1@test.com
+1234
+```
 

@@ -4,11 +4,26 @@ import instructorRepository from '../instructor/instructor.repository';
 import AppError from '../../common/errors/AppError';
 import assignmentAlgorithm from './assignment.algorithm';
 import assignmentDTO from './assignment.dto';
+import { DEFAULT_ASSIGNMENT_CONFIG } from './engine/config-loader';
+import prisma from '../../libs/prisma';
 
 /**
  * 강사 배정 비즈니스 로직 전담 Service
  */
 class AssignmentService {
+  /**
+   * 시스템 설정 숫자 값 조회 (DB 우선, 없으면 기본값)
+   */
+  private async getSystemConfigNumber(key: string, defaultValue: number): Promise<number> {
+    const cfg = await prisma.systemConfig.findUnique({ where: { key } });
+    if (!cfg?.value) return defaultValue;
+    const parsed = Number(cfg.value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
+  }
+
+  /**
+   * 날짜에서 월 빼기 유틸
+   */
   private subtractMonths(base: Date, months: number): Date {
     const d = new Date(base);
     d.setMonth(d.getMonth() - months);
@@ -49,10 +64,7 @@ class AssignmentService {
       throw new AppError('해당 기간에 배정 가능한 강사가 없습니다.', 404, 'NO_INSTRUCTORS');
     }
 
-    const traineesPerInstructor = await assignmentRepository.getSystemConfigNumber(
-      'TRAINEES_PER_INSTRUCTOR',
-      36,
-    );
+    const traineesPerInstructor = await this.getSystemConfigNumber('TRAINEES_PER_INSTRUCTOR', 36);
 
     const scheduleIds = Array.from(
       new Set(units.flatMap((u) => (u.schedules || []).map((s) => s.id))),
@@ -63,13 +75,13 @@ class AssignmentService {
     // ===== 최근 통계(공정성/패널티) =====
     // 엔진 config에서 사용 중인 값과 맞춰서 우선 하드코딩(추후 SystemConfig로 빼도 됨)
     // NOTE: 운영 중 튜닝 가능한 값들은 SystemConfig에서 가져오고, 없으면 기본값을 사용한다.
-    const fairnessLookbackMonths = await assignmentRepository.getSystemConfigNumber(
+    const fairnessLookbackMonths = await this.getSystemConfigNumber(
       'FAIRNESS_LOOKBACK_MONTHS',
-      3,
+      DEFAULT_ASSIGNMENT_CONFIG.fairnessLookbackMonths,
     );
-    const rejectionPenaltyMonths = await assignmentRepository.getSystemConfigNumber(
+    const rejectionPenaltyMonths = await this.getSystemConfigNumber(
       'REJECTION_PENALTY_MONTHS',
-      6,
+      DEFAULT_ASSIGNMENT_CONFIG.rejectionPenaltyMonths,
     );
     const instructorIds = Array.from(new Set(instructors.map((i: any) => i.userId)));
     const assignmentSince = this.subtractMonths(start, fairnessLookbackMonths);
@@ -139,23 +151,20 @@ class AssignmentService {
       throw new AppError('해당 기간에 배정 가능한 강사가 없습니다.', 404, 'NO_INSTRUCTORS');
     }
 
-    const traineesPerInstructor = await assignmentRepository.getSystemConfigNumber(
-      'TRAINEES_PER_INSTRUCTOR',
-      36,
-    );
+    const traineesPerInstructor = await this.getSystemConfigNumber('TRAINEES_PER_INSTRUCTOR', 36);
     const scheduleIds = Array.from(
       new Set(units.flatMap((u) => (u.schedules || []).map((s) => s.id))),
     );
     const blockedInstructorIdsBySchedule =
       await assignmentRepository.findCanceledInstructorIdsByScheduleIds(scheduleIds);
 
-    const fairnessLookbackMonths = await assignmentRepository.getSystemConfigNumber(
+    const fairnessLookbackMonths = await this.getSystemConfigNumber(
       'FAIRNESS_LOOKBACK_MONTHS',
-      3,
+      DEFAULT_ASSIGNMENT_CONFIG.fairnessLookbackMonths,
     );
-    const rejectionPenaltyMonths = await assignmentRepository.getSystemConfigNumber(
+    const rejectionPenaltyMonths = await this.getSystemConfigNumber(
       'REJECTION_PENALTY_MONTHS',
-      6,
+      DEFAULT_ASSIGNMENT_CONFIG.rejectionPenaltyMonths,
     );
     const instructorIds = Array.from(new Set(instructors.map((i: any) => i.userId)));
     const assignmentSince = this.subtractMonths(start, fairnessLookbackMonths);
@@ -255,31 +264,55 @@ class AssignmentService {
   }
 
   /**
-   * 스케줄의 필요 인원이 모두 수락되었는지 확인하고 자동 확정
+   * 부대(Unit) 전체의 필요 인원이 모두 수락되었는지 확인하고 자동 확정
+   * - 각 장소별 필요 인원 × 각 스케줄에서 수락된 인원 체크
+   * - isBlocked=true인 스케줄은 필요인원 충족으로 간주
+   * - 모든 슬롯이 채워지면 부대 전체 확정
    */
   private async checkAndAutoConfirm(unitScheduleId: number) {
-    const assignments = await assignmentRepository.getAssignmentsByScheduleId(unitScheduleId);
+    // 1. 스케줄에서 부대 ID 조회
+    const unitId = await assignmentRepository.getUnitIdByScheduleId(unitScheduleId);
+    if (!unitId) return;
 
-    // 수락된 배정 수
-    const acceptedCount = assignments.filter((a) => a.state === 'Accepted').length;
+    // 2. 부대의 모든 정보 조회
+    const unit = await assignmentRepository.getUnitWithAssignments(unitId);
+    if (!unit) return;
 
-    // TODO: 필요 인원 수는 trainingLocation의 instructorsNumbers 합계
-    // 현재는 간단하게: Pending + Accepted 수가 모두 Accepted면 확정
-    const activeAssignments = assignments.filter(
-      (a) => a.state === 'Pending' || a.state === 'Accepted',
+    // 3. 장소별 필요 인원 합계
+    const totalRequiredPerSchedule = unit.trainingLocations.reduce(
+      (sum, loc) => sum + (loc.instructorsNumbers || 0),
+      0,
     );
-    const allAccepted =
-      activeAssignments.length > 0 && activeAssignments.every((a) => a.state === 'Accepted');
 
-    if (allAccepted && acceptedCount > 0) {
-      // 모든 활성 배정을 Confirmed로 분류 변경
-      await assignmentRepository.updateClassificationBySchedule(unitScheduleId, 'Confirmed');
+    if (totalRequiredPerSchedule === 0) return; // 필요 인원이 0이면 확정 불필요
+
+    // 4. 모든 스케줄에서 수락된 인원 체크 (블록된 스케줄은 충족으로 간주)
+    let allSchedulesFilled = true;
+
+    for (const schedule of unit.schedules) {
+      // isBlocked=true면 해당 일정은 필요인원 충족으로 간주
+      if ((schedule as any).isBlocked) {
+        continue;
+      }
+
+      const acceptedCount = schedule.assignments.filter((a) => a.state === 'Accepted').length;
+
+      if (acceptedCount < totalRequiredPerSchedule) {
+        allSchedulesFilled = false;
+        break;
+      }
+    }
+
+    // 5. 모든 스케줄이 필요 인원을 채웠으면 부대 전체 확정
+    if (allSchedulesFilled && unit.schedules.length > 0) {
+      await assignmentRepository.updateClassificationByUnit(unitId, 'Confirmed');
     }
   }
 
   /**
    * 관리자 배정 취소
    * 확정 상태에서 취소 시 해당 스케줄의 다른 배정들도 임시로 복귀
+   * 수락 상태에서 취소 시 Rejected로 변경 (패널티 적용)
    */
   async cancelAssignment(
     userId: number,
@@ -306,14 +339,23 @@ class AssignmentService {
     // 확정 상태였으면 해당 스케줄의 다른 배정들을 임시로 복귀
     const wasConfirmed = assignment.classification === 'Confirmed';
 
-    await assignmentRepository.updateStatusByKey(targetInstructorId, unitScheduleId, 'Canceled');
+    // 수락 상태에서 취소 → Rejected (패널티 적용)
+    // 그 외 상태에서 취소 → Canceled (패널티 없음)
+    const newState = assignment.state === 'Accepted' ? 'Rejected' : 'Canceled';
+
+    await assignmentRepository.updateStatusByKey(targetInstructorId, unitScheduleId, newState);
 
     // 확정에서 인원이 삭제되면 해당 스케줄의 배정들을 임시로 복귀
     if (wasConfirmed) {
       await assignmentRepository.updateClassificationBySchedule(unitScheduleId, 'Temporary');
     }
 
-    return { message: '배정이 취소되었습니다.' };
+    return {
+      message:
+        newState === 'Rejected'
+          ? '배정이 거절 처리되었습니다. (패널티 적용)'
+          : '배정이 취소되었습니다.',
+    };
   }
 
   /**
@@ -347,6 +389,13 @@ class AssignmentService {
    */
   async toggleScheduleBlock(unitScheduleId: number, isBlocked: boolean) {
     return await assignmentRepository.updateScheduleBlock(unitScheduleId, isBlocked);
+  }
+
+  /**
+   * 부대의 모든 스케줄 일괄 배정막기
+   */
+  async bulkBlockUnit(unitId: number, isBlocked: boolean) {
+    return await assignmentRepository.bulkBlockByUnitId(unitId, isBlocked);
   }
 
   /**

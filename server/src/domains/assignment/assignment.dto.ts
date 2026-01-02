@@ -149,12 +149,12 @@ class AssignmentDTO {
   }
 
   /**
-   * 계층형 응답 변환 (상태 필터링 지원)
-   * @param stateFilter - 'Pending' | 'Accepted' | 'all' (default: 'all')
+   * 계층형 응답 변환 (분류 필터링 지원 - Temporary=배정작업공간, Confirmed=확정)
+   * @param classificationFilter - 'Temporary' | 'Confirmed' | 'all' (default: 'all')
    */
   toHierarchicalResponse(
     unitsWithAssignments: UnitRaw[],
-    stateFilter: 'Pending' | 'Accepted' | 'all' = 'all',
+    classificationFilter: 'Temporary' | 'Confirmed' | 'all' = 'all',
   ) {
     return unitsWithAssignments.map((unit) => {
       let totalRequired = 0;
@@ -174,13 +174,16 @@ class AssignmentDTO {
         const dates = unit.schedules.map((schedule: ScheduleRaw) => {
           const dateStr = toKSTDateString(schedule.date);
 
-          // 해당 장소(loc.id)에 배정된 강사만 필터링 (상태 필터 적용)
+          // 해당 장소(loc.id)에 배정된 강사만 필터링 (분류 필터 적용)
           const assignedInstructors = (schedule.assignments || [])
             .filter(
               (a: AssignmentRaw) =>
-                (stateFilter === 'all'
-                  ? a.state === 'Pending' || a.state === 'Accepted'
-                  : a.state === stateFilter) &&
+                // 활성 상태 (Pending 또는 Accepted)만 표시
+                (a.state === 'Pending' || a.state === 'Accepted') &&
+                // 분류 필터 적용
+                (classificationFilter === 'all'
+                  ? true
+                  : a.classification === classificationFilter) &&
                 (a.trainingLocationId === loc.id || a.trainingLocationId === null),
             )
             .map((assign: AssignmentRaw) => {
@@ -195,6 +198,7 @@ class AssignmentDTO {
                 role: assign.role, // Head, Supervisor, or null
                 category: assign.User.instructor?.category || null, // Main, Co, Assistant, Practicum
                 trainingLocationId: assign.trainingLocationId,
+                state: assign.state, // Pending, Accepted, Rejected (null = 미발송)
               };
             });
 
@@ -220,6 +224,27 @@ class AssignmentDTO {
         ? toKSTDateString(unit.schedules[unit.schedules.length - 1].date)
         : '-';
 
+      // 4. 확정 메시지 발송 여부 계산
+      // - Confirmed 분류의 배정이 있고, 그 중 Confirmed 메시지를 받지 못한 강사가 없으면 완료
+      let confirmedMessageSent = false;
+      if (classificationFilter === 'Confirmed') {
+        const allConfirmedAssignments = unit.schedules.flatMap((s: ScheduleRaw) =>
+          (s.assignments || []).filter(
+            (a: AssignmentRaw) =>
+              a.classification === 'Confirmed' && (a.state === 'Pending' || a.state === 'Accepted'),
+          ),
+        );
+        if (allConfirmedAssignments.length > 0) {
+          // 모든 확정 배정에 Confirmed 메시지가 있는지 확인
+          confirmedMessageSent = allConfirmedAssignments.every((a: AssignmentRaw) => {
+            const hasConfirmedMessage = (a.messageAssignments || []).some(
+              (ma) => ma.message?.type === 'Confirmed',
+            );
+            return hasConfirmedMessage;
+          });
+        }
+      }
+
       return {
         unitId: unit.id,
         unitName: unit.name,
@@ -230,6 +255,7 @@ class AssignmentDTO {
         progress:
           totalRequired > 0 ? Math.round((assignedInstructorIds.size / totalRequired) * 100) : 0,
         trainingLocations: trainingLocations,
+        confirmedMessageSent, // 확정 메시지 발송 완료 여부
       };
     });
   }

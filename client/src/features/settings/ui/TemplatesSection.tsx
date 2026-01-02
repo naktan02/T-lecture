@@ -2,7 +2,7 @@
 import { useState, ReactElement, useCallback } from 'react';
 import { useTemplates } from '../model/useSettings';
 import { Button } from '../../../shared/ui';
-import { MessageTemplate, MessageTemplateBody } from '../settingsApi';
+import { MessageTemplate, MessageTemplateBody, FormatPresets } from '../settingsApi';
 import {
   TemplateEditor,
   variableConfig,
@@ -46,6 +46,7 @@ export const TemplatesSection = (): ReactElement => {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editBody, setEditBody] = useState('');
+  const [editFormatPresets, setEditFormatPresets] = useState<FormatPresets>({});
 
   // 포맷 편집 모달 상태
   const [formatEditInfo, setFormatEditInfo] = useState<{
@@ -60,6 +61,7 @@ export const TemplatesSection = (): ReactElement => {
     callback: (format: string) => void;
   } | null>(null);
 
+  // 본문용 registry (포맷 변수 포함)
   const registry: VariableRegistry = {
     list: () => variableConfig,
     get: (key) => variableConfig.find((v) => normalizeKey(v.key) === key),
@@ -74,20 +76,28 @@ export const TemplatesSection = (): ReactElement => {
     // Token[] → 문자열 변환 (에디터용)
     const bodyStr = template.body?.tokens ? tokensToTemplate(template.body.tokens) : '';
     setEditBody(bodyStr);
+    // 포맷 프리셋 로드
+    setEditFormatPresets(template.formatPresets || {});
   };
 
-  // 저장 시 문자열 → Token[] 변환
+  // 저장 시 문자열 → Token[] 변환 + formatPresets 포함
   const handleSave = async () => {
     if (!editingKey) return;
     try {
       // 에디터 문자열을 Token[] 변환하여 저장
       const body: MessageTemplateBody = { tokens: parseTemplateToTokens(editBody) };
-      await updateTemplate({ key: editingKey, title: editTitle, body });
+      await updateTemplate({
+        key: editingKey,
+        title: editTitle,
+        body,
+        formatPresets: editFormatPresets,
+      });
       setEditingKey(null);
       setEditTitle('');
       setEditBody('');
-    } catch (e) {
-      console.error('템플릿 저장 실패:', e);
+      setEditFormatPresets({});
+    } catch {
+      // 에러는 useTemplates 훅에서 toast로 처리됨
     }
   };
 
@@ -95,6 +105,7 @@ export const TemplatesSection = (): ReactElement => {
     setEditingKey(null);
     setEditTitle('');
     setEditBody('');
+    setEditFormatPresets({});
   };
 
   // 포맷 변수 → 레거시 형태 변환 (플레이스홀더 포함)
@@ -120,12 +131,19 @@ export const TemplatesSection = (): ReactElement => {
     [registry, toFormatVar],
   );
 
-  // ✅ 포맷 수정 확정: 문자열 치환 금지 → 토큰 인덱스 기반 업데이트 + 직렬화
+  // ✅ 포맷 수정 확정: 문자열 치환 금지 → 토큰 인덱스 기반 업데이트 + formatPresets 동기화
   const handleConfirmFormat = (newFormat: string) => {
     if (!formatEditInfo) return;
 
     const tokens = parseTemplateToTokens(editBody);
     const idx = formatEditInfo.index;
+    const tokenKey = formatEditInfo.token.key;
+
+    // formatPresets 동기화 (수정된 포맷을 프리셋에도 저장)
+    setEditFormatPresets((prev) => ({
+      ...prev,
+      [tokenKey]: newFormat,
+    }));
 
     // 1) index가 유효하면 그 자리만 수정
     if (idx >= 0 && idx < tokens.length && tokens[idx].type === 'format') {
@@ -150,7 +168,7 @@ export const TemplatesSection = (): ReactElement => {
     setFormatEditInfo(null);
   };
 
-  // 패널에서 포맷 클릭 요청 (기존 있으면 수정, 없으면 삽입)
+  // 패널에서 포맷 클릭/드래그 요청 (기존 있으면 수정, 프리셋 있으면 바로 삽입, 없으면 모달)
   const handleInsertFormat = useCallback(
     (varDef: VariableDef, callback: (format: string) => void) => {
       const tokens = parseTemplateToTokens(editBody);
@@ -166,16 +184,28 @@ export const TemplatesSection = (): ReactElement => {
           varDef: toFormatVar(varDef),
         });
       } else {
-        // 새 포맷 삽입 모드
-        setFormatInsertInfo({ varDef: toFormatVar(varDef), callback });
+        // 프리셋이 있으면 바로 삽입 (모달 없이)
+        const presetFormat = editFormatPresets[varDef.key];
+        if (presetFormat) {
+          callback(presetFormat);
+        } else {
+          // 새 포맷 삽입 모드 (프리셋 없으면 모달 열기)
+          setFormatInsertInfo({ varDef: toFormatVar(varDef), callback });
+        }
       }
     },
-    [toFormatVar, editBody],
+    [toFormatVar, editBody, editFormatPresets],
   );
 
-  // 포맷 삽입 확정
+  // 포맷 삽입 확정 + formatPresets 동기화
   const handleConfirmInsert = (format: string) => {
-    if (formatInsertInfo?.callback) {
+    if (formatInsertInfo) {
+      const varKey = formatInsertInfo.varDef.key;
+      // 삽입한 포맷을 프리셋에도 저장 (나중에 다시 삽입할 때 기본값으로 사용)
+      setEditFormatPresets((prev) => ({
+        ...prev,
+        [varKey]: format,
+      }));
       formatInsertInfo.callback(format);
     }
     setFormatInsertInfo(null);
@@ -242,16 +272,19 @@ export const TemplatesSection = (): ReactElement => {
 
               {isEditing ? (
                 <div className="space-y-4">
+                  {/* 제목 (패널 없이 본문 패널 공유) */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">제목</label>
-                    <input
-                      type="text"
+                    <TemplateEditor
                       value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                      onChange={setEditTitle}
+                      registry={registry}
+                      singleLine
+                      hidePanel
                     />
                   </div>
 
+                  {/* 본문 에디터 (변수 패널 포함) */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">본문</label>
                     <TemplateEditor
@@ -297,12 +330,12 @@ export const TemplatesSection = (): ReactElement => {
         />
       )}
 
-      {/* 포맷 삽입 모달 (패널 클릭) */}
+      {/* 포맷 삽입 모달 (패널 클릭) - formatPresets에서 기본값 불러오기 */}
       {formatInsertInfo && (
         <FormatVariableModal
           key={`insert-${formatInsertInfo.varDef.key}`}
           variable={formatInsertInfo.varDef}
-          initialFormat=""
+          initialFormat={editFormatPresets[formatInsertInfo.varDef.key] || ''}
           onConfirm={handleConfirmInsert}
           onCancel={() => setFormatInsertInfo(null)}
         />

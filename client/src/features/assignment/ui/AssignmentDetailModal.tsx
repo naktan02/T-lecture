@@ -44,6 +44,7 @@ interface Instructor {
   team: string;
   role?: string | null; // Head, Supervisor, or null
   category?: string | null; // Main, Co, Assistant, Practicum
+  state?: string | null; // Pending, Accepted, Rejected (null = unsent)
 }
 
 interface DateInfo {
@@ -201,6 +202,7 @@ export const AssignmentDetailModal: React.FC<AssignmentDetailModalProps> = ({ it
 
 interface AssignmentGroupDetailModalProps {
   group: AssignmentGroup;
+  unitId?: number; // for bulk block
   onClose: () => void;
   onRemove?: (unitScheduleId: number, instructorId: number) => void;
   onAdd?: (
@@ -210,16 +212,19 @@ interface AssignmentGroupDetailModalProps {
   ) => Promise<void>;
   onBlock?: (unitScheduleId: number) => Promise<void>; // 배정 막기
   onUnblock?: (unitScheduleId: number) => Promise<void>; // 배정 막기 해제
+  onBulkBlock?: (unitId: number, isBlocked: boolean) => Promise<void>; // 부대 전체 일괄 막기
   availableInstructors?: any[];
 }
 
 export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProps> = ({
   group,
+  unitId,
   onClose,
   onRemove,
   onAdd,
   onBlock,
   onUnblock,
+  onBulkBlock,
   availableInstructors = [],
 }) => {
   const [addPopupTarget, setAddPopupTarget] = useState<AddPopupTarget | null>(null);
@@ -250,7 +255,33 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                 {group.region}
               </span>
             </h2>
-            <p className="text-sm text-gray-500 mt-1">📅 교육 기간: {group.period}</p>
+            <div className="flex items-center gap-4 mt-1">
+              <p className="text-sm text-gray-500">📅 교육 기간: {group.period}</p>
+              {/* 범례 */}
+              <div className="flex items-center gap-3 text-[10px] ml-4">
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>미발송
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-yellow-400"></span>대기중
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-green-500"></span>수락
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-red-500"></span>거절
+                </span>
+                {/* 일괄 배정막기 버튼 */}
+                {unitId && onBulkBlock && (
+                  <button
+                    onClick={() => onBulkBlock(unitId, true)}
+                    className="ml-3 px-2.5 py-1 text-xs text-red-600 border border-red-300 rounded hover:bg-red-50 font-medium"
+                  >
+                    🚫 일괄막기
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -330,11 +361,13 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                           <div
                             key={inst.instructorId}
                             className={`group relative flex items-center gap-2 border px-3 py-1.5 rounded-lg shadow-sm hover:shadow transition-all ${
-                              inst.role === 'Head'
-                                ? 'bg-amber-50 border-amber-400 hover:border-amber-500'
-                                : inst.role === 'Supervisor'
-                                  ? 'bg-blue-50 border-blue-300 hover:border-blue-400'
-                                  : 'bg-white border-gray-200 hover:border-indigo-300'
+                              inst.state === 'Rejected'
+                                ? 'bg-gray-100 border-gray-300 opacity-60'
+                                : inst.role === 'Head'
+                                  ? 'bg-amber-50 border-amber-400 hover:border-amber-500'
+                                  : inst.role === 'Supervisor'
+                                    ? 'bg-blue-50 border-blue-300 hover:border-blue-400'
+                                    : 'bg-white border-gray-200 hover:border-indigo-300'
                             }`}
                           >
                             <div>
@@ -353,6 +386,28 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                               </div>
                               <div className="text-[10px] text-gray-500">{inst.team}</div>
                             </div>
+
+                            {/* 상태 점 표시 */}
+                            <span
+                              className={`absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full border border-white shadow-sm ${
+                                inst.state === 'Accepted'
+                                  ? 'bg-green-500'
+                                  : inst.state === 'Rejected'
+                                    ? 'bg-red-500'
+                                    : inst.state === 'Pending'
+                                      ? 'bg-yellow-400'
+                                      : 'bg-blue-500'
+                              }`}
+                              title={
+                                inst.state === 'Accepted'
+                                  ? '수락'
+                                  : inst.state === 'Rejected'
+                                    ? '거절'
+                                    : inst.state === 'Pending'
+                                      ? '대기중'
+                                      : '미발송'
+                              }
+                            />
 
                             <button
                               onClick={() =>

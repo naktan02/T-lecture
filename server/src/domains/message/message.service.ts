@@ -8,8 +8,8 @@ import { UserMessageGroup } from '../../types/message.types';
 import { tokensToTemplate, MessageTemplateBody } from '../../types/template.types';
 
 class MessageService {
-  // 임시 배정 메시지 일괄 발송 (부대별로 별도 메시지)
-  async sendTemporaryMessages() {
+  // 임시 배정 메시지 일괄 발송 (부대별로 별도 메시지, 날짜 범위 필터링)
+  async sendTemporaryMessages(startDate?: string, endDate?: string) {
     // 템플릿 조회
     const template = await metadataRepository.findTemplateByKey('TEMPORARY');
     if (!template) {
@@ -20,8 +20,8 @@ class MessageService {
       );
     }
 
-    // 대상 조회
-    const targets = await messageRepository.findTargetsForTemporaryMessage();
+    // 대상 조회 (날짜 범위 적용)
+    const targets = await messageRepository.findTargetsForTemporaryMessage(startDate, endDate);
     if (targets.length === 0) {
       throw new AppError('발송할 대상(임시 배정 미수신자)이 없습니다.', 404, 'NO_TARGETS');
     }
@@ -51,6 +51,7 @@ class MessageService {
 
     const messagesToCreate: Array<{
       type: 'Temporary';
+      title: string;
       body: string;
       userId: number;
       assignmentIds: number[];
@@ -87,21 +88,35 @@ class MessageService {
           return (categoryOrder[cat1] || 99) - (categoryOrder[cat2] || 99);
         });
 
-        // 이름(등급) 형식으로 변환 - "강사" 제거
+        // 이름(등급) 형식으로 변환 - 영어→한글 변환
+        const categoryKorean: Record<string, string> = {
+          Main: '주',
+          Sub: '부',
+          Assistant: '보조',
+          Trainee: '실습',
+          주강사: '주',
+          부강사: '부',
+          보조강사: '보조',
+          실습강사: '실습',
+        };
         const instructorNames = sortedInstructors
           .map((ua) => {
             const name = ua.User?.name || '';
             let category = ua.User?.instructor?.category || '';
-            // "강사" 제거: 주강사 → 주, 부강사 → 부, 보조강사 → 보조
-            category = category.replace('강사', '');
+            // 영어 또는 한글 → 축약형 한글 변환
+            category = categoryKorean[category] || category.replace('강사', '');
             return category ? `${name}(${category})` : name;
           })
           .filter((text) => text)
           .join(', ');
 
+        // 날짜 형식: MM-DD (연도 제외)
+        const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
+        const monthDay = dateStr.slice(5); // MM-DD
+
         return {
           name: user.name || '',
-          date: d.toISOString().split('T')[0],
+          date: monthDay,
           dayOfWeek,
           instructors: instructorNames,
         };
@@ -122,6 +137,22 @@ class MessageService {
         'unit.addressDetail': unit.addressDetail || '',
         'unit.officerName': unit.officerName || '',
         'unit.officerPhone': unit.officerPhone || '',
+        'unit.startDate': unit.educationStart
+          ? new Date(unit.educationStart).toISOString().split('T')[0]
+          : '',
+        'unit.endDate': unit.educationEnd
+          ? new Date(unit.educationEnd).toISOString().split('T')[0]
+          : '',
+        'unit.startTime': unit.workStartTime
+          ? typeof unit.workStartTime === 'string'
+            ? unit.workStartTime
+            : new Date(unit.workStartTime).toTimeString().slice(0, 5)
+          : '',
+        'unit.endTime': unit.workEndTime
+          ? typeof unit.workEndTime === 'string'
+            ? unit.workEndTime
+            : new Date(unit.workEndTime).toTimeString().slice(0, 5)
+          : '',
       };
 
       // self.schedules 포맷 변수 처리 - JSONB body를 문자열로 변환
@@ -132,8 +163,12 @@ class MessageService {
         'self.schedules': scheduleDates,
       });
 
+      // 제목도 변수 치환 (단순 변수만, 포맷 없음)
+      const title = compileTemplate(template.title || '', variables);
+
       messagesToCreate.push({
         type: 'Temporary',
+        title,
         body,
         userId: user.id,
         assignmentIds: assignments.map((a) => a.unitScheduleId),
@@ -157,20 +192,25 @@ class MessageService {
     result = compileTemplate(result, variables);
 
     // 포맷 변수 치환 (예: {{self.schedules:format=- {date} ({dayOfWeek})}})
-    result = result.replace(/\{\{(\w+(?:\.\w+)?):format=([^}]+)\}\}/g, (_, key, format) => {
-      const items = formatVariables[key];
-      if (!items || items.length === 0) return '';
+    // 포맷 안에 {placeholder}가 있을 수 있으므로, }}가 포맷 종료인지 확인 필요
+    // }} 뒤에 } 가 아닌 문자가 오거나 문자열 끝이어야 종료로 인식
+    result = result.replace(
+      /\{\{(\w+(?:\.\w+)?):format=([\s\S]*?)\}\}(?=[^}]|$)/g,
+      (_, key, format) => {
+        const items = formatVariables[key];
+        if (!items || items.length === 0) return '';
 
-      return items
-        .map((item) => {
-          let line = format;
-          for (const [placeholder, value] of Object.entries(item)) {
-            line = line.replace(new RegExp(`\\{${placeholder}\\}`, 'g'), value);
-          }
-          return line;
-        })
-        .join('\n');
-    });
+        return items
+          .map((item) => {
+            let line = format;
+            for (const [placeholder, value] of Object.entries(item)) {
+              line = line.replace(new RegExp(`\\{${placeholder}\\}`, 'g'), value);
+            }
+            return line;
+          })
+          .join('\n');
+      },
+    );
 
     return result;
   }
@@ -207,6 +247,7 @@ class MessageService {
 
     const messagesToCreate: Array<{
       type: 'Confirmed';
+      title: string;
       body: string;
       userId: number;
       assignmentIds: number[];
@@ -218,7 +259,8 @@ class MessageService {
       const representative = assignments[0];
       const unit = representative.UnitSchedule.unit;
       const unitSchedule = representative.UnitSchedule;
-      const isLeader = user.instructor?.isTeamLeader;
+      // 팀장 판단: role이 Head 또는 Supervisor면 리더용 템플릿
+      const isLeader = assignments.some((a) => a.role === 'Head' || a.role === 'Supervisor');
 
       // 리더용/일반용 템플릿 선택
       const targetTemplate = isLeader ? leaderTemplate : memberTemplate;
@@ -254,8 +296,12 @@ class MessageService {
         locations: locationsList,
       });
 
+      // 제목도 변수 치환 (단순 변수만, 포맷 없음)
+      const title = compileTemplate(targetTemplate.title || '', variables);
+
       messagesToCreate.push({
         type: 'Confirmed',
+        title,
         body,
         userId: userId,
         assignmentIds: assignments.map((a) => a.unitScheduleId),

@@ -10,9 +10,6 @@ export const MessageCard = ({ message, onClick }: MessageCardProps) => {
   const isTemporary = message.type === 'Temporary';
   const isConfirmed = message.type === 'Confirmed';
 
-  // 본문 미리보기 (첫 줄만)
-  const previewText = message.body?.split('\n')[0]?.slice(0, 50) || '내용 없음';
-
   return (
     <article
       onClick={onClick}
@@ -26,7 +23,7 @@ export const MessageCard = ({ message, onClick }: MessageCardProps) => {
     >
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center gap-2">
-          {!message.isRead && <span className="w-2 h-2 bg-blue-500 rounded-full" />}
+          {!message.isRead && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />}
           <span
             className={`
             text-xs font-medium px-2 py-0.5 rounded
@@ -42,9 +39,22 @@ export const MessageCard = ({ message, onClick }: MessageCardProps) => {
         </span>
       </div>
 
-      <p className="text-sm text-gray-700 line-clamp-2">{previewText}</p>
+      {/* 제목 표시 (변수 치환된 제목) */}
+      {message.title && (
+        <h3 className="text-sm font-medium text-gray-800 mb-2 line-clamp-1">{message.title}</h3>
+      )}
 
-      <div className="mt-2 text-xs text-blue-500 font-medium">자세히 보기 →</div>
+      {/* 읽음/안읽음 상태 배지 */}
+      <div className="flex justify-between items-center mt-2">
+        <span
+          className={`text-xs px-2 py-0.5 rounded ${
+            message.isRead ? 'bg-gray-100 text-gray-500' : 'bg-blue-100 text-blue-700 font-medium'
+          }`}
+        >
+          {message.isRead ? '읽음' : '새 메시지'}
+        </span>
+        <span className="text-xs text-blue-500 font-medium">자세히 보기 →</span>
+      </div>
     </article>
   );
 };

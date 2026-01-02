@@ -155,9 +155,10 @@ export function useTemplateEditor({
     [onInsertFormat, insertVariable],
   );
 
-  // 패널에서 드래그 시작
+  // 패널에서 드래그 시작 (제목 input에서도 받을 수 있도록 text/plain에 key 포함)
   const handlePanelDragStart = useCallback((e: React.DragEvent, v: VariableDef) => {
     e.dataTransfer.setData('application/json', JSON.stringify(v));
+    e.dataTransfer.setData('text/plain', v.key); // 제목 input 등 일반 드롭 영역용
     e.dataTransfer.effectAllowed = 'copy';
     setDraggedInternal(null);
   }, []);

@@ -47,57 +47,56 @@ export const MessageDetailModal = ({ message, onClose }: MessageDetailModalProps
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
+        className="bg-white rounded-lg max-w-md w-full overflow-hidden flex flex-col shadow-xl"
+        style={{ height: '75vh' }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 헤더 */}
+        {/* 헤더 - 컴팩트 */}
         <div
           className={`
-          p-4 border-b
+          px-3 py-2 border-b flex justify-between items-center
           ${isTemporary ? 'bg-yellow-50 border-yellow-200' : ''}
           ${isConfirmed ? 'bg-green-50 border-green-200' : ''}
         `}
         >
-          <div className="flex justify-between items-start">
-            <div>
-              <span
-                className={`
-                text-xs font-semibold px-2 py-1 rounded
-                ${isTemporary ? 'bg-yellow-100 text-yellow-700' : ''}
-                ${isConfirmed ? 'bg-green-100 text-green-700' : ''}
-              `}
-              >
-                {isTemporary ? '📩 임시 배정' : '✅ 확정 배정'}
-              </span>
-              <div className="text-xs text-gray-500 mt-2">
-                {message.receivedAt ? new Date(message.receivedAt).toLocaleString('ko-KR') : ''}
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500"
+          <div className="flex items-center gap-2">
+            <span
+              className={`
+              text-xs font-medium px-1.5 py-0.5 rounded
+              ${isTemporary ? 'bg-yellow-100 text-yellow-700' : ''}
+              ${isConfirmed ? 'bg-green-100 text-green-700' : ''}
+            `}
             >
-              ×
-            </button>
+              {isTemporary ? '📩 임시 배정' : '✅ 확정 배정'}
+            </span>
+            <span className="text-[10px] text-gray-400">
+              {message.receivedAt ? new Date(message.receivedAt).toLocaleString('ko-KR') : ''}
+            </span>
           </div>
+          <button
+            onClick={onClose}
+            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 text-sm"
+          >
+            ×
+          </button>
         </div>
 
-        {/* 본문 - 템플릿에서 생성된 메시지 내용 */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
+        {/* 본문 - 카톡처럼 작은 글씨 */}
+        <div className="flex-1 overflow-y-auto px-3 py-2">
+          <div className="whitespace-pre-wrap text-gray-700 text-[13px] leading-relaxed">
             {message.body || '내용이 없습니다.'}
           </div>
         </div>
 
-        {/* 푸터 - 임시 배정 + Pending 상태일 때만 응답 버튼 */}
+        {/* 푸터 - 컴팩트 버튼 */}
         {isTemporary && hasPendingAssignments && (
-          <div className="p-4 bg-gray-50 border-t">
-            <p className="text-sm text-gray-600 text-center mb-3">이 배정에 응답해주세요</p>
-            <div className="flex gap-3">
+          <div className="px-3 py-2 bg-gray-50 border-t">
+            <p className="text-xs text-gray-500 text-center mb-2">이 배정에 응답해주세요</p>
+            <div className="flex gap-2">
               <button
                 onClick={() => handleRespond('REJECT')}
                 disabled={isProcessing}
-                className="flex-1 py-3 px-4 border-2 border-red-500 text-red-500 font-semibold rounded-lg
+                className="flex-1 py-2 px-3 border border-red-400 text-red-500 text-sm font-medium rounded-md
                          hover:bg-red-50 disabled:opacity-50 transition-colors"
               >
                 거절하기
@@ -105,7 +104,7 @@ export const MessageDetailModal = ({ message, onClose }: MessageDetailModalProps
               <button
                 onClick={() => handleRespond('ACCEPT')}
                 disabled={isProcessing}
-                className="flex-1 py-3 px-4 bg-green-500 text-white font-semibold rounded-lg
+                className="flex-1 py-2 px-3 bg-green-500 text-white text-sm font-medium rounded-md
                          hover:bg-green-600 disabled:opacity-50 transition-colors"
               >
                 수락하기

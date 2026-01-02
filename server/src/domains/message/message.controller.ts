@@ -22,10 +22,14 @@ export const getNotices = asyncHandler(async (req: Request, res: Response) => {
   res.json(notices);
 });
 
-// 임시 배정 메시지 일괄 발송
+// 임시 배정 메시지 일괄 발송 (날짜 범위 필터링)
 export const sendTemporaryMessages = asyncHandler(async (req: Request, res: Response) => {
-  logger.info('[Message] Sending temporary messages...');
-  const result = await messageService.sendTemporaryMessages();
+  const { startDate, endDate } = req.query;
+  logger.info('[Message] Sending temporary messages...', { startDate, endDate });
+  const result = await messageService.sendTemporaryMessages(
+    startDate ? String(startDate) : undefined,
+    endDate ? String(endDate) : undefined,
+  );
   res.json(result);
 });
 

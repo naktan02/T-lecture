@@ -132,11 +132,14 @@ async function main() {
 강의 일정:
 {{self.schedules:format=- {date} ({dayOfWeek})}}`;
 
-  // 포맷 프리셋 (템플릿마다 다를 수 있음)
+  // 포맷 프리셋 (확정(팀장) 본문 기준으로 맞춤)
   const defaultFormatPresets = {
     'self.schedules': '- {date} ({dayOfWeek})',
     instructors: '{index}. {name}({category}) / {phone}',
-    locations: '장소명: {placeName} 참여인원: {actualCount}',
+    locations: `장소명: {placeName} 참여인원: {actualCount}
+강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}, 휴대폰불출: {allowsPhoneBeforeAfter}
+특이사항: {note}
+-------------------------------------------------------`,
   };
 
   await prisma.messageTemplate.upsert({

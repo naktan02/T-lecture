@@ -67,7 +67,7 @@ export const OPPORTUNITY_COST_CONFIG = {
  */
 export const DEFAULT_ASSIGNMENT_CONFIG = {
   traineesPerInstructor: 36, // 강사당 교육생 수
-  rejectionPenaltyMonths: 6, // 거절 패널티 적용 기간 (개월)
+  rejectionPenaltyMonths: 2, // 거절 패널티 적용 기간 (개월)
   fairnessLookbackMonths: 3, // 공정성 계산 기간 (개월)
 };
 

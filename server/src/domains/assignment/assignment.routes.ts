@@ -45,6 +45,14 @@ router.patch(
   assignmentController.blockSchedule,
 );
 
+// 관리자: 부대 전체 스케줄 일괄 배정막기/해제
+router.patch(
+  '/unit/:unitId/bulk-block',
+  auth,
+  requireRole('ADMIN'),
+  assignmentController.bulkBlockUnit,
+);
+
 export default router;
 
 // CommonJS 호환

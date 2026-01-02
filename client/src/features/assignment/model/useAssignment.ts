@@ -9,6 +9,7 @@ import {
   Instructor,
   addAssignmentApi,
   blockScheduleApi,
+  bulkBlockUnitApi,
 } from '../assignmentApi';
 import { logger, showSuccess, showError } from '../../../shared/utils';
 import {
@@ -60,6 +61,7 @@ interface UseAssignmentReturn {
   ) => Promise<void>;
   blockSchedule: (unitScheduleId: number) => Promise<void>; // 배정 막기
   unblockSchedule: (unitScheduleId: number) => Promise<void>; // 배정 막기 해제
+  bulkBlockUnit: (unitId: number, isBlocked: boolean) => Promise<void>; // 부대 전체 일괄 막기
   fetchData: () => Promise<void>;
   executeAutoAssign: () => Promise<void>;
   sendTemporaryMessages: () => Promise<void>;
@@ -140,11 +142,13 @@ export const useAssignment = (): UseAssignmentReturn => {
     }
   };
 
-  // 3. 임시 배정 메시지 일괄 발송
+  // 3. 임시 배정 메시지 일괄 발송 (현재 조회된 날짜 범위만)
   const sendTemporaryMessages = async (): Promise<void> => {
     setLoading(true);
     try {
-      const result = await sendTemporaryMessagesApi();
+      const startStr = toLocalDateString(dateRange.startDate);
+      const endStr = toLocalDateString(dateRange.endDate);
+      const result = await sendTemporaryMessagesApi(startStr, endStr);
       showSuccess(result.message);
     } catch (err) {
       showError((err as Error).message);
@@ -212,6 +216,20 @@ export const useAssignment = (): UseAssignmentReturn => {
     }
   };
 
+  // 부대 전체 일괄 배정막기
+  const bulkBlockUnit = async (unitId: number, isBlocked: boolean): Promise<void> => {
+    try {
+      setLoading(true);
+      await bulkBlockUnitApi(unitId, isBlocked);
+      showSuccess(isBlocked ? '부대 전체 배정막기 완료' : '부대 전체 배정막기 해제');
+      await fetchData();
+    } catch (e) {
+      showError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 부대별 그룹화 (유틸 함수 사용)
   const groupedUnassignedUnits = groupUnassignedUnits(sourceData.units);
 
@@ -232,5 +250,6 @@ export const useAssignment = (): UseAssignmentReturn => {
     addAssignment,
     blockSchedule,
     unblockSchedule,
+    bulkBlockUnit,
   };
 };

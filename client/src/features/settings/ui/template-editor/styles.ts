@@ -38,3 +38,15 @@ export const PANEL_STYLE = {
   width: 340,
   borderRadius: 10,
 };
+
+/**
+ * 변수 블록 스타일
+ */
+export const BLOCK_STYLE = {
+  padding: '1px 6px',
+  borderRadius: 10,
+  fontSize: 11,
+  iconSize: 12,
+  deleteButtonSize: 12,
+  gap: 2,
+};

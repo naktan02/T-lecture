@@ -8,6 +8,7 @@ interface NoticeData {
 
 interface MessageCreateData {
   type: 'Temporary' | 'Confirmed';
+  title?: string;
   body: string;
   userId: number;
   assignmentIds?: number[];
@@ -35,8 +36,8 @@ class MessageRepository {
     });
   }
 
-  // 임시 메시지 발송 대상 조회
-  async findTargetsForTemporaryMessage() {
+  // 임시 메시지 발송 대상 조회 (날짜 범위 필터링)
+  async findTargetsForTemporaryMessage(startDate?: string, endDate?: string) {
     return await prisma.instructorUnitAssignment.findMany({
       where: {
         state: 'Pending',
@@ -45,6 +46,17 @@ class MessageRepository {
             message: { type: 'Temporary' },
           },
         },
+        // 날짜 범위 필터링
+        ...(startDate || endDate
+          ? {
+              UnitSchedule: {
+                date: {
+                  ...(startDate ? { gte: new Date(startDate) } : {}),
+                  ...(endDate ? { lte: new Date(endDate) } : {}),
+                },
+              },
+            }
+          : {}),
       },
       include: {
         User: true,
@@ -103,6 +115,7 @@ class MessageRepository {
         const message = await tx.message.create({
           data: {
             type: data.type,
+            title: data.title ?? null,
             body: data.body,
             status: 'Sent',
             createdAt: new Date(),

@@ -174,10 +174,14 @@ export const bulkSaveAssignmentsApi = async (
 };
 
 /**
- * 임시 배정 메시지 일괄 발송
+ * 임시 배정 메시지 일괄 발송 (날짜 범위 필터링)
  */
-export const sendTemporaryMessagesApi = async (): Promise<{ count: number; message: string }> => {
-  const res = await apiClient('/api/v1/messages/send/temporary', {
+export const sendTemporaryMessagesApi = async (
+  startDate: string,
+  endDate: string,
+): Promise<{ count: number; message: string }> => {
+  const params = new URLSearchParams({ startDate, endDate });
+  const res = await apiClient(`/api/v1/messages/send/temporary?${params}`, {
     method: 'POST',
   });
   if (!res.ok) {
@@ -217,6 +221,21 @@ export const blockScheduleApi = async (
     body: JSON.stringify({ isBlocked }),
   });
   if (!res.ok) throw new Error('배정 막기에 실패했습니다.');
+  return res.json();
+};
+
+/**
+ * 부대 전체 스케줄 일괄 배정막기/해제
+ */
+export const bulkBlockUnitApi = async (
+  unitId: number,
+  isBlocked: boolean,
+): Promise<{ message: string; count: number }> => {
+  const res = await apiClient(`/api/v1/assignments/unit/${unitId}/bulk-block`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isBlocked }),
+  });
+  if (!res.ok) throw new Error('부대 전체 배정막기에 실패했습니다.');
   return res.json();
 };
 

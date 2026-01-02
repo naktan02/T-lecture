@@ -8,6 +8,7 @@ export interface NoticeData {
 
 export interface MessageCreateData {
   type: 'Temporary' | 'Confirmed';
+  title?: string;
   body: string;
   userId: number;
   assignmentIds: number[];

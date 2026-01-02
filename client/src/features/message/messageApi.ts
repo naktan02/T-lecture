@@ -55,3 +55,15 @@ export const getNoticesApi = async (): Promise<Notice[]> => {
   }
   return res.json();
 };
+
+// 확정 메시지 일괄 발송
+export const sendConfirmedMessagesApi = async (): Promise<{ createdCount: number }> => {
+  const res = await apiClient('/api/v1/messages/send-confirmed', {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || '확정 메시지 발송에 실패했습니다.');
+  }
+  return res.json();
+};

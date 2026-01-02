@@ -23,17 +23,6 @@ interface PrismaError extends Error {
  * 강사 배정 관련 DB 접근 전담 Repository
  */
 class AssignmentRepository {
-  /**
-   * 특정 기간 내 활성화된(Active) 배정 날짜 목록 조회
-   * 날짜는 KST 기준으로 조회 (DB에 저장된 날짜도 KST 00:00 기준)
-   */
-  async getSystemConfigNumber(key: string, defaultValue: number): Promise<number> {
-    const cfg = await prisma.systemConfig.findUnique({ where: { key } });
-    if (!cfg?.value) return defaultValue;
-    const parsed = Number(cfg.value);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
-  }
-
   async getInstructorRecentStats(
     instructorIds: number[],
     assignmentSince: Date,
@@ -49,7 +38,7 @@ class AssignmentRepository {
       return { recentAssignmentCountByInstructorId, recentRejectionCountByInstructorId };
     }
 
-    // 1) 최근 배정(Pending/Accepted)
+    // 1) 최근 배정(Pending/Accepted) - 일정별 카운트
     const assignmentAgg = await prisma.instructorUnitAssignment.groupBy({
       by: ['userId'],
       where: {
@@ -66,9 +55,9 @@ class AssignmentRepository {
       recentAssignmentCountByInstructorId.set(r.userId, r._count._all);
     }
 
-    // 2) 최근 거절(Rejected)
-    const rejectionAgg = await prisma.instructorUnitAssignment.groupBy({
-      by: ['userId'],
+    // 2) 최근 거절(Rejected) - 부대별 카운트 (+1 per unit, not per schedule)
+    // 같은 부대의 여러 일정 거절 = +1 패널티
+    const rejectedRows = await prisma.instructorUnitAssignment.findMany({
       where: {
         userId: { in: instructorIds },
         state: 'Rejected',
@@ -76,11 +65,29 @@ class AssignmentRepository {
           date: { gte: rejectionSince },
         },
       },
-      _count: { _all: true },
+      select: {
+        userId: true,
+        UnitSchedule: {
+          select: { unitId: true },
+        },
+      },
+      distinct: ['userId', 'unitScheduleId'],
     });
 
-    for (const r of rejectionAgg) {
-      recentRejectionCountByInstructorId.set(r.userId, r._count._all);
+    // 부대별로 중복 제거하여 카운트
+    const userUnitSet = new Map<number, Set<number>>();
+    for (const row of rejectedRows) {
+      const unitId = row.UnitSchedule?.unitId;
+      if (!unitId) continue;
+      if (!userUnitSet.has(row.userId)) {
+        userUnitSet.set(row.userId, new Set());
+      }
+      userUnitSet.get(row.userId)!.add(unitId);
+    }
+
+    // 부대 개수 = 패널티
+    for (const [userId, unitIds] of userUnitSet) {
+      recentRejectionCountByInstructorId.set(userId, unitIds.size);
     }
 
     return { recentAssignmentCountByInstructorId, recentRejectionCountByInstructorId };
@@ -149,6 +156,14 @@ class AssignmentRepository {
                       include: {
                         team: true,
                       },
+                    },
+                  },
+                },
+                // 확정 메시지 발송 여부 확인용
+                messageAssignments: {
+                  select: {
+                    message: {
+                      select: { type: true },
                     },
                   },
                 },
@@ -298,6 +313,16 @@ class AssignmentRepository {
   }
 
   /**
+   * 부대의 모든 스케줄 일괄 배정막기/해제
+   */
+  async bulkBlockByUnitId(unitId: number, isBlocked: boolean) {
+    return await prisma.unitSchedule.updateMany({
+      where: { unitId: unitId },
+      data: { isBlocked },
+    });
+  }
+
+  /**
    * 강사 배정 응답 (수락/거절)
    * Pending 상태에서만 응답 가능
    */
@@ -417,6 +442,65 @@ class AssignmentRepository {
     return await prisma.instructorUnitAssignment.updateMany({
       where: {
         unitScheduleId: Number(unitScheduleId),
+        state: 'Accepted',
+      },
+      data: {
+        classification,
+      },
+    });
+  }
+
+  /**
+   * 스케줄 ID로 부대 ID 조회
+   */
+  async getUnitIdByScheduleId(unitScheduleId: number): Promise<number | null> {
+    const schedule = await prisma.unitSchedule.findUnique({
+      where: { id: unitScheduleId },
+      select: { unitId: true },
+    });
+    return schedule?.unitId ?? null;
+  }
+
+  /**
+   * 부대의 모든 스케줄과 배정 정보 조회 (장소별 필요 인원 포함)
+   */
+  async getUnitWithAssignments(unitId: number) {
+    return await prisma.unit.findUnique({
+      where: { id: unitId },
+      include: {
+        trainingLocations: {
+          select: { id: true, instructorsNumbers: true },
+        },
+        schedules: {
+          select: {
+            id: true,
+            isBlocked: true,
+            assignments: {
+              where: { state: { in: ['Pending', 'Accepted'] } },
+              select: { userId: true, state: true, trainingLocationId: true },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * 부대의 모든 배정을 일괄 확정 (Accepted 상태인 것만)
+   */
+  async updateClassificationByUnit(unitId: number, classification: 'Temporary' | 'Confirmed') {
+    // 부대의 모든 스케줄 ID 조회
+    const schedules = await prisma.unitSchedule.findMany({
+      where: { unitId: unitId },
+      select: { id: true },
+    });
+    const scheduleIds = schedules.map((s) => s.id);
+
+    if (scheduleIds.length === 0) return { count: 0 };
+
+    return await prisma.instructorUnitAssignment.updateMany({
+      where: {
+        unitScheduleId: { in: scheduleIds },
         state: 'Accepted',
       },
       data: {

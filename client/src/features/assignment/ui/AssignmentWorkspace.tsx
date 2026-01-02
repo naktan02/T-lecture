@@ -5,6 +5,8 @@ import { useAssignment } from '../model/useAssignment';
 import { Button, MiniCalendar, ConfirmModal } from '../../../shared/ui';
 import { AssignmentDetailModal, AssignmentGroupDetailModal } from './AssignmentDetailModal';
 import { UnassignedUnitDetailModal } from './UnassignedUnitDetailModal';
+import { sendConfirmedMessagesApi } from '../../message/messageApi';
+import { showSuccess, showError } from '../../../shared/utils';
 
 // ID 기반 선택 키
 type SelectionKey =
@@ -48,6 +50,7 @@ export const AssignmentWorkspace: React.FC = () => {
     addAssignment,
     blockSchedule,
     unblockSchedule,
+    bulkBlockUnit,
   } = useAssignment();
 
   // ID 기반 선택 (스냅샷 대신 ID만 저장)
@@ -157,9 +160,18 @@ export const AssignmentWorkspace: React.FC = () => {
   };
 
   const handleMouseLeave = (): void => {
-    closeTimeoutRef.current = setTimeout(() => {
-      setCalendarPopup((prev) => ({ ...prev, visible: false }));
-    }, 300);
+    setCalendarPopup({ visible: false, x: 0, y: 0, dates: [] });
+  };
+
+  // 확정 메시지 발송 핸들러
+  const handleSendConfirmedMessages = async () => {
+    try {
+      const result = await sendConfirmedMessagesApi();
+      showSuccess(`확정 메시지 ${result.createdCount}건 발송 완료`);
+      await fetchData();
+    } catch (e) {
+      showError((e as Error).message);
+    }
   };
 
   return (
@@ -390,21 +402,10 @@ export const AssignmentWorkspace: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="mt-3">
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-gray-600">배정 현황</span>
-                          <span
-                            className={`font-bold ${group.totalAssigned > 0 ? 'text-green-600' : 'text-gray-400'}`}
-                          >
-                            {group.totalAssigned}명 배정
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className={`h-2 rounded-full transition-all ${group.progress >= 100 ? 'bg-green-500' : 'bg-orange-400'}`}
-                            style={{ width: `${Math.min(group.progress, 100)}%` }}
-                          ></div>
-                        </div>
+                      <div className="mt-2 flex justify-between text-xs">
+                        <span className="text-orange-600 font-medium">
+                          📨 {group.totalAssigned}명 배정
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -415,8 +416,17 @@ export const AssignmentWorkspace: React.FC = () => {
 
           {/* Panel 4: 확정 배정 완료 */}
           <div className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
-            <div className="p-3 bg-blue-50 border-b border-blue-100 border-l-4 border-l-blue-500 font-bold text-gray-700">
+            <div className="p-3 bg-blue-50 border-b border-blue-100 border-l-4 border-l-blue-500 font-bold text-gray-700 flex justify-between items-center">
               <span>✅ 확정 배정 완료</span>
+              <button
+                onClick={handleSendConfirmedMessages}
+                disabled={confirmedAssignments.length === 0}
+                className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
+                           disabled:bg-gray-300 disabled:cursor-not-allowed
+                           shadow-sm transition-all text-xs font-bold flex items-center gap-1"
+              >
+                📩 일괄 확정 메시지 전송
+              </button>
             </div>
             <div className="flex-1 p-4 overflow-y-auto bg-gray-50/50">
               {confirmedAssignments.length === 0 ? (
@@ -444,6 +454,14 @@ export const AssignmentWorkspace: React.FC = () => {
                       </div>
                       <div className="text-sm text-green-600 font-bold">
                         {group.totalAssigned}명 확정
+                      </div>
+                      {/* 메시지 상태 표시 */}
+                      <div className="text-right mt-1">
+                        {(group as any).confirmedMessageSent ? (
+                          <span className="text-xs text-green-600 font-bold">✅ 완료</span>
+                        ) : (
+                          <span className="text-xs text-red-600 font-bold">⚠️ 필요</span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -491,11 +509,13 @@ export const AssignmentWorkspace: React.FC = () => {
       {detailModalKey && currentGroup && (
         <AssignmentGroupDetailModal
           group={currentGroup as any}
+          unitId={detailModalKey.unitId}
           onClose={() => setDetailModalKey(null)}
           onRemove={removeAssignment}
           onAdd={addAssignment}
           onBlock={blockSchedule}
           onUnblock={unblockSchedule}
+          onBulkBlock={bulkBlockUnit}
           availableInstructors={availableInstructors}
         />
       )}

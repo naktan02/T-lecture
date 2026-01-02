@@ -57,9 +57,9 @@ export const getCandidates = asyncHandler(async (req: Request, res: Response) =>
 
   const responseData = assignmentDTO.toCandidateResponse(unitsRaw, instructorsRaw);
 
-  // 배정 현황을 상태별로 분리
-  const pendingAssignments = assignmentDTO.toHierarchicalResponse(unitsRaw, 'Pending');
-  const acceptedAssignments = assignmentDTO.toHierarchicalResponse(unitsRaw, 'Accepted');
+  // 배정 현황을 분류별로 분리 (Temporary=배정작업공간, Confirmed=확정)
+  const pendingAssignments = assignmentDTO.toHierarchicalResponse(unitsRaw, 'Temporary');
+  const acceptedAssignments = assignmentDTO.toHierarchicalResponse(unitsRaw, 'Confirmed');
 
   res.json({
     ...responseData,
@@ -193,6 +193,26 @@ export const getMyAssignments = asyncHandler(async (req: Request, res: Response)
   });
 });
 
+// [부대 전체 스케줄 일괄 배정막기/해제]
+export const bulkBlockUnit = asyncHandler(async (req: Request, res: Response) => {
+  const unitId = Number(req.params.unitId);
+  const { isBlocked } = req.body;
+
+  if (!Number.isFinite(unitId)) {
+    throw new AppError('unitId가 필요합니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  if (typeof isBlocked !== 'boolean') {
+    throw new AppError('isBlocked(boolean)가 필요합니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  const result = await assignmentService.bulkBlockUnit(unitId, isBlocked);
+  res.status(200).json({
+    message: isBlocked ? '부대 전체 배정막기 완료' : '부대 전체 배정막기 해제',
+    count: result.count,
+  });
+});
+
 // CommonJS 호환
 module.exports = {
   getWorkHistory,
@@ -205,4 +225,5 @@ module.exports = {
   cancelAssignmentByAdmin,
   blockSchedule,
   getMyAssignments,
+  bulkBlockUnit,
 };
