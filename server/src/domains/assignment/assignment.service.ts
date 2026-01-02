@@ -404,6 +404,18 @@ class AssignmentService {
   async getMyAssignments(userId: number) {
     return await assignmentRepository.getMyAssignments(userId);
   }
+
+  /**
+   * 일괄 배정 업데이트 (트랜잭션)
+   */
+  async batchUpdateAssignments(changes: {
+    add: Array<{ unitScheduleId: number; instructorId: number; trainingLocationId: number | null }>;
+    remove: Array<{ unitScheduleId: number; instructorId: number }>;
+    block: number[];
+    unblock: number[];
+  }) {
+    return await assignmentRepository.batchUpdateAssignments(changes);
+  }
 }
 
 export default new AssignmentService();

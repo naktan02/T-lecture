@@ -6,6 +6,7 @@ import metadataRepository from '../metadata/metadata.repository';
 import { PrismaError } from '../../types/common.types';
 import { UserMessageGroup } from '../../types/message.types';
 import { tokensToTemplate, MessageTemplateBody } from '../../types/template.types';
+import { buildVariables, buildLocationsFormat } from './message.templateHelper';
 
 class MessageService {
   // 임시 배정 메시지 일괄 발송 (부대별로 별도 메시지, 날짜 범위 필터링)
@@ -122,45 +123,19 @@ class MessageService {
         };
       });
 
-      // 기본 변수들
-      const variables: Record<string, string> = {
-        // Legacy 호환
-        userName: user.name || '',
-        unitName: unit.name || '',
-        region: unit.region || '',
-        // 새 변수 체계
-        'self.name': user.name || '',
-        'self.phone': user.userphoneNumber || '',
-        'unit.name': unit.name || '',
-        'unit.region': unit.region || '',
-        'unit.wideArea': unit.wideArea || '',
-        'unit.addressDetail': unit.addressDetail || '',
-        'unit.officerName': unit.officerName || '',
-        'unit.officerPhone': unit.officerPhone || '',
-        'unit.startDate': unit.educationStart
-          ? new Date(unit.educationStart).toISOString().split('T')[0]
-          : '',
-        'unit.endDate': unit.educationEnd
-          ? new Date(unit.educationEnd).toISOString().split('T')[0]
-          : '',
-        'unit.startTime': unit.workStartTime
-          ? typeof unit.workStartTime === 'string'
-            ? unit.workStartTime
-            : new Date(unit.workStartTime).toTimeString().slice(0, 5)
-          : '',
-        'unit.endTime': unit.workEndTime
-          ? typeof unit.workEndTime === 'string'
-            ? unit.workEndTime
-            : new Date(unit.workEndTime).toTimeString().slice(0, 5)
-          : '',
-      };
+      // 기본 변수들 (헬퍼 사용)
+      const variables = buildVariables(user, unit);
 
-      // self.schedules 포맷 변수 처리 - JSONB body를 문자열로 변환
+      // 장소 목록 (locations 포맷 변수)
+      const locationsList = buildLocationsFormat(unit.trainingLocations || []);
+
+      // 템플릿 치환 (포맷 변수 포함) - JSONB body를 문자열로 변환
       const templateBodyStr = tokensToTemplate(
         (template.body as unknown as MessageTemplateBody).tokens,
       );
       const body = this.compileTemplateWithFormat(templateBodyStr, variables, {
         'self.schedules': scheduleDates,
+        locations: locationsList,
       });
 
       // 제목도 변수 치환 (단순 변수만, 포맷 없음)
@@ -265,28 +240,34 @@ class MessageService {
       // 리더용/일반용 템플릿 선택
       const targetTemplate = isLeader ? leaderTemplate : memberTemplate;
 
-      // 변수 준비
-      const variables: Record<string, string> = {
-        userName: user.name || '',
-        unitName: unit.name || '',
-        address: unit.addressDetail || '',
-        // 새 변수 체계
-        'self.name': user.name || '',
-        'self.phone': user.userphoneNumber || '',
-        'unit.name': unit.name || '',
-        'unit.addressDetail': unit.addressDetail || '',
+      // 기본 변수들 (헬퍼 사용 - assignments 전달해서 position 계산)
+      const variables = buildVariables(user, unit, assignments);
+
+      // 장소 목록 (locations 포맷 변수)
+      const locationsList = buildLocationsFormat(unit.trainingLocations || []);
+
+      // 일정 목록 (self.schedules 포맷 변수)
+      const getDayOfWeek = (date: Date): string => {
+        const days = ['일', '월', '화', '수', '목', '금', '토'];
+        return days[date.getDay()];
       };
 
-      // 장소 목록 (teamLeader용 포맷 변수)
-      const locationsList = unit.trainingLocations.map((loc, idx) => ({
-        index: String(idx + 1),
-        placeName: loc.originalPlace || '',
-        actualCount: String(loc.actualCount || 0),
-        hasInstructorLounge: loc.hasInstructorLounge ? 'O' : 'X',
-        hasWomenRestroom: loc.hasWomenRestroom ? 'O' : 'X',
-        allowsPhoneBeforeAfter: loc.allowsPhoneBeforeAfter || '',
-        note: loc.note || '',
-      }));
+      const schedulesList = (unit.schedules || []).map(
+        (schedule: { date: Date; assignments?: { User?: { name?: string } }[] }) => {
+          const scheduleDate = new Date(schedule.date);
+          const dateStr = scheduleDate.toISOString().split('T')[0];
+          const dayOfWeek = getDayOfWeek(scheduleDate);
+          const instructorNames = (schedule.assignments || [])
+            .map((a: { User?: { name?: string } }) => a.User?.name || '')
+            .filter(Boolean)
+            .join(', ');
+          return {
+            date: dateStr,
+            dayOfWeek,
+            instructors: instructorNames || '-',
+          };
+        },
+      );
 
       // 템플릿 치환 (포맷 변수 포함) - JSONB body를 문자열로 변환
       const targetBodyStr = tokensToTemplate(
@@ -294,6 +275,7 @@ class MessageService {
       );
       const body = this.compileTemplateWithFormat(targetBodyStr, variables, {
         locations: locationsList,
+        'self.schedules': schedulesList,
       });
 
       // 제목도 변수 치환 (단순 변수만, 포맷 없음)
@@ -310,7 +292,7 @@ class MessageService {
 
     // 저장
     const count = await messageRepository.createMessagesBulk(messagesToCreate);
-    return { count, message: `${count}건의 확정 메시지가 발송되었습니다.` };
+    return { createdCount: count, message: `${count}건의 확정 메시지가 발송되었습니다.` };
   }
 
   // 내 메시지함 조회

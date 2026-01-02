@@ -46,11 +46,6 @@ export const AssignmentWorkspace: React.FC = () => {
     fetchData,
     executeAutoAssign,
     sendTemporaryMessages,
-    removeAssignment,
-    addAssignment,
-    blockSchedule,
-    unblockSchedule,
-    bulkBlockUnit,
   } = useAssignment();
 
   // ID 기반 선택 (스냅샷 대신 ID만 저장)
@@ -403,8 +398,19 @@ export const AssignmentWorkspace: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                      <div className="text-[11px] text-orange-600 font-medium">
-                        📨 {group.totalAssigned}명 배정
+                      <div className="flex justify-between items-center">
+                        <span className="text-[11px] text-orange-600 font-medium">
+                          📨 {group.totalAssigned}명 배정
+                        </span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                            (group as any).unsentCount > 0
+                              ? 'text-blue-600 bg-blue-100'
+                              : 'text-gray-500 bg-gray-100'
+                          }`}
+                        >
+                          🔵 미발송 {(group as any).unsentCount ?? 0}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -451,18 +457,21 @@ export const AssignmentWorkspace: React.FC = () => {
                         </div>
                         <div className="text-right">
                           <span className="text-[10px] text-gray-400">{group.period}</span>
-                          {/* 메시지 상태 표시 */}
-                          <div>
-                            {(group as any).confirmedMessageSent ? (
-                              <span className="text-[10px] text-green-600 font-bold">✅ 완료</span>
-                            ) : (
-                              <span className="text-[10px] text-red-600 font-bold">⚠️ 필요</span>
-                            )}
-                          </div>
                         </div>
                       </div>
-                      <div className="text-[11px] text-green-600 font-bold mt-1">
-                        {group.totalAssigned}명 확정
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-[11px] text-green-600 font-bold">
+                          {group.totalAssigned}명 확정
+                        </span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                            (group as any).unsentCount > 0
+                              ? 'text-blue-600 bg-blue-100'
+                              : 'text-gray-500 bg-gray-100'
+                          }`}
+                        >
+                          🔵 미발송 {(group as any).unsentCount ?? 0}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -510,14 +519,18 @@ export const AssignmentWorkspace: React.FC = () => {
       {detailModalKey && currentGroup && (
         <AssignmentGroupDetailModal
           group={currentGroup as any}
-          unitId={detailModalKey.unitId}
           onClose={() => setDetailModalKey(null)}
-          onRemove={removeAssignment}
-          onAdd={addAssignment}
-          onBlock={blockSchedule}
-          onUnblock={unblockSchedule}
-          onBulkBlock={bulkBlockUnit}
-          availableInstructors={availableInstructors}
+          onSaveComplete={async () => {
+            await fetchData();
+          }}
+          availableInstructors={availableInstructors.map((i) => ({
+            id: i.id,
+            name: i.name,
+            team: i.teamName,
+            teamName: i.teamName,
+            category: i.category ?? undefined,
+            availableDates: i.availableDates ?? [],
+          }))}
         />
       )}
 

@@ -213,6 +213,29 @@ export const bulkBlockUnit = asyncHandler(async (req: Request, res: Response) =>
   });
 });
 
+// [일괄 배정 업데이트] - 모달에서 저장 버튼 클릭 시
+export const batchUpdate = asyncHandler(async (req: Request, res: Response) => {
+  const { changes } = req.body;
+
+  if (!changes) {
+    throw new AppError('changes 객체가 필요합니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  const { add = [], remove = [], block = [], unblock = [] } = changes;
+
+  const result = await assignmentService.batchUpdateAssignments({
+    add,
+    remove,
+    block,
+    unblock,
+  });
+
+  res.status(200).json({
+    message: '일괄 저장 완료',
+    ...result,
+  });
+});
+
 // CommonJS 호환
 module.exports = {
   getWorkHistory,
@@ -226,4 +249,5 @@ module.exports = {
   blockSchedule,
   getMyAssignments,
   bulkBlockUnit,
+  batchUpdate,
 };

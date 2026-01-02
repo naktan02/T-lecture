@@ -508,6 +508,93 @@ class AssignmentRepository {
       },
     });
   }
+
+  /**
+   * 일괄 배정 업데이트 (트랜잭션)
+   * - add: 새 배정 생성
+   * - remove: 배정 삭제 (또는 Canceled 처리)
+   * - block: 스케줄 배정 막기
+   * - unblock: 스케줄 배정 막기 해제
+   */
+  async batchUpdateAssignments(changes: {
+    add: Array<{ unitScheduleId: number; instructorId: number; trainingLocationId: number | null }>;
+    remove: Array<{ unitScheduleId: number; instructorId: number }>;
+    block: number[];
+    unblock: number[];
+  }) {
+    return await prisma.$transaction(async (tx) => {
+      const results = {
+        added: 0,
+        removed: 0,
+        blocked: 0,
+        unblocked: 0,
+      };
+
+      // 1. 배정 추가 (Pending 상태로 저장)
+      // 기존 Rejected/Canceled 배정이 있으면 Pending으로 업데이트 (upsert)
+      if (changes.add.length > 0) {
+        for (const a of changes.add) {
+          await tx.instructorUnitAssignment.upsert({
+            where: {
+              assignment_instructor_schedule_unique: {
+                unitScheduleId: a.unitScheduleId,
+                userId: a.instructorId,
+              },
+            },
+            create: {
+              userId: a.instructorId,
+              unitScheduleId: a.unitScheduleId,
+              trainingLocationId: a.trainingLocationId,
+              classification: 'Temporary',
+              state: 'Pending',
+            },
+            update: {
+              state: 'Pending', // Rejected/Canceled -> Pending으로 재활성화
+              classification: 'Temporary',
+              trainingLocationId: a.trainingLocationId,
+            },
+          });
+          results.added++;
+        }
+      }
+
+      // 2. 배정 삭제 (Canceled 처리)
+      if (changes.remove.length > 0) {
+        for (const r of changes.remove) {
+          await tx.instructorUnitAssignment.updateMany({
+            where: {
+              userId: r.instructorId,
+              unitScheduleId: r.unitScheduleId,
+            },
+            data: {
+              state: 'Canceled',
+            },
+          });
+          results.removed++;
+        }
+      }
+
+      // 3. 배정 막기
+      if (changes.block.length > 0) {
+        await tx.unitSchedule.updateMany({
+          where: { id: { in: changes.block } },
+          data: { isBlocked: true },
+        });
+        results.blocked = changes.block.length;
+      }
+
+      // 4. 배정 막기 해제
+      if (changes.unblock.length > 0) {
+        await tx.unitSchedule.updateMany({
+          where: { id: { in: changes.unblock } },
+          data: { isBlocked: false },
+        });
+        results.unblocked = changes.unblock.length;
+      }
+
+      return results;
+    });
+  }
 }
 
 export default new AssignmentRepository();

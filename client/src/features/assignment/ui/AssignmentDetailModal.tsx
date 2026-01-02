@@ -1,9 +1,10 @@
 // src/features/assignment/ui/AssignmentDetailModal.tsx
 
-import { useMemo, useState, ReactNode } from 'react';
+import { useMemo, useState, ReactNode, useCallback } from 'react';
 import { DetailModal, MiniCalendar, Button, ConfirmModal } from '../../../shared/ui';
 import { InstructorSelectionPopup } from './InstructorSelectionPopup';
-import { logger } from '../../../shared/utils';
+import { logger, showSuccess, showError } from '../../../shared/utils';
+import { AssignmentChangeSet, batchUpdateAssignmentsApi } from '../assignmentApi';
 
 // --- Types ---
 interface FieldConfig {
@@ -202,43 +203,166 @@ export const AssignmentDetailModal: React.FC<AssignmentDetailModalProps> = ({ it
 
 interface AssignmentGroupDetailModalProps {
   group: AssignmentGroup;
-  unitId?: number; // for bulk block
   onClose: () => void;
-  onRemove?: (unitScheduleId: number, instructorId: number) => void;
-  onAdd?: (
-    unitScheduleId: number,
-    instructorId: number,
-    trainingLocationId: number | null,
-  ) => Promise<void>;
-  onBlock?: (unitScheduleId: number) => Promise<void>; // 배정 막기
-  onUnblock?: (unitScheduleId: number) => Promise<void>; // 배정 막기 해제
-  onBulkBlock?: (unitId: number, isBlocked: boolean) => Promise<void>; // 부대 전체 일괄 막기
-  availableInstructors?: any[];
+  onSaveComplete?: () => Promise<void>;
+  availableInstructors?: {
+    id: number;
+    name: string;
+    team: string;
+    teamName?: string;
+    category?: string;
+    availableDates?: string[];
+  }[];
 }
 
 export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProps> = ({
   group,
-  unitId,
   onClose,
-  onRemove,
-  onAdd,
-  onBlock,
-  onUnblock,
-  onBulkBlock,
+  onSaveComplete,
   availableInstructors = [],
 }) => {
   const [addPopupTarget, setAddPopupTarget] = useState<AddPopupTarget | null>(null);
-
   const [removeTarget, setRemoveTarget] = useState<{
     unitScheduleId: number;
     instructorId: number;
   } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // 로컬 변경 상태 추적
+  const [changeSet, setChangeSet] = useState<AssignmentChangeSet>({
+    add: [],
+    remove: [],
+    block: [],
+    unblock: [],
+  });
+
+  // 변경사항 있는지 확인
+  const hasChanges = useMemo(() => {
+    return (
+      changeSet.add.length > 0 ||
+      changeSet.remove.length > 0 ||
+      changeSet.block.length > 0 ||
+      changeSet.unblock.length > 0
+    );
+  }, [changeSet]);
+
+  // 로컬에서 삭제된 강사인지 확인
+  const isRemovedLocally = useCallback(
+    (unitScheduleId: number, instructorId: number) => {
+      return changeSet.remove.some(
+        (r) => r.unitScheduleId === unitScheduleId && r.instructorId === instructorId,
+      );
+    },
+    [changeSet.remove],
+  );
+
+  // 로컬에서 추가된 강사 목록 가져오기
+  const getLocallyAddedInstructors = useCallback(
+    (unitScheduleId: number) => {
+      return changeSet.add
+        .filter((a) => a.unitScheduleId === unitScheduleId)
+        .map((a) => {
+          const instructor = availableInstructors.find((i) => i.id === a.instructorId);
+          return instructor
+            ? {
+                instructorId: a.instructorId,
+                name: instructor.name,
+                team: instructor.team,
+                isLocalAdd: true,
+              }
+            : null;
+        })
+        .filter(Boolean) as {
+        instructorId: number;
+        name: string;
+        team: string;
+        isLocalAdd: boolean;
+      }[];
+    },
+    [changeSet.add, availableInstructors],
+  );
+
+  // 해당 스케줄에 이미 배정된 강사 ID 목록 계산
+  const getAssignedInstructorIds = useCallback(
+    (unitScheduleId: number) => {
+      const fromServer = group.trainingLocations
+        .flatMap((loc) => loc.dates)
+        .filter((d) => d.unitScheduleId === unitScheduleId)
+        .flatMap((d) => d.instructors.map((i) => i.instructorId));
+
+      // 로컬에서 추가된 강사
+      const addedLocally = changeSet.add
+        .filter((a) => a.unitScheduleId === unitScheduleId)
+        .map((a) => a.instructorId);
+
+      // 로컬에서 삭제된 강사
+      const removedLocally = changeSet.remove
+        .filter((r) => r.unitScheduleId === unitScheduleId)
+        .map((r) => r.instructorId);
+
+      // 서버 데이터 + 로컬 추가 - 로컬 삭제
+      return [...fromServer, ...addedLocally].filter((id) => !removedLocally.includes(id));
+    },
+    [group.trainingLocations, changeSet.add, changeSet.remove],
+  );
+
+  // 강사 추가 (로컬)
+  const handleAddLocal = useCallback(
+    (unitScheduleId: number, instructorId: number, trainingLocationId: number | null) => {
+      setChangeSet((prev) => ({
+        ...prev,
+        add: [...prev.add, { unitScheduleId, instructorId, trainingLocationId }],
+      }));
+    },
+    [],
+  );
+
+  // 강사 삭제 (로컬)
+  const handleRemoveLocal = useCallback((unitScheduleId: number, instructorId: number) => {
+    setChangeSet((prev) => ({
+      ...prev,
+      remove: [...prev.remove, { unitScheduleId, instructorId }],
+    }));
+  }, []);
+
+  // 스케줄 블록 (로컬)
+  const handleBlockLocal = useCallback((unitScheduleId: number) => {
+    setChangeSet((prev) => ({
+      ...prev,
+      block: [...prev.block.filter((id) => id !== unitScheduleId), unitScheduleId],
+      unblock: prev.unblock.filter((id) => id !== unitScheduleId),
+    }));
+  }, []);
+
+  // 스케줄 언블록 (로컬)
+  const handleUnblockLocal = useCallback((unitScheduleId: number) => {
+    setChangeSet((prev) => ({
+      ...prev,
+      unblock: [...prev.unblock.filter((id) => id !== unitScheduleId), unitScheduleId],
+      block: prev.block.filter((id) => id !== unitScheduleId),
+    }));
+  }, []);
+
+  // 저장 처리
+  const handleSave = async () => {
+    if (!hasChanges) return;
+    setIsSaving(true);
+    try {
+      const result = await batchUpdateAssignmentsApi(changeSet);
+      showSuccess(`저장 완료: 추가 ${result.added}, 삭제 ${result.removed}`);
+      setChangeSet({ add: [], remove: [], block: [], unblock: [] });
+      if (onSaveComplete) await onSaveComplete();
+    } catch (e) {
+      showError((e as Error).message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const confirmRemove = (): void => {
-    if (removeTarget && onRemove) {
-      onRemove(removeTarget.unitScheduleId, removeTarget.instructorId);
-      logger.debug('Remove:', removeTarget.unitScheduleId, removeTarget.instructorId);
-      // 모달은 열린 상태 유지 (부모의 fetchData로 데이터 갱신)
+    if (removeTarget) {
+      handleRemoveLocal(removeTarget.unitScheduleId, removeTarget.instructorId);
+      logger.debug('Remove (local):', removeTarget.unitScheduleId, removeTarget.instructorId);
     }
     setRemoveTarget(null);
   };
@@ -272,14 +396,22 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                   <span className="w-2 h-2 rounded-full bg-red-500"></span>거절
                 </span>
                 {/* 일괄 배정막기 버튼 */}
-                {unitId && onBulkBlock && (
-                  <button
-                    onClick={() => onBulkBlock(unitId, true)}
-                    className="ml-3 px-2.5 py-1 text-xs text-red-600 border border-red-300 rounded hover:bg-red-50 font-medium"
-                  >
-                    🚫 일괄막기
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    // 모든 스케줄에 대해 블록 추가
+                    group.trainingLocations
+                      .flatMap((loc) => loc.dates)
+                      .forEach((d) => {
+                        if (!changeSet.block.includes(d.unitScheduleId)) {
+                          handleBlockLocal(d.unitScheduleId);
+                        }
+                      });
+                  }}
+                  className="ml-2 px-2 py-1 text-[10px] bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
+                  title="모든 슬롯에 배정 막기 추가"
+                >
+                  🚫 일괄 배정막기
+                </button>
               </div>
             </div>
           </div>
@@ -334,8 +466,11 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                     </div>
 
                     <div className="flex-1 flex flex-wrap gap-2 items-center">
-                      {/* 카테고리 우선 정렬: Main > Co > Assistant > Practicum, 같은 카테고리 내 역할순 */}
+                      {/* 카테고리 우선 정렬 + 로컬 삭제 필터링 */}
                       {[...dateInfo.instructors]
+                        .filter(
+                          (inst) => !isRemovedLocally(dateInfo.unitScheduleId, inst.instructorId),
+                        )
                         .sort((a, b) => {
                           const categoryOrder: Record<string, number> = {
                             Main: 0,
@@ -390,22 +525,22 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                             {/* 상태 점 표시 */}
                             <span
                               className={`absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full border border-white shadow-sm ${
-                                inst.state === 'Accepted'
-                                  ? 'bg-green-500'
-                                  : inst.state === 'Rejected'
-                                    ? 'bg-red-500'
-                                    : inst.state === 'Pending'
-                                      ? 'bg-yellow-400'
-                                      : 'bg-blue-500'
+                                !(inst as { messageSent?: boolean }).messageSent
+                                  ? 'bg-blue-500' // 미발송
+                                  : inst.state === 'Accepted'
+                                    ? 'bg-green-500'
+                                    : inst.state === 'Rejected'
+                                      ? 'bg-red-500'
+                                      : 'bg-yellow-400' // Pending (발송됨 but 대기중)
                               }`}
                               title={
-                                inst.state === 'Accepted'
-                                  ? '수락'
-                                  : inst.state === 'Rejected'
-                                    ? '거절'
-                                    : inst.state === 'Pending'
-                                      ? '대기중'
-                                      : '미발송'
+                                !(inst as { messageSent?: boolean }).messageSent
+                                  ? '미발송'
+                                  : inst.state === 'Accepted'
+                                    ? '수락'
+                                    : inst.state === 'Rejected'
+                                      ? '거절'
+                                      : '대기중'
                               }
                             />
 
@@ -423,18 +558,56 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                           </div>
                         ))}
 
+                      {/* 로컬에서 추가된 강사 표시 (하이라이트 스타일) */}
+                      {getLocallyAddedInstructors(dateInfo.unitScheduleId).map((inst) => (
+                        <div
+                          key={`local-add-${inst.instructorId}`}
+                          className="group relative flex items-center gap-2 border-2 border-dashed border-indigo-400 bg-indigo-50 px-3 py-1.5 rounded-lg shadow-sm"
+                        >
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-bold text-indigo-700">{inst.name}</span>
+                              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-indigo-500 text-white rounded">
+                                저장 대기
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-gray-500">{inst.team}</div>
+                          </div>
+                          {/* X 버튼 */}
+                          <button
+                            onClick={() => {
+                              // 로컬 추가에서 제거
+                              setChangeSet((prev) => ({
+                                ...prev,
+                                add: prev.add.filter(
+                                  (a) =>
+                                    !(
+                                      a.unitScheduleId === dateInfo.unitScheduleId &&
+                                      a.instructorId === inst.instructorId
+                                    ),
+                                ),
+                              }));
+                            }}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-600"
+                            title="추가 취소"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+
                       {/* 배정 막기 표시 또는 + 버튼 */}
-                      {(dateInfo as any).isBlocked ? (
+                      {(dateInfo as { isBlocked?: boolean }).isBlocked ? (
                         <div
                           className="group relative w-8 h-8 rounded-lg bg-red-100 border-2 border-red-300 text-red-500 flex items-center justify-center"
                           title="배정이 막힌 슬롯"
                         >
                           🚫
-                          {/* X 버튼 (강사처럼 hover 시 나타남) */}
+                          {/* X 버튼 (hover 시 나타남) */}
                           <button
-                            onClick={() => onUnblock && onUnblock(dateInfo.unitScheduleId)}
+                            onClick={() => handleUnblockLocal(dateInfo.unitScheduleId)}
                             className="absolute -top-2 -right-2 bg-gray-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-gray-600"
-                            title="배정 막기 해제"
+                            title="배정 막기 해제 (저장 후 적용)"
                           >
                             ✕
                           </button>
@@ -464,10 +637,27 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
         </div>
 
         {/* Footer */}
-        <div className="bg-white p-4 border-t border-gray-200 flex justify-end">
-          <Button onClick={onClose} variant="secondary">
-            닫기
-          </Button>
+        <div className="bg-white p-4 border-t border-gray-200 flex justify-between items-center">
+          <div className="text-sm text-gray-500">
+            {hasChanges && (
+              <span className="text-indigo-600 font-medium">
+                📝 변경 대기: 추가 {changeSet.add.length}, 삭제 {changeSet.remove.length}, 블록{' '}
+                {changeSet.block.length}
+              </span>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={onClose} variant="secondary">
+              닫기
+            </Button>
+            {hasChanges && (
+              <Button variant="primary" onClick={handleSave} disabled={isSaving}>
+                {isSaving
+                  ? '저장 중...'
+                  : `저장 (${changeSet.add.length + changeSet.remove.length}건)`}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -476,18 +666,20 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
         <InstructorSelectionPopup
           target={addPopupTarget}
           allAvailableInstructors={availableInstructors}
+          assignedInstructorIds={getAssignedInstructorIds(addPopupTarget.unitScheduleId)}
           onClose={() => setAddPopupTarget(null)}
           onAdd={async (inst) => {
-            if (!onAdd) return;
-            await onAdd(addPopupTarget.unitScheduleId, inst.id, addPopupTarget.trainingLocationId);
+            handleAddLocal(
+              addPopupTarget.unitScheduleId,
+              inst.id,
+              addPopupTarget.trainingLocationId,
+            );
+            setAddPopupTarget(null);
           }}
-          onBlock={
-            onBlock
-              ? async () => {
-                  await onBlock(addPopupTarget.unitScheduleId);
-                }
-              : undefined
-          }
+          onBlock={async () => {
+            handleBlockLocal(addPopupTarget.unitScheduleId);
+            setAddPopupTarget(null);
+          }}
         />
       )}
       {/* 5. 삭제 확인 모달 */}

@@ -59,10 +59,22 @@ class MessageRepository {
           : {}),
       },
       include: {
-        User: true,
+        User: {
+          include: {
+            instructor: {
+              include: {
+                virtues: {
+                  include: { virtue: true },
+                },
+              },
+            },
+          },
+        },
         UnitSchedule: {
           include: {
-            unit: true,
+            unit: {
+              include: { trainingLocations: true },
+            },
             assignments: {
               where: { state: 'Pending' },
               include: { User: { include: { instructor: true } } },
@@ -122,12 +134,31 @@ class MessageRepository {
       },
       include: {
         User: {
-          include: { instructor: true },
+          include: {
+            instructor: {
+              include: {
+                virtues: {
+                  include: { virtue: true },
+                },
+              },
+            },
+          },
         },
         UnitSchedule: {
           include: {
             unit: {
-              include: { trainingLocations: true },
+              include: {
+                trainingLocations: true,
+                schedules: {
+                  orderBy: { date: 'asc' },
+                  include: {
+                    assignments: {
+                      where: { state: 'Accepted' },
+                      include: { User: true },
+                    },
+                  },
+                },
+              },
             },
             assignments: {
               where: { state: 'Accepted' },

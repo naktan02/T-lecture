@@ -323,3 +323,39 @@ export const getMyAssignmentsApi = async (): Promise<MyAssignmentsResponse> => {
   }
   return res.json();
 };
+
+/**
+ * 일괄 배정 업데이트용 변경 세트 타입
+ */
+export interface AssignmentChangeSet {
+  add: Array<{ unitScheduleId: number; instructorId: number; trainingLocationId: number | null }>;
+  remove: Array<{ unitScheduleId: number; instructorId: number }>;
+  block: number[];
+  unblock: number[];
+}
+
+export interface BatchUpdateResult {
+  message: string;
+  added: number;
+  removed: number;
+  blocked: number;
+  unblocked: number;
+}
+
+/**
+ * 일괄 배정 업데이트 (모달 저장)
+ */
+export const batchUpdateAssignmentsApi = async (
+  changes: AssignmentChangeSet,
+): Promise<BatchUpdateResult> => {
+  const res = await apiClient('/api/v1/assignments/batch-update', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ changes }),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || '일괄 저장에 실패했습니다.');
+  }
+  return res.json();
+};

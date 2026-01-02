@@ -156,108 +156,167 @@ class AssignmentDTO {
     unitsWithAssignments: UnitRaw[],
     classificationFilter: 'Temporary' | 'Confirmed' | 'all' = 'all',
   ) {
-    return unitsWithAssignments.map((unit) => {
-      let totalRequired = 0;
-      let totalAssigned = 0;
-      const assignedInstructorIds = new Set<number>();
-      // 1. 교육장소별 데이터 구성
-      const locations =
-        unit.trainingLocations && unit.trainingLocations.length > 0
-          ? unit.trainingLocations
-          : [{ id: 'default', originalPlace: '교육장소 미정', instructorsNumbers: 0 }];
+    return (
+      unitsWithAssignments
+        // 1단계: 부대별 상태 계산
+        .map((unit) => {
+          // 부대가 "Confirmed" 상태인지 판단:
+          // 모든 스케줄의 필요 인원이 Accepted 상태로 채워져 있으면 Confirmed
+          const locations =
+            unit.trainingLocations && unit.trainingLocations.length > 0
+              ? unit.trainingLocations
+              : [{ id: 'default', originalPlace: '교육장소 미정', instructorsNumbers: 0 }];
 
-      const trainingLocations = locations.map((loc: TrainingLocationRaw) => {
-        const daysCount = unit.schedules.length;
-        totalRequired += (loc.instructorsNumbers || 0) * daysCount;
+          let isUnitConfirmed = true;
+          for (const loc of locations as TrainingLocationRaw[]) {
+            const requiredPerDay = loc.instructorsNumbers || 0;
+            for (const schedule of unit.schedules as ScheduleRaw[]) {
+              const acceptedCount = (schedule.assignments || []).filter(
+                (a: AssignmentRaw) =>
+                  a.state === 'Accepted' &&
+                  (a.trainingLocationId === loc.id || a.trainingLocationId === null),
+              ).length;
+              // 필요 인원보다 Accepted가 적으면 미완료
+              if (acceptedCount < requiredPerDay) {
+                isUnitConfirmed = false;
+                break;
+              }
+            }
+            if (!isUnitConfirmed) break;
+          }
 
-        // 2. 각 장소 안에서 '날짜별' 스케줄 구성
-        const dates = unit.schedules.map((schedule: ScheduleRaw) => {
-          const dateStr = toKSTDateString(schedule.date);
+          // 부대 상태 할당
+          const unitStatus: 'Confirmed' | 'Temporary' = isUnitConfirmed ? 'Confirmed' : 'Temporary';
 
-          // 해당 장소(loc.id)에 배정된 강사만 필터링 (분류 필터 적용)
-          const assignedInstructors = (schedule.assignments || [])
-            .filter(
-              (a: AssignmentRaw) =>
-                // 활성 상태 (Pending 또는 Accepted)만 표시
-                (a.state === 'Pending' || a.state === 'Accepted') &&
-                // 분류 필터 적용
-                (classificationFilter === 'all'
-                  ? true
-                  : a.classification === classificationFilter) &&
-                (a.trainingLocationId === loc.id || a.trainingLocationId === null),
-            )
-            .map((assign: AssignmentRaw) => {
-              totalAssigned++;
-              assignedInstructorIds.add(assign.userId);
+          return { ...unit, unitStatus, locations };
+        })
+        // 2단계: 부대 단위로 필터링
+        .filter((unit) => {
+          if (classificationFilter === 'all') return true;
+          return unit.unitStatus === classificationFilter;
+        })
+        // 3단계: 데이터 변환
+        .map((unit) => {
+          let totalRequired = 0;
+          let totalAssigned = 0;
+          const assignedInstructorIds = new Set<number>();
+          const locations = unit.locations;
+
+          const trainingLocations = locations.map((loc: TrainingLocationRaw) => {
+            const daysCount = unit.schedules.length;
+            totalRequired += (loc.instructorsNumbers || 0) * daysCount;
+
+            // 2. 각 장소 안에서 '날짜별' 스케줄 구성
+            const dates = unit.schedules.map((schedule: ScheduleRaw) => {
+              const dateStr = toKSTDateString(schedule.date);
+
+              // 해당 장소(loc.id)에 배정된 강사만 필터링 (부대 단위로 이미 필터링됨)
+              const assignedInstructors = (schedule.assignments || [])
+                .filter(
+                  (a: AssignmentRaw) =>
+                    // 활성 상태 (Pending 또는 Accepted)만 표시
+                    (a.state === 'Pending' || a.state === 'Accepted') &&
+                    (a.trainingLocationId === loc.id || a.trainingLocationId === null),
+                )
+                .map((assign: AssignmentRaw) => {
+                  totalAssigned++;
+                  assignedInstructorIds.add(assign.userId);
+                  // 메시지 발송 여부: messageAssignments가 있으면 발송됨
+                  const messageSent = (assign.messageAssignments?.length ?? 0) > 0;
+                  return {
+                    assignmentId: assign.unitScheduleId + '-' + assign.userId,
+                    unitScheduleId: assign.unitScheduleId,
+                    instructorId: assign.userId,
+                    name: assign.User.name,
+                    team: assign.User.instructor?.team?.name || '소속없음',
+                    role: assign.role, // Head, Supervisor, or null
+                    category: assign.User.instructor?.category || null, // Main, Co, Assistant, Practicum
+                    trainingLocationId: assign.trainingLocationId,
+                    state: assign.state, // Pending, Accepted, Rejected
+                    messageSent, // 메시지 발송 여부 (MessageAssignment 기반)
+                  };
+                });
+
               return {
-                assignmentId: assign.unitScheduleId + '-' + assign.userId,
-                unitScheduleId: assign.unitScheduleId,
-                instructorId: assign.userId,
-                name: assign.User.name,
-                team: assign.User.instructor?.team?.name || '소속없음',
-                role: assign.role, // Head, Supervisor, or null
-                category: assign.User.instructor?.category || null, // Main, Co, Assistant, Practicum
-                trainingLocationId: assign.trainingLocationId,
-                state: assign.state, // Pending, Accepted, Rejected (null = 미발송)
+                date: dateStr,
+                unitScheduleId: schedule.id,
+                isBlocked: schedule.isBlocked || false, // 배정 막기 상태
+                requiredCount: loc.instructorsNumbers || 0,
+                instructors: assignedInstructors,
               };
             });
 
-          return {
-            date: dateStr,
-            unitScheduleId: schedule.id,
-            isBlocked: schedule.isBlocked || false, // 배정 막기 상태
-            requiredCount: loc.instructorsNumbers || 0,
-            instructors: assignedInstructors,
-          };
-        });
-
-        return {
-          id: loc.id,
-          name: loc.originalPlace || '장소 미명',
-          dates: dates,
-        };
-      });
-
-      // 3. 부대 전체 요약 정보
-      const startDate = unit.schedules[0] ? toKSTDateString(unit.schedules[0].date) : '-';
-      const endDate = unit.schedules[unit.schedules.length - 1]
-        ? toKSTDateString(unit.schedules[unit.schedules.length - 1].date)
-        : '-';
-
-      // 4. 확정 메시지 발송 여부 계산
-      // - Confirmed 분류의 배정이 있고, 그 중 Confirmed 메시지를 받지 못한 강사가 없으면 완료
-      let confirmedMessageSent = false;
-      if (classificationFilter === 'Confirmed') {
-        const allConfirmedAssignments = unit.schedules.flatMap((s: ScheduleRaw) =>
-          (s.assignments || []).filter(
-            (a: AssignmentRaw) =>
-              a.classification === 'Confirmed' && (a.state === 'Pending' || a.state === 'Accepted'),
-          ),
-        );
-        if (allConfirmedAssignments.length > 0) {
-          // 모든 확정 배정에 Confirmed 메시지가 있는지 확인
-          confirmedMessageSent = allConfirmedAssignments.every((a: AssignmentRaw) => {
-            const hasConfirmedMessage = (a.messageAssignments || []).some(
-              (ma) => ma.message?.type === 'Confirmed',
-            );
-            return hasConfirmedMessage;
+            return {
+              id: loc.id,
+              name: loc.originalPlace || '장소 미명',
+              dates: dates,
+            };
           });
-        }
-      }
 
-      return {
-        unitId: unit.id,
-        unitName: unit.name,
-        region: `${unit.wideArea} ${unit.region}`,
-        period: `${startDate} ~ ${endDate}`,
-        totalRequired,
-        totalAssigned: assignedInstructorIds.size,
-        progress:
-          totalRequired > 0 ? Math.round((assignedInstructorIds.size / totalRequired) * 100) : 0,
-        trainingLocations: trainingLocations,
-        confirmedMessageSent, // 확정 메시지 발송 완료 여부
-      };
-    });
+          // 3. 부대 전체 요약 정보
+          const startDate = unit.schedules[0] ? toKSTDateString(unit.schedules[0].date) : '-';
+          const endDate = unit.schedules[unit.schedules.length - 1]
+            ? toKSTDateString(unit.schedules[unit.schedules.length - 1].date)
+            : '-';
+
+          // 4. 확정 메시지 발송 여부 계산
+          // - Confirmed 분류의 배정이 있고, 그 중 Confirmed 메시지를 받지 못한 강사가 없으면 완료
+          let confirmedMessageSent = false;
+          if (classificationFilter === 'Confirmed') {
+            const allConfirmedAssignments = unit.schedules.flatMap((s: ScheduleRaw) =>
+              (s.assignments || []).filter(
+                (a: AssignmentRaw) =>
+                  a.classification === 'Confirmed' &&
+                  (a.state === 'Pending' || a.state === 'Accepted'),
+              ),
+            );
+            if (allConfirmedAssignments.length > 0) {
+              // 모든 확정 배정에 Confirmed 메시지가 있는지 확인
+              confirmedMessageSent = allConfirmedAssignments.every((a: AssignmentRaw) => {
+                const hasConfirmedMessage = (a.messageAssignments || []).some(
+                  (ma) => ma.message?.type === 'Confirmed',
+                );
+                return hasConfirmedMessage;
+              });
+            }
+          }
+
+          // 5. 미발송 인원 수 계산 (state === null)
+          // 5. 미발송 인원 수 계산 (messageSent === false)
+          const unsentCount = trainingLocations.reduce((total, loc) => {
+            return (
+              total +
+              loc.dates.reduce(
+                (dateTotal: number, d: { instructors: { messageSent: boolean }[] }) => {
+                  return (
+                    dateTotal +
+                    d.instructors.filter((i: { messageSent: boolean }) => !i.messageSent).length
+                  );
+                },
+                0,
+              )
+            );
+          }, 0);
+
+          return {
+            unitId: unit.id,
+            unitName: unit.name,
+            region: `${unit.wideArea} ${unit.region}`,
+            period: `${startDate} ~ ${endDate}`,
+            totalRequired,
+            totalAssigned: assignedInstructorIds.size,
+            progress:
+              totalRequired > 0
+                ? Math.round((assignedInstructorIds.size / totalRequired) * 100)
+                : 0,
+            trainingLocations: trainingLocations,
+            confirmedMessageSent,
+            unsentCount, // 미발송 인원 수
+          };
+        })
+        // 0명 배정된 부대는 필터링 (배정 작업 중/확정 섹션에서 표시 안 함)
+        .filter((unit) => unit.totalAssigned > 0)
+    );
   }
 }
 
