@@ -75,14 +75,58 @@ async function main() {
       let unit = await prisma.unit.findFirst({ where: { name } });
 
       if (!unit) {
+        // 시간 파싱 헬퍼 (HH:mm 또는 HH:mm:ss 형식을 Date로 변환)
+        const parseTime = (val: any): Date | null => {
+          if (!val) return null;
+          const timeStr = String(val).trim();
+          // HH:mm 또는 HH:mm:ss 형식 파싱
+          const match = timeStr.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+          if (match) {
+            const d = new Date(
+              2000,
+              0,
+              1,
+              parseInt(match[1]),
+              parseInt(match[2]),
+              parseInt(match[3] || '0'),
+            );
+            return d;
+          }
+          return null;
+        };
+
+        // 군구분 파싱
+        const parseUnitType = (
+          val: any,
+        ): 'Army' | 'Navy' | 'AirForce' | 'Marines' | 'MND' | null => {
+          if (!val) return 'Army';
+          const v = String(val).trim();
+          if (v.includes('육군') || v === 'Army') return 'Army';
+          if (v.includes('해군') || v === 'Navy') return 'Navy';
+          if (v.includes('공군') || v === 'AirForce') return 'AirForce';
+          if (v.includes('해병') || v === 'Marines') return 'Marines';
+          if (v.includes('국직') || v === 'MND') return 'MND';
+          return 'Army';
+        };
+
         unit = await prisma.unit.create({
           data: {
             name,
-            addressDetail: row['주소'] || row['address'] || '주소 미정',
+            addressDetail: row['부대상세주소'] || row['주소'] || row['address'] || '주소 미정',
             lat: row['위도'] || row['lat'] ? parseFloat(row['위도'] || row['lat']) : 37.5,
             lng: row['경도'] || row['lng'] ? parseFloat(row['경도'] || row['lng']) : 127.0,
             region: row['지역'] || row['region'] || '서울',
-            unitType: 'Army', // MilitaryType enum
+            wideArea: row['광역'] || null,
+            unitType: parseUnitType(row['군구분']),
+            // 담당자 정보
+            officerName: row['간부명'] || null,
+            officerPhone: row['간부 전화번호'] || null,
+            officerEmail: row['간부 이메일 주소'] || null,
+            // 근무 시간 정보 (통계 계산에 필수!)
+            workStartTime: parseTime(row['근무시작시간']),
+            workEndTime: parseTime(row['근무종료시간']),
+            lunchStartTime: parseTime(row['점심시작시간']),
+            lunchEndTime: parseTime(row['점심종료시간']),
           },
         });
       }

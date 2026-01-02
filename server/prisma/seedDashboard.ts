@@ -41,23 +41,18 @@ async function main() {
   // 3. 배정 및 거리 데이터 생성
   console.log('📅 배정 및 거리 데이터 생성 중...');
 
-  // 날짜 범위: 6개월 전 ~ 1개월 후
-  const now = new Date();
-  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
-  const oneMonthLater = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
   let assignmentCount = 0;
 
   for (const instructor of instructors) {
     // 각 강사당 5~20개의 활동 생성
     const activityCount = Math.floor(Math.random() * 15) + 5;
 
-    // 강사와 부대 간 거리 데이터도 생성 필요 (대시보드 통계용)
-    // 랜덤하게 10개 부대와 거리 정보 연결
+    // 강사와 부대 간 거리 데이터도 생성 필요
     const associatedUnits = createdUnits.sort(() => Math.random() - 0.5).slice(0, 20);
 
     for (const unit of associatedUnits) {
-      // 거리 정보 (10km ~ 100km)
+      // 거리 정보 (10km ~ 100km) - 실제 좌표 거리는 계산 복잡하므로 테스트용 랜덤 유지하되,
+      // 향후 실제 데이터 기반 필요 시 updateUnitCoordsInBackground 등 활용 가능
       await prisma.instructorUnitDistance.upsert({
         where: { userId_unitId: { userId: instructor.userId, unitId: unit.id } },
         update: {},
@@ -71,36 +66,49 @@ async function main() {
     }
 
     // Assignment loop
+    // 실제 부대 일정(UnitSchedule) 기반으로 배정 생성
+    // 날짜 범위 제한 없이 존재하는 모든 스케줄 사용
     for (let i = 0; i < activityCount; i++) {
       try {
         const targetUnit = associatedUnits[Math.floor(Math.random() * associatedUnits.length)];
-        const date = getRandomDate(sixMonthsAgo, oneMonthLater);
+
+        // 해당 부대의 모든 유효한 일정 조회 (날짜 범위 제한 없음)
+        const availableSchedules = await prisma.unitSchedule.findMany({
+          where: {
+            unitId: targetUnit.id,
+            isExcluded: false, // 교육불가일 제외
+          },
+        });
+
+        if (availableSchedules.length === 0) continue;
+
+        const randomSchedule =
+          availableSchedules[Math.floor(Math.random() * availableSchedules.length)];
 
         const isAccepted = Math.random() > 0.2;
         let state: AssignmentState = 'Pending';
         if (isAccepted) state = 'Accepted';
         else state = Math.random() > 0.5 ? 'Rejected' : 'Canceled';
 
-        // Create UnitSchedule
-        const schedule = await prisma.unitSchedule.create({
-          data: {
-            unitId: targetUnit.id,
-            date: date,
+        // Create Assignment (upsert로 중복 방지)
+        await prisma.instructorUnitAssignment.upsert({
+          where: {
+            assignment_instructor_schedule_unique: {
+              userId: instructor.userId,
+              unitScheduleId: randomSchedule.id,
+            },
           },
-        });
-
-        // Create Assignment
-        await prisma.instructorUnitAssignment.create({
-          data: {
+          update: {}, // 이미 있으면 통과
+          create: {
             userId: instructor.userId,
-            unitScheduleId: schedule.id,
-            classification: 'Confirmed', // Valid enum
+            unitScheduleId: randomSchedule.id,
+            classification: 'Confirmed',
             state: state,
           },
         });
         assignmentCount++;
       } catch (err: any) {
-        console.error(`❌ 배정 생성 실패 (Instructor: ${instructor.userId}):`, err.message);
+        // console.error(`❌ 배정 생성 실패 (Instructor: ${instructor.userId}):`, err.message);
       }
     }
   }

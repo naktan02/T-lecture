@@ -20,10 +20,10 @@ async function main() {
 
   await prisma.trainingLocation.deleteMany({}); // Dependent on Unit
 
-  // Only delete units that don't have other dependencies?
-  // Let's just delete assignments/schedules/distances. Units can stay or be Upserted properly.
+  // Unit도 삭제 (테스트 데이터 완전 초기화)
+  await prisma.unit.deleteMany({});
 
-  console.log('✅ Cleared Assignments, Schedules, Distances.');
+  console.log('✅ Cleared Assignments, Schedules, Distances, TrainingLocations, Units.');
 }
 
 main()
