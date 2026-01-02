@@ -13,6 +13,7 @@
   },
   "scripts": {
     "seed:users": "tsx prisma/seedUsers.ts",
+    "seed:unit": "tsx prisma/seedUnits.ts",
     "seed:dashboard": "tsx prisma/seedDashboard.ts",
     "dev": "tsx watch src/server.ts",
     "build": "prisma generate && tsc",

@@ -74,29 +74,36 @@ const MonthlyChart: React.FC<MonthlyChartProps> = ({ data }) => {
   );
 };
 
-// 최근 배정 리스트
-interface RecentAssignmentsProps {
+// 활동 내역 리스트 (기간별 조회 가능)
+interface ActivityHistoryProps {
   assignments: DashboardStats['recentAssignments'];
+  rangeLabel: string;
 }
 
-const RecentAssignments: React.FC<RecentAssignmentsProps> = ({ assignments }) => {
+const ActivityHistory: React.FC<ActivityHistoryProps> = ({ assignments, rangeLabel }) => {
   if (assignments.length === 0) {
     return (
       <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <CalendarDaysIcon className="h-5 w-5 text-gray-600" />
-          <h3 className="font-semibold text-gray-800">최근 배정</h3>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CalendarDaysIcon className="h-5 w-5 text-gray-600" />
+            <h3 className="font-semibold text-gray-800">활동 내역</h3>
+          </div>
+          <span className="text-xs text-gray-400">{rangeLabel}</span>
         </div>
-        <EmptyState title="최근 배정 내역이 없습니다." />
+        <EmptyState title="해당 기간의 활동 내역이 없습니다." />
       </div>
     );
   }
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <CalendarDaysIcon className="h-5 w-5 text-gray-600" />
-        <h3 className="font-semibold text-gray-800">최근 배정</h3>
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <CalendarDaysIcon className="h-5 w-5 text-gray-600" />
+          <h3 className="font-semibold text-gray-800">활동 내역</h3>
+        </div>
+        <span className="text-xs text-gray-400">{rangeLabel}</span>
       </div>
       <div className="space-y-3">
         {assignments.map((assignment) => (
@@ -296,7 +303,12 @@ export const UserDashboardPage: React.FC = () => {
           {/* 차트 및 리스트 섹션 */}
           <div className="grid gap-6 lg:grid-cols-2">
             <MonthlyChart data={stats.monthlyTrend} />
-            <RecentAssignments assignments={stats.recentAssignments} />
+            <ActivityHistory
+              assignments={stats.recentAssignments}
+              rangeLabel={
+                rangeType === 'all' ? '전체 기간 (최근 10건)' : `${startDate} ~ ${endDate}`
+              }
+            />
           </div>
         </>
       )}
