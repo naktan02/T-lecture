@@ -259,34 +259,34 @@ export const AssignmentWorkspace: React.FC = () => {
                   <div
                     key={unit.unitId}
                     onClick={() => setSelectionKey({ type: 'UNIT', unitId: unit.unitId })}
-                    className="bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-md hover:border-red-300 transition-all border-l-4 border-l-transparent hover:border-l-red-400 group"
+                    className="bg-white border border-gray-200 rounded-lg p-2.5 cursor-pointer hover:shadow-md hover:border-red-300 transition-all border-l-4 border-l-transparent hover:border-l-red-400 group"
                   >
-                    <div className="font-bold text-gray-800 text-sm flex justify-between items-center mb-2">
-                      <div className="flex items-center gap-2">
+                    <div className="font-bold text-gray-800 text-xs flex justify-between items-center mb-1">
+                      <div className="flex items-center gap-1.5">
                         <span>{unit.unitName}</span>
                         {unit.locations.length > 1 && (
-                          <span className="text-[10px] font-normal text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
-                            {unit.locations.length}개 장소
+                          <span className="text-[10px] font-normal text-purple-600 bg-purple-50 px-1 py-0.5 rounded">
+                            {unit.locations.length}개
                           </span>
                         )}
                       </div>
-                      <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded font-bold border border-blue-100 text-xs">
-                        총 {unit.totalRequired}명 필요
+                      <span className="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-bold border border-blue-100 text-[10px]">
+                        {unit.totalRequired}명
                       </span>
                     </div>
-                    <div className="text-xs text-gray-500 mb-2">📍 {unit.region}</div>
-                    <div className="flex flex-wrap gap-1">
-                      {unit.uniqueDates.slice(0, 5).map((date, idx) => (
+                    <div className="text-[10px] text-gray-500 mb-1">📍 {unit.region}</div>
+                    <div className="flex flex-wrap gap-0.5">
+                      {unit.uniqueDates.slice(0, 3).map((date, idx) => (
                         <span
                           key={idx}
-                          className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded"
+                          className="text-[9px] bg-gray-100 text-gray-600 px-1 py-0.5 rounded"
                         >
                           {date}
                         </span>
                       ))}
-                      {unit.uniqueDates.length > 5 && (
-                        <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">
-                          +{unit.uniqueDates.length - 5}일
+                      {unit.uniqueDates.length > 3 && (
+                        <span className="text-[9px] bg-gray-200 text-gray-600 px-1 py-0.5 rounded">
+                          +{unit.uniqueDates.length - 3}일
                         </span>
                       )}
                     </div>
@@ -380,32 +380,31 @@ export const AssignmentWorkspace: React.FC = () => {
                   <div className="text-center text-gray-400">임시 배정이 없습니다.</div>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {assignments.map((group) => (
                     <div
                       key={group.unitId}
                       onClick={() => setDetailModalKey({ unitId: group.unitId, bucket: 'PENDING' })}
-                      className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 border-l-indigo-500"
+                      className="bg-white border border-gray-200 rounded-lg p-2.5 shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 border-l-indigo-500"
                     >
-                      <div className="flex justify-between items-start mb-2">
+                      <div className="flex justify-between items-start mb-1">
                         <div>
-                          <h3 className="font-bold text-gray-800 text-lg">{group.unitName}</h3>
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                          <h3 className="font-bold text-gray-800 text-sm">{group.unitName}</h3>
+                          <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">
                             {group.region}
                           </span>
                         </div>
                         <div className="text-right">
-                          <div className="text-xs font-bold text-indigo-600">{group.period}</div>
-                          <div className="text-xs text-gray-400">
-                            총 {group.trainingLocations.length}개 교육장
+                          <div className="text-[10px] font-bold text-indigo-600">
+                            {group.period}
+                          </div>
+                          <div className="text-[10px] text-gray-400">
+                            {group.trainingLocations.length}개 교육장
                           </div>
                         </div>
                       </div>
-
-                      <div className="mt-2 flex justify-between text-xs">
-                        <span className="text-orange-600 font-medium">
-                          📨 {group.totalAssigned}명 배정
-                        </span>
+                      <div className="text-[11px] text-orange-600 font-medium">
+                        📨 {group.totalAssigned}명 배정
                       </div>
                     </div>
                   ))}
@@ -434,34 +433,36 @@ export const AssignmentWorkspace: React.FC = () => {
                   <span>아직 확정된 배정이 없습니다.</span>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {confirmedAssignments.map((group) => (
                     <div
                       key={group.unitId}
                       onClick={() =>
                         setDetailModalKey({ unitId: group.unitId, bucket: 'ACCEPTED' })
                       }
-                      className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 border-l-blue-500"
+                      className="bg-white border border-gray-200 rounded-lg p-2.5 shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 border-l-blue-500"
                     >
-                      <div className="flex justify-between items-start mb-2">
+                      <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-bold text-gray-800 text-lg">{group.unitName}</h3>
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                          <h3 className="font-bold text-gray-800 text-sm">{group.unitName}</h3>
+                          <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">
                             {group.region}
                           </span>
                         </div>
-                        <span className="text-xs text-gray-400">{group.period}</span>
+                        <div className="text-right">
+                          <span className="text-[10px] text-gray-400">{group.period}</span>
+                          {/* 메시지 상태 표시 */}
+                          <div>
+                            {(group as any).confirmedMessageSent ? (
+                              <span className="text-[10px] text-green-600 font-bold">✅ 완료</span>
+                            ) : (
+                              <span className="text-[10px] text-red-600 font-bold">⚠️ 필요</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-sm text-green-600 font-bold">
+                      <div className="text-[11px] text-green-600 font-bold mt-1">
                         {group.totalAssigned}명 확정
-                      </div>
-                      {/* 메시지 상태 표시 */}
-                      <div className="text-right mt-1">
-                        {(group as any).confirmedMessageSent ? (
-                          <span className="text-xs text-green-600 font-bold">✅ 완료</span>
-                        ) : (
-                          <span className="text-xs text-red-600 font-bold">⚠️ 필요</span>
-                        )}
                       </div>
                     </div>
                   ))}

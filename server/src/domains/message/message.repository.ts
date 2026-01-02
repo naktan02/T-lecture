@@ -76,16 +76,49 @@ class MessageRepository {
     });
   }
 
-  // 확정 메시지 발송 대상 조회
+  // 확정 메시지 발송 대상 조회 (부대 단위 재발송 지원)
+  // 1. 메시지 미발송자가 있는 부대 찾기
+  // 2. 해당 부대의 기존 Confirmed 메시지 연결 삭제
+  // 3. 해당 부대의 모든 Accepted 강사 반환
   async findTargetsForConfirmedMessage() {
+    // 1단계: 미발송자가 있는 부대의 unitId 목록 조회
+    const unsentAssignments = await prisma.instructorUnitAssignment.findMany({
+      where: {
+        state: 'Accepted',
+        classification: 'Confirmed',
+        messageAssignments: {
+          none: { message: { type: 'Confirmed' } },
+        },
+      },
+      select: {
+        UnitSchedule: { select: { unitId: true } },
+      },
+    });
+
+    const unitIdsNeedingResend = [...new Set(unsentAssignments.map((a) => a.UnitSchedule.unitId))];
+
+    if (unitIdsNeedingResend.length === 0) {
+      return [];
+    }
+
+    // 2단계: 해당 부대들의 기존 Confirmed 메시지 연결 삭제 (재발송을 위해)
+    await prisma.messageAssignment.deleteMany({
+      where: {
+        assignment: {
+          state: 'Accepted',
+          classification: 'Confirmed',
+          UnitSchedule: { unitId: { in: unitIdsNeedingResend } },
+        },
+        message: { type: 'Confirmed' },
+      },
+    });
+
+    // 3단계: 해당 부대의 모든 Accepted 강사 반환
     return await prisma.instructorUnitAssignment.findMany({
       where: {
         state: 'Accepted',
-        messageAssignments: {
-          none: {
-            message: { type: 'Confirmed' },
-          },
-        },
+        classification: 'Confirmed',
+        UnitSchedule: { unitId: { in: unitIdsNeedingResend } },
       },
       include: {
         User: {
