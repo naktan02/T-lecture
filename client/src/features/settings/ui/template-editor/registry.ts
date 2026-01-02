@@ -52,6 +52,10 @@ export const formatPlaceholders: Record<string, { key: string; label: string; ic
     { key: 'date', ...PLACEHOLDER_META.date },
     { key: 'dayOfWeek', ...PLACEHOLDER_META.dayOfWeek },
     { key: 'instructors', ...PLACEHOLDER_META.instructors },
+  ],
+  'self.mySchedules': [
+    { key: 'date', ...PLACEHOLDER_META.date },
+    { key: 'dayOfWeek', ...PLACEHOLDER_META.dayOfWeek },
     { key: 'name', ...PLACEHOLDER_META.name },
   ],
 };
@@ -91,6 +95,14 @@ export const variableConfig: VariableDef[] = [
   { key: 'self.category', label: '본인 분류', icon: '🏷️', category: 'self' },
   { key: 'self.position', label: '본인 직책', icon: '👔', category: 'self' },
   { key: 'self.virtues', label: '가능과목', icon: '📚', category: 'self' },
+  {
+    key: 'self.mySchedules',
+    label: '날짜별 본인',
+    icon: '📅',
+    isFormat: true,
+    category: 'self',
+    defaultFormat: '- {date} ({dayOfWeek}) : {name}',
+  },
 
   // === 강사 목록 (포맷) ===
   {

@@ -144,6 +144,12 @@ export function useTemplateEditor({
   // 패널에서 클릭
   const handlePanelClick = useCallback(
     (v: VariableDef) => {
+      // skipModal이 true면 포맷 변수라도 모달 없이 바로 삽입
+      if (v.isFormat && v.skipModal) {
+        insertVariable(v, v.defaultFormat);
+        return;
+      }
+
       if (v.isFormat && onInsertFormat) {
         onInsertFormat(v, (format) => {
           insertVariable(v, format);
@@ -239,6 +245,21 @@ export function useTemplateEditor({
       try {
         const data = e.dataTransfer.getData('application/json');
         const v: VariableDef = JSON.parse(data);
+
+        // skipModal이 true면 바로 삽입
+        if (v.isFormat && v.skipModal) {
+          const info = registry.get(registry.normalizeKey(v.key));
+          const html = createVariableHtml(
+            v.key,
+            info?.label ?? v.key,
+            info?.icon ?? '🏷️',
+            info?.category || 'default',
+            true,
+            v.defaultFormat,
+          );
+          insertHtmlAtPoint(html, e.clientX, e.clientY);
+          return;
+        }
 
         if (v.isFormat && onInsertFormat) {
           onInsertFormat(v, (format) => {

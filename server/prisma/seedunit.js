@@ -364,6 +364,12 @@ async function main() {
         instructorsNumbers: 2,
         plannedCount: 60 + i * 5,
         actualCount: 55 + i * 5,
+        hasInstructorLounge: Math.random() > 0.3, // 70% 확률로 있음
+        hasWomenRestroom: Math.random() > 0.2, // 80% 확률로 있음
+        hasCateredMeals: Math.random() > 0.5,
+        hasHallLodging: Math.random() > 0.8,
+        allowsPhoneBeforeAfter: Math.random() > 0.5,
+        note: j === 1 ? '빔프로젝터 점검 필요' : '',
       });
     }
 

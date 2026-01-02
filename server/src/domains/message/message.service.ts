@@ -6,7 +6,12 @@ import metadataRepository from '../metadata/metadata.repository';
 import { PrismaError } from '../../types/common.types';
 import { UserMessageGroup } from '../../types/message.types';
 import { tokensToTemplate, MessageTemplateBody } from '../../types/template.types';
-import { buildVariables, buildLocationsFormat } from './message.templateHelper';
+import {
+  buildVariables,
+  buildLocationsFormat,
+  buildInstructorsFormat,
+  buildMySchedulesFormat,
+} from './message.templateHelper';
 
 class MessageService {
   // 임시 배정 메시지 일괄 발송 (부대별로 별도 메시지, 날짜 범위 필터링)
@@ -129,12 +134,19 @@ class MessageService {
       // 장소 목록 (locations 포맷 변수)
       const locationsList = buildLocationsFormat(unit.trainingLocations || []);
 
+      // 본인 일정 (self.mySchedules)
+      const mySchedulesList = buildMySchedulesFormat(
+        assignments.map((a) => ({ date: a.UnitSchedule.date ?? new Date() })),
+        user.name || '',
+      );
+
       // 템플릿 치환 (포맷 변수 포함) - JSONB body를 문자열로 변환
       const templateBodyStr = tokensToTemplate(
         (template.body as unknown as MessageTemplateBody).tokens,
       );
       const body = this.compileTemplateWithFormat(templateBodyStr, variables, {
         'self.schedules': scheduleDates,
+        'self.mySchedules': mySchedulesList,
         locations: locationsList,
       });
 
@@ -179,7 +191,8 @@ class MessageService {
           .map((item) => {
             let line = format;
             for (const [placeholder, value] of Object.entries(item)) {
-              line = line.replace(new RegExp(`\\{${placeholder}\\}`, 'g'), value);
+              // {instructors} 외에도 { instructors } 처럼 공백이 포함된 경우도 허용
+              line = line.replace(new RegExp(`\\{\\s*${placeholder}\\s*\\}`, 'g'), value);
             }
             return line;
           })
@@ -233,7 +246,6 @@ class MessageService {
       const { user, assignments } = data;
       const representative = assignments[0];
       const unit = representative.UnitSchedule.unit;
-      const unitSchedule = representative.UnitSchedule;
       // 팀장 판단: role이 Head 또는 Supervisor면 리더용 템플릿
       const isLeader = assignments.some((a) => a.role === 'Head' || a.role === 'Supervisor');
 
@@ -254,28 +266,103 @@ class MessageService {
 
       const schedulesList = (unit.schedules || [])
         .filter((schedule: { assignments?: unknown[] }) => (schedule.assignments || []).length > 0) // 배정이 있는 일정만
-        .map((schedule: { date: Date; assignments?: { User?: { name?: string } }[] }) => {
-          const scheduleDate = new Date(schedule.date);
-          const dateStr = scheduleDate.toISOString().split('T')[0];
-          const dayOfWeek = getDayOfWeek(scheduleDate);
-          const instructorNames = (schedule.assignments || [])
-            .map((a: { User?: { name?: string } }) => a.User?.name || '')
-            .filter(Boolean)
-            .join(', ');
-          return {
-            date: dateStr,
-            dayOfWeek,
-            instructors: instructorNames || '-',
-          };
-        });
+        .map(
+          (schedule: {
+            date: Date;
+            assignments?: { User?: { name?: string; instructor?: { category?: string } } }[];
+          }) => {
+            const scheduleDate = new Date(schedule.date);
+            const dateStr = scheduleDate.toISOString().split('T')[0];
+            const dayOfWeek = getDayOfWeek(scheduleDate);
+
+            // 카테고리 한글 축약
+            const categoryKorean: Record<string, string> = {
+              Main: '주',
+              Co: '부',
+              Assistant: '보조',
+              Practicum: '실습',
+              주강사: '주',
+              부강사: '부',
+              보조강사: '보조',
+              실습강사: '실습',
+            };
+
+            const instructorNames = (schedule.assignments || [])
+              .map((a) => {
+                const name = a.User?.name || '';
+                let category = a.User?.instructor?.category || '';
+                category = categoryKorean[category] || category.replace('강사', '');
+                return category ? `${name}(${category})` : name;
+              })
+              .filter(Boolean)
+              .join(', ');
+            return {
+              date: dateStr,
+              dayOfWeek,
+              instructors: instructorNames || '-',
+            };
+          },
+        );
+
+      // 본인 일정 (self.mySchedules)
+      const mySchedulesList = buildMySchedulesFormat(
+        assignments.map((a) => ({ date: a.UnitSchedule.date ?? new Date() })),
+        user.name || '',
+      );
 
       // 템플릿 치환 (포맷 변수 포함) - JSONB body를 문자열로 변환
       const targetBodyStr = tokensToTemplate(
         (targetTemplate.body as unknown as MessageTemplateBody).tokens,
       );
+
+      // 강사 목록 (instructors 포맷 변수)
+      // 부대 전체의 확정된 강사들을 수집 (중복 제거)
+      const instructorMap = new Map<number, any>();
+      (unit.schedules || []).forEach((schedule: any) => {
+        (schedule.assignments || []).forEach((assignment: any) => {
+          if (assignment.state === 'Accepted' && assignment.User) {
+            instructorMap.set(assignment.User.id, assignment.User);
+          }
+        });
+      });
+
+      // 강사 정렬 및 포맷팅 데이터 구성
+      const instructorList = Array.from(instructorMap.values())
+        .map((user: any) => ({
+          name: user.name,
+          phone: user.userphoneNumber,
+          category: user.instructor?.category,
+          virtues: user.instructor?.virtues,
+          // 정렬용 필드 (내부 사용)
+          isTeamLeader: user.instructor?.isTeamLeader,
+        }))
+        .sort((a, b) => {
+          // 1. 팀장 우선
+          if (a.isTeamLeader !== b.isTeamLeader)
+            return (b.isTeamLeader ? 1 : 0) - (a.isTeamLeader ? 1 : 0);
+          // 2. 등급 순 (주 > 부 > 보조 > 실습)
+          const categoryOrder: Record<string, number> = {
+            Main: 1,
+            주강사: 1,
+            Sub: 2,
+            부강사: 2,
+            Assistant: 3,
+            보조강사: 3,
+            Practicum: 4,
+            실습강사: 4,
+          };
+          const catA = categoryOrder[a.category || ''] || 99;
+          const catB = categoryOrder[b.category || ''] || 99;
+          return catA - catB;
+        });
+
+      const instructorsFormatList = buildInstructorsFormat(instructorList);
+
       const body = this.compileTemplateWithFormat(targetBodyStr, variables, {
         locations: locationsList,
         'self.schedules': schedulesList,
+        'self.mySchedules': mySchedulesList,
+        instructors: instructorsFormatList,
       });
 
       // 제목도 변수 치환 (단순 변수만, 포맷 없음)

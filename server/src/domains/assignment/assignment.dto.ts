@@ -265,19 +265,35 @@ class AssignmentDTO {
           if (classificationFilter === 'Confirmed') {
             const allConfirmedAssignments = unit.schedules.flatMap((s: ScheduleRaw) =>
               (s.assignments || []).filter(
-                (a: AssignmentRaw) =>
-                  a.classification === 'Confirmed' &&
-                  (a.state === 'Pending' || a.state === 'Accepted'),
+                (a: AssignmentRaw) => a.classification === 'Confirmed' && a.state === 'Accepted',
               ),
             );
             if (allConfirmedAssignments.length > 0) {
-              // 모든 확정 배정에 Confirmed 메시지가 있는지 확인
+              // 모든 확정(수락된) 배정에 Confirmed 메시지가 있는지 확인
               confirmedMessageSent = allConfirmedAssignments.every((a: AssignmentRaw) => {
                 const hasConfirmedMessage = (a.messageAssignments || []).some(
                   (ma) => ma.message?.type === 'Confirmed',
                 );
                 return hasConfirmedMessage;
               });
+            } else {
+              // (수정) 확정 분류된 배정이 하나도 없다면?
+              // 하지만 UnitStatus가 Confirmed이므로, 여기에 표시되는 부대입니다.
+              // 이 경우 'Accepted' 상태인 배정들을 기준으로 판단하거나,
+              // 혹은 아직 '확정 변환'이 안 된 상태라 보고 false로 두는 게 맞을 수도 있습니다.
+              // 하지만 사용자는 "메시지 보냈는데 왜 안 떠?" 라고 하므로,
+              // Accepted 상태인 배정들을 대상으로 한 번 더 확인해봅니다.
+              const allAcceptedAssignments = unit.schedules.flatMap((s: ScheduleRaw) =>
+                (s.assignments || []).filter((a: AssignmentRaw) => a.state === 'Accepted'),
+              );
+
+              if (allAcceptedAssignments.length > 0) {
+                confirmedMessageSent = allAcceptedAssignments.every((a: AssignmentRaw) => {
+                  return (a.messageAssignments || []).some(
+                    (ma) => ma.message?.type === 'Confirmed',
+                  );
+                });
+              }
             }
           }
 

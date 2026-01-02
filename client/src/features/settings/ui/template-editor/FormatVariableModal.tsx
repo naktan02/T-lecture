@@ -35,6 +35,9 @@ export const FormatVariableModal = ({
     if (variable.key === 'self.schedules') {
       return '- {date} ({dayOfWeek}): {instructors}';
     }
+    if (variable.key === 'self.mySchedules') {
+      return '- {date} ({dayOfWeek}) : {name}';
+    }
     if (variable.key === 'locations') {
       return '[{placeName}] 인원: {actualCount}명';
     }
@@ -58,7 +61,7 @@ export const FormatVariableModal = ({
     });
     return html;
   };
-  
+
   // DOM을 직접 순회해서 텍스트로 직렬화 (엔터 중복/마지막 깨짐 방지)
   const domToText = (root: HTMLElement): string => {
     const out: string[] = [];

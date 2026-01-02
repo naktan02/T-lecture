@@ -13,11 +13,11 @@ const getDayOfWeek = (date: Date): string => {
  * 카테고리 한글 변환
  */
 const categoryKorean: Record<string, string> = {
-  Main: '정',
+  Main: '주',
   Co: '부',
   Assistant: '보조',
   Practicum: '실습',
-  주강사: '정',
+  주강사: '주',
   부강사: '부',
   보조강사: '보조',
   실습강사: '실습',
@@ -111,7 +111,7 @@ export function buildVariables(
     const hasRole = assignments.some((a) => a.role === 'Head' || a.role === 'Supervisor');
     if (hasRole) {
       const role = assignments.find((a) => a.role)?.role;
-      position = role === 'Head' ? '팀장' : '책임강사';
+      position = role === 'Head' ? '총괄강사' : '책임강사';
     }
   }
 
@@ -245,6 +245,27 @@ export function buildInstructorsFormat(
       category: category,
       phone: inst.phone || '',
       virtues: virtues || '-',
+    };
+  });
+}
+
+/**
+ * self.mySchedules 포맷 변수 빌드
+ * 날짜별 본인 일정 (date, dayOfWeek, name)
+ */
+export function buildMySchedulesFormat(
+  schedules: Array<{ date: Date | string }>,
+  userName: string,
+): Array<Record<string, string>> {
+  return schedules.map((schedule) => {
+    const scheduleDate = new Date(schedule.date);
+    const dateStr = scheduleDate.toISOString().split('T')[0];
+    const dayOfWeek = getDayOfWeek(scheduleDate);
+
+    return {
+      date: dateStr,
+      dayOfWeek: dayOfWeek,
+      name: userName,
     };
   });
 }

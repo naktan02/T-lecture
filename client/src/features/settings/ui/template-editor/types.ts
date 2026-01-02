@@ -10,6 +10,8 @@ export type VariableDef = {
   icon?: string;
   isFormat?: boolean;
   category?: string; // 카테고리 ID
+  skipModal?: boolean; // 포맷 변수여도 모달 없이 바로 삽입
+  defaultFormat?: string; // 모달 없이 삽입 시 사용할 기본 포맷
 };
 
 export type VariableCategory = {

@@ -34,8 +34,7 @@ export const sendTemporaryMessages = asyncHandler(async (req: Request, res: Resp
 });
 
 // 확정 배정 메시지 일괄 발송
-export const sendConfirmed = asyncHandler(async (req: Request, res: Response) => {
-  logger.info('[Message] Sending confirmed messages...');
+export const sendConfirmedMessages = asyncHandler(async (req: Request, res: Response) => {
   const result = await messageService.sendConfirmedMessages();
   res.json(result);
 });
@@ -62,7 +61,7 @@ module.exports = {
   createNotice,
   getNotices,
   sendTemporaryMessages,
-  sendConfirmed,
+  sendConfirmedMessages,
   getMyMessages,
   readMessage,
 };

@@ -151,7 +151,19 @@ class MessageRepository {
                   include: {
                     assignments: {
                       where: { state: 'Accepted' },
-                      include: { User: true },
+                      include: {
+                        User: {
+                          include: {
+                            instructor: {
+                              include: {
+                                virtues: {
+                                  include: { virtue: true },
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
                     },
                   },
                 },

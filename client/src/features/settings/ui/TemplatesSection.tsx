@@ -19,8 +19,8 @@ const TEMPLATE_LABELS: Record<string, { name: string; description: string }> = {
     description: '강사에게 임시 배정을 알리는 메시지',
   },
   CONFIRMED_LEADER: {
-    name: '확정 배정 (팀장용)',
-    description: '팀장에게 확정 배정을 알리는 메시지',
+    name: '확정 배정 (총괄강사용)',
+    description: '총괄강사에게 확정 배정을 알리는 메시지',
   },
   CONFIRMED_MEMBER: {
     name: '확정 배정 (팀원용)',

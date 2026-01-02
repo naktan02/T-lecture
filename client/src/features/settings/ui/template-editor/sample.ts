@@ -76,6 +76,36 @@ function renderFormatSample(key: string, format: string): string {
       .join('\n');
   }
 
+  // self.mySchedules - 날짜별 본인 일정
+  if (key === 'self.mySchedules') {
+    const schedules = [
+      {
+        date: '2024-11-17',
+        dayOfWeek: '일',
+        name: '유혜경',
+      },
+      {
+        date: '2024-11-18',
+        dayOfWeek: '월',
+        name: '유혜경',
+      },
+      {
+        date: '2024-11-19',
+        dayOfWeek: '화',
+        name: '유혜경',
+      },
+    ];
+    return schedules
+      .map((s) => {
+        let line = format;
+        Object.entries(s).forEach(([k, v]) => {
+          line = line.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+        });
+        return line;
+      })
+      .join('\n');
+  }
+
   // locations - 교육장소 목록
   if (key === 'locations') {
     const locations = [
