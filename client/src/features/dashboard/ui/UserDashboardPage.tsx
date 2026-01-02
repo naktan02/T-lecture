@@ -47,7 +47,6 @@ interface MonthlyChartProps {
 
 const MonthlyChart: React.FC<MonthlyChartProps> = ({ data }) => {
   const maxCount = Math.max(...data.map((d) => d.count), 1);
-  const hasData = data.some((d) => d.count > 0);
   const chartHeight = 120; // 차트 막대 영역 최대 높이 (px)
 
   return (
@@ -56,33 +55,26 @@ const MonthlyChart: React.FC<MonthlyChartProps> = ({ data }) => {
         <ChartBarIcon className="h-5 w-5 text-gray-600" />
         <h3 className="font-semibold text-gray-800">월별 활동 추이</h3>
       </div>
-      {!hasData ? (
-        <div className="flex h-40 items-center justify-center">
-          <p className="text-sm text-gray-400">해당 기간의 활동 데이터가 없습니다.</p>
-        </div>
-      ) : (
-        <div
-          className="flex items-end justify-around gap-1"
-          style={{ height: `${chartHeight + 40}px` }}
-        >
-          {data.map((item) => {
-            // 픽셀 기반 높이 계산 (최소 8px)
-            const barHeight =
-              item.count > 0 ? Math.max((item.count / maxCount) * chartHeight, 8) : 2;
-            const monthLabel = item.month.split('-')[1] + '월';
-            return (
-              <div key={item.month} className="flex flex-1 flex-col items-center justify-end gap-1">
-                <span className="text-xs font-medium text-gray-600">{item.count}건</span>
-                <div
-                  className="w-full max-w-[32px] rounded-t-md bg-gradient-to-t from-blue-500 to-blue-400"
-                  style={{ height: `${barHeight}px` }}
-                />
-                <span className="text-xs text-gray-500">{monthLabel}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <div
+        className="flex items-end justify-around gap-1"
+        style={{ height: `${chartHeight + 40}px` }}
+      >
+        {data.map((item) => {
+          // 픽셀 기반 높이 계산 (0건이면 2px 최소 높이)
+          const barHeight = item.count > 0 ? Math.max((item.count / maxCount) * chartHeight, 8) : 2;
+          const monthLabel = item.month.split('-')[1] + '월';
+          return (
+            <div key={item.month} className="flex flex-1 flex-col items-center justify-end gap-1">
+              <span className="text-xs font-medium text-gray-600">{item.count}건</span>
+              <div
+                className="w-full max-w-[32px] rounded-t-md bg-gradient-to-t from-blue-500 to-blue-400"
+                style={{ height: `${barHeight}px` }}
+              />
+              <span className="text-xs text-gray-500">{monthLabel}</span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
