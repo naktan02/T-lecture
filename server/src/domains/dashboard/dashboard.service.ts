@@ -160,30 +160,49 @@ class DashboardService {
       summaryStats.totalWorkDays = workedDates.size;
     }
 
-    // --- 2. 월별 추이 & 최근 배정 (공통, 대신 날짜 필터링 주의) ---
-    // 월별 추이는 "최근 6개월" 고정이 기본이나, 커스텀 기간일 때는?
-    // 요구사항: "설정한 기간별... 통계 조회" -> 상단 요약 카드가 핵심.
-    // 하단 차트나 리스트도 기간에 맞추는게 좋음.
-    // 하지만 차트는 '월별 추이'이므로 기간이 짧으면 의미가 없음.
-    // -> 차트는 그대로 두고, *리스트*는 기간 필터링을 적용하는 것이 자연스러움.
+    // --- 2. 월별 추이 & 최근 배정 ---
+    // 기간 설정 시: 해당 기간의 월별 데이터 표시
+    // 기본 모드: 현재 연도 전체 (1월~12월)
 
-    // 월별 활동 집계 (최근 6개월 고정)
     const now = new Date();
     const monthlyMap = new Map<string, { count: number; hours: number }>();
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      monthlyMap.set(key, { count: 0, hours: 0 });
+
+    let monthlyQueryStart: Date;
+    let monthlyQueryEnd: Date;
+
+    if (isCustomRange && startDate && endDate) {
+      // 커스텀 기간: 해당 기간의 월만 초기화
+      const rangeStart = new Date(startDate);
+      const rangeEnd = new Date(endDate);
+      monthlyQueryStart = rangeStart;
+      monthlyQueryEnd = new Date(rangeEnd.setHours(23, 59, 59, 999));
+
+      // 시작 월부터 종료 월까지 초기화
+      const current = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+      while (current <= rangeEnd) {
+        const key = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
+        monthlyMap.set(key, { count: 0, hours: 0 });
+        current.setMonth(current.getMonth() + 1);
+      }
+    } else {
+      // 기본 모드: 현재 연도 1월~12월
+      const currentYear = now.getFullYear();
+      monthlyQueryStart = new Date(currentYear, 0, 1); // 1월 1일
+      monthlyQueryEnd = now;
+
+      for (let month = 0; month < 12; month++) {
+        const key = `${currentYear}-${String(month + 1).padStart(2, '0')}`;
+        monthlyMap.set(key, { count: 0, hours: 0 });
+      }
     }
 
-    // 월별 데이터 조회 (최근 6개월, 완료된 건만)
-    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    // 월별 데이터 조회
     const recentActivity = await prisma.instructorUnitAssignment.findMany({
       where: {
         userId,
         state: 'Accepted',
         UnitSchedule: {
-          date: { gte: sixMonthsAgo, lt: new Date() }, // 오늘 이전
+          date: { gte: monthlyQueryStart, lt: monthlyQueryEnd },
         },
       },
       include: { UnitSchedule: { include: { unit: true } } },
@@ -210,17 +229,14 @@ class DashboardService {
       }
     }
 
-    // 최근 배정 리스트 (기간 설정이 있으면 그 기간 내, 없으면 최근 10건)
+    // 최근 배정 리스트 (기간 설정이 있으면 그 기간 내, 없으면 전체)
     const recentAssignmentsQuery: any = {
       where: {
         userId,
         state: 'Accepted',
-        // 기본 모드일 때도 "완료된(오늘 이전)" 건만 보여줄 것인가?
-        // 보통 대시보드 리스트는 '최근 활동 내역'이므로 완료된 건이 맞음.
-        // 하지만 '예정된 배정'을 보여주는 컴포넌트가 별도로 있다면 완료된 건만.
-        // 여기서는 '근무 내역 리스트'라고 했으므로 완료된 건.
+        // 완료된(오늘 이전) 건만 조회
         UnitSchedule: {
-          date: { lt: new Date() }, // 기본적으로 완료된 건만
+          date: { lt: new Date() },
         },
       },
       include: {
@@ -235,13 +251,12 @@ class DashboardService {
           date: 'desc',
         },
       },
-      take: 10,
+      // 기본 모드: 전체 조회 (개인 강사는 데이터가 많지 않으므로)
+      // take 제한 없음
     };
 
     if (isCustomRange) {
-      // 커스텀 기간이면 날짜 필터 적용, 개수 제한 없이? UI상 페이징 없으니 일단 20개 등으로 제한하거나 전체
-      // "상세 근무 리스트"라고 했으니 전체가 맞지만, 여기서는 요약 화면이므로 상위 N개만 보여주거나
-      // 별도 API가 필요할 수 있음. 일단 20개로 늘려서 제공.
+      // 커스텀 기간이면 날짜 필터 적용, 상위 50개 제한
       recentAssignmentsQuery.where.UnitSchedule.date = {
         gte: new Date(startDate!),
         lte: new Date(new Date(endDate!).setHours(23, 59, 59, 999)),

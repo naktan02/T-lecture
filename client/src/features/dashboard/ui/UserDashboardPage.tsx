@@ -103,9 +103,11 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ assignments, rangeLab
           <CalendarDaysIcon className="h-5 w-5 text-gray-600" />
           <h3 className="font-semibold text-gray-800">활동 내역</h3>
         </div>
-        <span className="text-xs text-gray-400">{rangeLabel}</span>
+        <span className="text-xs text-gray-400">
+          {rangeLabel} ({assignments.length}건)
+        </span>
       </div>
-      <div className="space-y-3">
+      <div className="max-h-96 space-y-3 overflow-y-auto">
         {assignments.map((assignment) => (
           <div
             key={assignment.id}
@@ -300,14 +302,12 @@ export const UserDashboardPage: React.FC = () => {
             />
           </div>
 
-          {/* 차트 및 리스트 섹션 */}
-          <div className="grid gap-6 lg:grid-cols-2">
+          {/* 차트 및 리스트 섹션 - 항상 세로 배치 */}
+          <div className="grid gap-6">
             <MonthlyChart data={stats.monthlyTrend} />
             <ActivityHistory
               assignments={stats.recentAssignments}
-              rangeLabel={
-                rangeType === 'all' ? '전체 기간 (최근 10건)' : `${startDate} ~ ${endDate}`
-              }
+              rangeLabel={rangeType === 'all' ? '전체 기간' : `${startDate} ~ ${endDate}`}
             />
           </div>
         </>
