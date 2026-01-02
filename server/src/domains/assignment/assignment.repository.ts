@@ -303,6 +303,41 @@ class AssignmentRepository {
   }
 
   /**
+   * 역할(role) 업데이트 - 관리자가 수동으로 설정
+   * 부대 전체 배정의 role을 먼저 초기화한 후 해당 강사에게만 role 부여
+   */
+  async updateRoleForUnit(
+    unitId: number,
+    instructorId: number,
+    role: 'Head' | 'Supervisor' | null,
+  ): Promise<{ updated: number }> {
+    // 1. 부대 전체 배정의 role 초기화
+    await prisma.instructorUnitAssignment.updateMany({
+      where: {
+        UnitSchedule: { unitId },
+        state: { in: ['Pending', 'Accepted'] },
+      },
+      data: { role: null },
+    });
+
+    // 2. 해당 강사에게 role 부여
+    let updated = 0;
+    if (role) {
+      const result = await prisma.instructorUnitAssignment.updateMany({
+        where: {
+          UnitSchedule: { unitId },
+          userId: instructorId,
+          state: { in: ['Pending', 'Accepted'] },
+        },
+        data: { role },
+      });
+      updated = result.count;
+    }
+
+    return { updated };
+  }
+
+  /**
    * 스케줄 배정 막기/해제
    */
   async updateScheduleBlock(unitScheduleId: number, isBlocked: boolean) {
@@ -515,12 +550,18 @@ class AssignmentRepository {
    * - remove: 배정 삭제 (또는 Canceled 처리)
    * - block: 스케줄 배정 막기
    * - unblock: 스케줄 배정 막기 해제
+   * - roleChanges: 역할 변경 (총괄/책임강사)
    */
   async batchUpdateAssignments(changes: {
     add: Array<{ unitScheduleId: number; instructorId: number; trainingLocationId: number | null }>;
     remove: Array<{ unitScheduleId: number; instructorId: number }>;
     block: number[];
     unblock: number[];
+    roleChanges?: Array<{
+      unitId: number;
+      instructorId: number;
+      role: 'Head' | 'Supervisor' | null;
+    }>;
   }) {
     return await prisma.$transaction(async (tx) => {
       const results = {
@@ -528,6 +569,7 @@ class AssignmentRepository {
         removed: 0,
         blocked: 0,
         unblocked: 0,
+        rolesUpdated: 0,
       };
 
       // 1. 배정 추가 (Pending 상태로 저장)
@@ -592,8 +634,129 @@ class AssignmentRepository {
         results.unblocked = changes.unblock.length;
       }
 
+      // 5. 역할 변경 (총괄/책임강사)
+      if (changes.roleChanges && changes.roleChanges.length > 0) {
+        for (const rc of changes.roleChanges) {
+          // 해당 부대의 모든 role 초기화
+          await tx.instructorUnitAssignment.updateMany({
+            where: {
+              UnitSchedule: { unitId: rc.unitId },
+              state: { in: ['Pending', 'Accepted'] },
+            },
+            data: { role: null },
+          });
+
+          // 선택한 강사에게 role 부여
+          if (rc.role) {
+            await tx.instructorUnitAssignment.updateMany({
+              where: {
+                UnitSchedule: { unitId: rc.unitId },
+                userId: rc.instructorId,
+                state: { in: ['Pending', 'Accepted'] },
+              },
+              data: { role: rc.role },
+            });
+          }
+          results.rolesUpdated++;
+        }
+      }
+
       return results;
     });
+  }
+
+  /**
+   * 부대의 역할(Head/Supervisor) 재계산
+   * - 부대 전체 Accepted/Pending 배정 기준으로 주강사 수 판단
+   * - 주강사 1명: 책임강사(Supervisor)
+   * - 주강사 2명+: 팀장 > 연차 높은 사람 = 총괄강사(Head)
+   */
+  async recalculateRolesForUnit(unitId: number): Promise<{ updated: number }> {
+    // 1. 해당 부대의 모든 활성 배정 조회 (Pending/Accepted)
+    const assignments = await prisma.instructorUnitAssignment.findMany({
+      where: {
+        UnitSchedule: { unitId },
+        state: { in: ['Pending', 'Accepted'] },
+      },
+      include: {
+        User: {
+          include: {
+            instructor: true,
+          },
+        },
+      },
+    });
+
+    if (assignments.length === 0) {
+      return { updated: 0 };
+    }
+
+    // 2. 주강사(Main) 목록 추출 (중복 제거 - 동일 강사가 여러 일정에 배정될 수 있음)
+    const mainInstructorMap = new Map<
+      number,
+      { isTeamLeader: boolean; generation: number | null }
+    >();
+    for (const a of assignments) {
+      if (a.User?.instructor?.category === 'Main') {
+        if (!mainInstructorMap.has(a.userId)) {
+          mainInstructorMap.set(a.userId, {
+            isTeamLeader: a.User.instructor.isTeamLeader ?? false,
+            generation: a.User.instructor.generation ?? null,
+          });
+        }
+      }
+    }
+
+    const mainInstructors = Array.from(mainInstructorMap.entries()).map(([userId, info]) => ({
+      userId,
+      ...info,
+    }));
+
+    // 3. 역할 결정
+    let headUserId: number | null = null;
+    let roleType: 'Head' | 'Supervisor' | null = null;
+
+    if (mainInstructors.length === 1) {
+      // 주강사 1명 → 책임강사(Supervisor)
+      headUserId = mainInstructors[0].userId;
+      roleType = 'Supervisor';
+    } else if (mainInstructors.length >= 2) {
+      // 주강사 2명+ → 팀장 우선, 없으면 연차 높은 사람(generation 낮은 값)
+      mainInstructors.sort((a, b) => {
+        if (a.isTeamLeader !== b.isTeamLeader) {
+          return a.isTeamLeader ? -1 : 1;
+        }
+        return (a.generation ?? 999) - (b.generation ?? 999);
+      });
+      headUserId = mainInstructors[0].userId;
+      roleType = 'Head';
+    }
+
+    // 4. 모든 배정의 role 업데이트
+    // 먼저 모두 null로 초기화
+    await prisma.instructorUnitAssignment.updateMany({
+      where: {
+        UnitSchedule: { unitId },
+        state: { in: ['Pending', 'Accepted'] },
+      },
+      data: { role: null },
+    });
+
+    // Head/Supervisor 대상자만 role 설정
+    let updated = 0;
+    if (headUserId && roleType) {
+      const result = await prisma.instructorUnitAssignment.updateMany({
+        where: {
+          UnitSchedule: { unitId },
+          userId: headUserId,
+          state: { in: ['Pending', 'Accepted'] },
+        },
+        data: { role: roleType },
+      });
+      updated = result.count;
+    }
+
+    return { updated };
   }
 }
 

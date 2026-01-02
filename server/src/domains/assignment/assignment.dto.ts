@@ -281,22 +281,20 @@ class AssignmentDTO {
             }
           }
 
-          // 5. 미발송 인원 수 계산 (state === null)
-          // 5. 미발송 인원 수 계산 (messageSent === false)
-          const unsentCount = trainingLocations.reduce((total, loc) => {
-            return (
-              total +
-              loc.dates.reduce(
-                (dateTotal: number, d: { instructors: { messageSent: boolean }[] }) => {
-                  return (
-                    dateTotal +
-                    d.instructors.filter((i: { messageSent: boolean }) => !i.messageSent).length
-                  );
-                },
-                0,
-              )
+          // 5. 미발송 인원 수 계산 (유니크 강사 기준, messageSent === false)
+          const unsentInstructorIds = new Set<number>();
+          trainingLocations.forEach((loc) => {
+            loc.dates.forEach(
+              (d: { instructors: { instructorId: number; messageSent: boolean }[] }) => {
+                d.instructors.forEach((i) => {
+                  if (!i.messageSent) {
+                    unsentInstructorIds.add(i.instructorId);
+                  }
+                });
+              },
             );
-          }, 0);
+          });
+          const unsentCount = unsentInstructorIds.size;
 
           return {
             unitId: unit.id,

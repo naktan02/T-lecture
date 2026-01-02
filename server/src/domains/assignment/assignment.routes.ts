@@ -56,6 +56,9 @@ router.patch(
 // 관리자: 일괄 배정 업데이트 (모달 저장)
 router.post('/batch-update', auth, requireRole('ADMIN'), assignmentController.batchUpdate);
 
+// 관리자: 역할 변경 (총괄/책임강사)
+router.post('/update-role', auth, requireRole('ADMIN'), assignmentController.updateRole);
+
 export default router;
 
 // CommonJS 호환

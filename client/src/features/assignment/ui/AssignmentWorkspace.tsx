@@ -465,12 +465,12 @@ export const AssignmentWorkspace: React.FC = () => {
                         </span>
                         <span
                           className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                            (group as any).unsentCount > 0
-                              ? 'text-blue-600 bg-blue-100'
-                              : 'text-gray-500 bg-gray-100'
+                            (group as any).confirmedMessageSent
+                              ? 'text-green-600 bg-green-100'
+                              : 'text-blue-600 bg-blue-100'
                           }`}
                         >
-                          🔵 미발송 {(group as any).unsentCount ?? 0}
+                          {(group as any).confirmedMessageSent ? '📩 발송완료' : '📨 미발송'}
                         </span>
                       </div>
                     </div>

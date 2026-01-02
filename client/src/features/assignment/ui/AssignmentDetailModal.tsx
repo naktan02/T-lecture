@@ -62,6 +62,7 @@ interface TrainingLocation {
 }
 
 interface AssignmentGroup {
+  unitId: number;
   unitName: string;
   region: string;
   period: string;
@@ -234,7 +235,11 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
     remove: [],
     block: [],
     unblock: [],
+    roleChanges: [],
   });
+
+  // 역할 선택 드롭다운 표시 상태
+  const [showRoleSelector, setShowRoleSelector] = useState<number | null>(null);
 
   // 변경사항 있는지 확인
   const hasChanges = useMemo(() => {
@@ -242,7 +247,8 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
       changeSet.add.length > 0 ||
       changeSet.remove.length > 0 ||
       changeSet.block.length > 0 ||
-      changeSet.unblock.length > 0
+      changeSet.unblock.length > 0 ||
+      changeSet.roleChanges.length > 0
     );
   }, [changeSet]);
 
@@ -256,11 +262,13 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
     [changeSet.remove],
   );
 
-  // 로컬에서 추가된 강사 목록 가져오기
+  // 로컬에서 추가된 강사 목록 가져오기 (trainingLocationId도 확인)
   const getLocallyAddedInstructors = useCallback(
-    (unitScheduleId: number) => {
+    (unitScheduleId: number, trainingLocationId: number) => {
       return changeSet.add
-        .filter((a) => a.unitScheduleId === unitScheduleId)
+        .filter(
+          (a) => a.unitScheduleId === unitScheduleId && a.trainingLocationId === trainingLocationId,
+        )
         .map((a) => {
           const instructor = availableInstructors.find((i) => i.id === a.instructorId);
           return instructor
@@ -280,6 +288,19 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
       }[];
     },
     [changeSet.add, availableInstructors],
+  );
+
+  // 로컬에서 블록된 스케줄인지 확인
+  const isBlockedLocally = useCallback(
+    (unitScheduleId: number) => {
+      // 서버에서 블록된 상태인데 로컬에서 언블록 되었으면 -> 블록 아님
+      if (changeSet.unblock.includes(unitScheduleId)) return false;
+      // 로컬에서 블록 추가되었으면 -> 블록
+      if (changeSet.block.includes(unitScheduleId)) return true;
+      // 기본값은 null (서버 데이터 사용)
+      return null;
+    },
+    [changeSet.block, changeSet.unblock],
   );
 
   // 해당 스케줄에 이미 배정된 강사 ID 목록 계산
@@ -343,14 +364,71 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
     }));
   }, []);
 
+  // 역할 변경 (로컬)
+  const handleRoleChange = useCallback(
+    (instructorId: number, role: 'Head' | 'Supervisor' | null) => {
+      setChangeSet((prev) => {
+        // 같은 부대에 대한 기존 roleChange 제거 후 새로 추가
+        const filtered = prev.roleChanges.filter((rc) => rc.unitId !== group.unitId);
+        return {
+          ...prev,
+          roleChanges: [...filtered, { unitId: group.unitId, instructorId, role }],
+        };
+      });
+      setShowRoleSelector(null);
+    },
+    [group.unitId],
+  );
+
+  // 현재 역할 가져오기 (로컬 변경 우선)
+  const getCurrentRole = useCallback(
+    (instructorId: number, serverRole: string | null | undefined): string | null => {
+      const localChange = changeSet.roleChanges.find((rc) => rc.unitId === group.unitId);
+      if (localChange) {
+        return localChange.instructorId === instructorId ? localChange.role : null;
+      }
+      return serverRole ?? null;
+    },
+    [changeSet.roleChanges, group.unitId],
+  );
+
+  // 모든 배정 강사 목록 (중복 제거)
+  const allAssignedInstructors = useMemo(() => {
+    const map = new Map<
+      number,
+      { instructorId: number; name: string; team: string; role?: string | null }
+    >();
+    group.trainingLocations.forEach((loc) => {
+      loc.dates.forEach((d) => {
+        d.instructors.forEach((inst) => {
+          if (!isRemovedLocally(d.unitScheduleId, inst.instructorId)) {
+            if (!map.has(inst.instructorId)) {
+              map.set(inst.instructorId, {
+                instructorId: inst.instructorId,
+                name: inst.name,
+                team: inst.team,
+                role: inst.role,
+              });
+            }
+          }
+        });
+      });
+    });
+    return Array.from(map.values());
+  }, [group.trainingLocations, isRemovedLocally]);
+
   // 저장 처리
   const handleSave = async () => {
     if (!hasChanges) return;
     setIsSaving(true);
     try {
       const result = await batchUpdateAssignmentsApi(changeSet);
-      showSuccess(`저장 완료: 추가 ${result.added}, 삭제 ${result.removed}`);
-      setChangeSet({ add: [], remove: [], block: [], unblock: [] });
+      const msgs: string[] = [];
+      if (result.added > 0) msgs.push(`추가 ${result.added}`);
+      if (result.removed > 0) msgs.push(`삭제 ${result.removed}`);
+      if (result.rolesUpdated > 0) msgs.push(`역할 변경 ${result.rolesUpdated}`);
+      showSuccess(`저장 완료: ${msgs.join(', ')}`);
+      setChangeSet({ add: [], remove: [], block: [], unblock: [], roleChanges: [] });
       if (onSaveComplete) await onSaveComplete();
     } catch (e) {
       showError((e as Error).message);
@@ -435,21 +513,94 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                   <span className="text-lg">🏫</span>
                   <h3 className="font-bold text-indigo-900">{loc.name}</h3>
                 </div>
-                {/* 총괄/책임강사 표시 */}
-                {(() => {
-                  const headInstructor = loc.dates
-                    .flatMap((d) => d.instructors)
-                    .find((i) => i.role === 'Head' || i.role === 'Supervisor');
-                  if (headInstructor) {
-                    return (
-                      <div className="mt-1 text-sm text-gray-600">
-                        {headInstructor.role === 'Head' ? '👑 총괄강사' : '📋 책임강사'}:{' '}
-                        <span className="font-semibold text-gray-800">{headInstructor.name}</span>
+                {/* 총괄/책임강사 클릭 가능 영역 */}
+                <div className="relative mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowRoleSelector(showRoleSelector === loc.id ? null : loc.id)}
+                    className="text-sm text-gray-600 hover:bg-indigo-100 px-2 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    {(() => {
+                      // 로컬 변경 우선 확인
+                      const localChange = changeSet.roleChanges.find(
+                        (rc) => rc.unitId === group.unitId,
+                      );
+                      if (localChange) {
+                        const changedInst = allAssignedInstructors.find(
+                          (i) => i.instructorId === localChange.instructorId,
+                        );
+                        if (changedInst && localChange.role) {
+                          return (
+                            <>
+                              {localChange.role === 'Head' ? '👑 총괄강사' : '📋 책임강사'}:
+                              <span className="font-semibold text-gray-800">
+                                {changedInst.name}
+                              </span>
+                              <span className="text-[10px] text-indigo-600 bg-indigo-100 px-1 rounded">
+                                변경됨
+                              </span>
+                            </>
+                          );
+                        }
+                        return <span className="text-gray-400">역할 없음 (변경 대기)</span>;
+                      }
+                      // 서버 데이터 확인
+                      const headInstructor = loc.dates
+                        .flatMap((d) => d.instructors)
+                        .find((i) => i.role === 'Head' || i.role === 'Supervisor');
+                      if (headInstructor) {
+                        return (
+                          <>
+                            {headInstructor.role === 'Head' ? '👑 총괄강사' : '📋 책임강사'}:
+                            <span className="font-semibold text-gray-800">
+                              {headInstructor.name}
+                            </span>
+                          </>
+                        );
+                      }
+                      return <span className="text-gray-400">클릭하여 역할 지정</span>;
+                    })()}
+                    <span className="text-gray-400 text-xs">▼</span>
+                  </button>
+
+                  {/* 드롭다운 목록 - 이름만 표시, 클릭 시 총괄강사로 지정 */}
+                  {showRoleSelector === loc.id && (
+                    <div className="absolute z-50 top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[180px]">
+                      <div className="text-xs text-gray-500 px-3 py-1 border-b border-gray-100">
+                        총괄강사로 지정할 강사 선택
                       </div>
-                    );
-                  }
-                  return null;
-                })()}
+                      {allAssignedInstructors.map((inst) => {
+                        const isCurrentHead =
+                          getCurrentRole(inst.instructorId, inst.role) === 'Head';
+                        return (
+                          <button
+                            key={inst.instructorId}
+                            type="button"
+                            onClick={() => handleRoleChange(inst.instructorId, 'Head')}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 transition-colors flex items-center justify-between ${
+                              isCurrentHead ? 'bg-amber-50' : ''
+                            }`}
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="font-medium text-gray-800">{inst.name}</span>
+                              <span className="text-[10px] text-gray-500">{inst.team}</span>
+                            </span>
+                            {isCurrentHead && (
+                              <span className="text-[10px] bg-amber-500 text-white px-1.5 py-0.5 rounded">
+                                현재
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                      {allAssignedInstructors.length === 0 && (
+                        <div className="text-xs text-gray-400 px-3 py-2">
+                          배정된 강사가 없습니다
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="divide-y divide-gray-100">
@@ -559,7 +710,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                         ))}
 
                       {/* 로컬에서 추가된 강사 표시 (하이라이트 스타일) */}
-                      {getLocallyAddedInstructors(dateInfo.unitScheduleId).map((inst) => (
+                      {getLocallyAddedInstructors(dateInfo.unitScheduleId, loc.id).map((inst) => (
                         <div
                           key={`local-add-${inst.instructorId}`}
                           className="group relative flex items-center gap-2 border-2 border-dashed border-indigo-400 bg-indigo-50 px-3 py-1.5 rounded-lg shadow-sm"
@@ -597,37 +748,55 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                       ))}
 
                       {/* 배정 막기 표시 또는 + 버튼 */}
-                      {(dateInfo as { isBlocked?: boolean }).isBlocked ? (
-                        <div
-                          className="group relative w-8 h-8 rounded-lg bg-red-100 border-2 border-red-300 text-red-500 flex items-center justify-center"
-                          title="배정이 막힌 슬롯"
-                        >
-                          🚫
-                          {/* X 버튼 (hover 시 나타남) */}
+                      {(() => {
+                        // 로컬 상태 우선 확인
+                        const localBlockState = isBlockedLocally(dateInfo.unitScheduleId);
+                        const isActuallyBlocked =
+                          localBlockState !== null
+                            ? localBlockState
+                            : (dateInfo as { isBlocked?: boolean }).isBlocked;
+
+                        if (isActuallyBlocked) {
+                          const isLocalBlock = changeSet.block.includes(dateInfo.unitScheduleId);
+                          return (
+                            <div
+                              className={`group relative w-8 h-8 rounded-lg flex items-center justify-center ${
+                                isLocalBlock
+                                  ? 'bg-orange-100 border-2 border-dashed border-orange-400 text-orange-500'
+                                  : 'bg-red-100 border-2 border-red-300 text-red-500'
+                              }`}
+                              title={isLocalBlock ? '배정 막기 (저장 대기)' : '배정이 막힌 슬롯'}
+                            >
+                              🚫
+                              {/* X 버튼 (hover 시 나타남) */}
+                              <button
+                                onClick={() => handleUnblockLocal(dateInfo.unitScheduleId)}
+                                className="absolute -top-2 -right-2 bg-gray-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-gray-600"
+                                title="배정 막기 해제 (저장 후 적용)"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          );
+                        }
+
+                        return (
                           <button
-                            onClick={() => handleUnblockLocal(dateInfo.unitScheduleId)}
-                            className="absolute -top-2 -right-2 bg-gray-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-gray-600"
-                            title="배정 막기 해제 (저장 후 적용)"
+                            onClick={() =>
+                              setAddPopupTarget({
+                                unitScheduleId: dateInfo.unitScheduleId,
+                                date: dateInfo.date,
+                                locationName: loc.name,
+                                trainingLocationId: loc.id,
+                              })
+                            }
+                            className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 text-gray-400 flex items-center justify-center hover:border-indigo-400 hover:text-indigo-500 hover:bg-indigo-50 transition-all"
+                            title="강사 추가"
                           >
-                            ✕
+                            +
                           </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() =>
-                            setAddPopupTarget({
-                              unitScheduleId: dateInfo.unitScheduleId,
-                              date: dateInfo.date,
-                              locationName: loc.name,
-                              trainingLocationId: loc.id,
-                            })
-                          }
-                          className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 text-gray-400 flex items-center justify-center hover:border-indigo-400 hover:text-indigo-500 hover:bg-indigo-50 transition-all"
-                          title="강사 추가"
-                        >
-                          +
-                        </button>
-                      )}
+                        );
+                      })()}
                     </div>
                   </div>
                 ))}
@@ -641,8 +810,9 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
           <div className="text-sm text-gray-500">
             {hasChanges && (
               <span className="text-indigo-600 font-medium">
-                📝 변경 대기: 추가 {changeSet.add.length}, 삭제 {changeSet.remove.length}, 블록{' '}
-                {changeSet.block.length}
+                📝 변경 대기: 추가 {changeSet.add.length}, 삭제 {changeSet.remove.length}
+                {changeSet.block.length > 0 && `, 블록 ${changeSet.block.length}`}
+                {changeSet.roleChanges.length > 0 && `, 역할 ${changeSet.roleChanges.length}`}
               </span>
             )}
           </div>

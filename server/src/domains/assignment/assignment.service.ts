@@ -114,6 +114,13 @@ class AssignmentService {
     }
 
     const summary = await assignmentRepository.createAssignmentsBulk(matchResults);
+
+    // 배정된 모든 부대에 대해 역할(Head/Supervisor) 재계산
+    const affectedUnitIds = new Set(units.map((u) => u.id));
+    for (const unitId of affectedUnitIds) {
+      await assignmentRepository.recalculateRolesForUnit(unitId);
+    }
+
     const updatedUnits = await assignmentRepository.findScheduleCandidates(start, end);
     return {
       summary,
@@ -350,6 +357,12 @@ class AssignmentService {
       await assignmentRepository.updateClassificationBySchedule(unitScheduleId, 'Temporary');
     }
 
+    // 역할(Head/Supervisor) 재계산 - 취소된 사람이 Head/Supervisor였다면 다음 사람에게 승계
+    const unitId = await assignmentRepository.getUnitIdByScheduleId(unitScheduleId);
+    if (unitId) {
+      await assignmentRepository.recalculateRolesForUnit(unitId);
+    }
+
     return {
       message:
         newState === 'Rejected'
@@ -399,6 +412,20 @@ class AssignmentService {
   }
 
   /**
+   * 역할 변경 (관리자용)
+   * unitId: 부대 ID
+   * instructorId: 역할을 부여받을 강사 ID
+   * role: 'Head' | 'Supervisor' | null
+   */
+  async updateRoleForUnit(
+    unitId: number,
+    instructorId: number,
+    role: 'Head' | 'Supervisor' | null,
+  ) {
+    return await assignmentRepository.updateRoleForUnit(unitId, instructorId, role);
+  }
+
+  /**
    * 내 배정 목록 조회 (강사용 - 메시지함에서 사용)
    */
   async getMyAssignments(userId: number) {
@@ -407,14 +434,46 @@ class AssignmentService {
 
   /**
    * 일괄 배정 업데이트 (트랜잭션)
+   * 변경 후 역할 재계산 자동 실행 (roleChanges가 없는 경우만)
    */
   async batchUpdateAssignments(changes: {
     add: Array<{ unitScheduleId: number; instructorId: number; trainingLocationId: number | null }>;
     remove: Array<{ unitScheduleId: number; instructorId: number }>;
     block: number[];
     unblock: number[];
+    roleChanges?: Array<{
+      unitId: number;
+      instructorId: number;
+      role: 'Head' | 'Supervisor' | null;
+    }>;
   }) {
-    return await assignmentRepository.batchUpdateAssignments(changes);
+    const result = await assignmentRepository.batchUpdateAssignments(changes);
+
+    // roleChanges가 있으면 수동 역할 변경이므로 자동 재계산 스킵
+    // roleChanges가 없으면 기존처럼 자동 역할 재계산 실행
+    if (!changes.roleChanges || changes.roleChanges.length === 0) {
+      // 변경된 스케줄들의 unitId 수집 (중복 제거)
+      const scheduleIds = [
+        ...changes.add.map((a) => a.unitScheduleId),
+        ...changes.remove.map((r) => r.unitScheduleId),
+      ];
+
+      if (scheduleIds.length > 0) {
+        // 스케줄 ID -> unitId 조회
+        const unitIds = new Set<number>();
+        for (const scheduleId of scheduleIds) {
+          const unitId = await assignmentRepository.getUnitIdByScheduleId(scheduleId);
+          if (unitId) unitIds.add(unitId);
+        }
+
+        // 각 부대에 대해 역할 재계산
+        for (const unitId of unitIds) {
+          await assignmentRepository.recalculateRolesForUnit(unitId);
+        }
+      }
+    }
+
+    return result;
   }
 }
 

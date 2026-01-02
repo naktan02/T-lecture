@@ -89,17 +89,16 @@ class MessageRepository {
   }
 
   // 확정 메시지 발송 대상 조회 (부대 단위 재발송 지원)
-  // 1. 메시지 미발송자가 있는 부대 찾기
+  // 1. 메시지 미발송자가 있는 부대 찾기 (Accepted 상태 기준)
   // 2. 해당 부대의 기존 Confirmed 메시지 연결 삭제
   // 3. 해당 부대의 모든 Accepted 강사 반환
   async findTargetsForConfirmedMessage() {
-    // 1단계: 미발송자가 있는 부대의 unitId 목록 조회
+    // 1단계: Accepted 상태이면서 Confirmed 메시지 미발송인 배정의 unitId 목록 조회
     const unsentAssignments = await prisma.instructorUnitAssignment.findMany({
       where: {
-        state: 'Accepted',
-        classification: 'Confirmed',
+        state: 'Accepted', // 수락 상태인 배정
         messageAssignments: {
-          none: { message: { type: 'Confirmed' } },
+          none: { message: { type: 'Confirmed' } }, // Confirmed 메시지 미발송
         },
       },
       select: {
@@ -118,7 +117,6 @@ class MessageRepository {
       where: {
         assignment: {
           state: 'Accepted',
-          classification: 'Confirmed',
           UnitSchedule: { unitId: { in: unitIdsNeedingResend } },
         },
         message: { type: 'Confirmed' },
@@ -129,7 +127,6 @@ class MessageRepository {
     return await prisma.instructorUnitAssignment.findMany({
       where: {
         state: 'Accepted',
-        classification: 'Confirmed',
         UnitSchedule: { unitId: { in: unitIdsNeedingResend } },
       },
       include: {

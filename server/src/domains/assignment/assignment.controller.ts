@@ -221,17 +221,45 @@ export const batchUpdate = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('changes 객체가 필요합니다.', 400, 'VALIDATION_ERROR');
   }
 
-  const { add = [], remove = [], block = [], unblock = [] } = changes;
+  const { add = [], remove = [], block = [], unblock = [], roleChanges = [] } = changes;
 
   const result = await assignmentService.batchUpdateAssignments({
     add,
     remove,
     block,
     unblock,
+    roleChanges,
   });
 
   res.status(200).json({
     message: '일괄 저장 완료',
+    ...result,
+  });
+});
+
+// [역할 변경] 관리자가 수동으로 총괄/책임강사 역할 변경
+export const updateRole = asyncHandler(async (req: Request, res: Response) => {
+  const { unitId, instructorId, role } = req.body;
+
+  if (!unitId || instructorId === undefined) {
+    throw new AppError('unitId와 instructorId가 필요합니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  // role 유효성 검사
+  if (role && role !== 'Head' && role !== 'Supervisor') {
+    throw new AppError('role은 Head, Supervisor, 또는 null이어야 합니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  const result = await assignmentService.updateRoleForUnit(
+    Number(unitId),
+    Number(instructorId),
+    role || null,
+  );
+
+  res.status(200).json({
+    message: role
+      ? `역할이 ${role === 'Head' ? '총괄강사' : '책임강사'}로 변경되었습니다.`
+      : '역할이 해제되었습니다.',
     ...result,
   });
 });
@@ -250,4 +278,5 @@ module.exports = {
   getMyAssignments,
   bulkBlockUnit,
   batchUpdate,
+  updateRole,
 };

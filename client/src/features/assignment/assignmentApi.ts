@@ -332,6 +332,7 @@ export interface AssignmentChangeSet {
   remove: Array<{ unitScheduleId: number; instructorId: number }>;
   block: number[];
   unblock: number[];
+  roleChanges: Array<{ unitId: number; instructorId: number; role: 'Head' | 'Supervisor' | null }>;
 }
 
 export interface BatchUpdateResult {
@@ -340,6 +341,7 @@ export interface BatchUpdateResult {
   removed: number;
   blocked: number;
   unblocked: number;
+  rolesUpdated: number;
 }
 
 /**

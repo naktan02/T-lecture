@@ -252,8 +252,9 @@ class MessageService {
         return days[date.getDay()];
       };
 
-      const schedulesList = (unit.schedules || []).map(
-        (schedule: { date: Date; assignments?: { User?: { name?: string } }[] }) => {
+      const schedulesList = (unit.schedules || [])
+        .filter((schedule: { assignments?: unknown[] }) => (schedule.assignments || []).length > 0) // 배정이 있는 일정만
+        .map((schedule: { date: Date; assignments?: { User?: { name?: string } }[] }) => {
           const scheduleDate = new Date(schedule.date);
           const dateStr = scheduleDate.toISOString().split('T')[0];
           const dayOfWeek = getDayOfWeek(scheduleDate);
@@ -266,8 +267,7 @@ class MessageService {
             dayOfWeek,
             instructors: instructorNames || '-',
           };
-        },
-      );
+        });
 
       // 템플릿 치환 (포맷 변수 포함) - JSONB body를 문자열로 변환
       const targetBodyStr = tokensToTemplate(

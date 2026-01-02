@@ -121,6 +121,9 @@ export function buildVariables(
     .filter(Boolean)
     .join(', ');
 
+  // 첫 번째 교육장소 정보 (단수 변수용)
+  const firstLocation = unit.trainingLocations?.[0];
+
   return {
     // Legacy 호환
     userName: user.name || '',
@@ -146,6 +149,17 @@ export function buildVariables(
     'unit.endDate': unitEndDate,
     'unit.startTime': formatTime(unit.workStartTime),
     'unit.endTime': formatTime(unit.workEndTime),
+
+    // location.* 첫 번째 교육장소 정보 (단수형)
+    'location.placeName': firstLocation?.originalPlace || '',
+    'location.changedPlace': firstLocation?.changedPlace || '',
+    'location.actualCount': String(firstLocation?.actualCount ?? 0),
+    'location.hasInstructorLounge': firstLocation?.hasInstructorLounge ? 'O' : 'X',
+    'location.hasWomenRestroom': firstLocation?.hasWomenRestroom ? 'O' : 'X',
+    'location.hasCateredMeals': firstLocation?.hasCateredMeals ? 'O' : 'X',
+    'location.hasHallLodging': firstLocation?.hasHallLodging ? 'O' : 'X',
+    'location.allowsPhoneBeforeAfter': firstLocation?.allowsPhoneBeforeAfter ? 'O' : 'X',
+    'location.note': firstLocation?.note || '',
   };
 }
 
@@ -193,10 +207,46 @@ export function buildLocationsFormat(
     hasWomenRestroom: loc.hasWomenRestroom ? 'O' : 'X',
     hasCateredMeals: loc.hasCateredMeals ? 'O' : 'X',
     hasHallLodging: loc.hasHallLodging ? 'O' : 'X',
-    allowsPhoneBeforeAfter: String(loc.allowsPhoneBeforeAfter ?? ''),
+    allowsPhoneBeforeAfter: loc.allowsPhoneBeforeAfter ? 'O' : 'X',
     plannedCount: String(loc.plannedCount ?? 0),
     note: String(loc.note ?? ''),
   }));
+}
+
+// 강사 목록 데이터 타입
+interface InstructorForFormat {
+  name?: string | null;
+  phone?: string | null;
+  category?: string | null;
+  virtues?: Array<{ virtue?: { name?: string | null } }>;
+}
+
+/**
+ * instructors 포맷 변수 빌드
+ * 강사 목록 (index, name, category, phone, virtues)
+ */
+export function buildInstructorsFormat(
+  instructors: InstructorForFormat[],
+): Array<Record<string, string>> {
+  return instructors.map((inst, idx) => {
+    // 카테고리 한글 변환
+    let category = inst.category || '';
+    category = categoryKorean[category] || category.replace('강사', '');
+
+    // 가능과목
+    const virtues = (inst.virtues || [])
+      .map((v) => v.virtue?.name || '')
+      .filter(Boolean)
+      .join(', ');
+
+    return {
+      index: String(idx + 1),
+      name: inst.name || '',
+      category: category,
+      phone: inst.phone || '',
+      virtues: virtues || '-',
+    };
+  });
 }
 
 /**
