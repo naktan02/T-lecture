@@ -9,6 +9,7 @@ import v1Router from './api/v1';
 import errorHandler from './common/middlewares/errorHandler';
 import logger from './config/logger';
 import './jobs/distanceBatch.job';
+import './jobs/statsBatch.job';
 
 const app = express();
 

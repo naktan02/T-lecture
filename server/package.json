@@ -12,6 +12,8 @@
     "seed": "tsx prisma/seed.ts"
   },
   "scripts": {
+    "seed:users": "tsx prisma/seedUsers.ts",
+    "seed:dashboard": "tsx prisma/seedDashboard.ts",
     "dev": "tsx watch src/server.ts",
     "build": "prisma generate && tsc",
     "start": "node dist/server.js",
