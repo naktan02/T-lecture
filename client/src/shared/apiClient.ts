@@ -24,7 +24,7 @@ export interface ApiClientOptions extends RequestInit {
 const readErrorMessage = async (response: Response): Promise<string> => {
   const ct = response.headers.get('content-type') || '';
   if (ct.includes('application/json')) {
-    const errorData = await response.json().catch(() => ({} as any));
+    const errorData = await response.json().catch(() => ({}) as any);
     return errorData.error || errorData.message || `Request failed: ${response.status}`;
   }
   const text = await response.text().catch(() => '');
@@ -61,7 +61,9 @@ export const apiClient = async (url: string, options: ApiClientOptions = {}): Pr
           failedQueue.push({
             resolve: (newToken: string) => {
               headers['Authorization'] = `Bearer ${newToken}`;
-              fetch(`${API_BASE_URL}${url}`, { ...config, headers }).then(resolve).catch(reject);
+              fetch(`${API_BASE_URL}${url}`, { ...config, headers })
+                .then(resolve)
+                .catch(reject);
             },
             reject,
           });
