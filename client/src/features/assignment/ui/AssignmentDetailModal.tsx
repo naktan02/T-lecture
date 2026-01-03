@@ -66,6 +66,7 @@ interface DateInfo {
 interface TrainingLocation {
   id: number;
   name: string;
+  actualCount: number;
   dates: DateInfo[];
 }
 
