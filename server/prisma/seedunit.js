@@ -14,6 +14,14 @@ async function main() {
     await prisma.messageReceipt.deleteMany();
     await prisma.message.deleteMany();
 
+    // 공지 관련 테이블 삭제
+    await prisma.noticeReceipt.deleteMany();
+    await prisma.notice.deleteMany();
+
+    // 패널티/우선배정 삭제
+    await prisma.instructorPenalty.deleteMany();
+    await prisma.instructorPriorityCredit.deleteMany();
+
     await prisma.instructorUnitAssignment.deleteMany();
     await prisma.instructorUnitDistance.deleteMany();
     await prisma.instructorAvailability.deleteMany();
@@ -454,6 +462,43 @@ async function main() {
   console.log(`✅ Created ${distanceData.length} distance records\n`);
 
   // =========================================
+  // 패널티 테스트 데이터 (3명)
+  // =========================================
+  console.log('⚠️ Creating penalty test data...');
+
+  // 기존 패널티 삭제
+  await prisma.instructorPenalty.deleteMany();
+
+  const penaltyData = [
+    { userId: instructors[2].userId, count: 2, expiresAt: new Date('2026-01-20') }, // 강사_3
+    { userId: instructors[5].userId, count: 1, expiresAt: new Date('2026-01-25') }, // 강사_6
+    { userId: instructors[9].userId, count: 3, expiresAt: new Date('2026-02-01') }, // 강사_10
+  ];
+
+  for (const p of penaltyData) {
+    await prisma.instructorPenalty.create({ data: p });
+  }
+  console.log(`✅ Created ${penaltyData.length} penalty records\n`);
+
+  // =========================================
+  // 우선배정 크레딧 테스트 데이터 (2명)
+  // =========================================
+  console.log('✨ Creating priority credit test data...');
+
+  // 기존 크레딧 삭제
+  await prisma.instructorPriorityCredit.deleteMany();
+
+  const creditData = [
+    { instructorId: instructors[0].userId, credits: 2 }, // 강사_1: 2회 우선배정
+    { instructorId: instructors[7].userId, credits: 1 }, // 강사_8: 1회 우선배정
+  ];
+
+  for (const c of creditData) {
+    await prisma.instructorPriorityCredit.create({ data: c });
+  }
+  console.log(`✅ Created ${creditData.length} priority credit records\n`);
+
+  // =========================================
   // 요약
   // =========================================
   console.log('🏁 Seeding finished!\n');
@@ -463,6 +508,8 @@ async function main() {
   console.log(`   Instructors: ${instructors.length} (5 Main, 5 Co, 10 Assistant, 5 Practicum)`);
   console.log(`   Units: ${units.length} (12월 5개, 1월 5개)`);
   console.log(`   Distance records: ${distanceData.length}`);
+  console.log(`   Penalties: ${penaltyData.length} (강사_3, 강사_6, 강사_10)`);
+  console.log(`   Priority Credits: ${creditData.length} (강사_1: 2회, 강사_8: 1회)`);
   console.log('');
   console.log('📅 강사 가용 기간:');
   console.log('   - 강사 1-5: 12/15~12/25');

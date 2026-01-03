@@ -4,7 +4,7 @@
 export { Button } from './Button';
 export { InputField } from './InputField';
 export { SelectField } from './SelectField';
-export { CommonHeader } from './CommonHeader';
+export { CommonHeader, type NavLink } from './CommonHeader';
 export { ContentWrapper } from './ContentWrapper';
 export { DetailModal } from './DetailModal';
 export { default as ErrorBoundary } from './ErrorBoundary';

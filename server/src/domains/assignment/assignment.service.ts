@@ -103,17 +103,17 @@ class AssignmentService {
 
     const { assignments: matchResults } = matchResult;
 
-    // DEBUG: 엔진 결과 확인
-    console.log(`[DEBUG Engine] matchResults count: ${matchResults?.length ?? 0}`);
-    if (matchResults && matchResults.length > 0) {
-      console.log(`[DEBUG Engine] First 5 results:`, matchResults.slice(0, 5));
-    }
-
     if (!matchResults || matchResults.length === 0) {
       throw new AppError('배정 가능한 매칭 결과가 없습니다.', 404, 'NO_MATCHES');
     }
 
     const summary = await assignmentRepository.createAssignmentsBulk(matchResults);
+
+    // 배정된 강사의 우선배정 크레딧 소모
+    const assignedInstructorIds = new Set(matchResults.map((m) => m.instructorId));
+    for (const instructorId of assignedInstructorIds) {
+      await this.consumePriorityCredit(instructorId);
+    }
 
     // 배정된 모든 부대에 대해 역할(Head/Supervisor) 재계산
     const affectedUnitIds = new Set(units.map((u) => u.id));
@@ -265,9 +265,70 @@ class AssignmentService {
       await this.checkAndAutoConfirm(Number(unitScheduleId));
     }
 
+    // 거절 시: 패널티 추가
+    if (newState === 'Rejected') {
+      const penaltyDays = await this.getSystemConfigNumber('REJECTION_PENALTY_DAYS', 15);
+      await this.addPenaltyToInstructor(instructorId, penaltyDays);
+    }
+
     return {
       message: response === 'ACCEPT' ? '배정을 수락했습니다.' : '배정을 거절했습니다.',
     };
+  }
+
+  /**
+   * 강사에게 패널티 추가 (만료일 연장)
+   */
+  private async addPenaltyToInstructor(instructorId: number, days: number) {
+    const now = new Date();
+    const existing = await prisma.instructorPenalty.findUnique({
+      where: { userId: instructorId },
+    });
+
+    if (existing) {
+      const baseDate = existing.expiresAt > now ? existing.expiresAt : now;
+      const newExpiresAt = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
+
+      await prisma.instructorPenalty.update({
+        where: { userId: instructorId },
+        data: {
+          count: { increment: 1 },
+          expiresAt: newExpiresAt,
+        },
+      });
+    } else {
+      await prisma.instructorPenalty.create({
+        data: {
+          userId: instructorId,
+          count: 1,
+          expiresAt: new Date(now.getTime() + days * 24 * 60 * 60 * 1000),
+        },
+      });
+    }
+  }
+
+  /**
+   * 우선배정 크레딧 소모 (1 감소, 0이면 삭제)
+   */
+  private async consumePriorityCredit(instructorId: number) {
+    const credit = await prisma.instructorPriorityCredit.findUnique({
+      where: { instructorId },
+    });
+
+    if (!credit) return; // 크레딧 없으면 무시
+
+    if (credit.credits <= 1) {
+      // 크레딧 1개면 레코드 삭제
+      await prisma.instructorPriorityCredit.delete({
+        where: { instructorId },
+      });
+    } else {
+      // 크레딧 감소
+      await prisma.instructorPriorityCredit.update({
+        where: { instructorId },
+        data: { credits: { decrement: 1 } },
+      });
+    }
   }
 
   /**
@@ -358,6 +419,12 @@ class AssignmentService {
     const newState = assignment.state === 'Accepted' ? 'Rejected' : 'Canceled';
 
     await assignmentRepository.updateStatusByKey(targetInstructorId, unitScheduleId, newState);
+
+    // Rejected로 변경되면 패널티 추가
+    if (newState === 'Rejected') {
+      const penaltyDays = await this.getSystemConfigNumber('REJECTION_PENALTY_DAYS', 15);
+      await this.addPenaltyToInstructor(targetInstructorId, penaltyDays);
+    }
 
     // 확정에서 인원이 삭제되면 해당 스케줄의 배정들을 임시로 복귀
     if (wasConfirmed) {
