@@ -64,9 +64,9 @@ export interface AssignmentRaw {
       category?: string | null;
     } | null;
   };
-  // 메시지 발송 확인용
-  messageAssignments?: Array<{
-    message: { type: string | null } | null;
+  // 발송 확인용
+  dispatchAssignments?: Array<{
+    dispatch: { type: string | null } | null;
   }>;
 }
 

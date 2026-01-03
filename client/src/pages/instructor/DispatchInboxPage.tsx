@@ -1,10 +1,10 @@
-// client/src/pages/instructor/MessageInboxPage.tsx
-import { MessageInbox } from '../../features/message/ui/MessageInbox';
+// client/src/pages/instructor/DispatchInboxPage.tsx
+import { DispatchInbox } from '../../features/dispatch/ui/DispatchInbox';
 import { UserHeader } from '../../features/user/ui/headers/UserHeader';
 import { ContentWrapper } from '../../shared/ui';
 import { useAuthGuard } from '../../features/auth/model/useAuthGuard';
 
-const MessageInboxPage: React.FC = () => {
+const DispatchInboxPage: React.FC = () => {
   // 로그인 사용자 전용 페이지
   const { shouldRender } = useAuthGuard('USER');
   if (!shouldRender) return null;
@@ -13,10 +13,10 @@ const MessageInboxPage: React.FC = () => {
     <>
       <UserHeader />
       <ContentWrapper>
-        <MessageInbox />
+        <DispatchInbox />
       </ContentWrapper>
     </>
   );
 };
 
-export default MessageInboxPage;
+export default DispatchInboxPage;

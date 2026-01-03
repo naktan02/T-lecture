@@ -16,7 +16,7 @@ export const UserHeader: React.FC = () => {
   const links: NavLink[] = [
     { label: '내 정보', path: '/user-main/profile' },
     { label: '신청 현황', path: '/user-main/status' },
-    { label: '메시지함', path: '/user-main/messages' }, // 모든 사용자에게 표시
+    { label: '배정 알림', path: '/user-main/dispatches' }, // 모든 사용자에게 표시
   ];
 
   // 강사인 경우에만 일정 관리 및 공지사항/문의사항 메뉴 추가

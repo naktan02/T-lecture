@@ -1,22 +1,22 @@
-// src/features/message/ui/MessageDetailModal.tsx
-import { Message } from '../messageApi';
+// src/features/dispatch/ui/DispatchDetailModal.tsx
+import { Dispatch } from '../dispatchApi';
 import { respondToAssignmentApi } from '../../assignment/assignmentApi';
 import { useState } from 'react';
 import { showSuccess, showError } from '../../../shared/utils/toast';
 
-interface MessageDetailModalProps {
-  message: Message;
+interface DispatchDetailModalProps {
+  dispatch: Dispatch;
   onClose: () => void;
 }
 
-export const MessageDetailModal = ({ message, onClose }: MessageDetailModalProps) => {
+export const DispatchDetailModal = ({ dispatch, onClose }: DispatchDetailModalProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
-  const isTemporary = message.type === 'Temporary';
-  const isConfirmed = message.type === 'Confirmed';
+  const isTemporary = dispatch.type === 'Temporary';
+  const isConfirmed = dispatch.type === 'Confirmed';
 
-  // 배정에 대한 응답 처리 (임시 배정 메시지에서만)
+  // 배정에 대한 응답 처리 (임시 배정에서만)
   const handleRespond = async (response: 'ACCEPT' | 'REJECT') => {
-    if (!message.assignments || message.assignments.length === 0) {
+    if (!dispatch.assignments || dispatch.assignments.length === 0) {
       showError('연결된 배정 정보가 없습니다.');
       return;
     }
@@ -24,7 +24,7 @@ export const MessageDetailModal = ({ message, onClose }: MessageDetailModalProps
     setIsProcessing(true);
     try {
       // 연결된 모든 배정에 대해 응답
-      for (const assignment of message.assignments) {
+      for (const assignment of dispatch.assignments) {
         if (assignment.state === 'Pending') {
           await respondToAssignmentApi(assignment.unitScheduleId, response);
         }
@@ -39,7 +39,7 @@ export const MessageDetailModal = ({ message, onClose }: MessageDetailModalProps
   };
 
   // Pending 상태의 배정이 있는지 확인
-  const hasPendingAssignments = message.assignments?.some((a) => a.state === 'Pending');
+  const hasPendingAssignments = dispatch.assignments?.some((a) => a.state === 'Pending');
 
   return (
     <div
@@ -70,7 +70,7 @@ export const MessageDetailModal = ({ message, onClose }: MessageDetailModalProps
               {isTemporary ? '📩 임시 배정' : '✅ 확정 배정'}
             </span>
             <span className="text-[10px] text-gray-400">
-              {message.receivedAt ? new Date(message.receivedAt).toLocaleString('ko-KR') : ''}
+              {dispatch.receivedAt ? new Date(dispatch.receivedAt).toLocaleString('ko-KR') : ''}
             </span>
           </div>
           <button
@@ -84,7 +84,7 @@ export const MessageDetailModal = ({ message, onClose }: MessageDetailModalProps
         {/* 본문 - 카톡처럼 작은 글씨 */}
         <div className="flex-1 overflow-y-auto px-3 py-2">
           <div className="whitespace-pre-wrap text-gray-700 text-[13px] leading-relaxed">
-            {message.body || '내용이 없습니다.'}
+            {dispatch.body || '내용이 없습니다.'}
           </div>
         </div>
 
@@ -92,7 +92,7 @@ export const MessageDetailModal = ({ message, onClose }: MessageDetailModalProps
         {isTemporary && (
           <div className="px-3 py-2 bg-gray-50 border-t">
             {/* 취소된 배정 */}
-            {message.assignments?.every((a) => ['Canceled', 'Rejected'].includes(a.state)) && (
+            {dispatch.assignments?.every((a) => ['Canceled', 'Rejected'].includes(a.state)) && (
               <div className="text-center py-2">
                 <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-200 text-gray-600 text-sm font-medium rounded-full">
                   🚫 취소된 배정
@@ -103,7 +103,7 @@ export const MessageDetailModal = ({ message, onClose }: MessageDetailModalProps
               </div>
             )}
             {/* 이미 응답한 배정 */}
-            {message.assignments?.every((a) => a.state === 'Accepted') && (
+            {dispatch.assignments?.every((a) => a.state === 'Accepted') && (
               <div className="text-center py-2">
                 <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 text-sm font-medium rounded-full">
                   ✅ 수락 완료

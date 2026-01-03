@@ -45,7 +45,7 @@ model InstructorUnitAssignment {
   UnitSchedule     UnitSchedule      @relation(fields: [unitScheduleId], references: [id])
   TrainingLocation TrainingLocation? @relation(fields: [trainingLocationId], references: [id])
 
-  messageAssignments MessageAssignment[]
+  dispatchAssignments DispatchAssignment[]
 
   @@id([unitScheduleId, userId])
   @@unique([unitScheduleId, userId], name: "assignment_instructor_schedule_unique")

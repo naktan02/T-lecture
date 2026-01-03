@@ -5,7 +5,7 @@ import { useAssignment } from '../model/useAssignment';
 import { Button, MiniCalendar, ConfirmModal } from '../../../shared/ui';
 import { AssignmentDetailModal, AssignmentGroupDetailModal } from './AssignmentDetailModal';
 import { UnassignedUnitDetailModal } from './UnassignedUnitDetailModal';
-import { sendConfirmedMessagesApi } from '../../message/messageApi';
+import { sendConfirmedDispatchesApi } from '../../dispatch/dispatchApi';
 import { showSuccess, showError } from '../../../shared/utils';
 
 // ID 기반 선택 키
@@ -158,11 +158,11 @@ export const AssignmentWorkspace: React.FC = () => {
     setCalendarPopup({ visible: false, x: 0, y: 0, dates: [] });
   };
 
-  // 확정 메시지 발송 핸들러
+  // 확정 발송 핸들러
   const handleSendConfirmedMessages = async () => {
     try {
-      const result = await sendConfirmedMessagesApi();
-      showSuccess(`확정 메시지 ${result.createdCount}건 발송 완료`);
+      const result = await sendConfirmedDispatchesApi();
+      showSuccess(`확정 발송 ${result.createdCount}건 완료`);
       await fetchData();
     } catch (e) {
       showError((e as Error).message);

@@ -1,38 +1,38 @@
-// src/domains/message/message.service.ts
-import messageRepository from './message.repository';
+// src/domains/dispatch/dispatch.service.ts
+import dispatchRepository from './dispatch.repository';
 import { compileTemplate } from '../../common/utils/templateHelper';
 import AppError from '../../common/errors/AppError';
 import metadataRepository from '../metadata/metadata.repository';
 import { PrismaError } from '../../types/common.types';
-import { UserMessageGroup } from '../../types/message.types';
+import { UserDispatchGroup } from '../../types/dispatch.types';
 import { tokensToTemplate, MessageTemplateBody } from '../../types/template.types';
 import {
   buildVariables,
   buildLocationsFormat,
   buildInstructorsFormat,
   buildMySchedulesFormat,
-} from './message.templateHelper';
+} from './dispatch.templateHelper';
 
-class MessageService {
-  // 임시 배정 메시지 일괄 발송 (부대별로 별도 메시지, 날짜 범위 필터링)
-  async sendTemporaryMessages(startDate?: string, endDate?: string) {
+class DispatchService {
+  // 임시 배정 발송 일괄 발송 (부대별로 별도 발송, 날짜 범위 필터링)
+  async sendTemporaryDispatches(startDate?: string, endDate?: string) {
     // 템플릿 조회
     const template = await metadataRepository.findTemplateByKey('TEMPORARY');
     if (!template) {
       throw new AppError(
-        '임시 배정 메시지 템플릿(TEMPORARY)이 설정되지 않았습니다.',
+        '임시 배정 발송 템플릿(TEMPORARY)이 설정되지 않았습니다.',
         404,
         'TEMPLATE_NOT_FOUND',
       );
     }
 
     // 대상 조회 (날짜 범위 적용)
-    const targets = await messageRepository.findTargetsForTemporaryMessage(startDate, endDate);
+    const targets = await dispatchRepository.findTargetsForTemporaryDispatch(startDate, endDate);
     if (targets.length === 0) {
       throw new AppError('발송할 대상(임시 배정 미수신자)이 없습니다.', 404, 'NO_TARGETS');
     }
 
-    // 그룹화 로직 (User ID + Unit ID 기준 - 부대별로 별도 메시지)
+    // 그룹화 로직 (User ID + Unit ID 기준 - 부대별로 별도 발송)
     // key: "userId-unitId"
     const groupMap = new Map<
       string,
@@ -55,7 +55,7 @@ class MessageService {
       groupMap.get(key)!.assignments.push(assign);
     });
 
-    const messagesToCreate: Array<{
+    const dispatchesToCreate: Array<{
       type: 'Temporary';
       title: string;
       body: string;
@@ -63,7 +63,7 @@ class MessageService {
       assignmentIds: number[];
     }> = [];
 
-    // 메시지 본문 생성 (템플릿 치환)
+    // 발송 본문 생성 (템플릿 치환)
     for (const [, data] of groupMap) {
       const { user, unit, assignments } = data;
 
@@ -153,7 +153,7 @@ class MessageService {
       // 제목도 변수 치환 (단순 변수만, 포맷 없음)
       const title = compileTemplate(template.title || '', variables);
 
-      messagesToCreate.push({
+      dispatchesToCreate.push({
         type: 'Temporary',
         title,
         body,
@@ -163,8 +163,8 @@ class MessageService {
     }
 
     // 저장 (Repo 위임)
-    const count = await messageRepository.createMessagesBulk(messagesToCreate);
-    return { count, message: `${count}건의 임시 메시지가 발송되었습니다.` };
+    const count = await dispatchRepository.createDispatchesBulk(dispatchesToCreate);
+    return { count, message: `${count}건의 임시 발송이 완료되었습니다.` };
   }
 
   // 포맷 변수를 지원하는 템플릿 컴파일
@@ -200,8 +200,8 @@ class MessageService {
     return result;
   }
 
-  // 확정 배정 메시지 일괄 발송
-  async sendConfirmedMessages() {
+  // 확정 배정 발송 일괄 발송
+  async sendConfirmedDispatches() {
     // 템플릿 조회
     const leaderTemplate = await metadataRepository.findTemplateByKey('CONFIRMED_LEADER');
     const memberTemplate = await metadataRepository.findTemplateByKey('CONFIRMED_MEMBER');
@@ -215,13 +215,13 @@ class MessageService {
     }
 
     // 대상 조회
-    const targets = await messageRepository.findTargetsForConfirmedMessage();
+    const targets = await dispatchRepository.findTargetsForConfirmedDispatch();
     if (targets.length === 0) {
       throw new AppError('발송할 대상(확정 배정 미수신자)이 없습니다.', 404, 'NO_TARGETS');
     }
 
     // 그룹화
-    const userMap = new Map<number, UserMessageGroup>();
+    const userMap = new Map<number, UserDispatchGroup>();
     targets.forEach((assign) => {
       const userId = assign.userId;
       if (!userMap.has(userId)) {
@@ -230,7 +230,7 @@ class MessageService {
       userMap.get(userId)!.assignments.push(assign);
     });
 
-    const messagesToCreate: Array<{
+    const dispatchesToCreate: Array<{
       type: 'Confirmed';
       title: string;
       body: string;
@@ -238,7 +238,7 @@ class MessageService {
       assignmentIds: number[];
     }> = [];
 
-    // 메시지 본문 생성
+    // 발송 본문 생성
     for (const [userId, data] of userMap) {
       const { user, assignments } = data;
       const representative = assignments[0];
@@ -365,7 +365,7 @@ class MessageService {
       // 제목도 변수 치환 (단순 변수만, 포맷 없음)
       const title = compileTemplate(targetTemplate.title || '', variables);
 
-      messagesToCreate.push({
+      dispatchesToCreate.push({
         type: 'Confirmed',
         title,
         body,
@@ -375,12 +375,12 @@ class MessageService {
     }
 
     // 저장
-    const count = await messageRepository.createMessagesBulk(messagesToCreate);
-    return { createdCount: count, message: `${count}건의 확정 메시지가 발송되었습니다.` };
+    const count = await dispatchRepository.createDispatchesBulk(dispatchesToCreate);
+    return { createdCount: count, message: `${count}건의 확정 발송이 완료되었습니다.` };
   }
 
-  // 내 메시지함 조회 (페이지네이션 지원)
-  async getMyMessages(
+  // 내 발송함 조회 (페이지네이션 지원)
+  async getMyDispatches(
     userId: number,
     options: {
       type?: 'Temporary' | 'Confirmed';
@@ -388,30 +388,30 @@ class MessageService {
       limit?: number;
     } = {},
   ) {
-    const { receipts, total, page, limit } = await messageRepository.findMyMessages(
+    const { receipts, total, page, limit } = await dispatchRepository.findMyDispatches(
       userId,
       options,
     );
 
-    const messages = receipts.map((r) => ({
-      messageId: r.message.id,
-      type: r.message.type,
-      title: r.message.title,
-      status: r.message.status,
-      body: r.message.body,
-      receivedAt: r.message.createdAt,
+    const dispatches = receipts.map((r) => ({
+      dispatchId: r.dispatch.id,
+      type: r.dispatch.type,
+      title: r.dispatch.title,
+      status: r.dispatch.status,
+      body: r.dispatch.body,
+      receivedAt: r.dispatch.createdAt,
       readAt: r.readAt,
       isRead: !!r.readAt,
       // 연결된 배정 정보 (응답용)
       assignments:
-        r.message.assignments?.map((ma) => ({
-          unitScheduleId: ma.assignment.unitScheduleId,
-          state: ma.assignment.state,
+        r.dispatch.assignments?.map((da) => ({
+          unitScheduleId: da.assignment.unitScheduleId,
+          state: da.assignment.state,
         })) || [],
     }));
 
     return {
-      messages,
+      dispatches,
       meta: {
         total,
         page,
@@ -421,19 +421,19 @@ class MessageService {
     };
   }
 
-  // 메시지 읽음 처리
-  async readMessage(userId: number, messageId: number | string) {
+  // 발송 읽음 처리
+  async readDispatch(userId: number, dispatchId: number | string) {
     try {
       // Prisma update는 조건에 맞는 레코드가 없으면 에러(P2025)를 던짐
-      await messageRepository.markAsRead(userId, Number(messageId));
+      await dispatchRepository.markAsRead(userId, Number(dispatchId));
       return { success: true };
     } catch (error) {
       // Prisma 에러 코드 P2025: Record to update not found
       if ((error as PrismaError).code === 'P2025') {
         throw new AppError(
-          '해당 메시지를 찾을 수 없거나 권한이 없습니다.',
+          '해당 발송을 찾을 수 없거나 권한이 없습니다.',
           404,
-          'MESSAGE_NOT_FOUND',
+          'DISPATCH_NOT_FOUND',
         );
       }
       // 그 외 에러는 상위로 전파
@@ -442,4 +442,4 @@ class MessageService {
   }
 }
 
-export default new MessageService();
+export default new DispatchService();

@@ -10,7 +10,7 @@ const queryClient = new QueryClient();
 import LoginPage from '../pages/auth/LoginPage';
 import SignupPage from '../pages/auth/SignupPage';
 import InstructorSchedulePage from '../pages/instructor/SchedulePage';
-import MessageInboxPage from '../pages/instructor/MessageInboxPage';
+import DispatchInboxPage from '../pages/instructor/DispatchInboxPage';
 import AdminPage from '../pages/admin/AdminPage';
 import UserMainHome from '../pages/user/UserMainPage';
 import SuperAdminPage from '../pages/admin/SuperAdminPage';
@@ -37,7 +37,7 @@ function App(): ReactElement {
 
           {/* 일반 유저 및 강사 */}
           <Route path="/instructor/schedule" element={<InstructorSchedulePage />} />
-          <Route path="/user-main/messages" element={<MessageInboxPage />} />
+          <Route path="/user-main/dispatches" element={<DispatchInboxPage />} />
           <Route path="/user-main/*" element={<UserMainHome />} />
 
           {/* 일반 관리자 */}

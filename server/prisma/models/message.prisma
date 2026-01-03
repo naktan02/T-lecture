@@ -1,12 +1,12 @@
-enum MessageType {
+enum DispatchType {
   Temporary
   Confirmed
 
   @@map("유형__t")
 }
 
-// 메시지 상태 (예: 발송대기, 발송완료, 취소 등)
-enum MessageStatus {
+// 배정 발송 상태 (예: 발송대기, 발송완료, 취소 등)
+enum DispatchStatus {
   Pending
   Sent
   Canceled
@@ -14,44 +14,44 @@ enum MessageStatus {
   @@map("상태__t")
 }
 
-// 배정 메시지 전용 모델 (임시/확정 배정)
-model Message {
-  id        Int            @id @default(autoincrement())
-  type      MessageType?   @map("유형")
-  title     String?        @map("제목")
-  body      String?        @map("본문") @db.Text
-  status    MessageStatus? @map("상태")
-  createdAt DateTime?      @default(now()) @map("생성일시")
+// 배정 발송 전용 모델 (임시/확정 배정)
+model Dispatch {
+  id        Int             @id @default(autoincrement())
+  type      DispatchType?   @map("유형")
+  title     String?         @map("제목")
+  body      String?         @map("본문") @db.Text
+  status    DispatchStatus? @map("상태")
+  createdAt DateTime?       @default(now()) @map("생성일시")
 
   // 관계
-  assignments MessageAssignment[]
-  receipts    MessageReceipt[]
+  assignments DispatchAssignment[]
+  receipts    DispatchReceipt[]
 
   @@map("메시지")
 }
 
-model MessageReceipt {
-  messageId Int       @map("메시지id")
-  userId    Int       @map("강사id")
-  readAt    DateTime? @map("read_at")
+model DispatchReceipt {
+  dispatchId Int       @map("메시지id")
+  userId     Int       @map("강사id")
+  readAt     DateTime? @map("read_at")
 
-  message Message @relation(fields: [messageId], references: [id])
-  user    User    @relation(fields: [userId], references: [id])
+  dispatch Dispatch @relation(fields: [dispatchId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
 
-  @@id([userId, messageId])
+  @@id([userId, dispatchId])
   @@index([userId], map: "메시지수신_user_idx")
   @@map("메시지 수신자")
 }
 
-model MessageAssignment {
-  messageId      Int
+model DispatchAssignment {
+  dispatchId     Int
   unitScheduleId Int
   userId         Int
 
-  message    Message                  @relation(fields: [messageId], references: [id])
+  dispatch   Dispatch                 @relation(fields: [dispatchId], references: [id])
   assignment InstructorUnitAssignment @relation(fields: [unitScheduleId, userId], references: [unitScheduleId, userId])
 
-  @@id([messageId, unitScheduleId, userId])
+  @@id([dispatchId, unitScheduleId, userId])
   @@map("메시지_배정")
 }
 

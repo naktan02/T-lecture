@@ -237,8 +237,8 @@ class AssignmentDTO {
                 .map((assign: AssignmentRaw) => {
                   totalAssigned++;
                   assignedInstructorIds.add(assign.userId);
-                  // 메시지 발송 여부: messageAssignments가 있으면 발송됨
-                  const messageSent = (assign.messageAssignments?.length ?? 0) > 0;
+                  // 발송 여부: dispatchAssignments가 있으면 발송됨
+                  const messageSent = (assign.dispatchAssignments?.length ?? 0) > 0;
                   return {
                     assignmentId: assign.unitScheduleId + '-' + assign.userId,
                     unitScheduleId: assign.unitScheduleId,
@@ -249,7 +249,7 @@ class AssignmentDTO {
                     category: assign.User.instructor?.category || null, // Main, Co, Assistant, Practicum
                     trainingLocationId: assign.trainingLocationId,
                     state: assign.state, // Pending, Accepted, Rejected
-                    messageSent, // 메시지 발송 여부 (MessageAssignment 기반)
+                    messageSent, // 발송 여부 (DispatchAssignment 기반)
                   };
                 });
 
@@ -287,8 +287,8 @@ class AssignmentDTO {
             if (allConfirmedAssignments.length > 0) {
               // 모든 확정(수락된) 배정에 Confirmed 메시지가 있는지 확인
               confirmedMessageSent = allConfirmedAssignments.every((a: AssignmentRaw) => {
-                const hasConfirmedMessage = (a.messageAssignments || []).some(
-                  (ma) => ma.message?.type === 'Confirmed',
+                const hasConfirmedMessage = (a.dispatchAssignments || []).some(
+                  (da) => da.dispatch?.type === 'Confirmed',
                 );
                 return hasConfirmedMessage;
               });
@@ -305,8 +305,8 @@ class AssignmentDTO {
 
               if (allAcceptedAssignments.length > 0) {
                 confirmedMessageSent = allAcceptedAssignments.every((a: AssignmentRaw) => {
-                  return (a.messageAssignments || []).some(
-                    (ma) => ma.message?.type === 'Confirmed',
+                  return (a.dispatchAssignments || []).some(
+                    (da) => da.dispatch?.type === 'Confirmed',
                   );
                 });
               }
