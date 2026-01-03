@@ -8,8 +8,7 @@ import {
   UnitSchedule,
   Instructor,
   addAssignmentApi,
-  blockScheduleApi,
-  bulkBlockUnitApi,
+  toggleStaffLockApi,
 } from '../assignmentApi';
 import { logger, showSuccess, showError } from '../../../shared/utils';
 import {
@@ -59,9 +58,7 @@ interface UseAssignmentReturn {
     instructorId: number,
     trainingLocationId: number | null,
   ) => Promise<void>;
-  blockSchedule: (unitScheduleId: number) => Promise<void>; // 배정 막기
-  unblockSchedule: (unitScheduleId: number) => Promise<void>; // 배정 막기 해제
-  bulkBlockUnit: (unitId: number, isBlocked: boolean) => Promise<void>; // 부대 전체 일괄 막기
+  toggleStaffLock: (unitId: number, isStaffLocked: boolean) => Promise<void>; // 인원고정
   fetchData: () => Promise<void>;
   executeAutoAssign: () => Promise<void>;
   sendTemporaryMessages: () => Promise<void>;
@@ -188,40 +185,12 @@ export const useAssignment = (): UseAssignmentReturn => {
     }
   };
 
-  // 배정 막기
-  const blockSchedule = async (unitScheduleId: number): Promise<void> => {
+  // 부대 인원고정 설정/해제
+  const toggleStaffLock = async (unitId: number, isStaffLocked: boolean): Promise<void> => {
     try {
       setLoading(true);
-      await blockScheduleApi(unitScheduleId, true);
-      showSuccess('해당 슬롯의 추가 배정이 막혔습니다.');
-      await fetchData();
-    } catch (e) {
-      showError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 배정 막기 해제
-  const unblockSchedule = async (unitScheduleId: number): Promise<void> => {
-    try {
-      setLoading(true);
-      await blockScheduleApi(unitScheduleId, false);
-      showSuccess('배정 막기가 해제되었습니다.');
-      await fetchData();
-    } catch (e) {
-      showError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 부대 전체 일괄 배정막기
-  const bulkBlockUnit = async (unitId: number, isBlocked: boolean): Promise<void> => {
-    try {
-      setLoading(true);
-      await bulkBlockUnitApi(unitId, isBlocked);
-      showSuccess(isBlocked ? '부대 전체 배정막기 완료' : '부대 전체 배정막기 해제');
+      await toggleStaffLockApi(unitId, isStaffLocked);
+      showSuccess(isStaffLocked ? '인원고정 설정 완료' : '인원고정 해제');
       await fetchData();
     } catch (e) {
       showError((e as Error).message);
@@ -248,8 +217,6 @@ export const useAssignment = (): UseAssignmentReturn => {
     sendTemporaryMessages,
     removeAssignment,
     addAssignment,
-    blockSchedule,
-    unblockSchedule,
-    bulkBlockUnit,
+    toggleStaffLock,
   };
 };

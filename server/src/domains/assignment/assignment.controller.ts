@@ -159,23 +159,24 @@ export const bulkSaveAssignments = asyncHandler(async (req: Request, res: Respon
   res.status(200).json(result);
 });
 
-// [스케줄 배정 막기/해제]
-export const blockSchedule = asyncHandler(async (req: Request, res: Response) => {
-  const unitScheduleId = Number(req.params.unitScheduleId);
-  const { isBlocked } = req.body;
+// [부대 인원고정 설정/해제]
+export const toggleStaffLock = asyncHandler(async (req: Request, res: Response) => {
+  const unitId = Number(req.params.unitId);
+  const { isStaffLocked } = req.body;
 
-  if (!Number.isFinite(unitScheduleId)) {
-    throw new AppError('unitScheduleId가 필요합니다.', 400, 'VALIDATION_ERROR');
+  if (!Number.isFinite(unitId)) {
+    throw new AppError('unitId가 필요합니다.', 400, 'VALIDATION_ERROR');
   }
 
-  if (typeof isBlocked !== 'boolean') {
-    throw new AppError('isBlocked(boolean)가 필요합니다.', 400, 'VALIDATION_ERROR');
+  if (typeof isStaffLocked !== 'boolean') {
+    throw new AppError('isStaffLocked(boolean)가 필요합니다.', 400, 'VALIDATION_ERROR');
   }
 
-  const result = await assignmentService.toggleScheduleBlock(unitScheduleId, isBlocked);
-  res
-    .status(200)
-    .json({ message: isBlocked ? '배정이 막혔습니다.' : '배정 막기가 해제되었습니다.', result });
+  const result = await assignmentService.toggleStaffLock(unitId, isStaffLocked);
+  res.status(200).json({
+    message: isStaffLocked ? '인원고정 설정 완료' : '인원고정 해제',
+    result,
+  });
 });
 
 // [내 배정 목록 조회] (강사용 메시지함)
@@ -193,27 +194,6 @@ export const getMyAssignments = asyncHandler(async (req: Request, res: Response)
   });
 });
 
-// [부대 전체 스케줄 일괄 배정막기/해제]
-export const bulkBlockUnit = asyncHandler(async (req: Request, res: Response) => {
-  const unitId = Number(req.params.unitId);
-  const { isBlocked } = req.body;
-
-  if (!Number.isFinite(unitId)) {
-    throw new AppError('unitId가 필요합니다.', 400, 'VALIDATION_ERROR');
-  }
-
-  if (typeof isBlocked !== 'boolean') {
-    throw new AppError('isBlocked(boolean)가 필요합니다.', 400, 'VALIDATION_ERROR');
-  }
-
-  const result = await assignmentService.bulkBlockUnit(unitId, isBlocked);
-  res.status(200).json({
-    message: isBlocked ? '부대 전체 배정막기 완료' : '부대 전체 배정막기 해제',
-    count: result.count,
-  });
-});
-
-// [일괄 배정 업데이트] - 모달에서 저장 버튼 클릭 시
 export const batchUpdate = asyncHandler(async (req: Request, res: Response) => {
   const { changes } = req.body;
 
@@ -221,14 +201,13 @@ export const batchUpdate = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('changes 객체가 필요합니다.', 400, 'VALIDATION_ERROR');
   }
 
-  const { add = [], remove = [], block = [], unblock = [], roleChanges = [] } = changes;
+  const { add = [], remove = [], roleChanges = [], staffLockChanges = [] } = changes;
 
   const result = await assignmentService.batchUpdateAssignments({
     add,
     remove,
-    block,
-    unblock,
     roleChanges,
+    staffLockChanges,
   });
 
   res.status(200).json({
@@ -274,9 +253,8 @@ module.exports = {
   previewAutoAssign,
   bulkSaveAssignments,
   cancelAssignmentByAdmin,
-  blockSchedule,
+  toggleStaffLock,
   getMyAssignments,
-  bulkBlockUnit,
   batchUpdate,
   updateRole,
 };

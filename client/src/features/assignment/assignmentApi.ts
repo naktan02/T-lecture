@@ -210,32 +210,17 @@ export const addAssignmentApi = async (
 };
 
 /**
- * 스케줄 배정 막기/해제
+ * 부대 인원고정 설정/해제
  */
-export const blockScheduleApi = async (
-  unitScheduleId: number,
-  isBlocked: boolean,
-): Promise<{ message: string }> => {
-  const res = await apiClient(`/api/v1/assignments/${unitScheduleId}/block`, {
-    method: 'PATCH',
-    body: JSON.stringify({ isBlocked }),
-  });
-  if (!res.ok) throw new Error('배정 막기에 실패했습니다.');
-  return res.json();
-};
-
-/**
- * 부대 전체 스케줄 일괄 배정막기/해제
- */
-export const bulkBlockUnitApi = async (
+export const toggleStaffLockApi = async (
   unitId: number,
-  isBlocked: boolean,
-): Promise<{ message: string; count: number }> => {
-  const res = await apiClient(`/api/v1/assignments/unit/${unitId}/bulk-block`, {
+  isStaffLocked: boolean,
+): Promise<{ message: string; result: unknown }> => {
+  const res = await apiClient(`/api/v1/assignments/unit/${unitId}/staff-lock`, {
     method: 'PATCH',
-    body: JSON.stringify({ isBlocked }),
+    body: JSON.stringify({ isStaffLocked }),
   });
-  if (!res.ok) throw new Error('부대 전체 배정막기에 실패했습니다.');
+  if (!res.ok) throw new Error('인원고정 설정에 실패했습니다.');
   return res.json();
 };
 
@@ -330,18 +315,16 @@ export const getMyAssignmentsApi = async (): Promise<MyAssignmentsResponse> => {
 export interface AssignmentChangeSet {
   add: Array<{ unitScheduleId: number; instructorId: number; trainingLocationId: number | null }>;
   remove: Array<{ unitScheduleId: number; instructorId: number }>;
-  block: number[];
-  unblock: number[];
   roleChanges: Array<{ unitId: number; instructorId: number; role: 'Head' | 'Supervisor' | null }>;
+  staffLockChanges: Array<{ unitId: number; isStaffLocked: boolean }>;
 }
 
 export interface BatchUpdateResult {
   message: string;
   added: number;
   removed: number;
-  blocked: number;
-  unblocked: number;
   rolesUpdated: number;
+  staffLocksUpdated: number;
 }
 
 /**

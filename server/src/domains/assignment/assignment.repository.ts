@@ -338,22 +338,12 @@ class AssignmentRepository {
   }
 
   /**
-   * 스케줄 배정 막기/해제
+   * 부대 인원고정 설정/해제
    */
-  async updateScheduleBlock(unitScheduleId: number, isBlocked: boolean) {
-    return await prisma.unitSchedule.update({
-      where: { id: unitScheduleId },
-      data: { isBlocked },
-    });
-  }
-
-  /**
-   * 부대의 모든 스케줄 일괄 배정막기/해제
-   */
-  async bulkBlockByUnitId(unitId: number, isBlocked: boolean) {
-    return await prisma.unitSchedule.updateMany({
-      where: { unitId: unitId },
-      data: { isBlocked },
+  async toggleStaffLock(unitId: number, isStaffLocked: boolean) {
+    return await prisma.unit.update({
+      where: { id: unitId },
+      data: { isStaffLocked },
     });
   }
 
@@ -502,14 +492,16 @@ class AssignmentRepository {
   async getUnitWithAssignments(unitId: number) {
     return await prisma.unit.findUnique({
       where: { id: unitId },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        isStaffLocked: true,
         trainingLocations: {
           select: { id: true, instructorsNumbers: true },
         },
         schedules: {
           select: {
             id: true,
-            isBlocked: true,
             assignments: {
               where: { state: { in: ['Pending', 'Accepted'] } },
               select: { userId: true, state: true, trainingLocationId: true },
@@ -548,28 +540,28 @@ class AssignmentRepository {
    * 일괄 배정 업데이트 (트랜잭션)
    * - add: 새 배정 생성
    * - remove: 배정 삭제 (또는 Canceled 처리)
-   * - block: 스케줄 배정 막기
-   * - unblock: 스케줄 배정 막기 해제
    * - roleChanges: 역할 변경 (총괄/책임강사)
+   * - staffLockChanges: 인원고정 변경
    */
   async batchUpdateAssignments(changes: {
     add: Array<{ unitScheduleId: number; instructorId: number; trainingLocationId: number | null }>;
     remove: Array<{ unitScheduleId: number; instructorId: number }>;
-    block: number[];
-    unblock: number[];
     roleChanges?: Array<{
       unitId: number;
       instructorId: number;
       role: 'Head' | 'Supervisor' | null;
+    }>;
+    staffLockChanges?: Array<{
+      unitId: number;
+      isStaffLocked: boolean;
     }>;
   }) {
     return await prisma.$transaction(async (tx) => {
       const results = {
         added: 0,
         removed: 0,
-        blocked: 0,
-        unblocked: 0,
         rolesUpdated: 0,
+        staffLocksUpdated: 0,
       };
 
       // 1. 배정 추가 (Pending 상태로 저장)
@@ -616,25 +608,7 @@ class AssignmentRepository {
         }
       }
 
-      // 3. 배정 막기
-      if (changes.block.length > 0) {
-        await tx.unitSchedule.updateMany({
-          where: { id: { in: changes.block } },
-          data: { isBlocked: true },
-        });
-        results.blocked = changes.block.length;
-      }
-
-      // 4. 배정 막기 해제
-      if (changes.unblock.length > 0) {
-        await tx.unitSchedule.updateMany({
-          where: { id: { in: changes.unblock } },
-          data: { isBlocked: false },
-        });
-        results.unblocked = changes.unblock.length;
-      }
-
-      // 5. 역할 변경 (총괄/책임강사)
+      // 3. 역할 변경 (총괄/책임강사)
       if (changes.roleChanges && changes.roleChanges.length > 0) {
         for (const rc of changes.roleChanges) {
           // 해당 부대의 모든 role 초기화
@@ -658,6 +632,17 @@ class AssignmentRepository {
             });
           }
           results.rolesUpdated++;
+        }
+      }
+
+      // 4. 인원고정 변경
+      if (changes.staffLockChanges && changes.staffLockChanges.length > 0) {
+        for (const slc of changes.staffLockChanges) {
+          await tx.unit.update({
+            where: { id: slc.unitId },
+            data: { isStaffLocked: slc.isStaffLocked },
+          });
+          results.staffLocksUpdated++;
         }
       }
 

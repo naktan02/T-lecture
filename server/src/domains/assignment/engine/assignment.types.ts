@@ -92,6 +92,7 @@ export interface ScheduleData {
   id: number;
   date: Date;
   requiredCount: number; // 필요 강사 수
+  isBlocked?: boolean; // 배정막기 상태
 }
 
 export interface LocationData {

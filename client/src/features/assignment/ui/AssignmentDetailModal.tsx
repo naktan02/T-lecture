@@ -67,6 +67,7 @@ interface AssignmentGroup {
   region: string;
   period: string;
   trainingLocations: TrainingLocation[];
+  isStaffLocked?: boolean;
 }
 
 interface AddPopupTarget {
@@ -233,9 +234,8 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
   const [changeSet, setChangeSet] = useState<AssignmentChangeSet>({
     add: [],
     remove: [],
-    block: [],
-    unblock: [],
     roleChanges: [],
+    staffLockChanges: [],
   });
 
   // 역할 선택 드롭다운 표시 상태
@@ -246,9 +246,8 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
     return (
       changeSet.add.length > 0 ||
       changeSet.remove.length > 0 ||
-      changeSet.block.length > 0 ||
-      changeSet.unblock.length > 0 ||
-      changeSet.roleChanges.length > 0
+      changeSet.roleChanges.length > 0 ||
+      changeSet.staffLockChanges.length > 0
     );
   }, [changeSet]);
 
@@ -288,19 +287,6 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
       }[];
     },
     [changeSet.add, availableInstructors],
-  );
-
-  // 로컬에서 블록된 스케줄인지 확인
-  const isBlockedLocally = useCallback(
-    (unitScheduleId: number) => {
-      // 서버에서 블록된 상태인데 로컬에서 언블록 되었으면 -> 블록 아님
-      if (changeSet.unblock.includes(unitScheduleId)) return false;
-      // 로컬에서 블록 추가되었으면 -> 블록
-      if (changeSet.block.includes(unitScheduleId)) return true;
-      // 기본값은 null (서버 데이터 사용)
-      return null;
-    },
-    [changeSet.block, changeSet.unblock],
   );
 
   // 해당 스케줄에 이미 배정된 강사 ID 목록 계산
@@ -343,24 +329,6 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
     setChangeSet((prev) => ({
       ...prev,
       remove: [...prev.remove, { unitScheduleId, instructorId }],
-    }));
-  }, []);
-
-  // 스케줄 블록 (로컬)
-  const handleBlockLocal = useCallback((unitScheduleId: number) => {
-    setChangeSet((prev) => ({
-      ...prev,
-      block: [...prev.block.filter((id) => id !== unitScheduleId), unitScheduleId],
-      unblock: prev.unblock.filter((id) => id !== unitScheduleId),
-    }));
-  }, []);
-
-  // 스케줄 언블록 (로컬)
-  const handleUnblockLocal = useCallback((unitScheduleId: number) => {
-    setChangeSet((prev) => ({
-      ...prev,
-      unblock: [...prev.unblock.filter((id) => id !== unitScheduleId), unitScheduleId],
-      block: prev.block.filter((id) => id !== unitScheduleId),
     }));
   }, []);
 
@@ -427,8 +395,9 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
       if (result.added > 0) msgs.push(`추가 ${result.added}`);
       if (result.removed > 0) msgs.push(`삭제 ${result.removed}`);
       if (result.rolesUpdated > 0) msgs.push(`역할 변경 ${result.rolesUpdated}`);
-      showSuccess(`저장 완료: ${msgs.join(', ')}`);
-      setChangeSet({ add: [], remove: [], block: [], unblock: [], roleChanges: [] });
+      if (result.staffLocksUpdated > 0) msgs.push(`인원고정 ${result.staffLocksUpdated}`);
+      showSuccess(msgs.length > 0 ? `저장 완료: ${msgs.join(', ')}` : '저장 완료');
+      setChangeSet({ add: [], remove: [], roleChanges: [], staffLockChanges: [] });
       if (onSaveComplete) await onSaveComplete();
     } catch (e) {
       showError((e as Error).message);
@@ -473,23 +442,34 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-red-500"></span>거절
                 </span>
-                {/* 일괄 배정막기 버튼 */}
-                <button
-                  onClick={() => {
-                    // 모든 스케줄에 대해 블록 추가
-                    group.trainingLocations
-                      .flatMap((loc) => loc.dates)
-                      .forEach((d) => {
-                        if (!changeSet.block.includes(d.unitScheduleId)) {
-                          handleBlockLocal(d.unitScheduleId);
-                        }
-                      });
-                  }}
-                  className="ml-2 px-2 py-1 text-[10px] bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
-                  title="모든 슬롯에 배정 막기 추가"
-                >
-                  🚫 일괄 배정막기
-                </button>
+                {/* 인원고정 체크박스 */}
+                <label className="ml-4 flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={(() => {
+                      // 로컬 변경 우선.
+                      const localChange = changeSet.staffLockChanges.find(
+                        (slc) => slc.unitId === group.unitId,
+                      );
+                      if (localChange !== undefined) {
+                        return localChange.isStaffLocked;
+                      }
+                      // 로컬 변경 없으면 서버 값 사용
+                      return group.isStaffLocked ?? false;
+                    })()}
+                    onChange={(e) => {
+                      setChangeSet((prev) => ({
+                        ...prev,
+                        staffLockChanges: [
+                          ...prev.staffLockChanges.filter((slc) => slc.unitId !== group.unitId),
+                          { unitId: group.unitId, isStaffLocked: e.target.checked },
+                        ],
+                      }));
+                    }}
+                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                  />
+                  <span className="text-[11px] text-gray-600">🔒 인원고정</span>
+                </label>
               </div>
             </div>
           </div>
@@ -747,35 +727,24 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                         </div>
                       ))}
 
-                      {/* 배정 막기 표시 또는 + 버튼 */}
+                      {/* 인원고정 시 잠금 표시 또는 + 버튼 */}
                       {(() => {
-                        // 로컬 상태 우선 확인
-                        const localBlockState = isBlockedLocally(dateInfo.unitScheduleId);
-                        const isActuallyBlocked =
-                          localBlockState !== null
-                            ? localBlockState
-                            : (dateInfo as { isBlocked?: boolean }).isBlocked;
+                        // 인원고정 상태 확인 (로컬 변경 우선, 없으면 서버 값)
+                        const localChange = changeSet.staffLockChanges.find(
+                          (slc) => slc.unitId === group.unitId,
+                        );
+                        const isStaffLocked =
+                          localChange !== undefined
+                            ? localChange.isStaffLocked
+                            : (group.isStaffLocked ?? false);
 
-                        if (isActuallyBlocked) {
-                          const isLocalBlock = changeSet.block.includes(dateInfo.unitScheduleId);
+                        if (isStaffLocked) {
                           return (
                             <div
-                              className={`group relative w-8 h-8 rounded-lg flex items-center justify-center ${
-                                isLocalBlock
-                                  ? 'bg-orange-100 border-2 border-dashed border-orange-400 text-orange-500'
-                                  : 'bg-red-100 border-2 border-red-300 text-red-500'
-                              }`}
-                              title={isLocalBlock ? '배정 막기 (저장 대기)' : '배정이 막힌 슬롯'}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-100 border-2 border-gray-300 text-gray-400"
+                              title="인원고정 - 추가 불가"
                             >
-                              🚫
-                              {/* X 버튼 (hover 시 나타남) */}
-                              <button
-                                onClick={() => handleUnblockLocal(dateInfo.unitScheduleId)}
-                                className="absolute -top-2 -right-2 bg-gray-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-gray-600"
-                                title="배정 막기 해제 (저장 후 적용)"
-                              >
-                                ✕
-                              </button>
+                              🔒
                             </div>
                           );
                         }
@@ -811,7 +780,8 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
             {hasChanges && (
               <span className="text-indigo-600 font-medium">
                 📝 변경 대기: 추가 {changeSet.add.length}, 삭제 {changeSet.remove.length}
-                {changeSet.block.length > 0 && `, 블록 ${changeSet.block.length}`}
+                {changeSet.staffLockChanges.length > 0 &&
+                  `, 인원고정 ${changeSet.staffLockChanges.length}`}
                 {changeSet.roleChanges.length > 0 && `, 역할 ${changeSet.roleChanges.length}`}
               </span>
             )}
@@ -824,7 +794,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
               <Button variant="primary" onClick={handleSave} disabled={isSaving}>
                 {isSaving
                   ? '저장 중...'
-                  : `저장 (${changeSet.add.length + changeSet.remove.length}건)`}
+                  : `저장 (${changeSet.add.length + changeSet.remove.length + changeSet.staffLockChanges.length + changeSet.roleChanges.length}건)`}
               </Button>
             )}
           </div>
@@ -844,10 +814,6 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
               inst.id,
               addPopupTarget.trainingLocationId,
             );
-            setAddPopupTarget(null);
-          }}
-          onBlock={async () => {
-            handleBlockLocal(addPopupTarget.unitScheduleId);
             setAddPopupTarget(null);
           }}
         />

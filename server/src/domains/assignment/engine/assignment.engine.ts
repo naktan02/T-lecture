@@ -188,7 +188,7 @@ export class AssignmentEngine {
     // 모든 스케줄을 Slack 우선순위로 플래튼
     interface ScheduleWithUnit {
       unit: UnitData;
-      schedule: { id: number; date: Date; requiredCount: number };
+      schedule: { id: number; date: Date; requiredCount: number; isBlocked?: boolean };
       bundleRisk: number;
     }
     const allSchedules: ScheduleWithUnit[] = [];
@@ -214,6 +214,11 @@ export class AssignmentEngine {
 
     // 스케줄별 배정 진행 (Slack 우선순위로)
     for (const { unit, schedule } of allSchedules) {
+      // isBlocked=true인 스케줄은 배정 생략
+      if (schedule.isBlocked) {
+        continue;
+      }
+
       // 스케줄 기준 월(YYYY-MM)
       const targetMonth = new Date(schedule.date).toISOString().slice(0, 7);
       const scheduleDate = new Date(schedule.date).toISOString().split('T')[0];

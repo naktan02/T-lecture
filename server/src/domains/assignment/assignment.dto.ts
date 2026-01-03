@@ -168,21 +168,37 @@ class AssignmentDTO {
               : [{ id: 'default', originalPlace: '교육장소 미정', instructorsNumbers: 0 }];
 
           let isUnitConfirmed = true;
-          for (const loc of locations as TrainingLocationRaw[]) {
-            const requiredPerDay = loc.instructorsNumbers || 0;
+          const isStaffLocked = (unit as any).isStaffLocked ?? false;
+
+          // 인원고정인 경우: Pending 없고 최소 1명 이상 Accepted면 확정
+          if (isStaffLocked) {
+            let hasPending = false;
+            let hasAccepted = false;
             for (const schedule of unit.schedules as ScheduleRaw[]) {
-              const acceptedCount = (schedule.assignments || []).filter(
-                (a: AssignmentRaw) =>
-                  a.state === 'Accepted' &&
-                  (a.trainingLocationId === loc.id || a.trainingLocationId === null),
-              ).length;
-              // 필요 인원보다 Accepted가 적으면 미완료
-              if (acceptedCount < requiredPerDay) {
-                isUnitConfirmed = false;
-                break;
+              for (const a of (schedule.assignments || []) as AssignmentRaw[]) {
+                if (a.state === 'Pending') hasPending = true;
+                if (a.state === 'Accepted') hasAccepted = true;
               }
             }
-            if (!isUnitConfirmed) break;
+            isUnitConfirmed = !hasPending && hasAccepted;
+          } else {
+            // 일반 경우: 모든 스케줄의 필요 인원이 Accepted 상태로 채워져 있으면 Confirmed
+            for (const loc of locations as TrainingLocationRaw[]) {
+              const requiredPerDay = loc.instructorsNumbers || 0;
+              for (const schedule of unit.schedules as ScheduleRaw[]) {
+                const acceptedCount = (schedule.assignments || []).filter(
+                  (a: AssignmentRaw) =>
+                    a.state === 'Accepted' &&
+                    (a.trainingLocationId === loc.id || a.trainingLocationId === null),
+                ).length;
+                // 필요 인원보다 Accepted가 적으면 미완료
+                if (acceptedCount < requiredPerDay) {
+                  isUnitConfirmed = false;
+                  break;
+                }
+              }
+              if (!isUnitConfirmed) break;
+            }
           }
 
           // 부대 상태 할당
@@ -326,6 +342,7 @@ class AssignmentDTO {
             trainingLocations: trainingLocations,
             confirmedMessageSent,
             unsentCount, // 미발송 인원 수
+            isStaffLocked: (unit as any).isStaffLocked ?? false, // 인원고정 상태
           };
         })
         // 0명 배정된 부대는 필터링 (배정 작업 중/확정 섹션에서 표시 안 함)

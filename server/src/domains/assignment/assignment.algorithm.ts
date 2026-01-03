@@ -49,6 +49,7 @@ interface UnitWithSchedules {
   wideArea?: string | null;
   trainingLocations: TrainingLocation[];
   schedules: Schedule[];
+  isStaffLocked?: boolean;
 }
 
 interface Availability {
@@ -204,10 +205,14 @@ class AssignmentAlgorithm {
             `[DEBUG Algorithm] Unit:${unit.id} Schedule:${schedule.id} Loc:${loc.id} - needed:${needed ?? 0} existing:${existingAssignments} required:${required > 0 ? required : 0}`,
           );
 
+          // isStaffLocked=true인 부대는 필요인원을 0으로 설정하여 배정 생략
+          const finalRequired = unit.isStaffLocked ? 0 : required > 0 ? required : 0;
+
           schedules.push({
             id: uniqueScheduleId,
             date: schedule.date,
-            requiredCount: required > 0 ? required : 0, // 음수 방지
+            requiredCount: finalRequired,
+            isBlocked: unit.isStaffLocked,
           });
         }
       }

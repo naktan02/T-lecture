@@ -30,6 +30,8 @@ model Unit {
   officerPhone String? @map("간부 전화번호")
   officerEmail String? @map("간부 이메일 주소")
 
+  isStaffLocked Boolean @default(false) @map("인원고정")
+
   trainingLocations TrainingLocation[]
   schedules         UnitSchedule[]
   distances         InstructorUnitDistance[]
@@ -62,7 +64,6 @@ model UnitSchedule {
   id        Int       @id @default(autoincrement())
   unitId    Int       @map("부대id")
   date      DateTime? @map("교육일")
-  isBlocked Boolean   @default(false) @map("배정막기")
 
   unit        Unit                       @relation(fields: [unitId], references: [id], onDelete: Cascade)
   assignments InstructorUnitAssignment[]

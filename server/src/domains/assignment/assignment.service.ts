@@ -271,10 +271,9 @@ class AssignmentService {
   }
 
   /**
-   * 부대(Unit) 전체의 필요 인원이 모두 수락되었는지 확인하고 자동 확정
-   * - 각 장소별 필요 인원 × 각 스케줄에서 수락된 인원 체크
-   * - isBlocked=true인 스케줄은 필요인원 충족으로 간주
-   * - 모든 슬롯이 채워지면 부대 전체 확정
+   * 부대(Unit) 전체의 인원이 모두 수락되었는지 확인하고 자동 확정
+   * - isStaffLocked=false: 수락 인원 >= 필요인원 AND Pending 없음
+   * - isStaffLocked=true: Pending 없음 (필요인원 상관없이)
    */
   private async checkAndAutoConfirm(unitScheduleId: number) {
     // 1. 스케줄에서 부대 ID 조회
@@ -285,32 +284,40 @@ class AssignmentService {
     const unit = await assignmentRepository.getUnitWithAssignments(unitId);
     if (!unit) return;
 
-    // 3. 장소별 필요 인원 합계
+    // 3. 배정이 하나라도 있는지 확인
+    const hasAnyAssignment = unit.schedules.some((s) => s.assignments.length > 0);
+    if (!hasAnyAssignment) return;
+
+    // 4. 부대의 인원고정 여부
+    const isStaffLocked = (unit as { isStaffLocked?: boolean }).isStaffLocked ?? false;
+
+    // 5. 장소별 필요 인원 합계
     const totalRequiredPerSchedule = unit.trainingLocations.reduce(
       (sum, loc) => sum + (loc.instructorsNumbers || 0),
       0,
     );
 
-    if (totalRequiredPerSchedule === 0) return; // 필요 인원이 0이면 확정 불필요
-
-    // 4. 모든 스케줄에서 수락된 인원 체크 (블록된 스케줄은 충족으로 간주)
+    // 6. 모든 스케줄 충족 여부 확인
     let allSchedulesFilled = true;
 
     for (const schedule of unit.schedules) {
-      // isBlocked=true면 해당 일정은 필요인원 충족으로 간주
-      if ((schedule as any).isBlocked) {
-        continue;
+      const acceptedCount = schedule.assignments.filter((a) => a.state === 'Accepted').length;
+      const pendingCount = schedule.assignments.filter((a) => a.state === 'Pending').length;
+
+      // 공통: Pending 있으면 미충족
+      if (pendingCount > 0) {
+        allSchedulesFilled = false;
+        break;
       }
 
-      const acceptedCount = schedule.assignments.filter((a) => a.state === 'Accepted').length;
-
-      if (acceptedCount < totalRequiredPerSchedule) {
+      // 인원고정 아님: 추가로 수락 >= 필요인원 체크 (최소 보장)
+      if (!isStaffLocked && acceptedCount < totalRequiredPerSchedule) {
         allSchedulesFilled = false;
         break;
       }
     }
 
-    // 5. 모든 스케줄이 필요 인원을 채웠으면 부대 전체 확정
+    // 7. 모든 조건 충족 시 부대 전체 확정
     if (allSchedulesFilled && unit.schedules.length > 0) {
       await assignmentRepository.updateClassificationByUnit(unitId, 'Confirmed');
     }
@@ -398,17 +405,19 @@ class AssignmentService {
   }
 
   /**
-   * 스케줄 슬롯 배정 막기/해제
+   * 부대 인원고정 설정/해제
    */
-  async toggleScheduleBlock(unitScheduleId: number, isBlocked: boolean) {
-    return await assignmentRepository.updateScheduleBlock(unitScheduleId, isBlocked);
-  }
-
-  /**
-   * 부대의 모든 스케줄 일괄 배정막기
-   */
-  async bulkBlockUnit(unitId: number, isBlocked: boolean) {
-    return await assignmentRepository.bulkBlockByUnitId(unitId, isBlocked);
+  async toggleStaffLock(unitId: number, isStaffLocked: boolean) {
+    const result = await assignmentRepository.toggleStaffLock(unitId, isStaffLocked);
+    // 인원고정 후 자동 확정 체크
+    const firstSchedule = await prisma.unitSchedule.findFirst({
+      where: { unitId },
+      select: { id: true },
+    });
+    if (firstSchedule) {
+      await this.checkAndAutoConfirm(firstSchedule.id);
+    }
+    return result;
   }
 
   /**
@@ -439,12 +448,14 @@ class AssignmentService {
   async batchUpdateAssignments(changes: {
     add: Array<{ unitScheduleId: number; instructorId: number; trainingLocationId: number | null }>;
     remove: Array<{ unitScheduleId: number; instructorId: number }>;
-    block: number[];
-    unblock: number[];
     roleChanges?: Array<{
       unitId: number;
       instructorId: number;
       role: 'Head' | 'Supervisor' | null;
+    }>;
+    staffLockChanges?: Array<{
+      unitId: number;
+      isStaffLocked: boolean;
     }>;
   }) {
     const result = await assignmentRepository.batchUpdateAssignments(changes);

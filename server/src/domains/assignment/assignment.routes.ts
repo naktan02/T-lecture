@@ -37,20 +37,12 @@ router.patch(
   assignmentController.cancelAssignmentByAdmin,
 );
 
-// 관리자: 스케줄 배정 막기/해제
+// 관리자: 부대 인원고정 설정/해제
 router.patch(
-  '/:unitScheduleId/block',
+  '/unit/:unitId/staff-lock',
   auth,
   requireRole('ADMIN'),
-  assignmentController.blockSchedule,
-);
-
-// 관리자: 부대 전체 스케줄 일괄 배정막기/해제
-router.patch(
-  '/unit/:unitId/bulk-block',
-  auth,
-  requireRole('ADMIN'),
-  assignmentController.bulkBlockUnit,
+  assignmentController.toggleStaffLock,
 );
 
 // 관리자: 일괄 배정 업데이트 (모달 저장)
