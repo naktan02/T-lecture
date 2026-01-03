@@ -1,149 +1,156 @@
-// client/src/features/settings/ui/template-editor/VariablePanel.tsx
-import { useState, ReactElement, DragEvent } from 'react';
-import { VARIABLE_CATEGORIES, VariableDefinition } from './variableConfig';
+// features/settings/ui/template-editor/VariablePanel.tsx
+// 변수 패널 컴포넌트 (카테고리 탭 + 변수 목록)
 
-interface VariablePanelProps {
-  usedVariables: string[];
-  onVariableClick: (variableKey: string) => void;
-  onDragStart: (e: DragEvent<HTMLDivElement>, variableKey: string) => void;
-  onFormatVariableClick?: (variable: VariableDefinition) => void;
-}
+import { DragEvent, useMemo } from 'react';
+import type { VariableDef, VariableCategory } from './types';
+import { CATEGORY_COLORS } from './styles';
+import { VariableChip } from './VariableChip';
 
-/**
- * Scratch 스타일 변수 패널
- * - 오른쪽: 카테고리 탭
- * - 왼쪽: 선택된 카테고리의 변수 목록
- */
-export const VariablePanel = ({
-  usedVariables,
-  onVariableClick,
-  onDragStart,
-  onFormatVariableClick,
-}: VariablePanelProps): ReactElement => {
-  const [selectedCategoryId, setSelectedCategoryId] = useState(VARIABLE_CATEGORIES[0]?.id || '');
-
-  const selectedCategory = VARIABLE_CATEGORIES.find((c) => c.id === selectedCategoryId);
-
-  const handleVariableAction = (variable: VariableDefinition) => {
-    if (variable.isFormatVariable && onFormatVariableClick) {
-      onFormatVariableClick(variable);
-    } else {
-      onVariableClick(variable.key);
-    }
-  };
-
-  return (
-    <div className="scratch-panel">
-      {/* 헤더 */}
-      <div className="scratch-header">
-        <span>📦 변수 블록</span>
-        <span className="scratch-count">{usedVariables.length}개 사용중</span>
-      </div>
-
-      <div className="scratch-body">
-        {/* 왼쪽: 변수 목록 */}
-        <div className="scratch-variables">
-          {!selectedCategory ? (
-            <div className="scratch-empty">카테고리를 선택하세요</div>
-          ) : (
-            selectedCategory.variables.map((v) => {
-              const isUsed = usedVariables.some((used) => used.startsWith(v.key));
-              return (
-                <div
-                  key={v.key}
-                  draggable={!v.isFormatVariable}
-                  onDragStart={(e) => !v.isFormatVariable && onDragStart(e, v.key)}
-                  onClick={() => handleVariableAction(v)}
-                  className={`scratch-variable ${isUsed ? 'used' : ''} ${v.isFormatVariable ? 'format-var' : ''}`}
-                  style={{
-                    backgroundColor: selectedCategory.color + '20',
-                    borderColor: selectedCategory.color,
-                  }}
-                  title={v.description || v.label}
-                >
-                  <span className="scratch-variable-icon">{v.icon}</span>
-                  <span className="scratch-variable-label">{v.label}</span>
-                  {v.isFormatVariable && <span className="scratch-variable-badge">포맷</span>}
-                  {isUsed && <span className="scratch-variable-check">✓</span>}
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        {/* 오른쪽: 카테고리 탭 */}
-        <div className="scratch-categories">
-          {VARIABLE_CATEGORIES.map((cat) => {
-            const isSelected = cat.id === selectedCategoryId;
-
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategoryId(cat.id)}
-                className={`scratch-category-btn ${isSelected ? 'selected' : ''}`}
-                style={{
-                  backgroundColor: isSelected ? cat.color : 'transparent',
-                  borderColor: cat.color,
-                  color: isSelected ? 'white' : cat.color,
-                }}
-                title={cat.label}
-              >
-                <span className="scratch-category-icon">{cat.icon}</span>
-                <span className="scratch-category-name">{cat.label}</span>
-                <span className="scratch-category-count">({cat.variables.length})</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 도움말 */}
-      <div className="scratch-help">
-        💡 <strong>드래그</strong> 또는 <strong>클릭</strong>하여 삽입 · 포맷 변수는 클릭 시 설정
-        팝업
-      </div>
-    </div>
-  );
+type Props = {
+  variables: VariableDef[];
+  categories: VariableCategory[];
+  activeTab: string | null;
+  usedKeys: Set<string>;
+  onTabChange: (tabId: string) => void;
+  onDragStart: (e: DragEvent<HTMLButtonElement>, v: VariableDef) => void;
+  onClick: (v: VariableDef) => void;
+  normalizeKey: (key: string) => string;
 };
 
-/**
- * 모바일용 변수 패널
- */
-interface MobileVariablePanelProps extends VariablePanelProps {
-  isOpen: boolean;
-  onToggle: () => void;
-}
-
-export const MobileVariablePanel = ({
-  isOpen,
-  onToggle,
-  usedVariables,
-  onVariableClick,
+export function VariablePanel({
+  variables,
+  categories,
+  activeTab,
+  usedKeys,
+  onTabChange,
   onDragStart,
-  onFormatVariableClick,
-}: MobileVariablePanelProps): ReactElement => {
+  onClick,
+  normalizeKey,
+}: Props) {
+  // 포맷 변수를 맨 위로
+  const filteredVariables = useMemo(() => {
+    if (!activeTab) return variables;
+    const filtered = variables.filter((v) => v.category === activeTab);
+    const formats = filtered.filter((v) => v.isFormat);
+    const normals = filtered.filter((v) => !v.isFormat);
+    return [...formats, ...normals];
+  }, [variables, activeTab]);
+
+  const categoryCount = useMemo(() => {
+    const counts: Record<string, number> = {};
+    variables.forEach((v) => {
+      if (v.category) {
+        counts[v.category] = (counts[v.category] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [variables]);
+
+  const activeCat = categories.find((c) => c.id === activeTab);
+
   return (
-    <div className="lg:hidden">
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-700 transition"
+    <div
+      style={{
+        border: '1px solid #e5e7eb',
+        borderRadius: 12,
+        background: '#fff',
+        display: 'flex',
+        overflow: 'hidden',
+        height: 'fit-content',
+      }}
+    >
+      {/* 변수 목록 */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* 헤더 */}
+        <div
+          style={{
+            padding: '10px 12px',
+            borderBottom: '1px solid #e5e7eb',
+            background: activeCat ? `${activeCat.color}10` : '#f9fafb',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <div
+            style={{
+              fontWeight: 700,
+              color: activeCat?.color || '#7c3aed',
+              fontSize: 13,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            📦 변수 블록
+          </div>
+          <div style={{ fontSize: 11, color: '#6b7280' }}>{usedKeys.size}개 사용중</div>
+        </div>
+
+        {/* 변수 리스트 */}
+        <div style={{ padding: 10, overflowY: 'auto', maxHeight: 450, flex: 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {filteredVariables.map((v) => (
+              <VariableChip
+                key={v.key}
+                variable={v}
+                isUsed={usedKeys.has(normalizeKey(v.key))}
+                onDragStart={onDragStart}
+                onClick={onClick}
+              />
+            ))}
+
+            {filteredVariables.length === 0 && (
+              <div style={{ color: '#9ca3af', textAlign: 'center', padding: 16, fontSize: 12 }}>
+                이 카테고리에 변수가 없습니다
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 카테고리 세로 탭 - 둥근 박스 스타일 */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          padding: 8,
+          borderLeft: '1px solid #e5e7eb',
+          background: '#fafafa',
+        }}
       >
-        <span className="flex items-center gap-2">
-          📦 변수 블록 {usedVariables.length > 0 && `(${usedVariables.length}개 사용중)`}
-        </span>
-        <span className={`transform transition ${isOpen ? 'rotate-180' : ''}`}>▼</span>
-      </button>
+        {categories.map((cat) => {
+          const isActive = activeTab === cat.id;
+          const colors = CATEGORY_COLORS[cat.id] || CATEGORY_COLORS.default;
 
-      {isOpen && (
-        <div className="mt-2">
-          <VariablePanel
-            usedVariables={usedVariables}
-            onVariableClick={onVariableClick}
-            onDragStart={onDragStart}
-            onFormatVariableClick={onFormatVariableClick}
-          />
-        </div>
-      )}
+          return (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => onTabChange(cat.id)}
+              style={{
+                padding: '10px 8px',
+                border: isActive ? `2px solid ${cat.color}` : '1px solid #e5e7eb',
+                borderRadius: 10,
+                background: isActive ? cat.color : '#fff',
+                color: isActive ? '#fff' : colors.text,
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 2,
+                minWidth: 60,
+                transition: 'all 0.15s',
+              }}
+            >
+              <span style={{ fontSize: 18 }}>{cat.icon}</span>
+              <span style={{ fontSize: 10, fontWeight: isActive ? 600 : 400 }}>{cat.label}</span>
+              <span style={{ fontSize: 9, opacity: 0.8 }}>({categoryCount[cat.id] || 0})</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
-};
+}

@@ -6,6 +6,7 @@ export { logger } from './logger';
 export * from './formatPhoneNumber';
 
 export { formatDateToString, formatDay, parseStringToDate } from './dateFormat';
+export { formatBool, formatTimeDisplay, formatDateDisplay, formatCount } from './formatters';
 export {
   getHolidaysForMonth,
   isHoliday,

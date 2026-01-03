@@ -1,10 +1,16 @@
 // server/prisma/seed.ts
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import 'dotenv/config';
-import logger from '../src/config/logger'; // tsx가 자동으로 .ts를 찾아줍니다.
+import logger from '../src/config/logger';
+import { parseTemplateToTokens } from '../src/types/template.types';
 
 const prisma = new PrismaClient();
+
+// 템플릿 문자열을 Token[] 형태로 변환하는 헬퍼
+function createTemplateBody(templateStr: string): Prisma.InputJsonValue {
+  return { tokens: parseTemplateToTokens(templateStr) } as Prisma.InputJsonValue;
+}
 
 async function main() {
   const email = process.env.SUPER_ADMIN_EMAIL;
@@ -146,54 +152,108 @@ async function main() {
   }
   logger.info(`덕목 ${virtues.length}개 생성 완료`);
 
-  // 4. 메시지 템플릿 시딩
+  // 4. 메시지 템플릿 시딩 (JSONB body + formatPresets)
   logger.info('메시지 템플릿 생성 중...');
-  await prisma.messageTemplate.createMany({
-    data: [
-      {
-        key: 'TEMPORARY',
-        title: '임시 배정 알림',
-        body: `[임시 배정 알림]
-{{userName}} 강사님, 교육 일정이 임시 배정되었습니다.
 
-- 부대명: {{unitName}}
-- 지역: {{region}}
-- 교육일정:
-{{scheduleText}}
+  // 임시 배정 메시지 템플릿
+  const temporaryTemplate = `[임시 배정 알림]
+{{self.name}} 강사님, 교육 일정이 임시 배정되었습니다.
 
-* 하단의 버튼을 통해 [수락] 또는 [거절]을 선택해주세요.`,
-      },
-      {
-        key: 'CONFIRMED_LEADER',
-        title: '확정 배정 알림 (책임강사)',
-        body: `[확정 배정 알림]
-{{userName}} 강사님, 배정이 확정되었습니다.
+- 부대명: {{unit.name}}
+- 지역: {{unit.region}}
+- 교육일정:{{self.schedules:format=- {date} ({dayOfWeek})}}
 
-- 부대: {{unitName}}
-- 주소: {{address}}
+* 하단의 버튼을 통해 [수락] 또는 [거절]을 선택해주세요.`;
 
-[동료 강사]
-{{colleagues}}
+  // 확정 배정 메시지 - 팀장용
+  const confirmedLeaderTemplate = `[확정 배정 알림]
+{{self.name}} 강사님, 배정이 확정되었습니다.
 
-[교육장소 정보]
-{{locations}}
+- 부대: {{unit.name}}
+- 지역: {{unit.region}}
+- 주소: {{unit.addressDetail}}
+- 교육일정: {{unit.startDate}} ~ {{unit.endDate}}
+- 교육 시간: {{unit.startTime}} ~ {{unit.endTime}}
+- 교육장소
+{{locations:format=장소명: {placeName} 참여인원: {actualCount}
+강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}, 휴대폰불출: {allowsPhoneBeforeAfter}
+특이사항: {note}
+-------------------------------------------------------}}
 
-책임 강사로서 인솔 부탁드립니다.`,
-      },
-      {
-        key: 'CONFIRMED_MEMBER',
-        title: '확정 배정 알림 (일반강사)',
-        body: `[확정 배정 알림]
-{{userName}} 강사님, 배정이 확정되었습니다.
+[배정 강사]
+{{self.schedules:format=- {date} ({dayOfWeek})}}
 
-- 부대: {{unitName}}
-- 주소: {{address}}
+부대 담당자: {{unit.officerName}} / {{unit.officerPhone}}
+수탁급식여부: {{location.hasCateredMeals}}
+회관숙박여부: {{location.hasHallLodging}}
 
-교육 장소로 늦지 않게 도착 부탁드립니다.`,
-      },
-    ],
-    skipDuplicates: true,
+{{instructors:format={index}. {name}({category}) / {phone}}}`;
+
+  // 확정 배정 메시지 - 팀원용
+  const confirmedMemberTemplate = `[확정 배정 알림]
+{{self.name}} 강사님, 배정이 확정되었습니다.
+
+- 부대: {{unit.name}}
+- 광역: {{unit.wideArea}}
+- 주소: {{unit.addressDetail}}
+강의 일정:
+{{self.schedules:format=- {date} ({dayOfWeek})}}`;
+
+  // 포맷 프리셋 (확정(팀장) 본문 기준으로 맞춤)
+  const defaultFormatPresets = {
+    'self.schedules': '- {date} ({dayOfWeek})',
+    instructors: '{index}. {name}({category}) / {phone}',
+    locations: `장소명: {placeName} 참여인원: {actualCount}
+강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}, 휴대폰불출: {allowsPhoneBeforeAfter}
+특이사항: {note}
+-------------------------------------------------------`,
+  };
+
+  await prisma.messageTemplate.upsert({
+    where: { key: 'TEMPORARY' },
+    update: {
+      title: '임시 배정 알림',
+      body: createTemplateBody(temporaryTemplate),
+      formatPresets: defaultFormatPresets,
+    },
+    create: {
+      key: 'TEMPORARY',
+      title: '임시 배정 알림',
+      body: createTemplateBody(temporaryTemplate),
+      formatPresets: defaultFormatPresets,
+    },
   });
+
+  await prisma.messageTemplate.upsert({
+    where: { key: 'CONFIRMED_LEADER' },
+    update: {
+      title: '확정 배정 알림 (책임강사)',
+      body: createTemplateBody(confirmedLeaderTemplate),
+      formatPresets: defaultFormatPresets,
+    },
+    create: {
+      key: 'CONFIRMED_LEADER',
+      title: '확정 배정 알림 (책임강사)',
+      body: createTemplateBody(confirmedLeaderTemplate),
+      formatPresets: defaultFormatPresets,
+    },
+  });
+
+  await prisma.messageTemplate.upsert({
+    where: { key: 'CONFIRMED_MEMBER' },
+    update: {
+      title: '확정 배정 알림 (일반강사)',
+      body: createTemplateBody(confirmedMemberTemplate),
+      formatPresets: defaultFormatPresets,
+    },
+    create: {
+      key: 'CONFIRMED_MEMBER',
+      title: '확정 배정 알림 (일반강사)',
+      body: createTemplateBody(confirmedMemberTemplate),
+      formatPresets: defaultFormatPresets,
+    },
+  });
+
   logger.info('메시지 템플릿 생성 완료');
 
   logger.info('');

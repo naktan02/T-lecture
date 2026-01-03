@@ -32,7 +32,6 @@ export interface TrainingLocationRaw {
   id: number | string;
   originalPlace: string | null;
   changedPlace?: string | null;
-  instructorsNumbers?: number | null;
   plannedCount?: number | null;
   actualCount?: number | null;
   note?: string | null;
@@ -46,20 +45,28 @@ export interface TrainingLocationRaw {
 export interface ScheduleRaw {
   id: number;
   date: Date | null;
+  isBlocked?: boolean;
   assignments?: AssignmentRaw[];
 }
 
 export interface AssignmentRaw {
   unitScheduleId: number;
   userId: number;
+  trainingLocationId?: number | null;
   state: string;
-  classification?: string | null;
+  classification?: string | null; // Temporary, Confirmed
+  role?: string | null; // Head, Supervisor, or null
   User: {
     name: string | null;
     instructor?: {
       team?: { name: string | null } | null;
+      category?: string | null;
     } | null;
   };
+  // 발송 확인용
+  dispatchAssignments?: Array<{
+    dispatch: { type: string | null } | null;
+  }>;
 }
 
 export interface UnitRaw {

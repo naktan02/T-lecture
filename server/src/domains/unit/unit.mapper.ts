@@ -61,6 +61,7 @@ export function toCreateUnitDto(rawData: RawUnitData = {}): Prisma.UnitCreateInp
     officerName: rawData.officerName,
     officerPhone: rawData.officerPhone,
     officerEmail: rawData.officerEmail,
+    excludedDates: rawData.excludedDates || [],
     // trainingLocations와 schedules는 createUnitWithNested에서 처리
   };
 }
@@ -76,7 +77,6 @@ function extractTrainingLocation(row: Record<string, unknown>): TrainingLocation
     changedPlace: row.changedPlace as string | undefined,
     plannedCount: row.plannedCount as number | undefined,
     actualCount: row.actualCount as number | undefined,
-    instructorsNumbers: row.instructorsNumbers as number | undefined,
     hasInstructorLounge: row.hasInstructorLounge as boolean | undefined,
     hasWomenRestroom: row.hasWomenRestroom as boolean | undefined,
     hasCateredMeals: row.hasCateredMeals as boolean | undefined,

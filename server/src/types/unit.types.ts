@@ -58,7 +58,6 @@ export interface TrainingLocationInput {
   changedPlace?: string;
   plannedCount?: number | string;
   actualCount?: number | string;
-  instructorsNumbers?: number | string;
   hasInstructorLounge?: boolean | string;
   hasWomenRestroom?: boolean | string;
   hasCateredMeals?: boolean | string;
@@ -92,7 +91,6 @@ export interface RawUnitInput {
 
 export interface ScheduleInput {
   date: Date | string;
-  isExcluded?: boolean;
 }
 
 export interface UnitQueryInput {

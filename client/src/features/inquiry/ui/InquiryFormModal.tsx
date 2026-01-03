@@ -1,4 +1,5 @@
 import { ReactElement, Fragment, useState } from 'react';
+import { showWarning, showError } from '../../../shared/utils/toast';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
@@ -19,7 +20,7 @@ export const InquiryFormModal = ({
 
   const handleSubmit = async () => {
     if (!title.trim() || !content.trim()) {
-      alert('제목과 내용을 모두 입력해주세요.');
+      showWarning('제목과 내용을 모두 입력해주세요.');
       return;
     }
 
@@ -30,7 +31,7 @@ export const InquiryFormModal = ({
       setContent('');
       onClose();
     } catch {
-      alert('문의 작성에 실패했습니다.');
+      showError('문의 작성에 실패했습니다.');
     } finally {
       setIsSubmitting(false);
     }

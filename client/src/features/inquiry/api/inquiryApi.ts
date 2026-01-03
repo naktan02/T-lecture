@@ -33,7 +33,8 @@ export interface InquirySearchParams {
   search?: string;
 }
 
-const BASE_PATH = '/api/v1/messages/inquiries';
+// API 경로: /api/v1/inquiries (독립 도메인)
+const BASE_PATH = '/api/v1/inquiries';
 
 export const inquiryApi = {
   // 문의사항 목록 조회

@@ -10,7 +10,7 @@ const SignupPage: React.FC = () => {
 
   return (
     <ContentWrapper>
-      <div className="signup-page-container" style={{ padding: '50px 0' }}>
+      <div className="py-8 md:py-12">
         <RegisterForm />
       </div>
     </ContentWrapper>

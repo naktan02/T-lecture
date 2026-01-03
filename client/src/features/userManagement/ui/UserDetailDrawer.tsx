@@ -2,6 +2,7 @@
 import { useEffect, useState, ChangeEvent, FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button, InputField } from '../../../shared/ui';
+import { showWarning } from '../../../shared/utils/toast';
 import { userManagementApi, User, UpdateUserDto } from '../api/userManagementApi';
 import { getTeams, getVirtues, Team, Virtue } from '../../settings/settingsApi';
 import { AvailabilityCalendar } from './AvailabilityCalendar';
@@ -253,7 +254,7 @@ export const UserDetailDrawer = ({
     }
 
     if (Object.keys(updateData).length === 0) {
-      alert('변경된 내용이 없습니다.');
+      showWarning('변경된 내용이 없습니다.');
       return;
     }
 

@@ -25,6 +25,8 @@ export const NoticeDrawer = ({
     <Transition.Root show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
         <div className="fixed inset-0 overflow-hidden">
+          {/* Backdrop with blur */}
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
           <div className="absolute inset-0 overflow-hidden">
             <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
               <Transition.Child
@@ -59,10 +61,17 @@ export const NoticeDrawer = ({
                     <div className="relative flex-1 px-4 py-6 sm:px-6">
                       <NoticeForm
                         initialData={
-                          notice ? { title: notice.title, content: notice.content } : undefined
+                          notice
+                            ? {
+                                title: notice.title,
+                                content: notice.content,
+                                isPinned: notice.isPinned,
+                              }
+                            : undefined
                         }
                         onSubmit={onSave}
                         onCancel={onClose}
+                        isEditMode={isEditMode}
                       />
 
                       {isEditMode && onDelete && (

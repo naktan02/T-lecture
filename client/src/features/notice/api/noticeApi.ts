@@ -28,8 +28,8 @@ export interface NoticeSearchParams {
   search?: string;
 }
 
-// API 경로: /api/v1/messages/notices (message 도메인에 통합됨)
-const BASE_PATH = '/api/v1/messages/notices';
+// API 경로: /api/v1/notices (독립 도메인)
+const BASE_PATH = '/api/v1/notices';
 
 export const noticeApi = {
   getNotices: async (params: NoticeSearchParams = {}) => {
@@ -50,7 +50,14 @@ export const noticeApi = {
     return response.json() as Promise<Notice>;
   },
 
-  createNotice: async (data: { title: string; content: string; isPinned?: boolean }) => {
+  createNotice: async (data: {
+    title: string;
+    content: string;
+    isPinned?: boolean;
+    targetType?: 'ALL' | 'TEAM' | 'INDIVIDUAL';
+    targetTeamIds?: number[];
+    targetUserIds?: number[];
+  }) => {
     const response = await apiClient(`${BASE_PATH}`, {
       method: 'POST',
       body: JSON.stringify(data),

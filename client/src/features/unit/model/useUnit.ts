@@ -75,7 +75,7 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
       queryClient.invalidateQueries({ queryKey: ['unitDetail'] });
-      alert('부대 정보가 성공적으로 수정되었습니다.');
+      showSuccess('부대 정보가 성공적으로 수정되었습니다.');
     },
     onError: (err) => {
       console.error(err);

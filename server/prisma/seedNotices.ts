@@ -103,7 +103,7 @@ async function main() {
       daysAgo: 6,
     },
 
-    // 일반 공지 (7일 이상) - 40개
+    // 일반 공지 (7일 이상) - 15개
     {
       title: '12월 우수 강사 시상 안내',
       content:
@@ -175,95 +175,11 @@ async function main() {
       daysAgo: 30,
     },
     {
-      title: '교육 일정 변경 알림',
+      title: '시스템 점검 안내',
       content:
-        'AA부대 교육 일정이 변경되었습니다.\n\n변경 전: 1월 20일\n변경 후: 1월 25일\n\n해당 강사분들께는 개별 연락드렸습니다.',
+        '시스템 정기 점검이 진행됩니다.\n\n점검 시간: 1월 15일 02:00 ~ 06:00\n영향: 일시적 서비스 중단\n\n양해 부탁드립니다.',
       isPinned: false,
       daysAgo: 8,
-    },
-    {
-      title: '강사 보험 가입 안내',
-      content:
-        '강사 단체 보험 가입 안내입니다.\n\n가입 대상: 전체 강사\n보장 내용: 상해, 배상책임\n\n별도 신청 없이 자동 가입됩니다.',
-      isPinned: false,
-      daysAgo: 9,
-    },
-    {
-      title: '교통 수당 지급 안내',
-      content:
-        '12월 교통 수당이 지급되었습니다.\n\n지급일: 1월 5일\n확인: 급여명세서\n\n문의사항은 경리팀으로 연락 바랍니다.',
-      isPinned: false,
-      daysAgo: 11,
-    },
-    {
-      title: '신규 교육 콘텐츠 개발 참여 모집',
-      content:
-        '신규 교육 콘텐츠 개발에 참여하실 강사님을 모집합니다.\n\n분야: 디지털 리터러시\n기간: 2월 ~ 3월\n혜택: 개발 수당 지급\n\n관심있는 분은 신청해주세요.',
-      isPinned: false,
-      daysAgo: 13,
-    },
-    {
-      title: '강사 명함 신청 안내',
-      content:
-        '강사 명함 신청을 받습니다.\n\n신청 기간: 1월 1일 ~ 1월 15일\n신청 방법: 시스템 통해 신청\n\n필요하신 분은 신청해주세요.',
-      isPinned: false,
-      daysAgo: 16,
-    },
-    {
-      title: '겨울 건강 관리 팁',
-      content:
-        '겨울철 건강 관리 팁을 공유합니다.\n\n1. 충분한 수분 섭취\n2. 비타민 보충\n3. 규칙적인 운동\n4. 충분한 휴식\n\n건강한 겨울 보내세요!',
-      isPinned: false,
-      daysAgo: 17,
-    },
-    {
-      title: '교육 피드백 수렴',
-      content:
-        '강사분들의 교육 피드백을 수렴합니다.\n\n의견 제출: 1월 10일까지\n제출 방법: 온라인 설문\n\n솔직한 의견 부탁드립니다.',
-      isPinned: false,
-      daysAgo: 19,
-    },
-    {
-      title: '2025년 교육 실적 정산',
-      content:
-        '2025년 교육 실적 정산이 완료되었습니다.\n\n개인별 실적은 마이페이지에서 확인 가능합니다.\n문의사항은 관리자에게 연락 바랍니다.',
-      isPinned: false,
-      daysAgo: 21,
-    },
-    {
-      title: '강사 유니폼 지급 안내',
-      content:
-        '2026년 강사 유니폼 지급 안내입니다.\n\n지급 시기: 1월 중\n사이즈 확인: 마이페이지\n\n사이즈 변경이 필요하면 연락 바랍니다.',
-      isPinned: false,
-      daysAgo: 23,
-    },
-    {
-      title: '모바일 앱 업데이트',
-      content:
-        '모바일 앱이 업데이트되었습니다.\n\n변경사항:\n- 캘린더 기능 개선\n- 알림 기능 추가\n- 버그 수정\n\n앱 스토어에서 업데이트해주세요.',
-      isPinned: false,
-      daysAgo: 24,
-    },
-    {
-      title: '강사 워크샵 후기',
-      content:
-        '12월 강사 워크샵이 성공적으로 마무리되었습니다.\n\n참석자: 50명\n주제: 효과적인 교육 방법론\n\n다음 워크샵도 많은 참여 부탁드립니다.',
-      isPinned: false,
-      daysAgo: 26,
-    },
-    {
-      title: '교육 장소 안내 업데이트',
-      content:
-        '교육 장소 안내가 업데이트되었습니다.\n\n부대별 교육장 위치, 주차 정보 등이\n시스템에 반영되었습니다.\n\n교육 전 확인 바랍니다.',
-      isPinned: false,
-      daysAgo: 27,
-    },
-    {
-      title: '강사 커뮤니티 오픈',
-      content:
-        '강사 전용 온라인 커뮤니티가 오픈되었습니다.\n\n기능: 자료 공유, 질문/답변, 경험 나눔\n접속: 시스템 내 커뮤니티 메뉴\n\n많은 참여 부탁드립니다.',
-      isPinned: false,
-      daysAgo: 29,
     },
     {
       title: '신년 인사',
@@ -280,53 +196,11 @@ async function main() {
       daysAgo: 7,
     },
     {
-      title: '교육 일지 작성 안내',
-      content:
-        '교육 일지 작성에 대해 안내드립니다.\n\n작성 시기: 교육 완료 후 24시간 이내\n작성 방법: 시스템 통해 작성\n\n정확한 기록 부탁드립니다.',
-      isPinned: false,
-      daysAgo: 32,
-    },
-    {
       title: '강사 등급 심사 안내',
       content:
         '2026년 1분기 강사 등급 심사가 진행됩니다.\n\n심사 기간: 2월 1일 ~ 2월 15일\n대상: 전체 강사\n\n평소 교육 실적이 반영됩니다.',
       isPinned: false,
       daysAgo: 35,
-    },
-    {
-      title: '교육 자료 저작권 안내',
-      content:
-        '교육 자료 저작권에 대해 안내드립니다.\n\n모든 교육 자료는 저작권이 있으므로\n무단 복제, 배포를 금지합니다.\n\n협조 부탁드립니다.',
-      isPinned: false,
-      daysAgo: 38,
-    },
-    {
-      title: '강사 간담회 일정',
-      content:
-        '2026년 1분기 강사 간담회 일정입니다.\n\n일시: 2월 20일(목) 15:00\n장소: 본사 대회의실\n\n참석 부탁드립니다.',
-      isPinned: false,
-      daysAgo: 40,
-    },
-    {
-      title: '교육 동영상 촬영 안내',
-      content:
-        '베스트 교육 사례 동영상 촬영이 진행됩니다.\n\n촬영 대상: 우수 강사\n용도: 신규 강사 교육 자료\n\n해당 강사분께는 개별 연락드립니다.',
-      isPinned: false,
-      daysAgo: 42,
-    },
-    {
-      title: '시스템 점검 안내',
-      content:
-        '시스템 정기 점검이 진행됩니다.\n\n점검 시간: 1월 15일 02:00 ~ 06:00\n영향: 일시적 서비스 중단\n\n양해 부탁드립니다.',
-      isPinned: false,
-      daysAgo: 3,
-    },
-    {
-      title: '강사 추천 프로그램',
-      content:
-        '강사 추천 프로그램을 운영합니다.\n\n추천 보상: 30만원 상품권\n조건: 추천 강사 3개월 이상 활동 시\n\n좋은 인재 추천 부탁드립니다.',
-      isPinned: false,
-      daysAgo: 45,
     },
     {
       title: '교육 품질 인증 획득',
@@ -335,60 +209,11 @@ async function main() {
       isPinned: false,
       daysAgo: 48,
     },
-    {
-      title: '온라인 교육 플랫폼 도입',
-      content:
-        '온라인 교육 플랫폼이 도입됩니다.\n\n도입 시기: 2월 1일\n용도: 비대면 교육 지원\n\n사용 방법은 추후 안내드리겠습니다.',
-      isPinned: false,
-      daysAgo: 50,
-    },
-    {
-      title: '강사 헬스케어 프로그램',
-      content:
-        '강사 헬스케어 프로그램을 시작합니다.\n\n내용: 건강검진, 심리상담\n대상: 희망 강사\n\n신청은 시스템에서 가능합니다.',
-      isPinned: false,
-      daysAgo: 52,
-    },
-    {
-      title: '교육 효과 분석 결과',
-      content:
-        '2025년 교육 효과 분석 결과를 공유합니다.\n\n참여 학생 만족도: 92%\n인성 지수 향상률: 15%\n\n우수한 성과에 감사드립니다!',
-      isPinned: false,
-      daysAgo: 55,
-    },
-    {
-      title: '2025년 연간 보고서 발행',
-      content:
-        '2025년 연간 보고서가 발행되었습니다.\n\n주요 내용:\n- 교육 실적 통계\n- 강사 활동 현황\n- 향후 계획\n\n자료실에서 확인 가능합니다.',
-      isPinned: false,
-      daysAgo: 33,
-    },
-    {
-      title: '봄학기 교육 준비 안내',
-      content:
-        '봄학기 교육 준비에 대해 안내드립니다.\n\n교육 시작: 3월 2일\n준비 사항: 교육 자료 숙지, 장비 점검\n\n미리 준비 부탁드립니다.',
-      isPinned: false,
-      daysAgo: 36,
-    },
-    {
-      title: '강사 역량 강화 교육',
-      content:
-        '강사 역량 강화 교육이 진행됩니다.\n\n일시: 2월 첫째 주\n내용: 최신 교육 트렌드, 소통 기법\n\n필수 참석 부탁드립니다.',
-      isPinned: false,
-      daysAgo: 41,
-    },
-    {
-      title: '교육 일정 확정 공지',
-      content:
-        '2026년 상반기 교육 일정이 확정되었습니다.\n\n상세 일정은 시스템 캘린더에서 확인 가능합니다.\n변동 사항은 별도 안내드리겠습니다.',
-      isPinned: false,
-      daysAgo: 44,
-    },
   ];
 
-  // 기존 공지사항 삭제 (테스트 데이터 재생성용 - Message 테이블에서 Notice 타입만)
+  // 기존 공지사항 삭제 (새 Notice 테이블)
   console.log('🗑️ 기존 공지사항 삭제 중...');
-  await prisma.message.deleteMany({ where: { type: 'Notice' } });
+  await prisma.notice.deleteMany({});
   console.log('✅ 기존 공지사항 삭제 완료\n');
 
   // 공지사항 생성
@@ -399,15 +224,13 @@ async function main() {
 
   for (const template of noticeTemplates) {
     const createdAt = new Date(now.getTime() - template.daysAgo * 24 * 60 * 60 * 1000);
-    await prisma.message.create({
+    await prisma.notice.create({
       data: {
-        type: 'Notice',
         title: template.title,
         body: template.content,
         isPinned: template.isPinned,
         authorId,
         viewCount: Math.floor(Math.random() * 200) + 1,
-        status: 'Sent',
         createdAt,
       },
     });

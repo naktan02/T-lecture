@@ -1,5 +1,6 @@
 // src/entities/user/ui/InstructorFields.tsx
 import React, { ChangeEvent } from 'react';
+import { showWarning } from '../../../shared/utils/toast';
 import { SelectField } from '../../../shared/ui';
 import { InstructorMetaResponse } from '../../../features/auth/authApi';
 
@@ -51,7 +52,7 @@ export const InstructorFields: React.FC<InstructorFieldsProps> = ({
 
   const handleAddressSearch = () => {
     if (!window.daum || !window.daum.Postcode) {
-      alert('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+      showWarning('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
       return;
     }
 

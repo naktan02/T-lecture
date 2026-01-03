@@ -1,4 +1,5 @@
 import React from 'react';
+import { showWarning } from '../utils/toast';
 
 declare global {
   interface Window {
@@ -43,7 +44,7 @@ export const AddressSearchInput: React.FC<AddressSearchInputProps> = ({
     if (readOnly) return;
 
     if (!window.daum || !window.daum.Postcode) {
-      alert('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+      showWarning('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
       return;
     }
 

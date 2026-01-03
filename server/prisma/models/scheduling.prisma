@@ -14,6 +14,13 @@ enum AssignmentState {
   @@map("배정상태__t")
 }
 
+enum AssignmentRole {
+  Head       // 총괄강사 (주강사 1명일 때)
+  Supervisor // 책임강사 (주강사 2명+ 중 팀장/선임)
+
+  @@map("배정역할__t")
+}
+
 model InstructorAvailability {
   id           Int      @id @default(autoincrement())
   instructorId Int      @map("강사id")
@@ -27,15 +34,18 @@ model InstructorAvailability {
 }
 
 model InstructorUnitAssignment {
-  userId         Int
-  unitScheduleId Int
-  classification AssignmentCategory? @map("배치분류")
-  state          AssignmentState     @default(Pending) @map("배정상태")
+  userId             Int
+  unitScheduleId     Int
+  trainingLocationId Int?                @map("교육장id")
+  classification     AssignmentCategory? @map("배치분류")
+  state              AssignmentState     @default(Pending) @map("배정상태")
+  role               AssignmentRole?     @map("배정역할")
 
-  User         User         @relation(fields: [userId], references: [id])
-  UnitSchedule UnitSchedule @relation(fields: [unitScheduleId], references: [id], onDelete: Cascade)
+  User             User              @relation(fields: [userId], references: [id])
+  UnitSchedule     UnitSchedule      @relation(fields: [unitScheduleId], references: [id])
+  TrainingLocation TrainingLocation? @relation(fields: [trainingLocationId], references: [id])
 
-  messageAssignments MessageAssignment[]
+  dispatchAssignments DispatchAssignment[]
 
   @@id([unitScheduleId, userId])
   @@unique([unitScheduleId, userId], name: "assignment_instructor_schedule_unique")
@@ -54,3 +64,41 @@ model InstructorUnitDistance {
   @@id([userId, unitId])
   @@map("강사-부대 거리")
 }
+
+// 우선배정 크레딧 (부대 사정으로 취소된 강사에게 우선권 부여)
+model InstructorPriorityCredit {
+  id           Int      @id @default(autoincrement())
+  instructorId Int      @unique @map("강사id")
+  credits      Int      @default(1) @map("우선배정크레딧")
+  createdAt    DateTime @default(now()) @map("생성일시")
+  updatedAt    DateTime @updatedAt @map("수정일시")
+
+  instructor Instructor @relation(fields: [instructorId], references: [userId], onDelete: Cascade)
+
+  @@map("강사우선배정크레딧")
+}
+
+// 시스템 설정 (가중치, 설정값 등)
+model SystemConfig {
+  id          Int     @id @default(autoincrement())
+  key         String  @unique @map("설정키")
+  value       String  @map("설정값") @db.Text
+  description String? @map("설명")
+
+  @@map("시스템설정")
+}
+
+// 강사 패널티 (거절 시 패널티 기간 누적)
+model InstructorPenalty {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @unique @map("강사id")
+  count      Int      @default(1) @map("누적횟수")
+  expiresAt  DateTime @map("만료일")
+  createdAt  DateTime @default(now()) @map("생성일시")
+  updatedAt  DateTime @updatedAt @map("수정일시")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("강사패널티")
+}
+

@@ -1,4 +1,5 @@
 import { ReactElement, useEffect, useState, useCallback } from 'react';
+import { showError } from '../../shared/utils/toast';
 import { NoticeList } from '../../features/notice/ui/NoticeList';
 import { NoticeDetailModal } from '../../features/notice/ui/NoticeDetailModal';
 import { noticeApi, Notice } from '../../features/notice/api/noticeApi';
@@ -22,14 +23,14 @@ const NoticePage = (): ReactElement => {
     try {
       const data = await noticeApi.getNotices({
         page,
-        limit: 20,
+        limit: 10,
         search: searchQuery || undefined,
       });
       setNotices(data.notices);
       setTotalPage(data.meta.lastPage);
       setTotalCount(data.meta.total);
     } catch {
-      alert('공지사항을 불러오는데 실패했습니다.');
+      showError('공지사항을 불러오는데 실패했습니다.');
     }
   }, [page, searchQuery]);
 
@@ -43,13 +44,12 @@ const NoticePage = (): ReactElement => {
     setSearchQuery(searchInput);
   };
 
-  const handleNoticeClick = async (id: number) => {
-    try {
-      const notice = await noticeApi.getNotice(id);
+  // 목록 데이터에서 직접 찾아서 사용 (API 호출 제거)
+  const handleNoticeClick = (id: number) => {
+    const notice = notices.find((n) => n.id === id);
+    if (notice) {
       setSelectedNotice(notice);
       setIsModalOpen(true);
-    } catch {
-      alert('공지사항 내용을 불러올 수 없습니다.');
     }
   };
 
@@ -83,7 +83,7 @@ const NoticePage = (): ReactElement => {
               onNoticeClick={handleNoticeClick}
               currentPage={page}
               totalCount={totalCount}
-              pageSize={20}
+              pageSize={10}
             />
           </div>
 
