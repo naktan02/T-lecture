@@ -265,9 +265,46 @@ class AssignmentService {
       await this.checkAndAutoConfirm(Number(unitScheduleId));
     }
 
+    // 거절 시: 패널티 추가
+    if (newState === 'Rejected') {
+      const penaltyDays = await this.getSystemConfigNumber('REJECTION_PENALTY_DAYS', 15);
+      await this.addPenaltyToInstructor(instructorId, penaltyDays);
+    }
+
     return {
       message: response === 'ACCEPT' ? '배정을 수락했습니다.' : '배정을 거절했습니다.',
     };
+  }
+
+  /**
+   * 강사에게 패널티 추가 (만료일 연장)
+   */
+  private async addPenaltyToInstructor(instructorId: number, days: number) {
+    const now = new Date();
+    const existing = await prisma.instructorPenalty.findUnique({
+      where: { userId: instructorId },
+    });
+
+    if (existing) {
+      const baseDate = existing.expiresAt > now ? existing.expiresAt : now;
+      const newExpiresAt = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
+
+      await prisma.instructorPenalty.update({
+        where: { userId: instructorId },
+        data: {
+          count: { increment: 1 },
+          expiresAt: newExpiresAt,
+        },
+      });
+    } else {
+      await prisma.instructorPenalty.create({
+        data: {
+          userId: instructorId,
+          count: 1,
+          expiresAt: new Date(now.getTime() + days * 24 * 60 * 60 * 1000),
+        },
+      });
+    }
   }
 
   /**
@@ -358,6 +395,12 @@ class AssignmentService {
     const newState = assignment.state === 'Accepted' ? 'Rejected' : 'Canceled';
 
     await assignmentRepository.updateStatusByKey(targetInstructorId, unitScheduleId, newState);
+
+    // Rejected로 변경되면 패널티 추가
+    if (newState === 'Rejected') {
+      const penaltyDays = await this.getSystemConfigNumber('REJECTION_PENALTY_DAYS', 15);
+      await this.addPenaltyToInstructor(targetInstructorId, penaltyDays);
+    }
 
     // 확정에서 인원이 삭제되면 해당 스케줄의 배정들을 임시로 복귀
     if (wasConfirmed) {

@@ -87,3 +87,18 @@ model SystemConfig {
 
   @@map("시스템설정")
 }
+
+// 강사 패널티 (거절 시 패널티 기간 누적)
+model InstructorPenalty {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @unique @map("강사id")
+  count      Int      @default(1) @map("누적횟수")
+  expiresAt  DateTime @map("만료일")
+  createdAt  DateTime @default(now()) @map("생성일시")
+  updatedAt  DateTime @updatedAt @map("수정일시")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("강사패널티")
+}
+

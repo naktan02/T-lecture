@@ -37,9 +37,11 @@ model User {
   answeredInquiries Inquiry[]       @relation("InquiryAnswerer")
   unitAssignments   InstructorUnitAssignment[]
   refreshTokens     RefreshToken[]
+  penalty           InstructorPenalty?
 
   @@map("user")
 }
+
 
 model Admin {
   id     Int        @id @default(autoincrement())

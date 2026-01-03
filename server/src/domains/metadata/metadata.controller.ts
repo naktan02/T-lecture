@@ -106,6 +106,70 @@ export const updateTemplate = asyncHandler(async (req: Request, res: Response) =
   res.status(200).json(updated);
 });
 
+// ===== 배정 설정 (SystemConfig) =====
+
+// 배정 설정 조회
+export const getAssignmentConfigs = asyncHandler(async (req: Request, res: Response) => {
+  const configs = await metadataService.getAssignmentConfigs();
+  res.status(200).json(configs);
+});
+
+// 배정 설정 수정
+export const updateAssignmentConfig = asyncHandler(async (req: Request, res: Response) => {
+  const { key } = req.params;
+  const { value } = req.body;
+
+  if (value === undefined) {
+    throw new AppError('설정 값(value)이 필요합니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  const updated = await metadataService.updateAssignmentConfig(key, String(value));
+  res.status(200).json(updated);
+});
+
+// ===== 패널티 관리 (InstructorPenalty) =====
+
+// 패널티 목록 조회
+export const getPenalties = asyncHandler(async (req: Request, res: Response) => {
+  const penalties = await metadataService.getPenalties();
+  res.status(200).json(penalties);
+});
+
+// 패널티 추가
+export const addPenalty = asyncHandler(async (req: Request, res: Response) => {
+  const { userId, days } = req.body;
+
+  if (!userId || !days) {
+    throw new AppError('userId와 days가 필요합니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  const penalty = await metadataService.addPenalty(Number(userId), Number(days));
+  res.status(201).json(penalty);
+});
+
+// 패널티 만료일 수정
+export const updatePenalty = asyncHandler(async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  const { expiresAt } = req.body;
+
+  if (!expiresAt) {
+    throw new AppError('만료일(expiresAt)이 필요합니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  const updated = await metadataService.updatePenaltyExpiration(
+    Number(userId),
+    new Date(expiresAt),
+  );
+  res.status(200).json(updated);
+});
+
+// 패널티 삭제
+export const deletePenalty = asyncHandler(async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  await metadataService.deletePenalty(Number(userId));
+  res.status(200).json({ message: '패널티가 삭제되었습니다.' });
+});
+
 // CommonJS 호환
 module.exports = {
   getInstructorMeta,
@@ -119,4 +183,10 @@ module.exports = {
   updateVirtue,
   deleteVirtue,
   updateTemplate,
+  getAssignmentConfigs,
+  updateAssignmentConfig,
+  getPenalties,
+  addPenalty,
+  updatePenalty,
+  deletePenalty,
 };

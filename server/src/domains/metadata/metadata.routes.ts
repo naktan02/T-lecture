@@ -38,6 +38,26 @@ router.delete('/virtues/:id', auth, requireRole('ADMIN'), metadataController.del
 // 템플릿 수정
 router.put('/templates/:key', auth, requireRole('ADMIN'), metadataController.updateTemplate);
 
+// ===== 배정 설정 (SystemConfig) =====
+router.get(
+  '/assignment-configs',
+  auth,
+  requireRole('ADMIN'),
+  metadataController.getAssignmentConfigs,
+);
+router.put(
+  '/assignment-configs/:key',
+  auth,
+  requireRole('ADMIN'),
+  metadataController.updateAssignmentConfig,
+);
+
+// ===== 패널티 관리 (InstructorPenalty) =====
+router.get('/penalties', auth, requireRole('ADMIN'), metadataController.getPenalties);
+router.post('/penalties', auth, requireRole('ADMIN'), metadataController.addPenalty);
+router.put('/penalties/:userId', auth, requireRole('ADMIN'), metadataController.updatePenalty);
+router.delete('/penalties/:userId', auth, requireRole('ADMIN'), metadataController.deletePenalty);
+
 export default router;
 
 // CommonJS 호환
