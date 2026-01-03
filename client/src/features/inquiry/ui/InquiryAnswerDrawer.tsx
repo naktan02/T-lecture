@@ -1,4 +1,5 @@
 import { ReactElement, Fragment, useState } from 'react';
+import { showWarning, showError } from '../../../shared/utils/toast';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, ClockIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { Inquiry } from '../api/inquiryApi';
@@ -32,7 +33,7 @@ export const InquiryAnswerDrawer = ({
 
   const handleSubmit = async () => {
     if (!inquiry || !answer.trim()) {
-      alert('답변 내용을 입력해주세요.');
+      showWarning('답변 내용을 입력해주세요.');
       return;
     }
 
@@ -42,7 +43,7 @@ export const InquiryAnswerDrawer = ({
       setAnswer('');
       onClose();
     } catch {
-      alert('답변 등록에 실패했습니다.');
+      showError('답변 등록에 실패했습니다.');
     } finally {
       setIsSubmitting(false);
     }

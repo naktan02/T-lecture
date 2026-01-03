@@ -14,6 +14,8 @@ import {
   Team,
   Virtue,
   MessageTemplate,
+  MessageTemplateBody,
+  FormatPresets,
 } from '../settingsApi';
 import { showSuccess, showError } from '../../../shared/utils';
 
@@ -142,8 +144,17 @@ export const useTemplates = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ key, title, body }: { key: string; title: string; body: string }) =>
-      updateTemplate(key, title, body),
+    mutationFn: ({
+      key,
+      title,
+      body,
+      formatPresets,
+    }: {
+      key: string;
+      title: string;
+      body: MessageTemplateBody;
+      formatPresets?: FormatPresets | null;
+    }) => updateTemplate(key, title, body, formatPresets),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.templates });
       showSuccess('템플릿이 수정되었습니다.');

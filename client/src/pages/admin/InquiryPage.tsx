@@ -1,4 +1,5 @@
 import { ReactElement, useEffect, useState, useCallback } from 'react';
+import { showError } from '../../shared/utils/toast';
 import { InquiryList } from '../../features/inquiry/ui/InquiryList';
 import { InquiryAnswerDrawer } from '../../features/inquiry/ui/InquiryAnswerDrawer';
 import { inquiryApi, Inquiry } from '../../features/inquiry/api/inquiryApi';
@@ -22,7 +23,7 @@ const AdminInquiryPage = (): ReactElement => {
     try {
       const data = await inquiryApi.getInquiries({
         page,
-        limit: 20,
+        limit: 10,
         status: statusFilter === 'all' ? undefined : statusFilter,
         search: searchQuery || undefined,
       });
@@ -31,7 +32,7 @@ const AdminInquiryPage = (): ReactElement => {
       setTotalCount(data.meta.total);
       setWaitingCount(data.meta.waitingCount);
     } catch {
-      alert('문의사항을 불러오는데 실패했습니다.');
+      showError('문의사항을 불러오는데 실패했습니다.');
     }
   }, [page, statusFilter, searchQuery]);
 
@@ -39,13 +40,12 @@ const AdminInquiryPage = (): ReactElement => {
     fetchInquiries();
   }, [fetchInquiries]);
 
-  const handleInquiryClick = async (id: number) => {
-    try {
-      const inquiry = await inquiryApi.getInquiry(id);
+  // 목록 데이터에서 직접 찾아서 사용 (API 호출 제거)
+  const handleInquiryClick = (id: number) => {
+    const inquiry = inquiries.find((i) => i.id === id);
+    if (inquiry) {
       setSelectedInquiry(inquiry);
       setIsDrawerOpen(true);
-    } catch {
-      alert('문의사항을 불러올 수 없습니다.');
     }
   };
 
@@ -120,7 +120,7 @@ const AdminInquiryPage = (): ReactElement => {
               isAdmin={true}
               currentPage={page}
               totalCount={totalCount}
-              pageSize={20}
+              pageSize={10}
             />
           </div>
           {/* 페이지네이션 */}

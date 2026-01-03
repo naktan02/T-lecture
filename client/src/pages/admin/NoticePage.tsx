@@ -1,4 +1,5 @@
 import { ReactElement, useEffect, useState, useCallback } from 'react';
+import { showError, showSuccess } from '../../shared/utils/toast';
 import { AdminHeader } from '../../features/admin/ui/headers/AdminHeader';
 import { NoticeList } from '../../features/notice/ui/NoticeList';
 import { NoticeDrawer } from '../../features/notice/ui/NoticeDrawer';
@@ -21,7 +22,7 @@ const AdminNoticePage = (): ReactElement => {
     try {
       const data = await noticeApi.getNotices({
         page,
-        limit: 20,
+        limit: 10,
         search: searchQuery || undefined,
       });
       setNotices(data.notices);
@@ -29,7 +30,7 @@ const AdminNoticePage = (): ReactElement => {
       setTotalCount(data.meta.total);
     } catch (error) {
       console.error('Failed to fetch notices', error);
-      alert('공지사항을 불러오는데 실패했습니다.');
+      showError('공지사항을 불러오는데 실패했습니다.');
     }
   }, [page, searchQuery]);
 
@@ -48,14 +49,12 @@ const AdminNoticePage = (): ReactElement => {
     setIsDrawerOpen(true);
   };
 
-  const handleEdit = async (id: number) => {
-    try {
-      const notice = await noticeApi.getNotice(id);
+  // 목록 데이터에서 직접 찾아서 사용 (API 호출 제거)
+  const handleEdit = (id: number) => {
+    const notice = notices.find((n) => n.id === id);
+    if (notice) {
       setSelectedNotice(notice);
       setIsDrawerOpen(true);
-    } catch (error) {
-      console.error(error);
-      alert('공지사항 상세 정보를 불러오지 못했습니다.');
     }
   };
 
@@ -63,28 +62,28 @@ const AdminNoticePage = (): ReactElement => {
     try {
       if (selectedNotice) {
         await noticeApi.updateNotice(selectedNotice.id, data);
-        alert('공지사항이 수정되었습니다.');
+        showSuccess('공지사항이 수정되었습니다.');
       } else {
         await noticeApi.createNotice(data);
-        alert('공지사항이 생성되었습니다.');
+        showSuccess('공지사항이 생성되었습니다.');
       }
       setIsDrawerOpen(false);
       fetchNotices();
     } catch (error) {
       console.error(error);
-      alert('저장에 실패했습니다.');
+      showError('저장에 실패했습니다.');
     }
   };
 
   const handleDelete = async (id: number) => {
     try {
       await noticeApi.deleteNotice(id);
-      alert('삭제되었습니다.');
+      showSuccess('삭제되었습니다.');
       setIsDrawerOpen(false);
       fetchNotices();
     } catch (error) {
       console.error(error);
-      alert('삭제에 실패했습니다.');
+      showError('삭제에 실패했습니다.');
     }
   };
 
@@ -128,7 +127,7 @@ const AdminNoticePage = (): ReactElement => {
               isAdmin={true}
               currentPage={page}
               totalCount={totalCount}
-              pageSize={20}
+              pageSize={10}
             />
           </div>
           {/* 페이지네이션 */}

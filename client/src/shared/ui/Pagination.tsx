@@ -12,14 +12,15 @@ export const Pagination = ({
   currentPage,
   onPageChange,
   limit = 10,
-}: PaginationProps): ReactElement | null => {
-  if (totalPage <= 1) return null;
+}: PaginationProps): ReactElement => {
+  // 최소 1페이지는 항상 표시
+  const effectiveTotalPage = Math.max(totalPage, 1);
 
   // 현재 페이지가 속한 블록 계산
   // 예: limit=10 일 때, 1~10페이지는 0번 블록, 11~20페이지는 1번 블록
   const currentBlock = Math.ceil(currentPage / limit);
   const startPage = (currentBlock - 1) * limit + 1;
-  const endPage = Math.min(startPage + limit - 1, totalPage);
+  const endPage = Math.min(startPage + limit - 1, effectiveTotalPage);
 
   const pages = [];
   for (let i = startPage; i <= endPage; i++) {
@@ -58,28 +59,36 @@ export const Pagination = ({
 
       {/* 페이지 번호들 */}
       <div className="flex items-center gap-1">
-        {pages.map((page) => (
-          <button
-            key={page}
-            onClick={() => onPageChange(page)}
-            className={`
-              flex items-center justify-center w-8 h-8 md:w-9 md:h-9 rounded-lg text-sm font-medium transition-all duration-200
-              ${
-                currentPage === page
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 scale-105'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200'
-              }
-            `}
-          >
-            {page}
-          </button>
-        ))}
+        {pages.map((page) => {
+          // 실제 데이터가 있는 페이지인지 확인
+          const hasData = page <= totalPage;
+
+          return (
+            <button
+              key={page}
+              onClick={() => hasData && onPageChange(page)}
+              disabled={!hasData}
+              className={`
+                flex items-center justify-center w-8 h-8 md:w-9 md:h-9 rounded-lg text-sm font-medium transition-all duration-200
+                ${
+                  currentPage === page
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 scale-105'
+                    : hasData
+                      ? 'bg-white text-gray-600 border border-gray-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200'
+                      : 'bg-gray-100 text-gray-300 border border-gray-100 cursor-not-allowed'
+                }
+              `}
+            >
+              {page}
+            </button>
+          );
+        })}
       </div>
 
       {/* 다음 블록 이동 (>) */}
       <button
         onClick={handleNextBlock}
-        disabled={endPage === totalPage}
+        disabled={endPage >= effectiveTotalPage}
         className="flex items-center justify-center w-8 h-8 md:w-9 md:h-9 rounded-lg border border-gray-200 
                    bg-white text-gray-500 hover:bg-gray-50 hover:text-indigo-600 
                    disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-500

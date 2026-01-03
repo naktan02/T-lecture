@@ -1,6 +1,15 @@
 // client/src/features/settings/ui/template-editor/FormatVariableModal.tsx
 import { useState, useRef, useEffect, ReactElement, DragEvent } from 'react';
-import { VariableDefinition } from './variableConfig';
+import { PLACEHOLDER_META } from './registry';
+
+// 변수 정의 인터페이스 (로컬)
+interface VariableDefinition {
+  key: string;
+  label: string;
+  icon: string;
+  isFormatVariable?: boolean;
+  formatPlaceholders?: string[];
+}
 
 interface FormatVariableModalProps {
   variable: VariableDefinition;
@@ -8,16 +17,6 @@ interface FormatVariableModalProps {
   onConfirm: (format: string) => void;
   onCancel: () => void;
 }
-
-// 플레이스홀더 한글 라벨
-const PLACEHOLDER_LABELS: Record<string, { label: string; icon: string }> = {
-  index: { label: '순번', icon: '🔢' },
-  name: { label: '이름', icon: '👤' },
-  phone: { label: '전화번호', icon: '📱' },
-  category: { label: '분류', icon: '🏷️' },
-  virtues: { label: '가능과목', icon: '📚' },
-  location: { label: '장소', icon: '📍' },
-};
 
 /**
  * 포맷 변수 입력 모달 - 블록 코딩 스타일
@@ -30,50 +29,112 @@ export const FormatVariableModal = ({
 }: FormatVariableModalProps): ReactElement => {
   const editorRef = useRef<HTMLDivElement>(null);
   const isInternalChange = useRef(false);
-  const [formatValue, setFormatValue] = useState(
-    initialFormat || '{index}. {name}({category}) / {phone} / {virtues}',
-  );
+
+  // 변수 타입에 따라 기본 포맷 결정
+  const getDefaultFormat = (): string => {
+    if (variable.key === 'self.schedules') {
+      return '- {date} ({dayOfWeek}): {instructors}';
+    }
+    if (variable.key === 'self.mySchedules') {
+      return '- {date} ({dayOfWeek}) : {name}';
+    }
+    if (variable.key === 'locations') {
+      return '[{placeName}] 인원: {actualCount}명';
+    }
+    return '{index}. {name}({category}) / {phone} / {virtues}';
+  };
+
+  const [formatValue, setFormatValue] = useState(initialFormat || getDefaultFormat());
 
   const placeholders = variable.formatPlaceholders || [];
 
-  // 텍스트를 HTML로 변환 (플레이스홀더를 블록으로)
+  // 텍스트를 HTML로 변환 (플레이스홀더를 블록으로, 줄바꿈을 br로)
   const textToHtml = (text: string): string => {
     if (!text) return '';
-    return text.replace(/\{(\w+)\}/g, (_, key) => {
-      const info = PLACEHOLDER_LABELS[key];
+    let html = text.replace(/\n/g, '<br>');
+    html = html.replace(/\{(\w+)\}/g, (_, key) => {
+      const info = PLACEHOLDER_META[key]; // registry에서 참조
       if (info) {
         return `<span contenteditable="false" data-placeholder="${key}" class="format-placeholder-block">${info.icon} ${info.label}<button type="button" class="format-delete-btn">×</button></span>`;
       }
-      return `<span contenteditable="false" data-placeholder="${key}" class="format-placeholder-block">🏷️ ${key}<button type="button" class="format-delete-btn">×</button></span>`;
+      return `{${key}}`;
     });
+    return html;
   };
 
-  // HTML을 텍스트로 변환
-  const htmlToText = (html: string): string => {
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = html;
+  // DOM을 직접 순회해서 텍스트로 직렬화 (엔터 중복/마지막 깨짐 방지)
+  const domToText = (root: HTMLElement): string => {
+    const out: string[] = [];
 
-    const blocks = tempDiv.querySelectorAll('[data-placeholder]');
-    blocks.forEach((block) => {
-      const key = block.getAttribute('data-placeholder');
-      if (key) block.replaceWith(`{${key}}`);
-    });
+    const pushNewlineOnce = () => {
+      if (out.length === 0) return out.push('\n');
+      if (out[out.length - 1] !== '\n') out.push('\n');
+    };
 
-    return tempDiv.textContent || '';
+    const walk = (node: Node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        out.push(node.textContent ?? '');
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+      const el = node as HTMLElement;
+
+      // placeholder block
+      const ph = el.getAttribute('data-placeholder');
+      if (ph) {
+        out.push(`{${ph}}`);
+        return;
+      }
+
+      const tag = el.tagName;
+
+      // <br>
+      if (tag === 'BR') {
+        pushNewlineOnce();
+        return;
+      }
+      // contentEditable Enter가 흔히 만드는 <div><br></div>는 "개행 1번"으로만 처리
+      if ((tag === 'DIV' || tag === 'P') && el.childNodes.length === 1) {
+        const only = el.childNodes[0] as Node;
+        if (only.nodeType === Node.ELEMENT_NODE && (only as HTMLElement).tagName === 'BR') {
+          pushNewlineOnce();
+          return;
+        }
+      }
+
+      // 일반 노드 순회
+      el.childNodes.forEach(walk);
+
+      // 블록 요소는 끝에서 개행 1번
+      if (tag === 'DIV' || tag === 'P') pushNewlineOnce();
+    };
+    root.childNodes.forEach(walk);
+
+    // 마지막이 개행이면 1개만 제거 (저장 시 "엔터가 하나 더 들어간 것처럼" 보이는 문제 방지)
+    if (out[out.length - 1] === '\n') out.pop();
+
+    return out.join('');
   };
-
+  const getCurrentTextFromDom = (): string => {
+    if (!editorRef.current) return formatValue;
+    return domToText(editorRef.current);
+  };
   // 에디터 초기화
   useEffect(() => {
     if (editorRef.current && !isInternalChange.current) {
-      editorRef.current.innerHTML = textToHtml(formatValue);
+      const initialHtml = textToHtml(formatValue);
+      editorRef.current.innerHTML = initialHtml;
     }
     isInternalChange.current = false;
-  }, []);
+  }, [formatValue]);
 
   const handleInput = () => {
     if (editorRef.current) {
+      // 내부 변경 플래그를 먼저 세우고(경합 방지) DOM에서 텍스트로 직렬화
       isInternalChange.current = true;
-      setFormatValue(htmlToText(editorRef.current.innerHTML));
+      const text = domToText(editorRef.current);
+      setFormatValue(text);
     }
   };
 
@@ -89,6 +150,32 @@ export const FormatVariableModal = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0 || !editorRef.current) return;
+
+      const range = sel.getRangeAt(0);
+      // 편집기 밖이면 무시
+      if (!editorRef.current.contains(range.commonAncestorContainer)) return;
+
+      // 1) 현재 선택 영역 제거
+      range.deleteContents();
+
+      // 2) <br> 삽입
+      const br = document.createElement('br');
+      range.insertNode(br);
+
+      // 3) 커서를 <br> 뒤로 이동
+      range.setStartAfter(br);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+
+      // 4) 브라우저가 DOM을 정리한 뒤 직렬화(타이밍 안정화)
+      queueMicrotask(() => handleInput());
+      return;
+    }
     if (e.key === 'Delete' || e.key === 'Backspace') {
       const selection = window.getSelection();
       if (selection?.rangeCount) {
@@ -117,9 +204,9 @@ export const FormatVariableModal = ({
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     const placeholder = e.dataTransfer.getData('text/plain');
-    if (!placeholder || !PLACEHOLDER_LABELS[placeholder]) return;
+    if (!placeholder || !PLACEHOLDER_META[placeholder]) return;
 
-    const info = PLACEHOLDER_LABELS[placeholder];
+    const info = PLACEHOLDER_META[placeholder];
 
     // 드롭 위치 계산
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -161,7 +248,7 @@ export const FormatVariableModal = ({
     if (!editorRef.current) return;
     editorRef.current.focus();
 
-    const info = PLACEHOLDER_LABELS[placeholder];
+    const info = PLACEHOLDER_META[placeholder];
     if (!info) return;
 
     const selection = window.getSelection();
@@ -188,7 +275,7 @@ export const FormatVariableModal = ({
   };
 
   const insertPlaceholderAtEnd = (placeholder: string) => {
-    const info = PLACEHOLDER_LABELS[placeholder];
+    const info = PLACEHOLDER_META[placeholder];
     if (!info || !editorRef.current) return;
 
     const block = document.createElement('span');
@@ -202,13 +289,85 @@ export const FormatVariableModal = ({
   };
 
   const handleConfirm = () => {
-    if (formatValue.trim()) {
-      onConfirm(formatValue.trim());
-    }
+    const finalText = getCurrentTextFromDom();
+    if (finalText) onConfirm(finalText);
   };
 
   // 미리보기
   const renderPreview = (): string => {
+    // 일정용 샘플 데이터 (self.schedules)
+    const hasDatePlaceholder =
+      formatValue.includes('{date}') || formatValue.includes('{dayOfWeek}');
+
+    if (hasDatePlaceholder) {
+      const scheduleSampleData = [
+        {
+          name: '유혜경',
+          date: '2024-11-17',
+          dayOfWeek: '일',
+          instructors: '도혜승(주), 유혜경(부), 김철수(보조)',
+        },
+        {
+          name: '유혜경',
+          date: '2024-11-18',
+          dayOfWeek: '월',
+          instructors: '도혜승(주), 유혜경(부), 박영희(실습)',
+        },
+        {
+          name: '유혜경',
+          date: '2024-11-19',
+          dayOfWeek: '화',
+          instructors: '유혜경(부), 김철수(보조)',
+        },
+      ];
+      return scheduleSampleData
+        .map((data) => {
+          let line = formatValue;
+          Object.entries(data).forEach(([key, value]) => {
+            line = line.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+          });
+          return line;
+        })
+        .join('\n');
+    }
+
+    // 장소 목록용 샘플 데이터
+    const hasLocationPlaceholder =
+      formatValue.includes('{placeName}') || formatValue.includes('{actualCount}');
+
+    if (hasLocationPlaceholder) {
+      const locationSampleData = [
+        {
+          index: '1',
+          placeName: '교육관',
+          actualCount: '75',
+          hasInstructorLounge: 'O',
+          hasWomenRestroom: 'O',
+          allowsPhoneBeforeAfter: '가능',
+          note: 'TV, 마이크 있음',
+        },
+        {
+          index: '2',
+          placeName: '체육관',
+          actualCount: '48',
+          hasInstructorLounge: 'X',
+          hasWomenRestroom: 'O',
+          allowsPhoneBeforeAfter: '불가',
+          note: '',
+        },
+      ];
+      return locationSampleData
+        .map((data) => {
+          let line = formatValue;
+          Object.entries(data).forEach(([key, value]) => {
+            line = line.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+          });
+          return line;
+        })
+        .join('\n');
+    }
+
+    // 기본 샘플 데이터
     const sampleData = [
       {
         index: '1',
@@ -342,7 +501,7 @@ export const FormatVariableModal = ({
             </label>
             <div className="flex flex-wrap gap-2">
               {placeholders.map((ph) => {
-                const info = PLACEHOLDER_LABELS[ph];
+                const info = PLACEHOLDER_META[ph];
                 if (!info) return null;
                 return (
                   <div

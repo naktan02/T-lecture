@@ -1,5 +1,5 @@
 // client/src/shared/ui/MiniCalendar.tsx
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { BaseCalendar } from './BaseCalendar';
 
 interface MiniCalendarProps {
@@ -21,21 +21,30 @@ interface MiniCalendarProps {
  * @param availableDates - ['2025-05-01', '2025-05-02'] 형태의 날짜 배열
  * @param className - 추가 스타일 클래스
  * @param width - 캘린더 너비 (기본: '100%' - 반응형)
- * @param year - 표시할 연도 (기본: 현재)
- * @param month - 표시할 월 (기본: 현재)
+ * @param year - 초기 표시 연도 (기본: 현재)
+ * @param month - 초기 표시 월 (기본: 현재)
  */
 export const MiniCalendar: React.FC<MiniCalendarProps> = ({
   availableDates = [],
   className = '',
-  width = '100%', // 기본값을 100%로 변경 (반응형)
+  width = '100%',
   year,
   month,
 }) => {
   const today = new Date();
-  const displayYear = year ?? today.getFullYear();
-  const displayMonth = month ?? today.getMonth() + 1;
+
+  // 월 전환을 위한 상태 관리
+  const [displayYear, setDisplayYear] = useState(year ?? today.getFullYear());
+  const [displayMonth, setDisplayMonth] = useState(month ?? today.getMonth() + 1);
+
+  // 월 변경 핸들러
+  const handleMonthChange = (newYear: number, newMonth: number) => {
+    setDisplayYear(newYear);
+    setDisplayMonth(newMonth);
+  };
 
   // availableDates를 selectedDays(day 숫자 배열)로 변환
+  // 현재 표시 중인 월의 날짜만 포함
   const selectedDays = useMemo(() => {
     return availableDates
       .map((dateStr) => {
@@ -52,7 +61,7 @@ export const MiniCalendar: React.FC<MiniCalendarProps> = ({
   return (
     <div
       className={`mini-calendar-wrapper bg-white rounded-lg shadow-xl border border-gray-200 p-2 ${className}`}
-      style={{ width: width, maxWidth: '100%' }} // maxWidth 추가로 overflow 방지
+      style={{ width: width, maxWidth: '100%' }}
     >
       <style>{`
         /* MiniCalendar 전용 크기 조정 */
@@ -78,6 +87,7 @@ export const MiniCalendar: React.FC<MiniCalendarProps> = ({
         year={displayYear}
         month={displayMonth}
         selectedDays={selectedDays}
+        onMonthChange={handleMonthChange}
         readOnly={true}
         showNeighboringMonth={false}
         size="small"

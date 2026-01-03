@@ -8,13 +8,11 @@ const router = express.Router();
 // 강사: 내 배정 목록
 router.get('/', auth, requireRole('INSTRUCTOR'), assignmentController.getAssignments);
 
-// 강사: 배정 응답
-router.post(
-  '/:unitScheduleId/response',
-  auth,
-  requireRole('INSTRUCTOR'),
-  assignmentController.respondAssignment,
-);
+// 모든 사용자: 내 배정 목록 (메시지함용 - 임시/확정 분류 포함)
+router.get('/my', auth, assignmentController.getMyAssignments);
+
+// 모든 사용자: 배정 응답
+router.post('/:unitScheduleId/response', auth, assignmentController.respondAssignment);
 
 // 강사: 이력
 router.get('/history', auth, requireRole('INSTRUCTOR'), assignmentController.getWorkHistory);
@@ -25,6 +23,12 @@ router.get('/candidates', auth, requireRole('ADMIN'), assignmentController.getCa
 // 관리자: 자동배정 실행
 router.post('/auto-assign', auth, requireRole('ADMIN'), assignmentController.autoAssign);
 
+// 관리자: 자동배정 미리보기
+router.post('/preview', auth, requireRole('ADMIN'), assignmentController.previewAutoAssign);
+
+// 관리자: 배정 일괄 저장
+router.post('/bulk-save', auth, requireRole('ADMIN'), assignmentController.bulkSaveAssignments);
+
 // 관리자: 배정 취소
 router.patch(
   '/:unitScheduleId/cancel',
@@ -32,6 +36,20 @@ router.patch(
   requireRole('ADMIN'),
   assignmentController.cancelAssignmentByAdmin,
 );
+
+// 관리자: 부대 인원고정 설정/해제
+router.patch(
+  '/unit/:unitId/staff-lock',
+  auth,
+  requireRole('ADMIN'),
+  assignmentController.toggleStaffLock,
+);
+
+// 관리자: 일괄 배정 업데이트 (모달 저장)
+router.post('/batch-update', auth, requireRole('ADMIN'), assignmentController.batchUpdate);
+
+// 관리자: 역할 변경 (총괄/책임강사)
+router.post('/update-role', auth, requireRole('ADMIN'), assignmentController.updateRole);
 
 export default router;
 

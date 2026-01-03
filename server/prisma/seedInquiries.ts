@@ -92,11 +92,9 @@ async function main() {
   }
   console.log(`📋 강사 ${instructors.length}명 확인됨\n`);
 
-  // 기존 문의사항 삭제
+  // 기존 문의사항 삭제 (새 Inquiry 테이블)
   console.log('🗑️ 기존 문의사항 삭제 중...');
-  const deleted = await prisma.message.deleteMany({
-    where: { type: 'Inquiry' },
-  });
+  const deleted = await prisma.inquiry.deleteMany({});
   console.log(`✅ 기존 문의사항 ${deleted.count}개 삭제 완료\n`);
 
   // 문의사항 생성
@@ -114,14 +112,12 @@ async function main() {
     const isAnswered = Math.random() > 0.4;
 
     try {
-      const inquiry = await prisma.message.create({
+      await prisma.inquiry.create({
         data: {
-          type: 'Inquiry',
           title: title,
           body: content,
           authorId: instructor.id,
-          status: 'Sent',
-          inquiryStatus: isAnswered ? 'Answered' : 'Waiting',
+          status: isAnswered ? 'Answered' : 'Waiting',
           ...(isAnswered && {
             answer: ANSWERS[i % ANSWERS.length],
             answeredBy: admin.userId,

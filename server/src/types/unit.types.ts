@@ -92,7 +92,6 @@ export interface RawUnitInput {
 
 export interface ScheduleInput {
   date: Date | string;
-  isExcluded?: boolean;
 }
 
 export interface UnitQueryInput {

@@ -25,7 +25,6 @@ interface TrainingLocationData {
 
 interface ScheduleData {
   date: Date | string;
-  isExcluded?: boolean;
 }
 
 // 헬퍼
@@ -222,7 +221,6 @@ class UnitRepository {
         schedules: {
           create: (schedules || []).map((s) => ({
             date: new Date(s.date),
-            isExcluded: s.isExcluded ?? false,
           })),
         },
       },
@@ -294,14 +292,35 @@ class UnitRepository {
         }
       }
 
-      // Schedules (재생성 - isExcluded 포함)
+      // Schedules (재생성)
       if (schedules) {
+        // 1. 기존 스케줄에 활성 배정된 강사들 조회 (우선배정 크레딧 부여용)
+        const affectedInstructors = await tx.instructorUnitAssignment.findMany({
+          where: {
+            UnitSchedule: { unitId },
+            state: { in: ['Pending', 'Accepted'] },
+          },
+          select: { userId: true },
+          distinct: ['userId'],
+        });
+
+        // 2. 영향받은 강사들에게 우선배정 크레딧 부여
+        for (const { userId } of affectedInstructors) {
+          await tx.instructorPriorityCredit.upsert({
+            where: { instructorId: userId },
+            create: { instructorId: userId, credits: 1 },
+            update: { credits: { increment: 1 } },
+          });
+        }
+
+        // 3. 기존 스케줄 삭제 (배정도 cascade 삭제)
         await tx.unitSchedule.deleteMany({ where: { unitId } });
+
+        // 4. 새 스케줄 생성
         await tx.unitSchedule.createMany({
           data: schedules.map((s) => ({
             unitId,
             date: new Date(s.date),
-            isExcluded: s.isExcluded ?? false,
           })),
         });
       }

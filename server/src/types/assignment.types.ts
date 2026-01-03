@@ -46,20 +46,28 @@ export interface TrainingLocationRaw {
 export interface ScheduleRaw {
   id: number;
   date: Date | null;
+  isBlocked?: boolean;
   assignments?: AssignmentRaw[];
 }
 
 export interface AssignmentRaw {
   unitScheduleId: number;
   userId: number;
+  trainingLocationId?: number | null;
   state: string;
-  classification?: string | null;
+  classification?: string | null; // Temporary, Confirmed
+  role?: string | null; // Head, Supervisor, or null
   User: {
     name: string | null;
     instructor?: {
       team?: { name: string | null } | null;
+      category?: string | null;
     } | null;
   };
+  // 메시지 발송 확인용
+  messageAssignments?: Array<{
+    message: { type: string | null } | null;
+  }>;
 }
 
 export interface UnitRaw {

@@ -1,8 +1,8 @@
 enum UserCategory {
-  Main
-  Co
-  Assistant
-  Practicum
+  Main // 주강사
+  Co // 부강사
+  Assistant // 보조강사
+  Practicum // 실습강
 
   @@map("분류__t")
 }
@@ -28,11 +28,15 @@ model User {
   status          UserStatus @default(PENDING)
 
   // Relations
-  instructor       Instructor?
-  admin            Admin?
-  messageReceipts  MessageReceipt[]
-  unitAssignments  InstructorUnitAssignment[]
-  refreshTokens    RefreshToken[]
+  instructor        Instructor?
+  admin             Admin?
+  messageReceipts   MessageReceipt[]
+  noticeReceipts    NoticeReceipt[] @relation("NoticeRecipient")
+  authoredNotices   Notice[]        @relation("NoticeAuthor")
+  authoredInquiries Inquiry[]       @relation("InquiryAuthor")
+  answeredInquiries Inquiry[]       @relation("InquiryAnswerer")
+  unitAssignments   InstructorUnitAssignment[]
+  refreshTokens     RefreshToken[]
 
   @@map("user")
 }
@@ -68,6 +72,7 @@ model Instructor {
   virtues         InstructorVirtue[]
   distances       InstructorUnitDistance[]
   instructorStats InstructorStats[]
+  priorityCredit  InstructorPriorityCredit?
 
   @@map("강사")
 }

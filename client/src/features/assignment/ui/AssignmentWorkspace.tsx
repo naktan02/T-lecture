@@ -1,14 +1,18 @@
 // src/features/assignment/ui/AssignmentWorkspace.tsx
 
-import { useState, useRef, ChangeEvent, MouseEvent } from 'react';
+import { useState, useRef, ChangeEvent, MouseEvent, useEffect } from 'react';
 import { useAssignment } from '../model/useAssignment';
 import { Button, MiniCalendar, ConfirmModal } from '../../../shared/ui';
 import { AssignmentDetailModal, AssignmentGroupDetailModal } from './AssignmentDetailModal';
+import { UnassignedUnitDetailModal } from './UnassignedUnitDetailModal';
+import { sendConfirmedMessagesApi } from '../../message/messageApi';
+import { showSuccess, showError } from '../../../shared/utils';
 
-interface SelectedItem {
-  type: 'UNIT' | 'INSTRUCTOR';
-  [key: string]: unknown;
-}
+// ID 기반 선택 키
+type SelectionKey =
+  | { type: 'UNIT'; unitId: number }
+  | { type: 'INSTRUCTOR'; instructorId: number }
+  | null;
 
 interface CalendarPopup {
   visible: boolean;
@@ -35,18 +39,55 @@ export const AssignmentWorkspace: React.FC = () => {
     setDateRange,
     loading,
     error,
-    unassignedUnits,
+    groupedUnassignedUnits,
     availableInstructors,
     assignments,
+    confirmedAssignments,
     fetchData,
     executeAutoAssign,
-    saveAssignments,
-    removeAssignment,
+    sendTemporaryMessages,
   } = useAssignment();
 
-  const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
+  // ID 기반 선택 (스냅샷 대신 ID만 저장)
+  const [selectionKey, setSelectionKey] = useState<SelectionKey>(null);
   const [showAutoAssignConfirm, setShowAutoAssignConfirm] = useState(false);
-  const [detailModalData, setDetailModalData] = useState<AssignmentGroup | null>(null);
+
+  type ModalKey = { unitId: number; bucket: 'PENDING' | 'ACCEPTED' } | null;
+  const [detailModalKey, setDetailModalKey] = useState<ModalKey>(null);
+
+  // 실시간 데이터 조회 (ID로 최신 데이터 찾기)
+  const selectedUnit =
+    selectionKey?.type === 'UNIT'
+      ? groupedUnassignedUnits.find((u) => u.unitId === selectionKey.unitId)
+      : null;
+
+  const selectedInstructor =
+    selectionKey?.type === 'INSTRUCTOR'
+      ? availableInstructors.find((i) => i.id === selectionKey.instructorId)
+      : null;
+
+  const currentGroup =
+    detailModalKey?.bucket === 'PENDING'
+      ? assignments.find((g) => g.unitId === detailModalKey.unitId)
+      : detailModalKey?.bucket === 'ACCEPTED'
+        ? confirmedAssignments.find((g) => g.unitId === detailModalKey.unitId)
+        : null;
+
+  // 데이터 삭제 시 모달 자동 닫기
+  useEffect(() => {
+    if (selectionKey?.type === 'UNIT' && !selectedUnit) {
+      setSelectionKey(null);
+    }
+    if (selectionKey?.type === 'INSTRUCTOR' && !selectedInstructor) {
+      setSelectionKey(null);
+    }
+  }, [selectionKey, selectedUnit, selectedInstructor]);
+
+  useEffect(() => {
+    if (detailModalKey && !currentGroup) {
+      setDetailModalKey(null);
+    }
+  }, [detailModalKey, currentGroup]);
 
   const [calendarPopup, setCalendarPopup] = useState<CalendarPopup>({
     visible: false,
@@ -87,19 +128,45 @@ export const AssignmentWorkspace: React.FC = () => {
     }
     if (dates && e) {
       const rect = e.currentTarget.getBoundingClientRect();
+      const popupHeight = 320;
+      const popupWidth = 240;
+
+      // 기본 위치: 요소 오른쪽
+      let posX = rect.right + 10;
+      let posY = rect.top;
+
+      // 하단 경계 체크: 팝업이 화면 아래로 넘어가면 위로 조정
+      if (rect.top + popupHeight > window.innerHeight) {
+        posY = Math.max(10, window.innerHeight - popupHeight - 10);
+      }
+
+      // 우측 경계 체크: 팝업이 화면 오른쪽으로 넘어가면 왼쪽에 표시
+      if (rect.right + popupWidth + 10 > window.innerWidth) {
+        posX = Math.max(10, rect.left - popupWidth - 10);
+      }
+
       setCalendarPopup({
         visible: true,
-        x: rect.right + 10,
-        y: rect.top,
+        x: posX,
+        y: posY,
         dates: dates,
       });
     }
   };
 
   const handleMouseLeave = (): void => {
-    closeTimeoutRef.current = setTimeout(() => {
-      setCalendarPopup((prev) => ({ ...prev, visible: false }));
-    }, 300);
+    setCalendarPopup({ visible: false, x: 0, y: 0, dates: [] });
+  };
+
+  // 확정 메시지 발송 핸들러
+  const handleSendConfirmedMessages = async () => {
+    try {
+      const result = await sendConfirmedMessagesApi();
+      showSuccess(`확정 메시지 ${result.createdCount}건 발송 완료`);
+      await fetchData();
+    } catch (e) {
+      showError((e as Error).message);
+    }
   };
 
   return (
@@ -132,7 +199,7 @@ export const AssignmentWorkspace: React.FC = () => {
           </Button>
           <button
             onClick={handleAutoAssignClick}
-            disabled={loading || unassignedUnits.length === 0}
+            disabled={loading || groupedUnassignedUnits.length === 0}
             className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 
                            disabled:bg-gray-300 disabled:cursor-not-allowed
                            shadow-sm transition-all text-sm font-bold flex items-center gap-2"
@@ -173,40 +240,50 @@ export const AssignmentWorkspace: React.FC = () => {
       <div className="flex-1 p-4 grid grid-cols-1 md:grid-cols-2 gap-4 overflow-hidden bg-gray-100">
         {/* Left Column */}
         <div className="flex flex-col gap-4 overflow-hidden">
-          {/* Panel 1: 미배정 부대 */}
+          {/* Panel 1: 미배정 부대 (교육단위별 그룹화) */}
           <div className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
             <div className="p-3 bg-red-50 border-b border-red-100 border-l-4 border-l-red-500 font-bold text-gray-700 flex justify-between items-center">
-              <span className="flex items-center gap-2">📋 배정 대상 부대 (미배정)</span>
+              <span className="flex items-center gap-2">📋 배정 대상 부대 (부대별)</span>
               <span className="text-xs bg-white px-2 py-0.5 rounded-full border border-red-200 text-red-600 font-bold">
-                {unassignedUnits.length}건
+                {groupedUnassignedUnits.length}개 부대
               </span>
             </div>
             <div className="flex-1 p-4 overflow-y-auto bg-gray-50/50">
-              <div className="space-y-2">
-                {unassignedUnits.map((unit) => (
+              <div className="space-y-3">
+                {groupedUnassignedUnits.map((unit) => (
                   <div
-                    key={unit.id}
-                    onClick={() => setSelectedItem({ ...unit, type: 'UNIT' })}
-                    className="bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-red-300 transition-all border-l-4 border-l-transparent hover:border-l-red-400 group"
+                    key={unit.unitId}
+                    onClick={() => setSelectionKey({ type: 'UNIT', unitId: unit.unitId })}
+                    className="bg-white border border-gray-200 rounded-lg p-2.5 cursor-pointer hover:shadow-md hover:border-red-300 transition-all border-l-4 border-l-transparent hover:border-l-red-400 group"
                   >
-                    <div className="font-bold text-gray-800 text-sm flex justify-between items-center mb-1">
-                      <div className="flex items-center gap-2">
+                    <div className="font-bold text-gray-800 text-xs flex justify-between items-center mb-1">
+                      <div className="flex items-center gap-1.5">
                         <span>{unit.unitName}</span>
-                        {unit.originalPlace && (
-                          <span className="text-[11px] font-normal text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-                            {unit.originalPlace}
+                        {unit.locations.length > 1 && (
+                          <span className="text-[10px] font-normal text-purple-600 bg-purple-50 px-1 py-0.5 rounded">
+                            {unit.locations.length}개
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-gray-500 font-normal">
-                        {unit.date} {unit.time}
+                      <span className="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-bold border border-blue-100 text-[10px]">
+                        {unit.totalRequired}명
                       </span>
                     </div>
-                    <div className="text-xs text-gray-500 mt-1 flex justify-between items-end">
-                      <span>📍 {unit.location}</span>
-                      <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded font-bold border border-blue-100">
-                        필요 인원: {unit.instructorsNumbers}명
-                      </span>
+                    <div className="text-[10px] text-gray-500 mb-1">📍 {unit.region}</div>
+                    <div className="flex flex-wrap gap-0.5">
+                      {unit.uniqueDates.slice(0, 3).map((date, idx) => (
+                        <span
+                          key={idx}
+                          className="text-[9px] bg-gray-100 text-gray-600 px-1 py-0.5 rounded"
+                        >
+                          {date}
+                        </span>
+                      ))}
+                      {unit.uniqueDates.length > 3 && (
+                        <span className="text-[9px] bg-gray-200 text-gray-600 px-1 py-0.5 rounded">
+                          +{unit.uniqueDates.length - 3}일
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -232,7 +309,7 @@ export const AssignmentWorkspace: React.FC = () => {
                   {availableInstructors.map((inst) => (
                     <div
                       key={inst.id}
-                      onClick={() => setSelectedItem({ ...inst, type: 'INSTRUCTOR' })}
+                      onClick={() => setSelectionKey({ type: 'INSTRUCTOR', instructorId: inst.id })}
                       className="relative bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-slate-400 transition-all border-l-4 border-l-transparent hover:border-l-slate-600"
                     >
                       <div className="font-bold text-gray-800 text-sm flex items-center gap-2">
@@ -285,8 +362,8 @@ export const AssignmentWorkspace: React.FC = () => {
                   자동 배정
                 </Button>
                 {assignments.length > 0 && (
-                  <Button size="xsmall" onClick={saveAssignments}>
-                    저장
+                  <Button size="xsmall" onClick={sendTemporaryMessages}>
+                    📩 일괄 임시 메시지 전송
                   </Button>
                 )}
               </div>
@@ -298,43 +375,42 @@ export const AssignmentWorkspace: React.FC = () => {
                   <div className="text-center text-gray-400">임시 배정이 없습니다.</div>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {assignments.map((group) => (
                     <div
                       key={group.unitId}
-                      onClick={() => setDetailModalData(group)}
-                      className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 border-l-indigo-500"
+                      onClick={() => setDetailModalKey({ unitId: group.unitId, bucket: 'PENDING' })}
+                      className="bg-white border border-gray-200 rounded-lg p-2.5 shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 border-l-indigo-500"
                     >
-                      <div className="flex justify-between items-start mb-2">
+                      <div className="flex justify-between items-start mb-1">
                         <div>
-                          <h3 className="font-bold text-gray-800 text-lg">{group.unitName}</h3>
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                          <h3 className="font-bold text-gray-800 text-sm">{group.unitName}</h3>
+                          <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">
                             {group.region}
                           </span>
                         </div>
                         <div className="text-right">
-                          <div className="text-xs font-bold text-indigo-600">{group.period}</div>
-                          <div className="text-xs text-gray-400">
-                            총 {group.trainingLocations.length}개 교육장
+                          <div className="text-[10px] font-bold text-indigo-600">
+                            {group.period}
+                          </div>
+                          <div className="text-[10px] text-gray-400">
+                            {group.trainingLocations.length}개 교육장
                           </div>
                         </div>
                       </div>
-
-                      <div className="mt-3">
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-gray-600">배정 현황</span>
-                          <span
-                            className={`font-bold ${group.progress === 100 ? 'text-green-600' : 'text-orange-500'}`}
-                          >
-                            {group.totalAssigned} / {group.totalRequired}명 ({group.progress}%)
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className={`h-2 rounded-full transition-all ${group.progress >= 100 ? 'bg-green-500' : 'bg-orange-400'}`}
-                            style={{ width: `${Math.min(group.progress, 100)}%` }}
-                          ></div>
-                        </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[11px] text-orange-600 font-medium">
+                          📨 {group.totalAssigned}명 배정
+                        </span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                            (group as any).unsentCount > 0
+                              ? 'text-blue-600 bg-blue-100'
+                              : 'text-gray-500 bg-gray-100'
+                          }`}
+                        >
+                          🔵 미발송 {(group as any).unsentCount ?? 0}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -345,20 +421,68 @@ export const AssignmentWorkspace: React.FC = () => {
 
           {/* Panel 4: 확정 배정 완료 */}
           <div className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
-            <div className="p-3 bg-blue-50 border-b border-blue-100 border-l-4 border-l-blue-500 font-bold text-gray-700">
+            <div className="p-3 bg-blue-50 border-b border-blue-100 border-l-4 border-l-blue-500 font-bold text-gray-700 flex justify-between items-center">
               <span>✅ 확정 배정 완료</span>
+              <button
+                onClick={handleSendConfirmedMessages}
+                disabled={confirmedAssignments.length === 0}
+                className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
+                           disabled:bg-gray-300 disabled:cursor-not-allowed
+                           shadow-sm transition-all text-xs font-bold flex items-center gap-1"
+              >
+                📩 일괄 확정 메시지 전송
+              </button>
             </div>
             <div className="flex-1 p-4 overflow-y-auto bg-gray-50/50">
-              <div className="flex flex-col items-center justify-center h-full text-gray-400 text-sm">
-                <span>아직 확정된 배정이 없습니다.</span>
-              </div>
+              {confirmedAssignments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-gray-400 text-sm">
+                  <span>아직 확정된 배정이 없습니다.</span>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {confirmedAssignments.map((group) => (
+                    <div
+                      key={group.unitId}
+                      onClick={() =>
+                        setDetailModalKey({ unitId: group.unitId, bucket: 'ACCEPTED' })
+                      }
+                      className="bg-white border border-gray-200 rounded-lg p-2.5 shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 border-l-blue-500"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-bold text-gray-800 text-sm">{group.unitName}</h3>
+                          <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                            {group.region}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-gray-400">{group.period}</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-[11px] text-green-600 font-bold">
+                          {group.totalAssigned}명 확정
+                        </span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                            (group as any).confirmedMessageSent
+                              ? 'text-green-600 bg-green-100'
+                              : 'text-blue-600 bg-blue-100'
+                          }`}
+                        >
+                          {(group as any).confirmedMessageSent ? '📩 발송완료' : '📨 미발송'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* 모달 */}
-      <AssignmentDetailModal item={selectedItem} onClose={() => setSelectedItem(null)} />
+      {/* 캘린더 팝업 (Overlay) */}
 
       {/* 캘린더 팝업 (Overlay) */}
       {calendarPopup.visible && (
@@ -379,11 +503,34 @@ export const AssignmentWorkspace: React.FC = () => {
         </div>
       )}
 
-      {detailModalData && (
+      {/* 미배정 부대 상세 모달 */}
+      {selectedUnit && (
+        <UnassignedUnitDetailModal unit={selectedUnit} onClose={() => setSelectionKey(null)} />
+      )}
+
+      {/* 강사 상세 모달 */}
+      {selectedInstructor && (
+        <AssignmentDetailModal
+          item={{ ...selectedInstructor, type: 'INSTRUCTOR' } as any}
+          onClose={() => setSelectionKey(null)}
+        />
+      )}
+
+      {detailModalKey && currentGroup && (
         <AssignmentGroupDetailModal
-          group={detailModalData as any}
-          onClose={() => setDetailModalData(null)}
-          onRemove={removeAssignment}
+          group={currentGroup as any}
+          onClose={() => setDetailModalKey(null)}
+          onSaveComplete={async () => {
+            await fetchData();
+          }}
+          availableInstructors={availableInstructors.map((i) => ({
+            id: i.id,
+            name: i.name,
+            team: i.teamName,
+            teamName: i.teamName,
+            category: i.category ?? undefined,
+            availableDates: i.availableDates ?? [],
+          }))}
         />
       )}
 

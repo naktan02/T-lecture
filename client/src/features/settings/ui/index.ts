@@ -5,4 +5,3 @@ export { SettingsTabs } from './SettingsTabs';
 export { TeamsSection } from './TeamsSection';
 export { VirtuesSection } from './VirtuesSection';
 export { TemplatesSection } from './TemplatesSection';
-export { TemplateBlockEditor } from './TemplateBlockEditor';

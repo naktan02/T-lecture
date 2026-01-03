@@ -1,9 +1,6 @@
 enum MessageType {
-
   Temporary
   Confirmed
-  Notice     // 공지사항 타입
-  Inquiry    // 문의사항 타입
 
   @@map("유형__t")
 }
@@ -17,14 +14,7 @@ enum MessageStatus {
   @@map("상태__t")
 }
 
-// 문의사항 상태
-enum InquiryStatus {
-  Waiting    // 답변 대기
-  Answered   // 답변 완료
-
-  @@map("문의상태__t")
-}
-
+// 배정 메시지 전용 모델 (임시/확정 배정)
 model Message {
   id        Int            @id @default(autoincrement())
   type      MessageType?   @map("유형")
@@ -32,18 +22,6 @@ model Message {
   body      String?        @map("본문") @db.Text
   status    MessageStatus? @map("상태")
   createdAt DateTime?      @default(now()) @map("생성일시")
-
-  // 공지사항 전용 필드
-  authorId  Int?           @map("작성자id")
-  viewCount Int            @default(0) @map("조회수")
-  isPinned  Boolean        @default(false) @map("상단고정")
-  updatedAt DateTime?      @updatedAt @map("수정일시")
-
-  // 문의사항 전용 필드
-  inquiryStatus InquiryStatus? @map("문의상태")
-  answer        String?        @map("답변") @db.Text
-  answeredBy    Int?           @map("답변자id")
-  answeredAt    DateTime?      @map("답변일시")
 
   // 관계
   assignments MessageAssignment[]
@@ -78,12 +56,74 @@ model MessageAssignment {
 }
 
 model MessageTemplate {
-  key       String   @id @map("템플릿키") // 예: "TEMPORARY", "CONFIRMED_LEADER", "CONFIRMED_MEMBER"
-  title     String   @map("제목")
-  body      String   @map("본문") @db.Text // 긴 글 저장을 위해 Text 타입
-  updatedAt DateTime @updatedAt @map("수정일시")
+  key           String   @id @map("템플릿키")
+  title         String   @map("제목")
+  body          Json     @map("본문") @db.JsonB
+  formatPresets Json?    @map("포맷프리셋") @db.JsonB
+  updatedAt     DateTime @updatedAt @map("수정일시")
 
   @@map("메시지_템플릿")
 }
 
+// ==========================================
+// 공지사항
+// ==========================================
 
+model Notice {
+  id        Int       @id @default(autoincrement())
+  title     String    @map("제목")
+  body      String    @map("본문") @db.Text
+  authorId  Int       @map("작성자id")
+  viewCount Int       @default(0) @map("조회수")
+  isPinned  Boolean   @default(false) @map("상단고정")
+  createdAt DateTime  @default(now()) @map("생성일시")
+  updatedAt DateTime  @updatedAt @map("수정일시")
+
+  // 관계
+  author   User            @relation("NoticeAuthor", fields: [authorId], references: [id])
+  receipts NoticeReceipt[]
+
+  @@map("공지사항")
+}
+
+model NoticeReceipt {
+  noticeId Int       @map("공지id")
+  userId   Int       @map("수신자id")
+  readAt   DateTime? @map("읽은일시")
+
+  notice Notice @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  user   User   @relation("NoticeRecipient", fields: [userId], references: [id])
+
+  @@id([noticeId, userId])
+  @@index([userId])
+  @@map("공지수신자")
+}
+
+// ==========================================
+// 문의사항
+// ==========================================
+
+enum InquiryStatus {
+  Waiting  // 답변 대기
+  Answered // 답변 완료
+
+  @@map("문의상태__t")
+}
+
+model Inquiry {
+  id         Int           @id @default(autoincrement())
+  title      String        @map("제목")
+  body       String        @map("본문") @db.Text
+  authorId   Int           @map("작성자id")
+  status     InquiryStatus @default(Waiting) @map("상태")
+  answer     String?       @map("답변") @db.Text
+  answeredBy Int?          @map("답변자id")
+  answeredAt DateTime?     @map("답변일시")
+  createdAt  DateTime      @default(now()) @map("생성일시")
+
+  // 관계
+  author         User  @relation("InquiryAuthor", fields: [authorId], references: [id])
+  answeredByUser User? @relation("InquiryAnswerer", fields: [answeredBy], references: [id])
+
+  @@map("문의사항")
+}

@@ -89,20 +89,20 @@ export const deleteVirtue = asyncHandler(async (req: Request, res: Response) => 
   res.status(200).json({ message: '덕목이 삭제되었습니다.' });
 });
 
-// 메시지 템플릿 수정
+// 메시지 템플릿 수정 (body와 formatPresets는 JSONB)
 export const updateTemplate = asyncHandler(async (req: Request, res: Response) => {
   const { key } = req.params;
-  const { title, body } = req.body;
+  const { title, body, formatPresets } = req.body;
 
-  if (title === undefined || body === undefined) {
+  if (title === undefined || !body || !Array.isArray(body?.tokens)) {
     throw new AppError(
-      '템플릿 제목(title)과 본문(body)이 모두 필요합니다.',
+      '템플릿 제목(title)과 본문(body.tokens)이 필요합니다.',
       400,
       'VALIDATION_ERROR',
     );
   }
 
-  const updated = await metadataService.updateMessageTemplate(key, title, body);
+  const updated = await metadataService.updateMessageTemplate(key, title, body, formatPresets);
   res.status(200).json(updated);
 });
 

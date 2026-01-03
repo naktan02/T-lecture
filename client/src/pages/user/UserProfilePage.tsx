@@ -6,7 +6,7 @@ import {
   UpdateProfilePayload,
 } from '../../features/user/api/user.me.api';
 import { ContentWrapper } from '../../shared/ui';
-import { showSuccess, showError } from '../../shared/utils';
+import { showSuccess, showError, showWarning } from '../../shared/utils';
 import {
   sendVerificationCode,
   verifyEmailCode,
@@ -131,13 +131,13 @@ const UserProfilePage: React.FC = () => {
 
     // 유효성 검사
     if (formData.password && formData.password !== passwordConfirm) {
-      alert('비밀번호가 일치하지 않습니다.');
+      showWarning('비밀번호가 일치하지 않습니다.');
       return;
     }
 
     // 이메일 변경 시 인증 확인
     if (formData.email !== user?.userEmail && !isEmailVerified) {
-      alert('이메일 변경 시 인증이 필요합니다.');
+      showWarning('이메일 변경 시 인증이 필요합니다.');
       return;
     }
 
@@ -190,7 +190,7 @@ const UserProfilePage: React.FC = () => {
         },
       }).open();
     } else {
-      alert('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+      showWarning('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
     }
   };
 
@@ -203,7 +203,7 @@ const UserProfilePage: React.FC = () => {
       setEmailVerificationMsg('인증번호가 발송되었습니다.');
       setIsEmailVerified(false);
     } catch (e: any) {
-      alert(e.message);
+      showError(e.message);
     } finally {
       setIsSendingCode(false);
     }
@@ -219,7 +219,7 @@ const UserProfilePage: React.FC = () => {
       setEmailVerificationMsg('인증되었습니다.');
     } catch (e: any) {
       setIsEmailVerified(false);
-      alert(e.message);
+      showError(e.message);
     } finally {
       setIsVerifyingCode(false);
     }
