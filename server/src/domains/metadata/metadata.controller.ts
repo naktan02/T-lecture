@@ -170,6 +170,46 @@ export const deletePenalty = asyncHandler(async (req: Request, res: Response) =>
   res.status(200).json({ message: '패널티가 삭제되었습니다.' });
 });
 
+// ===== 우선배정 크레딧 (InstructorPriorityCredit) =====
+
+// 우선배정 크레딧 목록 조회
+export const getPriorityCredits = asyncHandler(async (req: Request, res: Response) => {
+  const credits = await metadataService.getPriorityCredits();
+  res.status(200).json(credits);
+});
+
+// 우선배정 크레딧 추가
+export const addPriorityCredit = asyncHandler(async (req: Request, res: Response) => {
+  const { instructorId, credits = 1 } = req.body;
+
+  if (!instructorId) {
+    throw new AppError('instructorId가 필요합니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  const credit = await metadataService.addPriorityCredit(Number(instructorId), Number(credits));
+  res.status(201).json(credit);
+});
+
+// 우선배정 크레딧 수정
+export const updatePriorityCredit = asyncHandler(async (req: Request, res: Response) => {
+  const { instructorId } = req.params;
+  const { credits } = req.body;
+
+  if (credits === undefined) {
+    throw new AppError('credits가 필요합니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  const updated = await metadataService.updatePriorityCredit(Number(instructorId), Number(credits));
+  res.status(200).json(updated);
+});
+
+// 우선배정 크레딧 삭제
+export const deletePriorityCredit = asyncHandler(async (req: Request, res: Response) => {
+  const { instructorId } = req.params;
+  await metadataService.deletePriorityCredit(Number(instructorId));
+  res.status(200).json({ message: '우선배정 크레딧이 삭제되었습니다.' });
+});
+
 // CommonJS 호환
 module.exports = {
   getInstructorMeta,
@@ -189,4 +229,8 @@ module.exports = {
   addPenalty,
   updatePenalty,
   deletePenalty,
+  getPriorityCredits,
+  addPriorityCredit,
+  updatePriorityCredit,
+  deletePriorityCredit,
 };

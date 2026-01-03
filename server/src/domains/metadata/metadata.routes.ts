@@ -58,6 +58,22 @@ router.post('/penalties', auth, requireRole('ADMIN'), metadataController.addPena
 router.put('/penalties/:userId', auth, requireRole('ADMIN'), metadataController.updatePenalty);
 router.delete('/penalties/:userId', auth, requireRole('ADMIN'), metadataController.deletePenalty);
 
+// ===== 우선배정 크레딧 (InstructorPriorityCredit) =====
+router.get('/priority-credits', auth, requireRole('ADMIN'), metadataController.getPriorityCredits);
+router.post('/priority-credits', auth, requireRole('ADMIN'), metadataController.addPriorityCredit);
+router.put(
+  '/priority-credits/:instructorId',
+  auth,
+  requireRole('ADMIN'),
+  metadataController.updatePriorityCredit,
+);
+router.delete(
+  '/priority-credits/:instructorId',
+  auth,
+  requireRole('ADMIN'),
+  metadataController.deletePriorityCredit,
+);
+
 export default router;
 
 // CommonJS 호환

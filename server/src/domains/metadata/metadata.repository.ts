@@ -261,6 +261,69 @@ class MetadataRepository {
       },
     });
   }
+
+  // ===== InstructorPriorityCredit (우선배정 관리) =====
+
+  // 우선배정 크레딧 목록 조회
+  async findPriorityCredits() {
+    return prisma.instructorPriorityCredit.findMany({
+      include: {
+        instructor: {
+          include: {
+            user: { select: { id: true, name: true } },
+            team: { select: { id: true, name: true } },
+          },
+        },
+      },
+      orderBy: { credits: 'desc' },
+    });
+  }
+
+  // 우선배정 크레딧 추가/증가
+  async addPriorityCredit(instructorId: number, credits: number = 1) {
+    return prisma.instructorPriorityCredit.upsert({
+      where: { instructorId },
+      update: { credits: { increment: credits } },
+      create: { instructorId, credits },
+    });
+  }
+
+  // 우선배정 크레딧 수정
+  async updatePriorityCredit(instructorId: number, credits: number) {
+    return prisma.instructorPriorityCredit.update({
+      where: { instructorId },
+      data: { credits },
+    });
+  }
+
+  // 우선배정 크레딧 차감 (배정 시 사용)
+  async consumePriorityCredit(instructorId: number) {
+    const credit = await prisma.instructorPriorityCredit.findUnique({
+      where: { instructorId },
+    });
+
+    if (!credit) return null;
+
+    if (credit.credits <= 1) {
+      // 크레딧 1개면 삭제
+      return prisma.instructorPriorityCredit.delete({
+        where: { instructorId },
+      });
+    }
+
+    // 크레딧 감소
+    return prisma.instructorPriorityCredit.update({
+      where: { instructorId },
+      data: { credits: { decrement: 1 } },
+    });
+  }
+
+  // 우선배정 크레딧 삭제
+  async deletePriorityCredit(instructorId: number) {
+    return prisma.instructorPriorityCredit.delete({
+      where: { instructorId },
+    });
+  }
 }
 
 export default new MetadataRepository();

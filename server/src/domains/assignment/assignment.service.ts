@@ -115,6 +115,12 @@ class AssignmentService {
 
     const summary = await assignmentRepository.createAssignmentsBulk(matchResults);
 
+    // 배정된 강사의 우선배정 크레딧 소모
+    const assignedInstructorIds = new Set(matchResults.map((m) => m.instructorId));
+    for (const instructorId of assignedInstructorIds) {
+      await this.consumePriorityCredit(instructorId);
+    }
+
     // 배정된 모든 부대에 대해 역할(Head/Supervisor) 재계산
     const affectedUnitIds = new Set(units.map((u) => u.id));
     for (const unitId of affectedUnitIds) {
@@ -303,6 +309,30 @@ class AssignmentService {
           count: 1,
           expiresAt: new Date(now.getTime() + days * 24 * 60 * 60 * 1000),
         },
+      });
+    }
+  }
+
+  /**
+   * 우선배정 크레딧 소모 (1 감소, 0이면 삭제)
+   */
+  private async consumePriorityCredit(instructorId: number) {
+    const credit = await prisma.instructorPriorityCredit.findUnique({
+      where: { instructorId },
+    });
+
+    if (!credit) return; // 크레딧 없으면 무시
+
+    if (credit.credits <= 1) {
+      // 크레딧 1개면 레코드 삭제
+      await prisma.instructorPriorityCredit.delete({
+        where: { instructorId },
+      });
+    } else {
+      // 크레딧 감소
+      await prisma.instructorPriorityCredit.update({
+        where: { instructorId },
+        data: { credits: { decrement: 1 } },
       });
     }
   }

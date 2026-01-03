@@ -183,6 +183,31 @@ class MetadataService {
   async reducePenalty(userId: number, days: number) {
     return metadataRepository.reducePenalty(userId, days);
   }
+
+  // ===== InstructorPriorityCredit (우선배정 관리) =====
+
+  // 우선배정 크레딧 목록 조회
+  async getPriorityCredits() {
+    return metadataRepository.findPriorityCredits();
+  }
+
+  // 우선배정 크레딧 추가
+  async addPriorityCredit(instructorId: number, credits: number = 1) {
+    return metadataRepository.addPriorityCredit(instructorId, credits);
+  }
+
+  // 우선배정 크레딧 수정
+  async updatePriorityCredit(instructorId: number, credits: number) {
+    if (credits < 1) {
+      throw new AppError('크레딧은 1 이상이어야 합니다.', 400, 'VALIDATION_ERROR');
+    }
+    return metadataRepository.updatePriorityCredit(instructorId, credits);
+  }
+
+  // 우선배정 크레딧 삭제
+  async deletePriorityCredit(instructorId: number) {
+    return metadataRepository.deletePriorityCredit(instructorId);
+  }
 }
 
 export default new MetadataService();

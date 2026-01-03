@@ -2,9 +2,10 @@
 import { useState, ReactElement } from 'react';
 import { AssignmentSettingsSection } from './AssignmentSettingsSection';
 import { PenaltyManagementSection } from './PenaltyManagementSection';
+import { PriorityCreditSection } from './PriorityCreditSection';
 import { TemplatesSection } from '../../settings/ui/TemplatesSection';
 
-type TabKey = 'settings' | 'penalty' | 'templates';
+type TabKey = 'settings' | 'management' | 'templates';
 
 interface Tab {
   key: TabKey;
@@ -14,7 +15,7 @@ interface Tab {
 
 const TABS: Tab[] = [
   { key: 'settings', label: '배정 설정', icon: '⚙️' },
-  { key: 'penalty', label: '배정 패널티 관리', icon: '⚠️' },
+  { key: 'management', label: '패널티 / 우선배정', icon: '⚠️' },
   { key: 'templates', label: '메시지 템플릿', icon: '✉️' },
 ];
 
@@ -47,7 +48,12 @@ export const AssignmentSettingsTabs = (): ReactElement => {
       {/* 탭 컨텐츠 */}
       <div className="flex-1 overflow-auto p-6">
         {activeTab === 'settings' && <AssignmentSettingsSection />}
-        {activeTab === 'penalty' && <PenaltyManagementSection />}
+        {activeTab === 'management' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <PenaltyManagementSection />
+            <PriorityCreditSection />
+          </div>
+        )}
         {activeTab === 'templates' && <TemplatesSection />}
       </div>
     </div>
