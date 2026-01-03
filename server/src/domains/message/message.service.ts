@@ -179,8 +179,6 @@ class MessageService {
     result = compileTemplate(result, variables);
 
     // 포맷 변수 치환 (예: {{self.schedules:format=- {date} ({dayOfWeek})}})
-    // 포맷 안에 {placeholder}가 있을 수 있으므로, }}가 포맷 종료인지 확인 필요
-    // }} 뒤에 } 가 아닌 문자가 오거나 문자열 끝이어야 종료로 인식
     result = result.replace(
       /\{\{(\w+(?:\.\w+)?):format=([\s\S]*?)\}\}(?=[^}]|$)/g,
       (_, key, format) => {
@@ -191,7 +189,6 @@ class MessageService {
           .map((item) => {
             let line = format;
             for (const [placeholder, value] of Object.entries(item)) {
-              // {instructors} 외에도 { instructors } 처럼 공백이 포함된 경우도 허용
               line = line.replace(new RegExp(`\\{\\s*${placeholder}\\s*\\}`, 'g'), value);
             }
             return line;
@@ -265,7 +262,7 @@ class MessageService {
       };
 
       const schedulesList = (unit.schedules || [])
-        .filter((schedule: { assignments?: unknown[] }) => (schedule.assignments || []).length > 0) // 배정이 있는 일정만
+        .filter((schedule: { assignments?: unknown[] }) => (schedule.assignments || []).length > 0)
         .map(
           (schedule: {
             date: Date;
@@ -382,10 +379,21 @@ class MessageService {
     return { createdCount: count, message: `${count}건의 확정 메시지가 발송되었습니다.` };
   }
 
-  // 내 메시지함 조회
-  async getMyMessages(userId: number) {
-    const receipts = await messageRepository.findMyMessages(userId);
-    return receipts.map((r) => ({
+  // 내 메시지함 조회 (페이지네이션 지원)
+  async getMyMessages(
+    userId: number,
+    options: {
+      type?: 'Temporary' | 'Confirmed';
+      page?: number;
+      limit?: number;
+    } = {},
+  ) {
+    const { receipts, total, page, limit } = await messageRepository.findMyMessages(
+      userId,
+      options,
+    );
+
+    const messages = receipts.map((r) => ({
       messageId: r.message.id,
       type: r.message.type,
       title: r.message.title,
@@ -401,6 +409,16 @@ class MessageService {
           state: ma.assignment.state,
         })) || [],
     }));
+
+    return {
+      messages,
+      meta: {
+        total,
+        page,
+        limit,
+        lastPage: Math.ceil(total / limit),
+      },
+    };
   }
 
   // 메시지 읽음 처리
@@ -422,22 +440,6 @@ class MessageService {
       throw error;
     }
   }
-
-  // 공지사항 작성
-  async createNotice(title: string, body: string) {
-    if (!title || !body) {
-      throw new AppError('제목과 본문을 모두 입력해주세요.', 400, 'VALIDATION_ERROR');
-    }
-    return await messageRepository.createNotice({ title, body });
-  }
-
-  // 공지사항 목록 조회
-  async getNotices() {
-    return await messageRepository.findAllNotices();
-  }
 }
 
 export default new MessageService();
-
-// CommonJS 호환
-module.exports = new MessageService();

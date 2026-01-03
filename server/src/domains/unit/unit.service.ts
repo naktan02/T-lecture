@@ -1,7 +1,7 @@
 // server/src/domains/unit/unit.service.ts
 import unitRepository from './unit.repository';
 import { buildPaging, buildUnitWhere } from './unit.filters';
-import { toCreateUnitDto, excelRowToRawUnit, RawUnitData } from './unit.mapper';
+import { toCreateUnitDto, groupExcelRowsByUnit, RawUnitData } from './unit.mapper';
 import AppError from '../../common/errors/AppError';
 import { Prisma, MilitaryType } from '@prisma/client';
 import { ScheduleInput, UnitQueryInput } from '../../types/unit.types';
@@ -58,15 +58,151 @@ class UnitService {
   }
 
   /**
-   * 엑셀 파일 처리 및 일괄 등록
+   * 엑셀 파일 처리 및 일괄 등록 (Upsert 로직)
+   * - 부대명이 DB에 없으면: 새 부대 생성
+   * - 부대명이 DB에 있으면: 기존 부대에 새 교육장소만 추가 (중복 제외)
    */
   async processExcelDataAndRegisterUnits(rawRows: Record<string, unknown>[]) {
-    const rawDataList = rawRows.map(excelRowToRawUnit);
-    return await this.registerMultipleUnits(rawDataList);
+    const rawDataList = groupExcelRowsByUnit(rawRows);
+    return await this.upsertMultipleUnits(rawDataList);
   }
 
   /**
-   * 일괄 등록 (내부 로직)
+   * Upsert 로직으로 부대 등록/업데이트
+   */
+  async upsertMultipleUnits(dataArray: RawUnitInput[]) {
+    if (!Array.isArray(dataArray) || dataArray.length === 0) {
+      throw new AppError('등록할 데이터가 없습니다.', 400, 'VALIDATION_ERROR');
+    }
+
+    // 1. 모든 부대명 추출 (중복 제거)
+    const allNames = dataArray.map((d) => d.name?.trim()).filter((n): n is string => !!n);
+    const uniqueNames = Array.from(new Set(allNames));
+
+    if (uniqueNames.length === 0) {
+      throw new AppError('유효한 부대명이 없습니다.', 400, 'VALIDATION_ERROR');
+    }
+
+    // 2. 부대 일괄 조회 (Bulk Read)
+    const existingUnits = await unitRepository.findUnitsByNames(uniqueNames);
+    const existingUnitMap = new Map(existingUnits.map((u) => [u.name, u]));
+
+    let created = 0;
+    let updated = 0;
+    let locationsAdded = 0;
+    let locationsSkipped = 0;
+
+    const newUnitPromises: Promise<any>[] = [];
+    const trainingLocationsToCreate: { unitId: number; location: any }[] = [];
+
+    // 3. 데이터 분류 및 처리
+    for (const rawData of dataArray) {
+      const unitName = rawData.name?.trim();
+      if (!unitName) continue;
+
+      const existingUnit = existingUnitMap.get(unitName);
+
+      if (existingUnit) {
+        // [기존 부대] -> 교육장소 중복 체크 후 추가
+        updated++;
+
+        if (rawData.trainingLocations && rawData.trainingLocations.length > 0) {
+          // 기존 장소 이름 Set (DB에서 가져온 것)
+          const existingPlaceNames = new Set(
+            existingUnit.trainingLocations.map((l: any) => l.originalPlace),
+          );
+
+          for (const loc of rawData.trainingLocations) {
+            const placeName = loc.originalPlace;
+            // 메모리 상 중복 체크
+            if (placeName && existingPlaceNames.has(placeName)) {
+              locationsSkipped++;
+            } else {
+              // 신규 장소 매핑 대기 (엑셀 내 중복 방지 위해 Set에도 추가)
+              if (placeName) existingPlaceNames.add(placeName);
+              trainingLocationsToCreate.push({
+                unitId: existingUnit.id,
+                location: loc,
+              });
+              locationsAdded++;
+            }
+          }
+        }
+      } else {
+        // [신규 부대] -> 개별 등록 (병렬 처리)
+        // groupExcelRowsByUnit 덕분에 엑셀 내 부대명 중복은 없으므로 안전하게 생성 시도
+        newUnitPromises.push(this.registerSingleUnit(rawData));
+        created++;
+        locationsAdded += rawData.trainingLocations?.length || 0;
+      }
+    }
+
+    // 4. 실행
+    // 4-1. 신규 부대 등록 (병렬)
+    if (newUnitPromises.length > 0) {
+      await Promise.all(newUnitPromises);
+    }
+
+    // 4-2. 기존 부대 장소 일괄 추가 (Bulk Insert)
+    if (trainingLocationsToCreate.length > 0) {
+      await unitRepository.bulkAddTrainingLocations(trainingLocationsToCreate);
+    }
+
+    // 5. 비동기 좌표 변환 (백그라운드)
+    this.updateUnitCoordsInBackground().catch((err) => {
+      console.error('Background Geocoding Error:', err);
+    });
+
+    return {
+      created,
+      updated,
+      locationsAdded,
+      locationsSkipped,
+    };
+  }
+
+  /**
+   * 좌표가 없는 부대들을 찾아 Geocoding 수행 (비동기 처리용)
+   * - lat이 null이고 addressDetail이 있는 부대 대상
+   */
+  async updateUnitCoordsInBackground() {
+    console.log('[UnitService] Starting background geocoding...');
+
+    // 1. 좌표가 없는 부대 조회 (최대 100개씩 처리)
+    const units = await unitRepository.findUnitsWithoutCoords(100);
+    if (units.length === 0) {
+      console.log('[UnitService] No units needing geocoding.');
+      return;
+    }
+
+    console.log(`[UnitService] Found ${units.length} units to geocode.`);
+
+    // 2. 순차적으로 처리 (Rate Limit 고려)
+    let successCount = 0;
+
+    // geocoding.service를 동적 import 하거나 상단 import 사용
+    // 여기서는 상단에 import 했다고 가정하고 사용하지만,
+    // 실제로는 circular dependency 방지를 위해 필요시 동적 import 사용 가능
+    // (현재 구조상 unit.service -> geocoding.service는 문제 없음)
+    const geocodingService = require('../../infra/geocoding.service').default;
+
+    for (const unit of units) {
+      if (!unit.addressDetail) continue;
+
+      const coords = await geocodingService.addressToCoords(unit.addressDetail);
+      if (coords) {
+        await unitRepository.updateCoords(unit.id, coords.lat, coords.lng);
+        successCount++;
+        // 약간의 딜레이
+        await new Promise((r) => setTimeout(r, 100));
+      }
+    }
+
+    console.log(`[UnitService] Finished geocoding. Updated ${successCount}/${units.length} units.`);
+  }
+
+  /**
+   * 일괄 등록 (내부 로직 - 기존 호환용)
    * 각 부대별로 registerSingleUnit을 호출하여 일정 자동 생성
    */
   async registerMultipleUnits(dataArray: RawUnitInput[]) {
@@ -139,13 +275,24 @@ class UnitService {
   async modifyUnitBasicInfo(id: number | string, rawData: UnitBasicInfoInput) {
     const updateData: Prisma.UnitUpdateInput = {};
 
-    if (rawData.name !== undefined) updateData.name = rawData.name;
+    if (rawData.name !== undefined) updateData.name = rawData.name === '' ? null : rawData.name;
     if (rawData.unitType !== undefined) updateData.unitType = rawData.unitType;
-    if (rawData.wideArea !== undefined) updateData.wideArea = rawData.wideArea;
-    if (rawData.region !== undefined) updateData.region = rawData.region;
+    if (rawData.wideArea !== undefined)
+      updateData.wideArea = rawData.wideArea === '' ? null : rawData.wideArea;
+    if (rawData.region !== undefined)
+      updateData.region = rawData.region === '' ? null : rawData.region;
 
-    if (rawData.addressDetail) {
-      updateData.addressDetail = rawData.addressDetail;
+    // 기존 정보 조회하여 주소 변경 여부 확인
+    const existingUnit = await unitRepository.findUnitWithRelations(id);
+    if (!existingUnit) {
+      throw new AppError('해당 부대를 찾을 수 없습니다.', 404, 'UNIT_NOT_FOUND');
+    }
+
+    if (
+      rawData.addressDetail !== undefined &&
+      rawData.addressDetail !== existingUnit.addressDetail
+    ) {
+      updateData.addressDetail = rawData.addressDetail === '' ? null : rawData.addressDetail;
       updateData.lat = null;
       updateData.lng = null;
     }
@@ -158,9 +305,9 @@ class UnitService {
    */
   async modifyUnitContactInfo(id: number | string, rawData: UnitContactInput) {
     const updateData = {
-      officerName: rawData.officerName,
-      officerPhone: rawData.officerPhone,
-      officerEmail: rawData.officerEmail,
+      officerName: rawData.officerName === '' ? null : rawData.officerName,
+      officerPhone: rawData.officerPhone === '' ? null : rawData.officerPhone,
+      officerEmail: rawData.officerEmail === '' ? null : rawData.officerEmail,
     };
     return await unitRepository.updateUnitById(id, updateData);
   }
@@ -184,7 +331,7 @@ class UnitService {
         rawData.unitType as Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput['set'];
     if (rawData.wideArea !== undefined) unitUpdateData.wideArea = rawData.wideArea;
     if (rawData.region !== undefined) unitUpdateData.region = rawData.region;
-    if (rawData.addressDetail !== undefined) {
+    if (rawData.addressDetail !== undefined && rawData.addressDetail !== unit.addressDetail) {
       unitUpdateData.addressDetail = rawData.addressDetail;
       unitUpdateData.lat = null;
       unitUpdateData.lng = null;

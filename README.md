@@ -55,6 +55,8 @@ npm run db:migrate # 후에 엔터
 
 # 만약 db 초기화 할 일이 생길경우
 npx prisma migrate reset # yes 나오면 y
+
+npx prisma generate
 ```
 
 ```bash

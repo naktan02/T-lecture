@@ -4,10 +4,10 @@ import { useMessageInbox } from '../model/useMessageInbox';
 import { MessageCard } from './MessageCard';
 import { MessageDetailModal } from './MessageDetailModal';
 import { Message } from '../messageApi';
-import { Button } from '../../../shared/ui';
+import { Button, Pagination } from '../../../shared/ui';
 
 export const MessageInbox = () => {
-  const { messages, notices, isLoading, error, markAsRead, refresh } = useMessageInbox();
+  const { temporary, confirmed, markAsRead, error } = useMessageInbox();
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
 
   const handleOpenMessage = async (message: Message) => {
@@ -17,9 +17,12 @@ export const MessageInbox = () => {
     }
   };
 
-  // 메시지 분류
-  const temporaryMessages = messages.filter((m) => m.type === 'Temporary');
-  const confirmedMessages = messages.filter((m) => m.type === 'Confirmed');
+  const handleRefresh = () => {
+    temporary.refresh();
+    confirmed.refresh();
+  };
+
+  const isLoading = temporary.isLoading && confirmed.isLoading;
 
   if (isLoading) {
     return (
@@ -34,7 +37,7 @@ export const MessageInbox = () => {
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <p className="text-red-500">{error}</p>
         <button
-          onClick={refresh}
+          onClick={handleRefresh}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           다시 시도
@@ -44,51 +47,38 @@ export const MessageInbox = () => {
   }
 
   return (
-    <div className="py-4">
+    <div className="flex flex-col h-full py-4">
       {/* 제목 + 새로고침 버튼 */}
-      <div className="flex justify-between items-start mb-6">
+      <div className="flex justify-between items-start mb-4 flex-shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-gray-800 mb-1">메시지함</h1>
           <p className="text-sm text-gray-500">배정 관련 메시지를 확인하세요</p>
         </div>
-        <Button variant="ghost" size="small" onClick={refresh}>
+        <Button variant="ghost" size="small" onClick={handleRefresh}>
           🔄 새로고침
         </Button>
       </div>
 
-      {/* 공지사항 */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <h2 className="text-sm font-semibold text-blue-800 mb-2">📢 공지사항</h2>
-        {notices.length > 0 ? (
-          <div className="space-y-2">
-            {notices.slice(0, 3).map((notice) => (
-              <div key={notice.id} className="text-sm text-blue-700">
-                {notice.title}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-blue-600">등록된 공지사항이 없습니다.</p>
-        )}
-      </div>
-
-      {/* 메시지 목록 - 2컬럼 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 임시 배정 메시지 */}
-        <section>
-          <div className="flex items-center gap-2 mb-3">
+      {/* 메시지 목록 - 2컬럼, flex-1로 남은 공간 채우기 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-0">
+        {/* 임시 배정 메시지 카드 */}
+        <section className="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+          {/* 헤더 */}
+          <div className="flex items-center gap-2 p-4 border-b border-gray-200 flex-shrink-0">
             <h2 className="text-lg font-semibold text-gray-800">📩 임시 배정</h2>
             <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">
-              {temporaryMessages.length}
+              {temporary.totalCount}
             </span>
           </div>
-          <div className="space-y-3">
-            {temporaryMessages.length === 0 ? (
-              <div className="text-center text-gray-400 py-8 bg-gray-100 rounded-lg">
-                임시 배정 메시지가 없습니다
-              </div>
+
+          {/* 메시지 목록 (스크롤 영역) */}
+          <div className="flex-1 overflow-auto p-4 space-y-3">
+            {temporary.isLoading ? (
+              <div className="text-center text-gray-400 py-8">로딩 중...</div>
+            ) : temporary.messages.length === 0 ? (
+              <div className="text-center text-gray-400 py-8">임시 배정 메시지가 없습니다</div>
             ) : (
-              temporaryMessages.map((msg) => (
+              temporary.messages.map((msg) => (
                 <MessageCard
                   key={msg.messageId}
                   message={msg}
@@ -96,24 +86,37 @@ export const MessageInbox = () => {
                 />
               ))
             )}
+          </div>
+
+          {/* 페이지네이션 (하단 고정) */}
+          <div className="border-t border-gray-200 p-3 flex-shrink-0">
+            <Pagination
+              currentPage={temporary.page}
+              totalPage={temporary.totalPage}
+              onPageChange={temporary.setPage}
+              limit={5}
+            />
           </div>
         </section>
 
-        {/* 확정 배정 메시지 */}
-        <section>
-          <div className="flex items-center gap-2 mb-3">
+        {/* 확정 배정 메시지 카드 */}
+        <section className="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+          {/* 헤더 */}
+          <div className="flex items-center gap-2 p-4 border-b border-gray-200 flex-shrink-0">
             <h2 className="text-lg font-semibold text-gray-800">✅ 확정 배정</h2>
             <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-              {confirmedMessages.length}
+              {confirmed.totalCount}
             </span>
           </div>
-          <div className="space-y-3">
-            {confirmedMessages.length === 0 ? (
-              <div className="text-center text-gray-400 py-8 bg-gray-100 rounded-lg">
-                확정 배정 메시지가 없습니다
-              </div>
+
+          {/* 메시지 목록 (스크롤 영역) */}
+          <div className="flex-1 overflow-auto p-4 space-y-3">
+            {confirmed.isLoading ? (
+              <div className="text-center text-gray-400 py-8">로딩 중...</div>
+            ) : confirmed.messages.length === 0 ? (
+              <div className="text-center text-gray-400 py-8">확정 배정 메시지가 없습니다</div>
             ) : (
-              confirmedMessages.map((msg) => (
+              confirmed.messages.map((msg) => (
                 <MessageCard
                   key={msg.messageId}
                   message={msg}
@@ -121,6 +124,16 @@ export const MessageInbox = () => {
                 />
               ))
             )}
+          </div>
+
+          {/* 페이지네이션 (하단 고정) */}
+          <div className="border-t border-gray-200 p-3 flex-shrink-0">
+            <Pagination
+              currentPage={confirmed.page}
+              totalPage={confirmed.totalPage}
+              onPageChange={confirmed.setPage}
+              limit={5}
+            />
           </div>
         </section>
       </div>

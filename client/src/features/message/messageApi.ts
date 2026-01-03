@@ -1,10 +1,10 @@
 // src/features/message/messageApi.ts
 import { apiClient } from '../../shared/apiClient';
 
-// 메시지 타입 정의
+// 메시지 타입 정의 (배정 메시지 전용)
 export interface Message {
   messageId: number;
-  type: 'Notice' | 'Temporary' | 'Confirmed';
+  type: 'Temporary' | 'Confirmed';
   title: string | null;
   body: string | null;
   status: string | null;
@@ -18,18 +18,38 @@ export interface Message {
   }>;
 }
 
-export interface Notice {
-  id: number;
-  type: 'Notice';
-  title: string | null;
-  body: string | null;
-  status: string | null;
-  createdAt: string | null;
+// 메시지 목록 응답 타입
+export interface MessageListResponse {
+  messages: Message[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    lastPage: number;
+  };
 }
 
-// 내 메시지 목록 조회
-export const getMyMessagesApi = async (): Promise<Message[]> => {
-  const res = await apiClient('/api/v1/messages');
+// 메시지 조회 파라미터
+export interface MessageSearchParams {
+  type?: 'Temporary' | 'Confirmed';
+  page?: number;
+  limit?: number;
+}
+
+// 내 메시지 목록 조회 (페이지네이션 지원)
+export const getMyMessagesApi = async (
+  params: MessageSearchParams = {},
+): Promise<MessageListResponse> => {
+  const { type, page = 1, limit = 10 } = params;
+  const urlParams = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+  });
+  if (type) {
+    urlParams.append('type', type);
+  }
+
+  const res = await apiClient(`/api/v1/messages?${urlParams.toString()}`);
   if (!res.ok) {
     throw new Error('메시지 목록을 불러오는데 실패했습니다.');
   }
@@ -43,15 +63,6 @@ export const markMessageAsReadApi = async (messageId: number): Promise<{ success
   });
   if (!res.ok) {
     throw new Error('읽음 처리에 실패했습니다.');
-  }
-  return res.json();
-};
-
-// 공지사항 목록 조회
-export const getNoticesApi = async (): Promise<Notice[]> => {
-  const res = await apiClient('/api/v1/messages/notices');
-  if (!res.ok) {
-    throw new Error('공지사항을 불러오는데 실패했습니다.');
   }
   return res.json();
 };

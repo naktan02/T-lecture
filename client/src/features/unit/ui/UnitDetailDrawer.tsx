@@ -1,8 +1,10 @@
 // client/src/features/unit/ui/UnitDetailDrawer.tsx
 import { useEffect, useMemo, useState, ChangeEvent, FormEvent } from 'react';
+import { showWarning, showError } from '../../../shared/utils/toast';
 import { useQuery } from '@tanstack/react-query';
 import { unitApi, UnitData } from '../api/unitApi';
 import { Button, InputField } from '../../../shared/ui';
+import { AddressSearchInput } from '../../../shared/ui/AddressSearchInput';
 
 /**
  * ✅ 포인트
@@ -292,6 +294,26 @@ export const UnitDetailDrawer = ({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // 주소 검색 완료 핸들러
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleAddressSelect = (data: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      wideArea: data.sido || '',
+      region: data.sigungu || '',
+      addressDetail: data.roadAddress || data.jibunAddress || '',
+    }));
+  };
+
+  // schedules - isExcluded 토글
+  const toggleScheduleExcluded = (idx: number) => {
+    setSchedules((prev) => {
+      const n = [...prev];
+      n[idx] = { ...n[idx], isExcluded: !n[idx].isExcluded };
+      return n;
+    });
+  };
+
   // locations
   const addLocation = () => setLocations((prev) => [...prev, createEmptyLocation()]);
 
@@ -322,7 +344,7 @@ export const UnitDetailDrawer = ({
       'officerName',
     ];
     if (required.some((f) => !formData[f])) {
-      alert('필수 항목을 모두 입력해주세요.');
+      showWarning('필수 항목을 모두 입력해주세요.');
       return;
     }
 
@@ -365,7 +387,7 @@ export const UnitDetailDrawer = ({
       onClose();
     } catch (err) {
       console.error(err);
-      alert('저장 실패');
+      showError('저장 실패');
     }
   };
 
@@ -476,11 +498,12 @@ export const UnitDetailDrawer = ({
                       onChange={handleChange}
                     />
                     <div className="col-span-2">
-                      <InputField
-                        label="상세주소"
-                        name="addressDetail"
+                      <label className="block text-sm font-medium mb-1">상세주소</label>
+                      <AddressSearchInput
                         value={formData.addressDetail}
-                        onChange={handleChange}
+                        onChange={(val) => setFormData((prev) => ({ ...prev, addressDetail: val }))}
+                        onSelect={handleAddressSelect}
+                        placeholder="주소 검색을 클릭하여 주소를 입력하세요"
                       />
                     </div>
                   </div>

@@ -5,22 +5,9 @@ import asyncHandler from '../../common/middlewares/asyncHandler';
 import AppError from '../../common/errors/AppError';
 import logger from '../../config/logger';
 
-// 공지사항 작성
-export const createNotice = asyncHandler(async (req: Request, res: Response) => {
-  const { title, body } = req.body;
-  if (!title || !body) {
-    throw new AppError('제목과 본문을 모두 입력해주세요.', 400, 'VALIDATION_ERROR');
-  }
-  logger.info('[Message] Creating notice...', { title });
-  const result = await messageService.createNotice(title, body);
-  res.status(201).json(result);
-});
-
-// 공지사항 목록 조회
-export const getNotices = asyncHandler(async (req: Request, res: Response) => {
-  const notices = await messageService.getNotices();
-  res.json(notices);
-});
+// ==========================================
+// 배정 메시지 관련 컨트롤러 (임시/확정)
+// ==========================================
 
 // 임시 배정 메시지 일괄 발송 (날짜 범위 필터링)
 export const sendTemporaryMessages = asyncHandler(async (req: Request, res: Response) => {
@@ -39,10 +26,17 @@ export const sendConfirmedMessages = asyncHandler(async (req: Request, res: Resp
   res.json(result);
 });
 
-// 내 메시지함 조회
+// 내 메시지함 조회 (페이지네이션 지원)
 export const getMyMessages = asyncHandler(async (req: Request, res: Response) => {
-  const messages = await messageService.getMyMessages(req.user!.id);
-  res.json(messages);
+  const { type, page, limit } = req.query;
+
+  const result = await messageService.getMyMessages(req.user!.id, {
+    type: type === 'Temporary' || type === 'Confirmed' ? type : undefined,
+    page: page ? Number(page) : undefined,
+    limit: limit ? Number(limit) : undefined,
+  });
+
+  res.json(result);
 });
 
 // 메시지 읽음 처리
@@ -55,13 +49,3 @@ export const readMessage = asyncHandler(async (req: Request, res: Response) => {
   await messageService.readMessage(req.user!.id, messageId);
   res.json({ message: '읽음 처리되었습니다.' });
 });
-
-// CommonJS 호환
-module.exports = {
-  createNotice,
-  getNotices,
-  sendTemporaryMessages,
-  sendConfirmedMessages,
-  getMyMessages,
-  readMessage,
-};

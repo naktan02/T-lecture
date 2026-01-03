@@ -6,6 +6,7 @@ interface SearchFilters {
   keyword: string;
   startDate: string;
   endDate: string;
+  hasAddressError?: boolean;
   [key: string]: unknown;
 }
 
@@ -30,6 +31,7 @@ export const UnitToolbar = ({
     keyword: '',
     startDate: '',
     endDate: '',
+    hasAddressError: false,
   });
 
   // ✅ 업로드 확인 모달 상태
@@ -61,8 +63,11 @@ export const UnitToolbar = ({
   };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
-    const { name, value } = e.target;
-    setFilters((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFilters((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
   };
 
   const handleSearch = (): void => {
@@ -75,8 +80,8 @@ export const UnitToolbar = ({
   };
 
   const handleReset = (): void => {
-    setFilters({ keyword: '', startDate: '', endDate: '' });
-    onSearch({ keyword: '', startDate: '', endDate: '' });
+    setFilters({ keyword: '', startDate: '', endDate: '', hasAddressError: false });
+    onSearch({ keyword: '', startDate: '', endDate: '', hasAddressError: false });
   };
 
   return (
@@ -194,6 +199,33 @@ export const UnitToolbar = ({
           />
         </div>
 
+        {/* 주소 오류 체크 */}
+        <label className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+          <input
+            type="checkbox"
+            name="hasAddressError"
+            checked={!!filters.hasAddressError}
+            onChange={handleChange}
+            className="w-4 h-4 rounded text-red-500 focus:ring-red-500 border-gray-300"
+          />
+          <span className="text-sm text-gray-700 flex items-center gap-1">
+            <svg
+              className="w-4 h-4 text-red-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            주소 오류
+          </span>
+        </label>
+
         {/* 검색어 */}
         <div className="flex-1 min-w-[200px] relative">
           <svg
@@ -231,7 +263,7 @@ export const UnitToolbar = ({
         </button>
 
         {/* 초기화 */}
-        {(filters.keyword || filters.startDate || filters.endDate) && (
+        {(filters.keyword || filters.startDate || filters.endDate || filters.hasAddressError) && (
           <button
             onClick={handleReset}
             className="px-3 py-2 text-gray-500 hover:text-gray-700 text-sm transition-colors hover:bg-gray-50 rounded-lg"
@@ -287,21 +319,32 @@ export const UnitToolbar = ({
             />
           </div>
 
-          {/* 버튼 */}
-          <div className="flex gap-2">
-            <button
-              onClick={handleReset}
-              className="flex-1 py-3 border border-gray-200 rounded-lg text-sm text-gray-600"
-            >
-              초기화
-            </button>
-            <button
-              onClick={handleSearch}
-              className="flex-1 py-3 bg-green-500 text-white rounded-lg text-sm font-medium"
-            >
-              검색
-            </button>
-          </div>
+          {/* 주소 오류 체크 (모바일) */}
+          <label className="flex items-center gap-2 px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer">
+            <input
+              type="checkbox"
+              name="hasAddressError"
+              checked={!!filters.hasAddressError}
+              onChange={handleChange}
+              className="w-5 h-5 rounded text-red-500 focus:ring-red-500 border-gray-300"
+            />
+            <span className="text-sm text-gray-700 flex items-center gap-1">
+              <svg
+                className="w-4 h-4 text-red-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              주소 오류 데이터만 보기
+            </span>
+          </label>
         </div>
       )}
 

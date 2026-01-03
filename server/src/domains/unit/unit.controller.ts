@@ -34,9 +34,17 @@ export const uploadExcelAndRegisterUnits = asyncHandler(async (req: Request, res
   const rawRows = await excelService.bufferToJson(req.file.buffer);
   const result = await unitService.processExcelDataAndRegisterUnits(rawRows);
 
+  // 메시지 구성
+  const messages: string[] = [];
+  if (result.created > 0) messages.push(`${result.created}개 부대 생성`);
+  if (result.updated > 0) messages.push(`${result.updated}개 부대 업데이트`);
+  if (result.locationsSkipped > 0) messages.push(`${result.locationsSkipped}개 교육장소 중복 스킵`);
+
+  const message = messages.length > 0 ? messages.join(', ') + ' 완료' : '처리된 데이터가 없습니다.';
+
   res.status(201).json({
     result: 'Success',
-    message: `${result.count}개 부대 정보가 성공적으로 등록되었습니다.`,
+    message,
     data: result,
   });
 });

@@ -58,6 +58,19 @@ class UnitRepository {
     };
   }
 
+  /**
+   * 좌표(lat)가 없고 주소(addressDetail)만 있는 부대 조회 (Geocoding 대상)
+   */
+  async findUnitsWithoutCoords(take = 100) {
+    return prisma.unit.findMany({
+      where: {
+        lat: null,
+        addressDetail: { not: null }, // 주소는 있는데 좌표가 없는 경우
+      },
+      take,
+    });
+  }
+
   // --- 조회 ---
 
   /**
@@ -91,7 +104,87 @@ class UnitRepository {
     });
   }
 
+  /**
+   * 부대명으로 조회 (교육장소 포함)
+   */
+  async findUnitByName(name: string) {
+    return prisma.unit.findFirst({
+      where: { name },
+      include: {
+        trainingLocations: true,
+        schedules: { orderBy: { date: 'asc' } },
+      },
+    });
+  }
+
+  /**
+   * 부대에 교육장소 추가 (중복 체크 후)
+   * @returns 추가된 교육장소 수
+   */
+  async addTrainingLocationsIfNotExists(
+    unitId: number,
+    locations: TrainingLocationData[],
+  ): Promise<{ added: number; skipped: number }> {
+    // 기존 교육장소 조회
+    const existingLocations = await prisma.trainingLocation.findMany({
+      where: { unitId },
+      select: { originalPlace: true },
+    });
+    const existingPlaces = new Set(existingLocations.map((l) => l.originalPlace));
+
+    let added = 0;
+    let skipped = 0;
+
+    for (const loc of locations) {
+      const place = loc.originalPlace || null;
+      if (place && existingPlaces.has(place)) {
+        skipped++;
+        continue;
+      }
+
+      // 새 교육장소 추가
+      const data = this._mapLocationData(loc, unitId);
+      await prisma.trainingLocation.create({
+        data: {
+          ...data,
+          unitId,
+        },
+      });
+      added++;
+      existingPlaces.add(place);
+    }
+
+    return { added, skipped };
+  }
+
   // --- 등록 ---
+
+  /**
+   * 부대명 목록으로 부대 일괄 조회 (Bulk Read)
+   */
+  async findUnitsByNames(names: string[]) {
+    return prisma.unit.findMany({
+      where: { name: { in: names } },
+      // 교육장소 중복 체크를 위해 가져옴
+      include: { trainingLocations: true },
+    });
+  }
+
+  /**
+   * 교육장소 일괄 생성 및 매핑 (Bulk Insert with Mapping)
+   */
+  async bulkAddTrainingLocations(items: { unitId: number; location: TrainingLocationData }[]) {
+    if (items.length === 0) return { count: 0 };
+
+    const dbData = items.map((item) => ({
+      ...this._mapLocationData(item.location, item.unitId),
+      unitId: item.unitId,
+    }));
+
+    return prisma.trainingLocation.createMany({
+      data: dbData,
+    });
+  }
 
   /**
    * 부대 단건 DB 삽입 (Insert)

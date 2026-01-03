@@ -1,11 +1,6 @@
 // src/domains/message/message.repository.ts
 import prisma from '../../libs/prisma';
 
-interface NoticeData {
-  title: string;
-  body: string;
-}
-
 interface MessageCreateData {
   type: 'Temporary' | 'Confirmed';
   title?: string;
@@ -15,26 +10,9 @@ interface MessageCreateData {
 }
 
 class MessageRepository {
-  // 공지사항 생성
-  async createNotice(data: NoticeData) {
-    return await prisma.message.create({
-      data: {
-        type: 'Notice',
-        title: data.title,
-        body: data.body,
-        status: 'Sent',
-        createdAt: new Date(),
-      },
-    });
-  }
-
-  // 모든 공지사항 조회
-  async findAllNotices() {
-    return await prisma.message.findMany({
-      where: { type: 'Notice' },
-      orderBy: { createdAt: 'desc' },
-    });
-  }
+  // ==========================================
+  // 배정 메시지 관련 메서드 (임시/확정)
+  // ==========================================
 
   // 임시 메시지 발송 대상 조회 (날짜 범위 필터링)
   async findTargetsForTemporaryMessage(startDate?: string, endDate?: string) {
@@ -89,16 +67,13 @@ class MessageRepository {
   }
 
   // 확정 메시지 발송 대상 조회 (부대 단위 재발송 지원)
-  // 1. 메시지 미발송자가 있는 부대 찾기 (Accepted 상태 기준)
-  // 2. 해당 부대의 기존 Confirmed 메시지 연결 삭제
-  // 3. 해당 부대의 모든 Accepted 강사 반환
   async findTargetsForConfirmedMessage() {
     // 1단계: Accepted 상태이면서 Confirmed 메시지 미발송인 배정의 unitId 목록 조회
     const unsentAssignments = await prisma.instructorUnitAssignment.findMany({
       where: {
-        state: 'Accepted', // 수락 상태인 배정
+        state: 'Accepted',
         messageAssignments: {
-          none: { message: { type: 'Confirmed' } }, // Confirmed 메시지 미발송
+          none: { message: { type: 'Confirmed' } },
         },
       },
       select: {
@@ -219,29 +194,51 @@ class MessageRepository {
     });
   }
 
-  // 내 메시지 목록 조회 (배정 정보 포함)
-  async findMyMessages(userId: number) {
-    return await prisma.messageReceipt.findMany({
-      where: { userId: Number(userId) },
-      include: {
-        message: {
-          include: {
-            assignments: {
-              where: { userId: Number(userId) },
-              include: {
-                assignment: {
-                  select: {
-                    unitScheduleId: true,
-                    state: true,
+  // 내 메시지 목록 조회 (배정 정보 포함, 페이지네이션 지원)
+  async findMyMessages(
+    userId: number,
+    options: {
+      type?: 'Temporary' | 'Confirmed';
+      page?: number;
+      limit?: number;
+    } = {},
+  ) {
+    const { type, page = 1, limit = 10 } = options;
+    const skip = (page - 1) * limit;
+
+    const where = {
+      userId: Number(userId),
+      ...(type && { message: { type } }),
+    };
+
+    const [receipts, total] = await Promise.all([
+      prisma.messageReceipt.findMany({
+        where,
+        include: {
+          message: {
+            include: {
+              assignments: {
+                where: { userId: Number(userId) },
+                include: {
+                  assignment: {
+                    select: {
+                      unitScheduleId: true,
+                      state: true,
+                    },
                   },
                 },
               },
             },
           },
         },
-      },
-      orderBy: { message: { createdAt: 'desc' } },
-    });
+        orderBy: { message: { createdAt: 'desc' } },
+        skip,
+        take: limit,
+      }),
+      prisma.messageReceipt.count({ where }),
+    ]);
+
+    return { receipts, total, page, limit };
   }
 
   // 메시지 읽음 처리
@@ -259,6 +256,3 @@ class MessageRepository {
 }
 
 export default new MessageRepository();
-
-// CommonJS 호환
-module.exports = new MessageRepository();
