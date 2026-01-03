@@ -25,14 +25,14 @@ export const InstructorCalendar: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-gray-50 p-4 md:p-6">
-      {/* ⚙️ 캘린더 전체 너비 조절: max-w-5xl을 변경하세요 (5xl=1024px, 4xl=896px, 6xl=1152px) */}
-      <div className="w-full max-w-5xl mx-auto">
+    <div className="w-full h-full bg-gray-50 p-4 md:p-6 flex flex-col">
+      {/* 전체 카드 컨테이너 - 공지사항과 동일한 스타일 */}
+      <div className="w-full max-w-5xl mx-auto bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col flex-1 overflow-hidden">
         {/* 헤더 영역 */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-4 gap-3">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center p-4 md:p-6 border-b border-gray-200 gap-3 flex-shrink-0">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">근무 일정 관리</h1>
-            <p className="text-gray-500 mt-1 text-sm md:text-base">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">근무 일정 관리</h1>
+            <p className="text-gray-500 mt-1 text-sm">
               근무 가능한 날짜를 선택해 주세요. (공휴일/주말 제외)
             </p>
           </div>
@@ -65,67 +65,70 @@ export const InstructorCalendar: React.FC = () => {
           </div>
         </div>
 
-        {/* 월별 통계 패널 */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-4 border border-blue-100 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <div className="text-3xl font-bold text-blue-600">{selectedDays.length}</div>
-                <div className="text-xs text-gray-500 mt-1">선택한 날짜</div>
-              </div>
-              <div className="text-sm text-gray-600">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl">📅</span>
-                  <span className="font-semibold">
-                    {year}년 {month}월
-                  </span>
+        {/* 스크롤 가능한 컨텐츠 영역 */}
+        <div className="flex-1 overflow-auto p-4 md:p-6 space-y-4">
+          {/* 월별 통계 패널 (압축) */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-white rounded-lg p-2.5 shadow-sm">
+                  <div className="text-2xl font-bold text-blue-600">{selectedDays.length}</div>
+                  <div className="text-xs text-gray-500">선택한 날짜</div>
                 </div>
-                <div className="text-xs text-gray-500">근무 가능일을 선택하여 저장하세요</div>
+                <div className="text-sm text-gray-600">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-lg">📅</span>
+                    <span className="font-semibold">
+                      {year}년 {month}월
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500">근무 가능일을 선택하여 저장하세요</div>
+                </div>
+              </div>
+              <div className="hidden md:flex gap-2 text-center">
+                <div className="bg-white/70 rounded-lg px-3 py-1.5">
+                  <div className="text-base font-bold text-gray-700">
+                    {new Date(year, month, 0).getDate()}
+                  </div>
+                  <div className="text-xs text-gray-500">총 일수</div>
+                </div>
+                <div className="bg-white/70 rounded-lg px-3 py-1.5">
+                  <div className="text-base font-bold text-green-600">
+                    {Math.round((selectedDays.length / new Date(year, month, 0).getDate()) * 100)}%
+                  </div>
+                  <div className="text-xs text-gray-500">가용률</div>
+                </div>
               </div>
             </div>
-            <div className="hidden md:flex gap-3 text-center">
-              <div className="bg-white/70 rounded-lg px-4 py-2">
-                <div className="text-lg font-bold text-gray-700">
-                  {new Date(year, month, 0).getDate()}
-                </div>
-                <div className="text-xs text-gray-500">이번 달 총 일수</div>
-              </div>
-              <div className="bg-white/70 rounded-lg px-4 py-2">
-                <div className="text-lg font-bold text-green-600">
-                  {Math.round((selectedDays.length / new Date(year, month, 0).getDate()) * 100)}%
-                </div>
-                <div className="text-xs text-gray-500">가용률</div>
-              </div>
+          </div>
+
+          {/* 범례 */}
+          <div className="flex flex-wrap gap-4 md:gap-6 text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 border-2 border-blue-500 rounded-full"></div>
+              <span>선택된 날짜</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-red-600 font-semibold">공휴일</span>
+              <span>공휴일/일요일</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-blue-600 font-semibold">토</span>
+              <span>토요일</span>
             </div>
           </div>
-        </div>
 
-        {/* 범례 */}
-        <div className="flex flex-wrap gap-4 md:gap-6 mb-4 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 border-2 border-blue-500 rounded-full"></div>
-            <span>선택된 날짜</span>
+          {/* 캘린더 */}
+          <div className="bg-gray-50 rounded-xl p-4 md:p-6 border border-gray-100">
+            <BaseCalendar
+              year={year}
+              month={month}
+              selectedDays={selectedDays}
+              onClickDay={handleClickDay}
+              onMonthChange={handleMonthChange}
+              size="large"
+            />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-red-600 font-semibold">공휴일</span>
-            <span>공휴일/일요일</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-blue-600 font-semibold">토</span>
-            <span>토요일</span>
-          </div>
-        </div>
-
-        {/* 캘린더 */}
-        <div className="bg-white shadow-lg rounded-2xl p-4 md:p-6 border border-gray-100">
-          <BaseCalendar
-            year={year}
-            month={month}
-            selectedDays={selectedDays}
-            onClickDay={handleClickDay}
-            onMonthChange={handleMonthChange}
-            size="large"
-          />
         </div>
       </div>
     </div>

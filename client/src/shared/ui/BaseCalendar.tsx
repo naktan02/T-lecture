@@ -117,7 +117,7 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
         .react-calendar__tile { 
           position: relative !important; 
           aspect-ratio: 1 / 1 !important; /* 정사각형 유지 */
-          min-height: 35px !important; /* ⚙️ 캘린더 크기 조절: 이 값을 변경하세요 (기본: 35px) */
+          min-height: 28px !important; /* ⚙️ 캘린더 크기 조절: 이 값을 변경하세요 (기본: 28px) */
           display: flex !important;
           align-items: center !important;
           justify-content: center !important;
