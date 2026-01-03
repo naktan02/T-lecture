@@ -55,11 +55,22 @@ export const getCandidates = asyncHandler(async (req: Request, res: Response) =>
     endDate as string,
   );
 
+  // 설정에서 강사당 교육생 수 조회
+  const traineesPerInstructor = await assignmentService.getTraineesPerInstructor();
+
   const responseData = assignmentDTO.toCandidateResponse(unitsRaw, instructorsRaw);
 
   // 배정 현황을 분류별로 분리 (Temporary=배정작업공간, Confirmed=확정)
-  const pendingAssignments = assignmentDTO.toHierarchicalResponse(unitsRaw, 'Temporary');
-  const acceptedAssignments = assignmentDTO.toHierarchicalResponse(unitsRaw, 'Confirmed');
+  const pendingAssignments = assignmentDTO.toHierarchicalResponse(
+    unitsRaw,
+    'Temporary',
+    traineesPerInstructor,
+  );
+  const acceptedAssignments = assignmentDTO.toHierarchicalResponse(
+    unitsRaw,
+    'Confirmed',
+    traineesPerInstructor,
+  );
 
   res.json({
     ...responseData,

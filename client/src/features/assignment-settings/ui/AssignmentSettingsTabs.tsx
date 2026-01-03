@@ -49,7 +49,7 @@ export const AssignmentSettingsTabs = (): ReactElement => {
       <div className="flex-1 overflow-auto p-6">
         {activeTab === 'settings' && <AssignmentSettingsSection />}
         {activeTab === 'management' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <PenaltyManagementSection />
             <PriorityCreditSection />
           </div>

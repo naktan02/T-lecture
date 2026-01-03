@@ -34,6 +34,7 @@ model Unit {
 
   trainingLocations TrainingLocation[]
   schedules         UnitSchedule[]
+  excludedDates     String[]      @default([]) @map("교육불가일자")
   distances         InstructorUnitDistance[]
 
   @@map("부대")
@@ -51,7 +52,6 @@ model TrainingLocation {
   allowsPhoneBeforeAfter Boolean? @map("사전사후 휴대폰 불출 여부")
   plannedCount           Int?     @map("계획인원")
   actualCount            Int?     @map("참여인원")
-  instructorsNumbers     Int?     @map("투입강사수")
   note                   String?  @map("특이사항")
 
   unit        Unit                       @relation(fields: [unitId], references: [id], onDelete: Cascade)

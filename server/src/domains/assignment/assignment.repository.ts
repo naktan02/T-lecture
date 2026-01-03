@@ -148,7 +148,7 @@ class AssignmentRepository {
           orderBy: { date: 'asc' },
           include: {
             assignments: {
-              where: { state: { in: ['Pending', 'Accepted'] } },
+              where: { state: { in: ['Pending', 'Accepted', 'Rejected'] } },
               include: {
                 User: {
                   include: {
@@ -159,10 +159,10 @@ class AssignmentRepository {
                     },
                   },
                 },
-                // 확정 메시지 발송 여부 확인용
-                messageAssignments: {
+                // 확정 발송 여부 확인용
+                dispatchAssignments: {
                   select: {
-                    message: {
+                    dispatch: {
                       select: { type: true },
                     },
                   },
@@ -402,9 +402,9 @@ class AssignmentRepository {
           },
         },
         TrainingLocation: true,
-        messageAssignments: {
+        dispatchAssignments: {
           include: {
-            message: true,
+            dispatch: true,
           },
         },
       },
@@ -497,7 +497,7 @@ class AssignmentRepository {
         name: true,
         isStaffLocked: true,
         trainingLocations: {
-          select: { id: true, instructorsNumbers: true },
+          select: { id: true, actualCount: true },
         },
         schedules: {
           select: {

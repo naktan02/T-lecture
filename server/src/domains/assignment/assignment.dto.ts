@@ -30,6 +30,17 @@ const toKSTTimeString = (date: Date | string | null | undefined): string => {
   return kstDate.toISOString().split('T')[1].substring(0, 5);
 };
 
+/**
+ * 필요 강사 수 계산 (참여인원 / 강사당교육생수)
+ */
+const calcRequiredInstructors = (
+  actualCount: number | null | undefined,
+  traineesPerInstructor: number,
+): number => {
+  if (!actualCount || actualCount <= 0) return 1; // 기본값 1명
+  return Math.floor(actualCount / traineesPerInstructor) || 1;
+};
+
 class AssignmentDTO {
   /**
    * 배정 후보 데이터(부대+강사)를 프론트엔드용 포맷으로 변환
@@ -52,7 +63,7 @@ class AssignmentDTO {
       const locations =
         unit.trainingLocations && unit.trainingLocations.length > 0
           ? unit.trainingLocations
-          : [{ id: 'def', originalPlace: '교육장소 미정', instructorsNumbers: 0 }];
+          : [{ id: 'def', originalPlace: '교육장소 미정', actualCount: 0 }];
 
       // 2. 스케줄(날짜)별로 반복
       unit.schedules.forEach((schedule: ScheduleRaw) => {
@@ -67,7 +78,7 @@ class AssignmentDTO {
             // [Card UI]
             unitName: unit.name,
             originalPlace: loc.originalPlace,
-            instructorsNumbers: loc.instructorsNumbers,
+            actualCount: loc.actualCount,
             date: dateStr,
             time: toKSTTimeString(unit.workStartTime),
             location: unit.region,
@@ -83,7 +94,6 @@ class AssignmentDTO {
               officerEmail: unit.officerEmail,
               originalPlace: loc.originalPlace,
               changedPlace: loc.changedPlace,
-              instructorsNumbers: loc.instructorsNumbers,
               plannedCount: loc.plannedCount,
               actualCount: loc.actualCount,
               note: loc.note,
@@ -151,10 +161,12 @@ class AssignmentDTO {
   /**
    * 계층형 응답 변환 (분류 필터링 지원 - Temporary=배정작업공간, Confirmed=확정)
    * @param classificationFilter - 'Temporary' | 'Confirmed' | 'all' (default: 'all')
+   * @param traineesPerInstructor - 강사당 교육생 수 (필요인원 계산용)
    */
   toHierarchicalResponse(
     unitsWithAssignments: UnitRaw[],
     classificationFilter: 'Temporary' | 'Confirmed' | 'all' = 'all',
+    traineesPerInstructor: number = 36,
   ) {
     return (
       unitsWithAssignments
@@ -165,7 +177,7 @@ class AssignmentDTO {
           const locations =
             unit.trainingLocations && unit.trainingLocations.length > 0
               ? unit.trainingLocations
-              : [{ id: 'default', originalPlace: '교육장소 미정', instructorsNumbers: 0 }];
+              : [{ id: 'default', originalPlace: '교육장소 미정', actualCount: 0 }];
 
           let isUnitConfirmed = true;
           const isStaffLocked = (unit as any).isStaffLocked ?? false;
@@ -182,17 +194,31 @@ class AssignmentDTO {
             }
             isUnitConfirmed = !hasPending && hasAccepted;
           } else {
-            // 일반 경우: 모든 스케줄의 필요 인원이 Accepted 상태로 채워져 있으면 Confirmed
+            // 일반 경우:
+            // 1) 필요 인원 이상이 Accepted 상태
+            // 2) Pending 상태인 배정이 없어야 함 (추가 배정 인원도 모두 수락해야 확정)
             for (const loc of locations as TrainingLocationRaw[]) {
-              const requiredPerDay = loc.instructorsNumbers || 0;
+              // 동적 계산: actualCount / traineesPerInstructor
+              const requiredPerDay = calcRequiredInstructors(
+                loc.actualCount,
+                traineesPerInstructor,
+              );
               for (const schedule of unit.schedules as ScheduleRaw[]) {
-                const acceptedCount = (schedule.assignments || []).filter(
+                const assignmentsForLocation = (schedule.assignments || []).filter(
                   (a: AssignmentRaw) =>
-                    a.state === 'Accepted' &&
-                    (a.trainingLocationId === loc.id || a.trainingLocationId === null),
+                    a.trainingLocationId === loc.id || a.trainingLocationId === null,
+                );
+
+                const acceptedCount = assignmentsForLocation.filter(
+                  (a: AssignmentRaw) => a.state === 'Accepted',
                 ).length;
-                // 필요 인원보다 Accepted가 적으면 미완료
-                if (acceptedCount < requiredPerDay) {
+
+                const hasPending = assignmentsForLocation.some(
+                  (a: AssignmentRaw) => a.state === 'Pending',
+                );
+
+                // 필요 인원보다 Accepted가 적거나, Pending이 있으면 미완료
+                if (acceptedCount < requiredPerDay || hasPending) {
                   isUnitConfirmed = false;
                   break;
                 }
@@ -220,7 +246,8 @@ class AssignmentDTO {
 
           const trainingLocations = locations.map((loc: TrainingLocationRaw) => {
             const daysCount = unit.schedules.length;
-            totalRequired += (loc.instructorsNumbers || 0) * daysCount;
+            const requiredCount = calcRequiredInstructors(loc.actualCount, traineesPerInstructor);
+            totalRequired += requiredCount * daysCount;
 
             // 2. 각 장소 안에서 '날짜별' 스케줄 구성
             const dates = unit.schedules.map((schedule: ScheduleRaw) => {
@@ -237,8 +264,8 @@ class AssignmentDTO {
                 .map((assign: AssignmentRaw) => {
                   totalAssigned++;
                   assignedInstructorIds.add(assign.userId);
-                  // 메시지 발송 여부: messageAssignments가 있으면 발송됨
-                  const messageSent = (assign.messageAssignments?.length ?? 0) > 0;
+                  // 발송 여부: dispatchAssignments가 있으면 발송됨
+                  const messageSent = (assign.dispatchAssignments?.length ?? 0) > 0;
                   return {
                     assignmentId: assign.unitScheduleId + '-' + assign.userId,
                     unitScheduleId: assign.unitScheduleId,
@@ -249,22 +276,38 @@ class AssignmentDTO {
                     category: assign.User.instructor?.category || null, // Main, Co, Assistant, Practicum
                     trainingLocationId: assign.trainingLocationId,
                     state: assign.state, // Pending, Accepted, Rejected
-                    messageSent, // 메시지 발송 여부 (MessageAssignment 기반)
+                    messageSent, // 발송 여부 (DispatchAssignment 기반)
                   };
                 });
+
+              // 거절한 강사 목록
+              const rejectedInstructors = (schedule.assignments || [])
+                .filter(
+                  (a: AssignmentRaw) =>
+                    a.state === 'Rejected' &&
+                    (a.trainingLocationId === loc.id || a.trainingLocationId === null),
+                )
+                .map((assign: AssignmentRaw) => ({
+                  instructorId: assign.userId,
+                  name: assign.User.name,
+                  team: assign.User.instructor?.team?.name || '소속없음',
+                  category: assign.User.instructor?.category || null,
+                }));
 
               return {
                 date: dateStr,
                 unitScheduleId: schedule.id,
                 isBlocked: schedule.isBlocked || false, // 배정 막기 상태
-                requiredCount: loc.instructorsNumbers || 0,
+                requiredCount: calcRequiredInstructors(loc.actualCount, traineesPerInstructor),
                 instructors: assignedInstructors,
+                rejectedInstructors, // 거절한 강사 목록 추가
               };
             });
 
             return {
               id: loc.id,
               name: loc.originalPlace || '장소 미명',
+              actualCount: loc.actualCount || 0,
               dates: dates,
             };
           });
@@ -287,8 +330,8 @@ class AssignmentDTO {
             if (allConfirmedAssignments.length > 0) {
               // 모든 확정(수락된) 배정에 Confirmed 메시지가 있는지 확인
               confirmedMessageSent = allConfirmedAssignments.every((a: AssignmentRaw) => {
-                const hasConfirmedMessage = (a.messageAssignments || []).some(
-                  (ma) => ma.message?.type === 'Confirmed',
+                const hasConfirmedMessage = (a.dispatchAssignments || []).some(
+                  (da) => da.dispatch?.type === 'Confirmed',
                 );
                 return hasConfirmedMessage;
               });
@@ -305,8 +348,8 @@ class AssignmentDTO {
 
               if (allAcceptedAssignments.length > 0) {
                 confirmedMessageSent = allAcceptedAssignments.every((a: AssignmentRaw) => {
-                  return (a.messageAssignments || []).some(
-                    (ma) => ma.message?.type === 'Confirmed',
+                  return (a.dispatchAssignments || []).some(
+                    (da) => da.dispatch?.type === 'Confirmed',
                   );
                 });
               }

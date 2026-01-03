@@ -9,10 +9,9 @@ async function main() {
   console.log('🧹 Cleaning up previous data...');
 
   try {
-    // 메시지 관련 테이블 먼저 삭제 (FK 참조 때문에)
-    await prisma.messageAssignment.deleteMany();
-    await prisma.messageReceipt.deleteMany();
-    await prisma.message.deleteMany();
+    // 발송 관련 테이블 먼저 삭제 (FK 참조 때문에)
+    await prisma.dispatchAssignment.deleteMany();
+    await prisma.dispatch.deleteMany();
 
     // 공지 관련 테이블 삭제
     await prisma.noticeReceipt.deleteMany();

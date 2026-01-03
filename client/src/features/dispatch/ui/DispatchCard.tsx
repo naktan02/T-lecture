@@ -1,20 +1,20 @@
-// src/features/message/ui/MessageCard.tsx
-import { Message } from '../messageApi';
+// src/features/dispatch/ui/DispatchCard.tsx
+import { Dispatch } from '../dispatchApi';
 
-interface MessageCardProps {
-  message: Message;
+interface DispatchCardProps {
+  dispatch: Dispatch;
   onClick: () => void;
 }
 
-export const MessageCard = ({ message, onClick }: MessageCardProps) => {
-  const isTemporary = message.type === 'Temporary';
-  const isConfirmed = message.type === 'Confirmed';
+export const DispatchCard = ({ dispatch, onClick }: DispatchCardProps) => {
+  const isTemporary = dispatch.type === 'Temporary';
+  const isConfirmed = dispatch.type === 'Confirmed';
 
   // 임시 배정의 상태 확인
   const isCanceled =
-    isTemporary && message.assignments?.every((a) => ['Canceled', 'Rejected'].includes(a.state));
-  const isAccepted = isTemporary && message.assignments?.every((a) => a.state === 'Accepted');
-  const isPending = isTemporary && message.assignments?.some((a) => a.state === 'Pending');
+    isTemporary && dispatch.assignments?.every((a) => ['Canceled', 'Rejected'].includes(a.state));
+  const isAccepted = isTemporary && dispatch.assignments?.every((a) => a.state === 'Accepted');
+  const isPending = isTemporary && dispatch.assignments?.some((a) => a.state === 'Pending');
 
   return (
     <article
@@ -22,7 +22,7 @@ export const MessageCard = ({ message, onClick }: MessageCardProps) => {
       className={`
         p-4 rounded-lg border cursor-pointer transition-all
         hover:shadow-md hover:-translate-y-0.5
-        ${message.isRead ? 'bg-white' : 'bg-blue-50 border-blue-200'}
+        ${dispatch.isRead ? 'bg-white' : 'bg-blue-50 border-blue-200'}
         ${isTemporary && !isCanceled ? 'border-yellow-200' : ''}
         ${isTemporary && isCanceled ? 'border-gray-200 opacity-60' : ''}
         ${isConfirmed ? 'border-green-200' : ''}
@@ -30,7 +30,7 @@ export const MessageCard = ({ message, onClick }: MessageCardProps) => {
     >
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center gap-2">
-          {!message.isRead && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />}
+          {!dispatch.isRead && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />}
           <span
             className={`
             text-xs font-medium px-2 py-0.5 rounded
@@ -57,23 +57,23 @@ export const MessageCard = ({ message, onClick }: MessageCardProps) => {
           )}
         </div>
         <span className="text-xs text-gray-400">
-          {message.receivedAt ? new Date(message.receivedAt).toLocaleDateString('ko-KR') : ''}
+          {dispatch.receivedAt ? new Date(dispatch.receivedAt).toLocaleDateString('ko-KR') : ''}
         </span>
       </div>
 
       {/* 제목 표시 (변수 치환된 제목) */}
-      {message.title && (
-        <h3 className="text-sm font-medium text-gray-800 mb-2 line-clamp-1">{message.title}</h3>
+      {dispatch.title && (
+        <h3 className="text-sm font-medium text-gray-800 mb-2 line-clamp-1">{dispatch.title}</h3>
       )}
 
       {/* 읽음/안읽음 상태 배지 */}
       <div className="flex justify-between items-center mt-2">
         <span
           className={`text-xs px-2 py-0.5 rounded ${
-            message.isRead ? 'bg-gray-100 text-gray-500' : 'bg-blue-100 text-blue-700 font-medium'
+            dispatch.isRead ? 'bg-gray-100 text-gray-500' : 'bg-blue-100 text-blue-700 font-medium'
           }`}
         >
-          {message.isRead ? '읽음' : '새 메시지'}
+          {dispatch.isRead ? '읽음' : '새 메시지'}
         </span>
         <span className="text-xs text-blue-500 font-medium">자세히 보기 →</span>
       </div>

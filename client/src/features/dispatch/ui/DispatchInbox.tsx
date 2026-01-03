@@ -1,19 +1,19 @@
-// src/features/message/ui/MessageInbox.tsx
+// src/features/dispatch/ui/DispatchInbox.tsx
 import { useState } from 'react';
-import { useMessageInbox } from '../model/useMessageInbox';
-import { MessageCard } from './MessageCard';
-import { MessageDetailModal } from './MessageDetailModal';
-import { Message } from '../messageApi';
+import { useDispatchInbox } from '../model/useDispatchInbox';
+import { DispatchCard } from './DispatchCard';
+import { DispatchDetailModal } from './DispatchDetailModal';
+import { Dispatch } from '../dispatchApi';
 import { Button, Pagination } from '../../../shared/ui';
 
-export const MessageInbox = () => {
-  const { temporary, confirmed, markAsRead, error } = useMessageInbox();
-  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+export const DispatchInbox = () => {
+  const { temporary, confirmed, markAsRead, error } = useDispatchInbox();
+  const [selectedDispatch, setSelectedDispatch] = useState<Dispatch | null>(null);
 
-  const handleOpenMessage = async (message: Message) => {
-    setSelectedMessage(message);
-    if (!message.isRead) {
-      await markAsRead(message.messageId);
+  const handleOpenDispatch = async (dispatch: Dispatch) => {
+    setSelectedDispatch(dispatch);
+    if (!dispatch.isRead) {
+      await markAsRead(dispatch.dispatchId);
     }
   };
 
@@ -27,7 +27,7 @@ export const MessageInbox = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">메시지를 불러오는 중...</div>
+        <div className="text-gray-500">발송함을 불러오는 중...</div>
       </div>
     );
   }
@@ -53,17 +53,17 @@ export const MessageInbox = () => {
         {/* 제목 + 새로고침 버튼 (카드 내부 상단) */}
         <div className="flex justify-between items-center p-4 border-b border-gray-200 flex-shrink-0">
           <div>
-            <h1 className="text-xl font-bold text-gray-800">메시지함</h1>
-            <p className="text-sm text-gray-500 mt-1">배정 관련 메시지를 확인하세요</p>
+            <h1 className="text-xl font-bold text-gray-800">배정 알림함</h1>
+            <p className="text-sm text-gray-500 mt-1">배정 관련 알림을 확인하세요</p>
           </div>
           <Button variant="ghost" size="small" onClick={handleRefresh}>
             🔄 새로고침
           </Button>
         </div>
 
-        {/* 메시지 목록 - 2컬럼 */}
+        {/* 발송 목록 - 2컬럼 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 flex-1 min-h-0 overflow-auto">
-          {/* 임시 배정 메시지 섹션 */}
+          {/* 임시 배정 섹션 */}
           <section className="bg-gray-50 rounded-lg border border-gray-100 flex flex-col overflow-hidden">
             {/* 섹션 헤더 */}
             <div className="flex items-center gap-2 p-3 bg-gray-50 border-b border-gray-100 flex-shrink-0">
@@ -73,18 +73,18 @@ export const MessageInbox = () => {
               </span>
             </div>
 
-            {/* 메시지 목록 (스크롤 영역) */}
+            {/* 발송 목록 (스크롤 영역) */}
             <div className="flex-1 overflow-auto p-3 space-y-2">
               {temporary.isLoading ? (
                 <div className="text-center text-gray-400 py-6">로딩 중...</div>
-              ) : temporary.messages.length === 0 ? (
-                <div className="text-center text-gray-400 py-6">임시 배정 메시지가 없습니다</div>
+              ) : temporary.dispatches.length === 0 ? (
+                <div className="text-center text-gray-400 py-6">임시 배정 알림이 없습니다</div>
               ) : (
-                temporary.messages.map((msg) => (
-                  <MessageCard
-                    key={msg.messageId}
-                    message={msg}
-                    onClick={() => handleOpenMessage(msg)}
+                temporary.dispatches.map((d) => (
+                  <DispatchCard
+                    key={d.dispatchId}
+                    dispatch={d}
+                    onClick={() => handleOpenDispatch(d)}
                   />
                 ))
               )}
@@ -101,7 +101,7 @@ export const MessageInbox = () => {
             </div>
           </section>
 
-          {/* 확정 배정 메시지 섹션 */}
+          {/* 확정 배정 섹션 */}
           <section className="bg-gray-50 rounded-lg border border-gray-100 flex flex-col overflow-hidden">
             {/* 섹션 헤더 */}
             <div className="flex items-center gap-2 p-3 bg-gray-50 border-b border-gray-100 flex-shrink-0">
@@ -111,18 +111,18 @@ export const MessageInbox = () => {
               </span>
             </div>
 
-            {/* 메시지 목록 (스크롤 영역) */}
+            {/* 발송 목록 (스크롤 영역) */}
             <div className="flex-1 overflow-auto p-3 space-y-2">
               {confirmed.isLoading ? (
                 <div className="text-center text-gray-400 py-6">로딩 중...</div>
-              ) : confirmed.messages.length === 0 ? (
-                <div className="text-center text-gray-400 py-6">확정 배정 메시지가 없습니다</div>
+              ) : confirmed.dispatches.length === 0 ? (
+                <div className="text-center text-gray-400 py-6">확정 배정 알림이 없습니다</div>
               ) : (
-                confirmed.messages.map((msg) => (
-                  <MessageCard
-                    key={msg.messageId}
-                    message={msg}
-                    onClick={() => handleOpenMessage(msg)}
+                confirmed.dispatches.map((d) => (
+                  <DispatchCard
+                    key={d.dispatchId}
+                    dispatch={d}
+                    onClick={() => handleOpenDispatch(d)}
                   />
                 ))
               )}
@@ -141,9 +141,12 @@ export const MessageInbox = () => {
         </div>
       </div>
 
-      {/* 메시지 상세 모달 */}
-      {selectedMessage && (
-        <MessageDetailModal message={selectedMessage} onClose={() => setSelectedMessage(null)} />
+      {/* 상세 모달 */}
+      {selectedDispatch && (
+        <DispatchDetailModal
+          dispatch={selectedDispatch}
+          onClose={() => setSelectedDispatch(null)}
+        />
       )}
     </div>
   );

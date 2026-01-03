@@ -30,7 +30,7 @@ model User {
   // Relations
   instructor        Instructor?
   admin             Admin?
-  messageReceipts   MessageReceipt[]
+  dispatches        Dispatch[]
   noticeReceipts    NoticeReceipt[] @relation("NoticeRecipient")
   authoredNotices   Notice[]        @relation("NoticeAuthor")
   authoredInquiries Inquiry[]       @relation("InquiryAuthor")

@@ -355,6 +355,9 @@ class UnitService {
         : null;
     if (rawData.lunchEndTime !== undefined)
       unitUpdateData.lunchEndTime = rawData.lunchEndTime ? new Date(rawData.lunchEndTime) : null;
+    if (rawData.excludedDates !== undefined) {
+      unitUpdateData.excludedDates = rawData.excludedDates;
+    }
 
     // 일정 계산 로직:
     // 1. excludedDates가 정의되어 있으면 (빈 배열 포함) -> 일정 재계산

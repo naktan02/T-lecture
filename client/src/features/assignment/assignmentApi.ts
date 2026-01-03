@@ -181,7 +181,7 @@ export const sendTemporaryMessagesApi = async (
   endDate: string,
 ): Promise<{ count: number; message: string }> => {
   const params = new URLSearchParams({ startDate, endDate });
-  const res = await apiClient(`/api/v1/messages/send/temporary?${params}`, {
+  const res = await apiClient(`/api/v1/dispatches/send/temporary?${params}`, {
     method: 'POST',
   });
   if (!res.ok) {

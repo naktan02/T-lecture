@@ -1,5 +1,5 @@
-// src/domains/message/message.templateHelper.ts
-// 메시지 템플릿 변수 빌드 헬퍼
+// src/domains/dispatch/dispatch.templateHelper.ts
+// 발송 템플릿 변수 빌드 헬퍼
 
 /**
  * 요일 문자열 반환

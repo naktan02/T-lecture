@@ -32,7 +32,6 @@ export interface TrainingLocationRaw {
   id: number | string;
   originalPlace: string | null;
   changedPlace?: string | null;
-  instructorsNumbers?: number | null;
   plannedCount?: number | null;
   actualCount?: number | null;
   note?: string | null;
@@ -64,9 +63,9 @@ export interface AssignmentRaw {
       category?: string | null;
     } | null;
   };
-  // 메시지 발송 확인용
-  messageAssignments?: Array<{
-    message: { type: string | null } | null;
+  // 발송 확인용
+  dispatchAssignments?: Array<{
+    dispatch: { type: string | null } | null;
   }>;
 }
 
