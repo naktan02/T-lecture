@@ -6,7 +6,6 @@ import {
   Message,
   MessageListResponse,
 } from '../messageApi';
-import { showError } from '../../../shared/utils/toast';
 
 const ITEMS_PER_PAGE = 10;
 

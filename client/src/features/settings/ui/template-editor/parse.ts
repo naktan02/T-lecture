@@ -10,7 +10,10 @@ function parseInner(raw: string): { key: string; format?: string } {
   return { key, format };
 }
 
-function findTokenEnd(input: string, startAfterOpen: number): { end: number; consumeTo: number } | null {
+function findTokenEnd(
+  input: string,
+  startAfterOpen: number,
+): { end: number; consumeTo: number } | null {
   // end: raw content가 끝나는 인덱스(= 닫힘 "}}" 시작 인덱스)
   // consumeTo: 커서를 옮길 위치(= 닫힘 포함해서 소비한 뒤 위치)
   for (let i = startAfterOpen; i < input.length - 1; i++) {
@@ -18,11 +21,10 @@ function findTokenEnd(input: string, startAfterOpen: number): { end: number; con
       // 연속 '}' 런 길이 계산
       let j = i;
       while (j < input.length && input[j] === '}') j++;
-      const runLen = j - i;
 
       // 런의 마지막 2개를 닫힘으로 사용
-      const end = j - 2;        // raw content는 여기까지 (exclusive)
-      const consumeTo = j;      // 런 전체 소비 (앞의 runLen-2는 raw에 포함됨)
+      const end = j - 2; // raw content는 여기까지 (exclusive)
+      const consumeTo = j; // 런 전체 소비
       return { end, consumeTo };
     }
   }
@@ -88,7 +90,6 @@ function compactTokens(tokens: Token[]): Token[] {
   }
   return out;
 }
-
 
 /**
  * ✅ Token[] → 템플릿 문자열 직렬화

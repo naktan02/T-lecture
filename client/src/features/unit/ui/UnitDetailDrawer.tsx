@@ -305,15 +305,6 @@ export const UnitDetailDrawer = ({
     }));
   };
 
-  // schedules - isExcluded 토글
-  const toggleScheduleExcluded = (idx: number) => {
-    setSchedules((prev) => {
-      const n = [...prev];
-      n[idx] = { ...n[idx], isExcluded: !n[idx].isExcluded };
-      return n;
-    });
-  };
-
   // locations
   const addLocation = () => setLocations((prev) => [...prev, createEmptyLocation()]);
 
