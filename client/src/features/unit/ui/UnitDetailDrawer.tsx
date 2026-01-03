@@ -30,7 +30,6 @@ interface TrainingLocation {
   // 폼에서는 input 특성상 string으로 관리 (submit 때 number 변환)
   plannedCount: string;
   actualCount: string;
-  instructorsNumbers?: string;
 
   hasInstructorLounge: boolean;
   hasWomenRestroom: boolean;
@@ -63,6 +62,7 @@ interface Unit {
 
   trainingLocations?: TrainingLocation[] | any[];
   schedules?: { id?: number; date?: string }[] | any[];
+  excludedDates?: string[];
 }
 
 // 서버 API 응답: { result: 'Success', data: Unit }
@@ -162,7 +162,6 @@ const createEmptyLocation = (): TrainingLocation => ({
   changedPlace: '',
   plannedCount: '0',
   actualCount: '0',
-  instructorsNumbers: '0',
 
   hasInstructorLounge: false,
   hasWomenRestroom: false,
@@ -259,7 +258,6 @@ export const UnitDetailDrawer = ({
           changedPlace: String(loc?.changedPlace ?? ''),
           plannedCount: String(loc?.plannedCount ?? '0'),
           actualCount: String(loc?.actualCount ?? '0'),
-          instructorsNumbers: String(loc?.instructorsNumbers ?? '0'),
           hasInstructorLounge: Boolean(loc?.hasInstructorLounge),
           hasWomenRestroom: Boolean(loc?.hasWomenRestroom),
           hasCateredMeals: Boolean(loc?.hasCateredMeals),
@@ -282,6 +280,11 @@ export const UnitDetailDrawer = ({
       setSchedules(schedulesNormalized);
     } else {
       setSchedules([]);
+    }
+
+    if (Array.isArray(target.excludedDates)) {
+      setExcludedDates(target.excludedDates);
+    } else {
       setExcludedDates([]);
     }
 
@@ -344,7 +347,6 @@ export const UnitDetailDrawer = ({
       ...loc,
       plannedCount: toNumberOrNull(loc.plannedCount) ?? 0,
       actualCount: toNumberOrNull(loc.actualCount) ?? 0,
-      instructorsNumbers: toNumberOrNull(loc.instructorsNumbers) ?? 0,
     }));
 
     const payload = {

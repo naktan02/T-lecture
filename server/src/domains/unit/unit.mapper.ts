@@ -61,6 +61,7 @@ export function toCreateUnitDto(rawData: RawUnitData = {}): Prisma.UnitCreateInp
     officerName: rawData.officerName,
     officerPhone: rawData.officerPhone,
     officerEmail: rawData.officerEmail,
+    excludedDates: rawData.excludedDates || [],
     // trainingLocations와 schedules는 createUnitWithNested에서 처리
   };
 }

@@ -34,6 +34,7 @@ model Unit {
 
   trainingLocations TrainingLocation[]
   schedules         UnitSchedule[]
+  excludedDates     String[]      @default([]) @map("교육불가일자")
   distances         InstructorUnitDistance[]
 
   @@map("부대")
