@@ -103,12 +103,6 @@ class AssignmentService {
 
     const { assignments: matchResults } = matchResult;
 
-    // DEBUG: 엔진 결과 확인
-    console.log(`[DEBUG Engine] matchResults count: ${matchResults?.length ?? 0}`);
-    if (matchResults && matchResults.length > 0) {
-      console.log(`[DEBUG Engine] First 5 results:`, matchResults.slice(0, 5));
-    }
-
     if (!matchResults || matchResults.length === 0) {
       throw new AppError('배정 가능한 매칭 결과가 없습니다.', 404, 'NO_MATCHES');
     }
