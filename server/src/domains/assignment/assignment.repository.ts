@@ -148,7 +148,7 @@ class AssignmentRepository {
           orderBy: { date: 'asc' },
           include: {
             assignments: {
-              where: { state: { in: ['Pending', 'Accepted'] } },
+              where: { state: { in: ['Pending', 'Accepted', 'Rejected'] } },
               include: {
                 User: {
                   include: {
@@ -497,7 +497,7 @@ class AssignmentRepository {
         name: true,
         isStaffLocked: true,
         trainingLocations: {
-          select: { id: true, instructorsNumbers: true },
+          select: { id: true, actualCount: true },
         },
         schedules: {
           select: {

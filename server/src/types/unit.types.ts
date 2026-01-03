@@ -58,7 +58,6 @@ export interface TrainingLocationInput {
   changedPlace?: string;
   plannedCount?: number | string;
   actualCount?: number | string;
-  instructorsNumbers?: number | string;
   hasInstructorLounge?: boolean | string;
   hasWomenRestroom?: boolean | string;
   hasCateredMeals?: boolean | string;

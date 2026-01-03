@@ -7,4 +7,4 @@ export * from './common.types';
 export * from './user.types';
 export * from './auth.types';
 export * from './distance.types';
-export * from './message.types';
+export * from './dispatch.types';

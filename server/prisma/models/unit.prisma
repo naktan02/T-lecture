@@ -51,7 +51,6 @@ model TrainingLocation {
   allowsPhoneBeforeAfter Boolean? @map("사전사후 휴대폰 불출 여부")
   plannedCount           Int?     @map("계획인원")
   actualCount            Int?     @map("참여인원")
-  instructorsNumbers     Int?     @map("투입강사수")
   note                   String?  @map("특이사항")
 
   unit        Unit                       @relation(fields: [unitId], references: [id], onDelete: Cascade)

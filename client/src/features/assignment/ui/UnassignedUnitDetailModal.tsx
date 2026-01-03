@@ -124,10 +124,7 @@ export const UnassignedUnitDetailModal: React.FC<Props> = ({ unit, onClose }) =>
                   {/* 장소 기본 정보 */}
                   <InfoRow label="기존 교육장소" value={String(detail.originalPlace || '-')} />
                   <InfoRow label="변경 교육장소" value={String(detail.changedPlace || '-')} />
-                  <InfoRow
-                    label="투입 강사 수"
-                    value={`${selectedLocation.instructorsRequired}명`}
-                  />
+                  <InfoRow label="필요 인원" value={`${selectedLocation.instructorsRequired}명`} />
 
                   {/* 인원 정보 */}
                   <InfoRow

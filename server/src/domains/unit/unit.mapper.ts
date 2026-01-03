@@ -76,7 +76,6 @@ function extractTrainingLocation(row: Record<string, unknown>): TrainingLocation
     changedPlace: row.changedPlace as string | undefined,
     plannedCount: row.plannedCount as number | undefined,
     actualCount: row.actualCount as number | undefined,
-    instructorsNumbers: row.instructorsNumbers as number | undefined,
     hasInstructorLounge: row.hasInstructorLounge as boolean | undefined,
     hasWomenRestroom: row.hasWomenRestroom as boolean | undefined,
     hasCateredMeals: row.hasCateredMeals as boolean | undefined,

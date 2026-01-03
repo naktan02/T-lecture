@@ -48,11 +48,19 @@ interface Instructor {
   state?: string | null; // Pending, Accepted, Rejected (null = unsent)
 }
 
+interface RejectedInstructor {
+  instructorId: number;
+  name: string;
+  team: string;
+  category?: string | null;
+}
+
 interface DateInfo {
   unitScheduleId: number;
   date: string;
   requiredCount: number;
   instructors: Instructor[];
+  rejectedInstructors?: RejectedInstructor[];
 }
 
 interface TrainingLocation {
@@ -124,7 +132,6 @@ const UNIT_FIELD_CONFIG: FieldConfig[] = [
 
   { key: 'originalPlace', label: '교육장소(기존)' },
   { key: 'changedPlace', label: '교육장소(변경)' },
-  { key: 'instructorsNumbers', label: '투입 강사 수', format: (v) => (v ? `${v}명` : '-') },
   { key: 'plannedCount', label: '계획 인원', format: (v) => (v ? `${v}명` : '-') },
   { key: 'actualCount', label: '실 참여 인원', format: (v) => (v ? `${v}명` : '-') },
 
@@ -492,94 +499,148 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                 <div className="flex items-center gap-2">
                   <span className="text-lg">🏫</span>
                   <h3 className="font-bold text-indigo-900">{loc.name}</h3>
+                  {loc.actualCount > 0 && (
+                    <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded">
+                      참여 {loc.actualCount}명
+                    </span>
+                  )}
                 </div>
-                {/* 총괄/책임강사 클릭 가능 영역 */}
-                <div className="relative mt-1">
-                  <button
-                    type="button"
-                    onClick={() => setShowRoleSelector(showRoleSelector === loc.id ? null : loc.id)}
-                    className="text-sm text-gray-600 hover:bg-indigo-100 px-2 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer"
-                  >
-                    {(() => {
-                      // 로컬 변경 우선 확인
-                      const localChange = changeSet.roleChanges.find(
-                        (rc) => rc.unitId === group.unitId,
-                      );
-                      if (localChange) {
-                        const changedInst = allAssignedInstructors.find(
-                          (i) => i.instructorId === localChange.instructorId,
+                {/* 총괄/책임강사 + 거절 강사 표시 */}
+                <div className="flex items-center gap-4 mt-1 flex-wrap">
+                  {/* 총괄/책임강사 클릭 가능 영역 */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowRoleSelector(showRoleSelector === loc.id ? null : loc.id)
+                      }
+                      className="text-sm text-gray-600 hover:bg-indigo-100 px-2 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      {(() => {
+                        // 로컬 변경 우선 확인
+                        const localChange = changeSet.roleChanges.find(
+                          (rc) => rc.unitId === group.unitId,
                         );
-                        if (changedInst && localChange.role) {
+                        if (localChange) {
+                          const changedInst = allAssignedInstructors.find(
+                            (i) => i.instructorId === localChange.instructorId,
+                          );
+                          if (changedInst && localChange.role) {
+                            return (
+                              <>
+                                {localChange.role === 'Head' ? '👑 총괄강사' : '📋 책임강사'}:
+                                <span className="font-semibold text-gray-800">
+                                  {changedInst.name}
+                                </span>
+                                <span className="text-[10px] text-indigo-600 bg-indigo-100 px-1 rounded">
+                                  변경됨
+                                </span>
+                              </>
+                            );
+                          }
+                          return <span className="text-gray-400">역할 없음 (변경 대기)</span>;
+                        }
+                        // 서버 데이터 확인
+                        const headInstructor = loc.dates
+                          .flatMap((d) => d.instructors)
+                          .find((i) => i.role === 'Head' || i.role === 'Supervisor');
+                        if (headInstructor) {
                           return (
                             <>
-                              {localChange.role === 'Head' ? '👑 총괄강사' : '📋 책임강사'}:
+                              {headInstructor.role === 'Head' ? '👑 총괄강사' : '📋 책임강사'}:
                               <span className="font-semibold text-gray-800">
-                                {changedInst.name}
-                              </span>
-                              <span className="text-[10px] text-indigo-600 bg-indigo-100 px-1 rounded">
-                                변경됨
+                                {headInstructor.name}
                               </span>
                             </>
                           );
                         }
-                        return <span className="text-gray-400">역할 없음 (변경 대기)</span>;
-                      }
-                      // 서버 데이터 확인
-                      const headInstructor = loc.dates
-                        .flatMap((d) => d.instructors)
-                        .find((i) => i.role === 'Head' || i.role === 'Supervisor');
-                      if (headInstructor) {
-                        return (
-                          <>
-                            {headInstructor.role === 'Head' ? '👑 총괄강사' : '📋 책임강사'}:
-                            <span className="font-semibold text-gray-800">
-                              {headInstructor.name}
-                            </span>
-                          </>
-                        );
-                      }
-                      return <span className="text-gray-400">클릭하여 역할 지정</span>;
-                    })()}
-                    <span className="text-gray-400 text-xs">▼</span>
-                  </button>
+                        return <span className="text-gray-400">클릭하여 역할 지정</span>;
+                      })()}
+                      <span className="text-gray-400 text-xs">▼</span>
+                    </button>
 
-                  {/* 드롭다운 목록 - 이름만 표시, 클릭 시 총괄강사로 지정 */}
-                  {showRoleSelector === loc.id && (
-                    <div className="absolute z-50 top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[180px]">
-                      <div className="text-xs text-gray-500 px-3 py-1 border-b border-gray-100">
-                        총괄강사로 지정할 강사 선택
+                    {/* 드롭다운 목록 - 이름만 표시, 클릭 시 총괄강사로 지정 */}
+                    {showRoleSelector === loc.id && (
+                      <div className="absolute z-50 top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[180px]">
+                        <div className="text-xs text-gray-500 px-3 py-1 border-b border-gray-100">
+                          총괄강사로 지정할 강사 선택
+                        </div>
+                        {allAssignedInstructors.map((inst) => {
+                          const isCurrentHead =
+                            getCurrentRole(inst.instructorId, inst.role) === 'Head';
+                          return (
+                            <button
+                              key={inst.instructorId}
+                              type="button"
+                              onClick={() => handleRoleChange(inst.instructorId, 'Head')}
+                              className={`w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 transition-colors flex items-center justify-between ${
+                                isCurrentHead ? 'bg-amber-50' : ''
+                              }`}
+                            >
+                              <span className="flex items-center gap-2">
+                                <span className="font-medium text-gray-800">{inst.name}</span>
+                                <span className="text-[10px] text-gray-500">{inst.team}</span>
+                              </span>
+                              {isCurrentHead && (
+                                <span className="text-[10px] bg-amber-500 text-white px-1.5 py-0.5 rounded">
+                                  현재
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                        {allAssignedInstructors.length === 0 && (
+                          <div className="text-xs text-gray-400 px-3 py-2">
+                            배정된 강사가 없습니다
+                          </div>
+                        )}
                       </div>
-                      {allAssignedInstructors.map((inst) => {
-                        const isCurrentHead =
-                          getCurrentRole(inst.instructorId, inst.role) === 'Head';
-                        return (
-                          <button
-                            key={inst.instructorId}
-                            type="button"
-                            onClick={() => handleRoleChange(inst.instructorId, 'Head')}
-                            className={`w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 transition-colors flex items-center justify-between ${
-                              isCurrentHead ? 'bg-amber-50' : ''
-                            }`}
+                    )}
+                  </div>
+
+                  {/* 거절 강사 표시 (중복 제거) */}
+                  {(() => {
+                    const rejectedMap = new Map<
+                      number,
+                      { name: string; category?: string | null; team: string }
+                    >();
+                    loc.dates.forEach((d) => {
+                      (d.rejectedInstructors || []).forEach((rej) => {
+                        if (!rejectedMap.has(rej.instructorId)) {
+                          rejectedMap.set(rej.instructorId, rej);
+                        }
+                      });
+                    });
+                    const rejectedList = Array.from(rejectedMap.values());
+                    if (rejectedList.length === 0) return null;
+                    return (
+                      <div className="flex items-center gap-1 text-[11px] text-gray-600">
+                        <span className="text-red-400">✕ 거절:</span>
+                        {rejectedList.map((rej, idx) => (
+                          <span
+                            key={idx}
+                            className="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded"
                           >
-                            <span className="flex items-center gap-2">
-                              <span className="font-medium text-gray-800">{inst.name}</span>
-                              <span className="text-[10px] text-gray-500">{inst.team}</span>
-                            </span>
-                            {isCurrentHead && (
-                              <span className="text-[10px] bg-amber-500 text-white px-1.5 py-0.5 rounded">
-                                현재
+                            {rej.name}
+                            {rej.category && (
+                              <span className="text-gray-500">
+                                (
+                                {rej.category === 'Main'
+                                  ? '주'
+                                  : rej.category === 'Co'
+                                    ? '부'
+                                    : rej.category === 'Assistant'
+                                      ? '보조'
+                                      : '실습'}
+                                )
                               </span>
                             )}
-                          </button>
-                        );
-                      })}
-                      {allAssignedInstructors.length === 0 && (
-                        <div className="text-xs text-gray-400 px-3 py-2">
-                          배정된 강사가 없습니다
-                        </div>
-                      )}
-                    </div>
-                  )}
+                            <span className="text-gray-500">({rej.team})</span>
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 

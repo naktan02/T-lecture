@@ -22,6 +22,16 @@ class AssignmentService {
   }
 
   /**
+   * 강사당 교육생 수 조회 (공개 메서드)
+   */
+  async getTraineesPerInstructor(): Promise<number> {
+    return this.getSystemConfigNumber(
+      'TRAINEES_PER_INSTRUCTOR',
+      DEFAULT_ASSIGNMENT_CONFIG.traineesPerInstructor,
+    );
+  }
+
+  /**
    * 날짜에서 월 빼기 유틸
    */
   private subtractMonths(base: Date, months: number): Date {
@@ -352,9 +362,11 @@ class AssignmentService {
     // 4. 부대의 인원고정 여부
     const isStaffLocked = (unit as { isStaffLocked?: boolean }).isStaffLocked ?? false;
 
-    // 5. 장소별 필요 인원 합계
+    // 5. 장소별 필요 인원 합계 (동적 계산)
+    const traineesPerInstructor = await this.getTraineesPerInstructor();
     const totalRequiredPerSchedule = unit.trainingLocations.reduce(
-      (sum, loc) => sum + (loc.instructorsNumbers || 0),
+      (sum, loc) =>
+        sum + (Math.floor((loc.actualCount || 0) / Math.max(1, traineesPerInstructor)) || 1),
       0,
     );
 

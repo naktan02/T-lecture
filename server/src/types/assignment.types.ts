@@ -32,7 +32,6 @@ export interface TrainingLocationRaw {
   id: number | string;
   originalPlace: string | null;
   changedPlace?: string | null;
-  instructorsNumbers?: number | null;
   plannedCount?: number | null;
   actualCount?: number | null;
   note?: string | null;

@@ -25,7 +25,6 @@ type ExecuteOptions = {
 
 interface TrainingLocation {
   id?: number;
-  instructorsNumbers?: number | null;
   originalPlace?: string | null;
   actualCount?: number | null;
 }
@@ -193,12 +192,11 @@ class AssignmentAlgorithm {
               (a.trainingLocationId === loc.id || a.trainingLocationId === null),
           ).length;
 
-          const computedNeeded = Math.ceil(
-            (loc.actualCount ?? 0) / Math.max(1, traineesPerInstructor),
-          );
-          const needed = loc.instructorsNumbers ?? computedNeeded;
+          const computedNeeded =
+            Math.floor((loc.actualCount ?? 0) / Math.max(1, traineesPerInstructor)) || 1;
+          const needed = computedNeeded;
 
-          const required = Math.max(0, (needed ?? 0) - existingAssignments);
+          const required = Math.max(0, needed - existingAssignments);
 
           // DEBUG: 필요인원 계산 로그
           console.log(
@@ -226,7 +224,6 @@ class AssignmentAlgorithm {
         trainingLocations: unit.trainingLocations.map((loc) => ({
           id: loc.id || 0,
           name: loc.originalPlace || '',
-          instructorsNumbers: loc.instructorsNumbers ?? null,
         })),
       };
     });

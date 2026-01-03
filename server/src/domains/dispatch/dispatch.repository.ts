@@ -66,12 +66,44 @@ class DispatchRepository {
     });
   }
 
-  // 확정 발송 대상 조회 (부대 단위 재발송 지원)
+  // 확정 발송 대상 조회 (부대가 확정 상태인 경우만)
   async findTargetsForConfirmedDispatch() {
-    // 1단계: Accepted 상태이면서 Confirmed 발송 미완료인 배정의 unitId 목록 조회
+    // 1단계: 확정 상태인 부대 찾기
+    // 확정 조건: 해당 부대의 모든 배정이 Accepted (Pending 없음)
+    const confirmedUnits = await prisma.unit.findMany({
+      where: {
+        schedules: {
+          some: {
+            assignments: {
+              some: { state: 'Accepted' }, // 최소 1명 수락
+            },
+          },
+        },
+        // Pending이 없는 부대만
+        NOT: {
+          schedules: {
+            some: {
+              assignments: {
+                some: { state: 'Pending' },
+              },
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    const confirmedUnitIds = confirmedUnits.map((u) => u.id);
+
+    if (confirmedUnitIds.length === 0) {
+      return [];
+    }
+
+    // 2단계: 확정 부대 중에서 Confirmed 발송 미완료인 배정 조회
     const unsentAssignments = await prisma.instructorUnitAssignment.findMany({
       where: {
         state: 'Accepted',
+        UnitSchedule: { unitId: { in: confirmedUnitIds } },
         dispatchAssignments: {
           none: { dispatch: { type: 'Confirmed' } },
         },
@@ -87,7 +119,7 @@ class DispatchRepository {
       return [];
     }
 
-    // 2단계: 해당 부대들의 기존 Confirmed 발송 연결 삭제 (재발송을 위해)
+    // 3단계: 해당 부대들의 기존 Confirmed 발송 연결 삭제 (재발송을 위해)
     await prisma.dispatchAssignment.deleteMany({
       where: {
         assignment: {
@@ -98,7 +130,7 @@ class DispatchRepository {
       },
     });
 
-    // 3단계: 해당 부대의 모든 Accepted 강사 반환
+    // 4단계: 해당 부대의 모든 Accepted 강사 반환
     return await prisma.instructorUnitAssignment.findMany({
       where: {
         state: 'Accepted',

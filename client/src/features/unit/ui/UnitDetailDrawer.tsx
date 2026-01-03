@@ -673,12 +673,6 @@ export const UnitDetailDrawer = ({
                         value={loc.actualCount}
                         onChange={(e) => updateLocation(idx, 'actualCount', e.target.value)}
                       />
-                      <InputField
-                        type="number"
-                        label="강사 수"
-                        value={loc.instructorsNumbers ?? ''}
-                        onChange={(e) => updateLocation(idx, 'instructorsNumbers', e.target.value)}
-                      />
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm bg-gray-50 p-3 rounded mb-3">

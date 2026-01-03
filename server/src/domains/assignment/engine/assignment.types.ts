@@ -98,7 +98,6 @@ export interface ScheduleData {
 export interface LocationData {
   id: number;
   name: string;
-  instructorsNumbers: number | null;
 }
 
 // =========================================
