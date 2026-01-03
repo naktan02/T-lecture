@@ -1,9 +1,10 @@
-// client/src/features/settings/ui/SettingsTabs.tsx
+// client/src/features/assignment-settings/ui/AssignmentSettingsTabs.tsx
 import { useState, ReactElement } from 'react';
-import { TeamsSection } from './TeamsSection';
-import { VirtuesSection } from './VirtuesSection';
+import { AssignmentSettingsSection } from './AssignmentSettingsSection';
+import { PenaltyManagementSection } from './PenaltyManagementSection';
+import { TemplatesSection } from '../../settings/ui/TemplatesSection';
 
-type TabKey = 'teams' | 'virtues';
+type TabKey = 'settings' | 'penalty' | 'templates';
 
 interface Tab {
   key: TabKey;
@@ -12,12 +13,13 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
-  { key: 'teams', label: '팀 관리', icon: '👥' },
-  { key: 'virtues', label: '덕목 관리', icon: '📚' },
+  { key: 'settings', label: '배정 설정', icon: '⚙️' },
+  { key: 'penalty', label: '배정 패널티 관리', icon: '⚠️' },
+  { key: 'templates', label: '메시지 템플릿', icon: '✉️' },
 ];
 
-export const SettingsTabs = (): ReactElement => {
-  const [activeTab, setActiveTab] = useState<TabKey>('teams');
+export const AssignmentSettingsTabs = (): ReactElement => {
+  const [activeTab, setActiveTab] = useState<TabKey>('settings');
 
   return (
     <div className="flex flex-col h-full">
@@ -44,8 +46,9 @@ export const SettingsTabs = (): ReactElement => {
 
       {/* 탭 컨텐츠 */}
       <div className="flex-1 overflow-auto p-6">
-        {activeTab === 'teams' && <TeamsSection />}
-        {activeTab === 'virtues' && <VirtuesSection />}
+        {activeTab === 'settings' && <AssignmentSettingsSection />}
+        {activeTab === 'penalty' && <PenaltyManagementSection />}
+        {activeTab === 'templates' && <TemplatesSection />}
       </div>
     </div>
   );

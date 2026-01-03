@@ -18,6 +18,7 @@ import AssignmentPage from '../pages/admin/AssignmentPage';
 import UnitPage from '../pages/admin/UnitPage';
 import UserPage from '../pages/admin/UserPage';
 import SettingsPage from '../pages/admin/SettingsPage';
+import AssignmentSettingsPage from '../pages/admin/AssignmentSettingsPage';
 import AdminNoticePage from '../pages/admin/NoticePage';
 import InstructorNoticePage from '../pages/instructor/NoticePage';
 import AdminInquiryPage from '../pages/admin/InquiryPage';
@@ -42,6 +43,7 @@ function App(): ReactElement {
           {/* 일반 관리자 */}
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/admin/assignments" element={<AssignmentPage />} />
+          <Route path="/admin/assignment-settings" element={<AssignmentSettingsPage />} />
           <Route path="/admin/settings" element={<SettingsPage />} />
 
           {/* 슈퍼 관리자 */}
