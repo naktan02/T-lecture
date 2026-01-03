@@ -154,31 +154,24 @@ class DispatchRepository {
     });
   }
 
-  // 임시, 확정 발송 생성
+  // 임시, 확정 발송 생성 (단순화: Dispatch에 userId 직접 저장)
   async createDispatchesBulk(dispatchDataList: DispatchCreateData[]) {
     return await prisma.$transaction(async (tx) => {
       let count = 0;
       for (const data of dispatchDataList) {
-        // 발송 본체 생성
+        // 발송 생성 (userId 포함)
         const dispatch = await tx.dispatch.create({
           data: {
             type: data.type,
             title: data.title ?? null,
             body: data.body,
             status: 'Sent',
+            userId: data.userId,
             createdAt: new Date(),
           },
         });
 
-        // 2) 수신자(Receipt) 연결
-        await tx.dispatchReceipt.create({
-          data: {
-            dispatchId: dispatch.id,
-            userId: data.userId,
-          },
-        });
-
-        // 3) 배정(Assignment) 연결
+        // 배정(Assignment) 연결
         if (data.assignmentIds && data.assignmentIds.length > 0) {
           await tx.dispatchAssignment.createMany({
             data: data.assignmentIds.map((unitScheduleId) => ({
@@ -194,7 +187,7 @@ class DispatchRepository {
     });
   }
 
-  // 내 발송 목록 조회 (배정 정보 포함, 페이지네이션 지원)
+  // 내 발송 목록 조회 (단순화: Dispatch 직접 조회)
   async findMyDispatches(
     userId: number,
     options: {
@@ -208,47 +201,41 @@ class DispatchRepository {
 
     const where = {
       userId: Number(userId),
-      ...(type && { dispatch: { type } }),
+      ...(type && { type }),
     };
 
-    const [receipts, total] = await Promise.all([
-      prisma.dispatchReceipt.findMany({
+    const [dispatches, total] = await Promise.all([
+      prisma.dispatch.findMany({
         where,
         include: {
-          dispatch: {
+          assignments: {
+            where: { userId: Number(userId) },
             include: {
-              assignments: {
-                where: { userId: Number(userId) },
-                include: {
-                  assignment: {
-                    select: {
-                      unitScheduleId: true,
-                      state: true,
-                    },
-                  },
+              assignment: {
+                select: {
+                  unitScheduleId: true,
+                  state: true,
                 },
               },
             },
           },
         },
-        orderBy: { dispatch: { createdAt: 'desc' } },
+        orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
       }),
-      prisma.dispatchReceipt.count({ where }),
+      prisma.dispatch.count({ where }),
     ]);
 
-    return { receipts, total, page, limit };
+    return { dispatches, total, page, limit };
   }
 
-  // 발송 읽음 처리
+  // 발송 읽음 처리 (단순화: Dispatch 직접 업데이트)
   async markAsRead(userId: number, dispatchId: number) {
-    return await prisma.dispatchReceipt.update({
+    return await prisma.dispatch.update({
       where: {
-        userId_dispatchId: {
-          userId: Number(userId),
-          dispatchId: Number(dispatchId),
-        },
+        id: Number(dispatchId),
+        userId: Number(userId), // 본인 발송만 업데이트 가능
       },
       data: { readAt: new Date() },
     });

@@ -11,7 +11,6 @@ async function main() {
   try {
     // 발송 관련 테이블 먼저 삭제 (FK 참조 때문에)
     await prisma.dispatchAssignment.deleteMany();
-    await prisma.dispatchReceipt.deleteMany();
     await prisma.dispatch.deleteMany();
 
     // 공지 관련 테이블 삭제

@@ -379,7 +379,7 @@ class DispatchService {
     return { createdCount: count, message: `${count}건의 확정 발송이 완료되었습니다.` };
   }
 
-  // 내 발송함 조회 (페이지네이션 지원)
+  // 내 발송함 조회 (페이지네이션 지원) - 단순화된 스키마 사용
   async getMyDispatches(
     userId: number,
     options: {
@@ -388,23 +388,25 @@ class DispatchService {
       limit?: number;
     } = {},
   ) {
-    const { receipts, total, page, limit } = await dispatchRepository.findMyDispatches(
-      userId,
-      options,
-    );
+    const {
+      dispatches: dispatchList,
+      total,
+      page,
+      limit,
+    } = await dispatchRepository.findMyDispatches(userId, options);
 
-    const dispatches = receipts.map((r) => ({
-      dispatchId: r.dispatch.id,
-      type: r.dispatch.type,
-      title: r.dispatch.title,
-      status: r.dispatch.status,
-      body: r.dispatch.body,
-      receivedAt: r.dispatch.createdAt,
-      readAt: r.readAt,
-      isRead: !!r.readAt,
+    const dispatches = dispatchList.map((d) => ({
+      dispatchId: d.id,
+      type: d.type,
+      title: d.title,
+      status: d.status,
+      body: d.body,
+      receivedAt: d.createdAt,
+      readAt: d.readAt,
+      isRead: !!d.readAt,
       // 연결된 배정 정보 (응답용)
       assignments:
-        r.dispatch.assignments?.map((da) => ({
+        d.assignments?.map((da) => ({
           unitScheduleId: da.assignment.unitScheduleId,
           state: da.assignment.state,
         })) || [],

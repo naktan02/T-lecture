@@ -57,6 +57,9 @@ npm run db:migrate # 후에 엔터
 npx prisma migrate reset # yes 나오면 y
 
 npx prisma generate
+
+# 스키마 바로 적용
+npx prisma db push
 ```
 
 ```bash

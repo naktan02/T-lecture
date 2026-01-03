@@ -15,6 +15,7 @@ enum DispatchStatus {
 }
 
 // 배정 발송 전용 모델 (임시/확정 배정)
+// 단순화: DispatchReceipt 통합 (1:1 관계이므로)
 model Dispatch {
   id        Int             @id @default(autoincrement())
   type      DispatchType?   @map("유형")
@@ -22,25 +23,17 @@ model Dispatch {
   body      String?         @map("본문") @db.Text
   status    DispatchStatus? @map("상태")
   createdAt DateTime?       @default(now()) @map("생성일시")
+  
+  // 수신자 정보 (DispatchReceipt에서 통합)
+  userId    Int             @map("수신자id")
+  readAt    DateTime?       @map("읽은일시")
 
   // 관계
+  user        User                 @relation(fields: [userId], references: [id])
   assignments DispatchAssignment[]
-  receipts    DispatchReceipt[]
 
+  @@index([userId], map: "dispatch_user_idx")
   @@map("메시지")
-}
-
-model DispatchReceipt {
-  dispatchId Int       @map("메시지id")
-  userId     Int       @map("강사id")
-  readAt     DateTime? @map("read_at")
-
-  dispatch Dispatch @relation(fields: [dispatchId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
-
-  @@id([userId, dispatchId])
-  @@index([userId], map: "메시지수신_user_idx")
-  @@map("메시지 수신자")
 }
 
 model DispatchAssignment {
