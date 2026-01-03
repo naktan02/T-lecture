@@ -14,6 +14,7 @@ interface RegisterFormData {
   name: string;
   email: string;
   password: string;
+  passwordConfirm: string;
   phoneNumber: string;
   code: string;
   address: string;
@@ -32,6 +33,7 @@ export const RegisterForm: React.FC = () => {
     name: '',
     email: '',
     password: '',
+    passwordConfirm: '',
     phoneNumber: '',
     code: '',
     address: '',
@@ -125,6 +127,11 @@ export const RegisterForm: React.FC = () => {
     }
     if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
       setError('필수 항목을 모두 입력해주세요.');
+      return;
+    }
+
+    if (form.password !== form.passwordConfirm) {
+      setError('비밀번호가 일치하지 않습니다.');
       return;
     }
 
