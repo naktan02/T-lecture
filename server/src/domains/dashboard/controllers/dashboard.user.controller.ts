@@ -1,7 +1,6 @@
-// server/src/domains/dashboard/dashboard.controller.ts
 import { NextFunction, Request, Response } from 'express';
-import dashboardService from './dashboard.service';
-import AppError from '../../common/errors/AppError';
+import dashboardService from '../services/dashboard.user.service';
+import AppError from '../../../common/errors/AppError';
 
 class DashboardController {
   /**

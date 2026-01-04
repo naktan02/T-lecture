@@ -1,5 +1,5 @@
-// server/src/domains/dashboard/dashboard.service.ts
-import prisma from '../../libs/prisma';
+// server/src/domains/dashboard/services/dashboard.user.service.ts
+import prisma from '../../../libs/prisma';
 
 interface MonthlyActivity {
   month: string;
@@ -280,32 +280,35 @@ class DashboardService {
       ]),
     );
 
-    const recentAssignments = recentAssignmentsRaw.map((assignment) => {
-      const u = assignment.UnitSchedule.unit;
-      const dist = distanceMap.get(u.id) || 0;
+    const recentAssignments = recentAssignmentsRaw
+      .map((assignment: any) => {
+        const u = assignment.UnitSchedule?.unit;
+        if (!u) return null;
+        const dist = distanceMap.get(u.id) || 0;
 
-      let wh = 0;
-      if (u.workStartTime && u.workEndTime) {
-        const s = new Date(u.workStartTime);
-        const e = new Date(u.workEndTime);
-        let diff = e.getHours() * 60 + e.getMinutes() - (s.getHours() * 60 + s.getMinutes());
-        if (diff < 0) diff += 24 * 60;
-        wh = diff / 60;
-      }
+        let wh = 0;
+        if (u.workStartTime && u.workEndTime) {
+          const s = new Date(u.workStartTime);
+          const e = new Date(u.workEndTime);
+          let diff = e.getHours() * 60 + e.getMinutes() - (s.getHours() * 60 + s.getMinutes());
+          if (diff < 0) diff += 24 * 60;
+          wh = diff / 60;
+        }
 
-      return {
-        id: assignment.unitScheduleId,
-        date: assignment.UnitSchedule.date
-          ? new Date(assignment.UnitSchedule.date).toISOString().split('T')[0]
-          : '',
-        unitName: u.name || '',
-        unitType: u.unitType,
-        region: u.region,
-        status: assignment.state,
-        distance: Math.round(dist * 2),
-        workHours: Math.round(wh * 10) / 10,
-      };
-    });
+        return {
+          id: assignment.unitScheduleId,
+          date: assignment.UnitSchedule?.date
+            ? new Date(assignment.UnitSchedule.date).toISOString().split('T')[0]
+            : '',
+          unitName: u.name || '',
+          unitType: u.unitType,
+          region: u.region,
+          status: assignment.state,
+          distance: Math.round(dist * 2),
+          workHours: Math.round(wh * 10) / 10,
+        };
+      })
+      .filter(Boolean) as DashboardStats['recentAssignments'];
 
     // 수락률 계산
     const acceptanceRate =

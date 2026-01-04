@@ -1,7 +1,7 @@
-// server/src/domains/dashboard/dashboard.routes.ts
+// server/src/domains/dashboard/routes/dashboard.user.routes.ts
 import { Router } from 'express';
-import dashboardController from './dashboard.controller';
-import { auth, requireRole } from '../../common/middlewares';
+import dashboardController from '../controllers/dashboard.user.controller';
+import { auth, requireRole } from '../../../common/middlewares';
 
 const router = Router();
 
