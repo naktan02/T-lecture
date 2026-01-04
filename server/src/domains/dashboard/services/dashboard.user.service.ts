@@ -79,10 +79,12 @@ class DashboardService {
         // 배치 잡이 돌기 전이라도 신규 가입자는 0이 맞음.
       }
 
-      // 올해/이번달 건수는 별도 조회 (누적 통계에 없으므로)
+      // 올해/이번달 건수는 별도 조회 (UTC 기준)
       const now = new Date();
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfYear = new Date(Date.UTC(now.getUTCFullYear(), 0, 1, 0, 0, 0, 0));
+      const startOfMonth = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0),
+      );
 
       yearCount = await prisma.instructorUnitAssignment.count({
         where: { userId, state: 'Accepted', UnitSchedule: { date: { gte: startOfYear } } },
@@ -91,11 +93,9 @@ class DashboardService {
         where: { userId, state: 'Accepted', UnitSchedule: { date: { gte: startOfMonth } } },
       });
     } else {
-      // 1-B. 커스텀 기간: 실시간 계산 (느림)
-      const start = new Date(startDate!);
-      const end = new Date(endDate!);
-      // end 날짜의 23:59:59까지 포함하도록 설정
-      end.setHours(23, 59, 59, 999);
+      // 1-B. 커스텀 기간: UTC 자정 기준 필터링
+      const start = new Date(`${startDate!}T00:00:00.000Z`);
+      const end = new Date(`${endDate!}T23:59:59.999Z`);
 
       const assignments = await prisma.instructorUnitAssignment.findMany({
         where: {
@@ -171,11 +171,11 @@ class DashboardService {
     let monthlyQueryEnd: Date;
 
     if (isCustomRange && startDate && endDate) {
-      // 커스텀 기간: 해당 기간의 월만 초기화
-      const rangeStart = new Date(startDate);
-      const rangeEnd = new Date(endDate);
+      // 커스텀 기간: UTC 기준으로 기간 설정
+      const rangeStart = new Date(`${startDate}T00:00:00.000Z`);
+      const rangeEnd = new Date(`${endDate}T23:59:59.999Z`);
       monthlyQueryStart = rangeStart;
-      monthlyQueryEnd = new Date(rangeEnd.setHours(23, 59, 59, 999));
+      monthlyQueryEnd = rangeEnd;
 
       // 시작 월부터 종료 월까지 초기화
       const current = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
@@ -185,9 +185,9 @@ class DashboardService {
         current.setMonth(current.getMonth() + 1);
       }
     } else {
-      // 기본 모드: 현재 연도 1월~12월
-      const currentYear = now.getFullYear();
-      monthlyQueryStart = new Date(currentYear, 0, 1); // 1월 1일
+      // 기본 모드: 현재 연도 1월~12월 (UTC 기준)
+      const currentYear = now.getUTCFullYear();
+      monthlyQueryStart = new Date(Date.UTC(currentYear, 0, 1, 0, 0, 0, 0)); // 1월 1일
       monthlyQueryEnd = now;
 
       for (let month = 0; month < 12; month++) {
@@ -256,10 +256,10 @@ class DashboardService {
     };
 
     if (isCustomRange) {
-      // 커스텀 기간이면 날짜 필터 적용, 상위 50개 제한
+      // 커스텀 기간: UTC 자정 기준
       recentAssignmentsQuery.where.UnitSchedule.date = {
-        gte: new Date(startDate!),
-        lte: new Date(new Date(endDate!).setHours(23, 59, 59, 999)),
+        gte: new Date(`${startDate!}T00:00:00.000Z`),
+        lte: new Date(`${endDate!}T23:59:59.999Z`),
       };
       recentAssignmentsQuery.take = 50;
     }

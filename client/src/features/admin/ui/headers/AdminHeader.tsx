@@ -11,7 +11,6 @@ export const AdminHeader: React.FC = () => {
     {
       label: '관리',
       children: [
-        { label: '유저 수락', path: '/admin/super' },
         { label: '유저 관리', path: '/admin/users' },
         { label: '부대 관리', path: '/admin/units' },
       ],

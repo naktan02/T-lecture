@@ -4,6 +4,19 @@ import prisma from '../../../libs/prisma';
 type PeriodFilter = '1m' | '3m' | '6m' | '12m';
 type ScheduleStatus = 'completed' | 'inProgress' | 'scheduled' | 'unassigned';
 
+// Helper: 오늘 UTC 자정 생성
+function getTodayUTC(): Date {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+}
+
+// Helper: Date를 UTC 자정으로 변환
+function toUTCMidnight(date: Date): Date {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0),
+  );
+}
+
 interface DashboardStats {
   educationStatus: {
     completed: number;
@@ -40,25 +53,31 @@ interface ScheduleListItem {
   instructorNames: string[];
 }
 
-// Helper function to get date range from period
+// Helper function to get date range from period (UTC 자정 기준)
 function getDateRangeFromPeriod(period: PeriodFilter): { start: Date; end: Date } {
   const now = new Date();
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59); // End of current month
+  const currentYear = now.getUTCFullYear();
+  const currentMonth = now.getUTCMonth();
+
+  // End: 현재 월 말일 23:59:59 UTC
+  const endDay = new Date(Date.UTC(currentYear, currentMonth + 1, 0)).getUTCDate();
+  const end = new Date(Date.UTC(currentYear, currentMonth, endDay, 23, 59, 59, 999));
+
   let start: Date;
 
   switch (period) {
     case '3m':
-      start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+      start = new Date(Date.UTC(currentYear, currentMonth - 2, 1, 0, 0, 0, 0));
       break;
     case '6m':
-      start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      start = new Date(Date.UTC(currentYear, currentMonth - 5, 1, 0, 0, 0, 0));
       break;
     case '12m':
-      start = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+      start = new Date(Date.UTC(currentYear, currentMonth - 11, 1, 0, 0, 0, 0));
       break;
     case '1m':
     default:
-      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      start = new Date(Date.UTC(currentYear, currentMonth, 1, 0, 0, 0, 0));
       break;
   }
 
@@ -82,14 +101,12 @@ class DashboardAdminService {
     let inProgress = 0;
     let scheduled = 0;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTodayUTC();
 
     for (const schedule of assignedSchedules) {
       if (!schedule.date) continue;
 
-      const scheduleDate = new Date(schedule.date);
-      scheduleDate.setHours(0, 0, 0, 0);
+      const scheduleDate = toUTCMidnight(new Date(schedule.date));
 
       if (scheduleDate < today) {
         completed++;
@@ -123,8 +140,7 @@ class DashboardAdminService {
    * 상태별 교육 일정 목록 (모달용)
    */
   async getSchedulesByStatus(status: ScheduleStatus): Promise<ScheduleListItem[]> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTodayUTC();
 
     let whereClause: any = {};
 
@@ -199,8 +215,7 @@ class DashboardAdminService {
       },
     });
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTodayUTC();
 
     return instructors.map((inst) => {
       const allAssignments = inst.unitAssignments;
@@ -234,8 +249,7 @@ class DashboardAdminService {
    */
   async getTeamAnalysis(period: PeriodFilter = '1m'): Promise<TeamAnalysis[]> {
     const { start, end } = getDateRangeFromPeriod(period);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTodayUTC();
 
     const teams = await prisma.team.findMany({
       where: { deletedAt: null },
@@ -305,8 +319,7 @@ class DashboardAdminService {
    */
   async getTeamDetail(teamId: number, period: PeriodFilter = '1m') {
     const { start, end } = getDateRangeFromPeriod(period);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTodayUTC();
 
     const team = await prisma.team.findUnique({
       where: { id: teamId },

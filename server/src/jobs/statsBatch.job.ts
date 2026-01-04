@@ -14,9 +14,11 @@ export const runStatsAggregation = async () => {
   try {
     const instructors = await prisma.instructor.findMany({ select: { userId: true } });
 
-    // 현재 날짜 (00:00:00)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // 현재 날짜 (UTC 자정)
+    const now = new Date();
+    const today = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0),
+    );
 
     let updatedCount = 0;
 

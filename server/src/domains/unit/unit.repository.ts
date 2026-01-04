@@ -553,7 +553,9 @@ class UnitRepository {
    */
   async findUpcomingSchedules(limit = 50) {
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const today = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0),
+    );
 
     return prisma.unitSchedule.findMany({
       where: {

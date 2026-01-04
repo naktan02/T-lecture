@@ -14,8 +14,6 @@ export const UserHeader: React.FC = () => {
   const { isInstructor } = useAuth();
 
   const links: NavLink[] = [
-    { label: '내 정보', path: '/user-main/profile' },
-    { label: '신청 현황', path: '/user-main/status' },
     { label: '배정 알림', path: '/user-main/dispatches' }, // 모든 사용자에게 표시
   ];
 
@@ -26,6 +24,9 @@ export const UserHeader: React.FC = () => {
     links.push({ label: '공지사항', path: '/instructor/notices' });
     links.push({ label: '문의사항', path: '/instructor/inquiries' });
   }
+
+  // 내 정보는 항상 마지막
+  links.push({ label: '내 정보', path: '/user-main/profile' });
 
   return <CommonHeader title="T-Lecture" userLabel={userLabel} links={links} />;
 };
