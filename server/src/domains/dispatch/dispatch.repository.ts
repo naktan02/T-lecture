@@ -1,13 +1,6 @@
 // src/domains/dispatch/dispatch.repository.ts
 import prisma from '../../libs/prisma';
-
-interface DispatchCreateData {
-  type: 'Temporary' | 'Confirmed';
-  title?: string;
-  body: string;
-  userId: number;
-  assignmentIds?: number[];
-}
+import { DispatchCreateData } from '../../types/dispatch.types';
 
 class DispatchRepository {
   // ==========================================
@@ -66,14 +59,26 @@ class DispatchRepository {
     });
   }
 
-  // 확정 발송 대상 조회 (부대가 확정 상태인 경우만)
-  async findTargetsForConfirmedDispatch() {
+  // 확정 발송 대상 조회 (부대가 확정 상태인 경우만, 날짜 범위 필터링)
+  async findTargetsForConfirmedDispatch(startDate?: string, endDate?: string) {
+    // 날짜 범위 조건
+    const dateFilter =
+      startDate && endDate
+        ? {
+            date: {
+              gte: new Date(startDate),
+              lte: new Date(endDate),
+            },
+          }
+        : {};
+
     // 1단계: 확정 상태인 부대 찾기
     // 확정 조건: 해당 부대의 모든 배정이 Accepted (Pending 없음)
     const confirmedUnits = await prisma.unit.findMany({
       where: {
         schedules: {
           some: {
+            ...dateFilter, // 날짜 범위 필터
             assignments: {
               some: { state: 'Accepted' }, // 최소 1명 수락
             },
@@ -83,6 +88,7 @@ class DispatchRepository {
         NOT: {
           schedules: {
             some: {
+              ...dateFilter, // 날짜 범위 필터
               assignments: {
                 some: { state: 'Pending' },
               },
@@ -270,6 +276,29 @@ class DispatchRepository {
         userId: Number(userId), // 본인 발송만 업데이트 가능
       },
       data: { readAt: new Date() },
+    });
+  }
+
+  // 특정 유저-부대의 모든 배정 조회 (날짜 필터 없이 전체)
+  async findAllAssignmentsForUserInUnit(userId: number, unitId: number) {
+    return await prisma.instructorUnitAssignment.findMany({
+      where: {
+        userId,
+        UnitSchedule: {
+          unitId,
+        },
+        state: 'Pending', // Pending 상태만
+      },
+      include: {
+        UnitSchedule: {
+          select: {
+            date: true,
+          },
+        },
+      },
+      orderBy: {
+        UnitSchedule: { date: 'asc' },
+      },
     });
   }
 }

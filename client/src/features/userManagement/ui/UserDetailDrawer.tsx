@@ -1,8 +1,8 @@
 // client/src/features/userManagement/ui/UserDetailDrawer.tsx
 import { useEffect, useState, ChangeEvent, FormEvent } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, InputField } from '../../../shared/ui';
-import { showWarning } from '../../../shared/utils/toast';
+import { showWarning, showSuccess, showError } from '../../../shared/utils/toast';
 import { userManagementApi, User, UpdateUserDto } from '../api/userManagementApi';
 import { getTeams, getVirtues, Team, Virtue } from '../../settings/settingsApi';
 import { AvailabilityCalendar } from './AvailabilityCalendar';
@@ -98,10 +98,12 @@ export const UserDetailDrawer = ({
   onApprove,
   onReject,
 }: UserDetailDrawerProps) => {
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabKey>('basic');
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM);
   const [selectedVirtues, setSelectedVirtues] = useState<number[]>([]);
   const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [originalAddress, setOriginalAddress] = useState<string>(''); // 원본 주소 저장
 
   const userId = initialUser?.id;
 
@@ -145,11 +147,12 @@ export const UserDetailDrawer = ({
 
     const target = boundUser ?? initialUser;
 
+    const addressValue = target.instructor?.location || '';
     setFormData({
       name: target.name || '',
       phoneNumber: target.userphoneNumber || '',
       status: target.status || 'APPROVED',
-      address: target.instructor?.location || '',
+      address: addressValue,
       lat: target.instructor?.lat?.toString() || '',
       lng: target.instructor?.lng?.toString() || '',
       category: target.instructor?.category || '',
@@ -162,6 +165,7 @@ export const UserDetailDrawer = ({
         target.instructor?.instructorStats?.[0]?.legacyPracticumCount?.toString() || '0',
       autoPromotionEnabled: target.instructor?.instructorStats?.[0]?.autoPromotionEnabled ?? true,
     });
+    setOriginalAddress(addressValue); // 원본 주소 저장
 
     // 덕목 설정
     const virtueIds = target.instructor?.virtues?.map((v) => v.virtueId) || [];
@@ -215,11 +219,8 @@ export const UserDetailDrawer = ({
       updateData.status = formData.status;
     }
 
-    // 강사 정보
+    // 강사 정보 (주소는 별도 저장이므로 제외)
     if (boundUser?.instructor) {
-      if (formData.address !== (boundUser.instructor.location || '')) {
-        updateData.address = formData.address;
-      }
       if (formData.category !== (boundUser.instructor.category || '')) {
         updateData.category = formData.category as UpdateUserDto['category'];
       }
@@ -275,6 +276,30 @@ export const UserDetailDrawer = ({
       onClose();
     }
   };
+
+  // 주소 별도 저장 핸들러
+  const handleSaveAddress = async () => {
+    if (!initialUser) return;
+
+    // 주소가 변경되지 않았으면 스킵
+    if (formData.address === originalAddress) {
+      showWarning('주소가 변경되지 않았습니다.');
+      return;
+    }
+
+    try {
+      await userManagementApi.updateUserAddress(initialUser.id, formData.address);
+      setOriginalAddress(formData.address); // 원본 주소 업데이트
+      queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['adminUserDetail'] });
+      showSuccess('주소가 저장되었습니다. 좌표가 자동으로 계산됩니다.');
+    } catch (err) {
+      showError((err as Error).message || '주소 저장 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 주소 변경 여부
+  const isAddressChanged = formData.address !== originalAddress;
 
   if (!isOpen) return null;
 
@@ -514,7 +539,24 @@ export const UserDetailDrawer = ({
                         >
                           🔍 주소 검색
                         </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveAddress}
+                          disabled={!isAddressChanged}
+                          className={`mt-1 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                            isAddressChanged
+                              ? 'bg-green-500 text-white hover:bg-green-600'
+                              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          }`}
+                        >
+                          💾 주소 저장
+                        </button>
                       </div>
+                      {isAddressChanged && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          ⚠️ 주소가 변경되었습니다. [주소 저장]을 눌러 저장하세요.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </section>

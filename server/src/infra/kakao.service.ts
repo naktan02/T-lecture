@@ -67,7 +67,7 @@ class KakaoService {
     }
   }
 
-  // 주소를 좌표로 변환
+  // 주소를 좌표로 변환 (예외 발생)
   async addressToCoordinates(address: string): Promise<CoordinatesResult> {
     try {
       const response = await axios.get('https://dapi.kakao.com/v2/local/search/address.json', {
@@ -93,6 +93,50 @@ class KakaoService {
       logger.error(`Kakao Address API Error: ${axiosError.response?.data || axiosError.message}`);
       throw new AppError('카카오 주소 API 호출에 실패했습니다.', 500, 'KAKAO_ADDRESS_API_ERROR');
     }
+  }
+
+  /**
+   * 주소를 좌표로 변환 (실패 시 null 반환 - 배치 작업용)
+   */
+  async addressToCoordsOrNull(address: string): Promise<{ lat: number; lng: number } | null> {
+    if (!address || address.trim().length === 0) {
+      return null;
+    }
+
+    try {
+      const result = await this.addressToCoordinates(address);
+      return { lat: result.lat, lng: result.lng };
+    } catch {
+      logger.warn(`[KakaoService] Geocoding failed for address: ${address}`);
+      return null;
+    }
+  }
+
+  /**
+   * 여러 주소를 일괄 변환 (rate limit 고려하여 순차 처리)
+   * @param addresses 주소 배열
+   * @param delayMs 각 요청 간 딜레이 (기본 100ms)
+   */
+  async batchAddressToCoords(
+    addresses: string[],
+    delayMs = 100,
+  ): Promise<({ lat: number; lng: number } | null)[]> {
+    const results: ({ lat: number; lng: number } | null)[] = [];
+
+    for (const address of addresses) {
+      const result = await this.addressToCoordsOrNull(address);
+      results.push(result);
+
+      if (delayMs > 0) {
+        await this.delay(delayMs);
+      }
+    }
+
+    return results;
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 

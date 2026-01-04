@@ -36,6 +36,15 @@ const safeInt = (val: unknown): number | null => {
 const safeBool = (val: unknown): boolean =>
   val === true || val === 'true' || String(val).toUpperCase() === 'O';
 
+/**
+ * 날짜 문자열을 UTC 자정으로 변환
+ * 예: "2026-01-04" -> 2026-01-04T00:00:00.000Z
+ */
+const toUTCMidnight = (date: Date | string): Date => {
+  const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0];
+  return new Date(`${dateStr}T00:00:00.000Z`);
+};
+
 class UnitRepository {
   /**
    * 교육장소 데이터 매핑 (내부 헬퍼)
@@ -97,7 +106,15 @@ class UnitRepository {
       where: { id: Number(id) },
       include: {
         trainingLocations: true,
-        schedules: { orderBy: { date: 'asc' } },
+        schedules: {
+          orderBy: { date: 'asc' },
+          include: {
+            assignments: {
+              where: { state: { in: ['Pending', 'Accepted'] } },
+              select: { userId: true },
+            },
+          },
+        },
       },
     });
   }
@@ -218,7 +235,7 @@ class UnitRepository {
         },
         schedules: {
           create: (schedules || []).map((s) => ({
-            date: new Date(s.date),
+            date: toUTCMidnight(s.date),
           })),
         },
       },
@@ -275,7 +292,7 @@ class UnitRepository {
         for (const loc of locations) {
           if (loc.id && dbIds.includes(Number(loc.id))) {
             // update - unitId is not needed in data
-            const { unitId: _u, ...updateData } = this._mapLocationData(loc, unitId);
+            const { unitId: _unused, ...updateData } = this._mapLocationData(loc, unitId);
             await tx.trainingLocation.update({ where: { id: Number(loc.id) }, data: updateData });
           } else {
             // create - unitId must be set
@@ -290,37 +307,183 @@ class UnitRepository {
         }
       }
 
-      // Schedules (재생성)
+      // Schedules (차분 기반 업데이트 - 변경된 날짜만 처리)
       if (schedules) {
-        // 1. 기존 스케줄에 활성 배정된 강사들 조회 (우선배정 크레딧 부여용)
-        const affectedInstructors = await tx.instructorUnitAssignment.findMany({
-          where: {
-            UnitSchedule: { unitId },
-            state: { in: ['Pending', 'Accepted'] },
+        // 부대 정보 가져오기 (사유 기록용)
+        const unitInfo = await tx.unit.findUnique({
+          where: { id: unitId },
+          select: { name: true },
+        });
+        const unitName = unitInfo?.name || `부대#${unitId}`;
+
+        // 1. 기존 스케줄 조회 (배정 정보 + 교육장 포함)
+        const existingSchedules = await tx.unitSchedule.findMany({
+          where: { unitId },
+          include: {
+            assignments: {
+              where: { state: { in: ['Pending', 'Accepted'] } },
+              select: { userId: true, trainingLocationId: true },
+            },
           },
-          select: { userId: true },
-          distinct: ['userId'],
         });
 
-        // 2. 영향받은 강사들에게 우선배정 크레딧 부여
-        for (const { userId } of affectedInstructors) {
-          await tx.instructorPriorityCredit.upsert({
-            where: { instructorId: userId },
-            create: { instructorId: userId, credits: 1 },
-            update: { credits: { increment: 1 } },
+        // 2. 날짜 기준 Set 생성 (YYYY-MM-DD 형식으로 비교)
+        const toDateString = (d: Date | string | null): string => {
+          if (!d) return '';
+          return new Date(d).toISOString().split('T')[0];
+        };
+        const validSchedules = existingSchedules.filter((s) => s.date !== null);
+        const existingDateMap = new Map(validSchedules.map((s) => [toDateString(s.date), s]));
+        const requestedDates = new Set(schedules.map((s) => toDateString(s.date)));
+
+        // 3. 삭제할 스케줄 (기존에만 있는 것)
+        const schedulesToDelete = validSchedules.filter(
+          (s) => !requestedDates.has(toDateString(s.date)),
+        );
+
+        // 4. 추가할 스케줄 (새로 요청된 것)
+        const datesToAdd = schedules.filter((s) => !existingDateMap.has(toDateString(s.date)));
+
+        // 5. 삭제되는 스케줄의 배정 정보 수집 (자동 재배정용)
+        interface DeletedAssignment {
+          userId: number;
+          date: string;
+          trainingLocationId: number | null;
+        }
+        const deletedAssignments: DeletedAssignment[] = [];
+        for (const schedule of schedulesToDelete) {
+          for (const assignment of schedule.assignments) {
+            deletedAssignments.push({
+              userId: assignment.userId,
+              date: toDateString(schedule.date),
+              trainingLocationId: assignment.trainingLocationId,
+            });
+          }
+        }
+
+        // 6. 삭제할 스케줄의 메시지_배정 먼저 삭제 (FK constraint 방지)
+        if (schedulesToDelete.length > 0) {
+          const scheduleIds = schedulesToDelete.map((s) => s.id);
+          await tx.dispatchAssignment.deleteMany({
+            where: { unitScheduleId: { in: scheduleIds } },
           });
         }
 
-        // 3. 기존 스케줄 삭제 (배정도 cascade 삭제)
-        await tx.unitSchedule.deleteMany({ where: { unitId } });
+        // 7. 삭제할 스케줄의 배정 삭제 (FK constraint 방지)
+        if (schedulesToDelete.length > 0) {
+          await tx.instructorUnitAssignment.deleteMany({
+            where: { unitScheduleId: { in: schedulesToDelete.map((s) => s.id) } },
+          });
+        }
 
-        // 4. 새 스케줄 생성
-        await tx.unitSchedule.createMany({
-          data: schedules.map((s) => ({
-            unitId,
-            date: new Date(s.date),
-          })),
-        });
+        // 8. 삭제할 스케줄 삭제
+        if (schedulesToDelete.length > 0) {
+          await tx.unitSchedule.deleteMany({
+            where: { id: { in: schedulesToDelete.map((s) => s.id) } },
+          });
+        }
+
+        // 7. 새 스케줄 추가
+        if (datesToAdd.length > 0) {
+          await tx.unitSchedule.createMany({
+            data: datesToAdd.map((s) => ({
+              unitId,
+              date: toUTCMidnight(s.date),
+            })),
+          });
+        }
+
+        // 9. 자동 재배정 시도 (삭제된 강사 → 같은 부대의 다른 날짜로)
+        const reassignedUserIds = new Set<number>();
+        if (deletedAssignments.length > 0) {
+          // 현재 부대의 모든 스케줄 조회 (새로 추가된 것 + 기존 유지된 것)
+          const allSchedules = await tx.unitSchedule.findMany({
+            where: { unitId },
+            include: {
+              assignments: {
+                where: { state: { in: ['Pending', 'Accepted'] } },
+                select: { userId: true },
+              },
+            },
+          });
+
+          for (const deleted of deletedAssignments) {
+            // 각 삭제된 강사에 대해 같은 부대의 다른 날짜 중 하나에 재배정 시도
+            for (const schedule of allSchedules) {
+              // schedule.date가 null이면 스킵
+              if (!schedule.date) continue;
+
+              // 이미 해당 스케줄에 이 강사가 배정되어 있으면 스킵
+              if (schedule.assignments.some((a) => a.userId === deleted.userId)) continue;
+
+              // 해당 날짜에 다른 부대에 배정되었는지 확인
+              const otherAssignment = await tx.instructorUnitAssignment.findFirst({
+                where: {
+                  userId: deleted.userId,
+                  UnitSchedule: {
+                    date: schedule.date,
+                    unitId: { not: unitId },
+                  },
+                  state: { in: ['Pending', 'Accepted'] },
+                },
+              });
+              if (otherAssignment) continue;
+
+              // 해당 날짜가 강사의 근무가능일인지 확인
+              const availability = await tx.instructorAvailability.findFirst({
+                where: {
+                  instructorId: deleted.userId,
+                  availableOn: schedule.date!,
+                },
+              });
+              if (!availability) continue;
+
+              // 조건 충족 → 자동 재배정!
+              await tx.instructorUnitAssignment.create({
+                data: {
+                  userId: deleted.userId,
+                  unitScheduleId: schedule.id,
+                  trainingLocationId: deleted.trainingLocationId,
+                  classification: 'Temporary',
+                  state: 'Pending',
+                },
+              });
+              reassignedUserIds.add(deleted.userId);
+              break; // 이 강사는 하나의 날짜에만 배정
+            }
+          }
+        }
+
+        // 9. 우선배정 크레딧 부여 (자동 재배정 안 된 강사만, 사유 포함)
+        const uniqueDeletedUserIds = new Set(deletedAssignments.map((a) => a.userId));
+        for (const userId of uniqueDeletedUserIds) {
+          if (reassignedUserIds.has(userId)) continue; // 자동 재배정된 강사는 스킵
+
+          // 해당 강사가 삭제된 날짜 중 하나 (사유용)
+          const deletedDate =
+            deletedAssignments.find((a) => a.userId === userId)?.date || 'unknown';
+
+          // 기존 크레딧 조회
+          const existing = await tx.instructorPriorityCredit.findUnique({
+            where: { instructorId: userId },
+          });
+
+          const newReason = { unit: unitName, date: deletedDate, type: '변경' };
+          const existingReasons = ((existing as any)?.reasons as Array<unknown>) || [];
+
+          await tx.instructorPriorityCredit.upsert({
+            where: { instructorId: userId },
+            create: {
+              instructorId: userId,
+              credits: 1,
+              reasons: [newReason],
+            } as any, // Prisma generate 후 제거
+            update: {
+              credits: { increment: 1 },
+              reasons: [...existingReasons, newReason],
+            } as any, // Prisma generate 후 제거
+          });
+        }
       }
 
       return tx.unit.findUnique({

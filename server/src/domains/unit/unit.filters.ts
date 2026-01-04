@@ -39,10 +39,10 @@ export function buildUnitWhere(query: UnitQuery = {}): Prisma.UnitWhereInput {
   if (wideArea) conditions.push({ wideArea: String(wideArea).trim() });
   if (unitType) conditions.push({ unitType: String(unitType).trim() as MilitaryType });
 
-  // 날짜 범위 필터 (일정)
+  // 날짜 범위 필터 (일정) - UTC 자정 기준으로 변환
   if (startDate || endDate) {
-    const gte = startDate ? new Date(startDate) : undefined;
-    const lte = endDate ? new Date(endDate) : undefined;
+    const gte = startDate ? new Date(`${startDate}T00:00:00.000Z`) : undefined;
+    const lte = endDate ? new Date(`${endDate}T23:59:59.999Z`) : undefined;
 
     conditions.push({
       schedules: {

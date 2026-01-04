@@ -3,14 +3,8 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import 'dotenv/config';
 import logger from '../src/config/logger';
-import { parseTemplateToTokens } from '../src/types/template.types';
 
 const prisma = new PrismaClient();
-
-// 템플릿 문자열을 Token[] 형태로 변환하는 헬퍼
-function createTemplateBody(templateStr: string): Prisma.InputJsonValue {
-  return { tokens: parseTemplateToTokens(templateStr) } as Prisma.InputJsonValue;
-}
 
 async function main() {
   const email = process.env.SUPER_ADMIN_EMAIL;
@@ -156,101 +150,206 @@ async function main() {
   logger.info('메시지 템플릿 생성 중...');
 
   // 임시 배정 메시지 템플릿
-  const temporaryTemplate = `[임시 배정 알림]
-{{self.name}} 강사님, 교육 일정이 임시 배정되었습니다.
+  const temporaryBody = {
+    tokens: [
+      {
+        key: 'instructors',
+        type: 'format',
+        format: '{index}. {name}({category}) / {phone} / {virtues}',
+      },
+      { text: '[임시 배정 알림]', type: 'text' },
+      { type: 'newline' },
+      { key: 'self.name', type: 'var' },
+      { text: ' 강사님, 교육 일정이 임시 배정되었습니다.', type: 'text' },
+      { type: 'newline' },
+      { text: '- 부대명: ', type: 'text' },
+      { key: 'unit.name', type: 'var' },
+      { type: 'newline' },
+      { text: '- 광역: ', type: 'text' },
+      { key: 'unit.wideArea', type: 'var' },
+      { type: 'newline' },
+      { text: '- 지역: ', type: 'text' },
+      { key: 'unit.region', type: 'var' },
+      { type: 'newline' },
+      { type: 'newline' },
+      { text: '- 교육일정:', type: 'text' },
+      { type: 'newline' },
+      { key: 'self.mySchedules', type: 'format', format: '- {date} ({dayOfWeek}) : {name}' },
+      { type: 'newline' },
+      { type: 'newline' },
+      { text: '* 하단의 버튼을 통해 [수락] 또는 [거절]을 선택해주세요.', type: 'text' },
+    ],
+  };
 
-- 부대명: {{unit.name}}
-- 지역: {{unit.region}}
-- 교육일정:{{self.schedules:format=- {date} ({dayOfWeek})}}
-
-* 하단의 버튼을 통해 [수락] 또는 [거절]을 선택해주세요.`;
-
-  // 확정 배정 메시지 - 팀장용
-  const confirmedLeaderTemplate = `[확정 배정 알림]
-{{self.name}} 강사님, 배정이 확정되었습니다.
-
-- 부대: {{unit.name}}
-- 지역: {{unit.region}}
-- 주소: {{unit.addressDetail}}
-- 교육일정: {{unit.startDate}} ~ {{unit.endDate}}
-- 교육 시간: {{unit.startTime}} ~ {{unit.endTime}}
-- 교육장소
-{{locations:format=장소명: {placeName} 참여인원: {actualCount}
-강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}, 휴대폰불출: {allowsPhoneBeforeAfter}
-특이사항: {note}
--------------------------------------------------------}}
-
-[배정 강사]
-{{self.schedules:format=- {date} ({dayOfWeek})}}
-
-부대 담당자: {{unit.officerName}} / {{unit.officerPhone}}
-수탁급식여부: {{location.hasCateredMeals}}
-회관숙박여부: {{location.hasHallLodging}}
-
-{{instructors:format={index}. {name}({category}) / {phone}}}`;
+  const temporaryPresets = {
+    locations:
+      '장소명: {placeName} 참여인원: {actualCount}\n강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}, 휴대폰불출: {allowsPhoneBeforeAfter}\n특이사항: {note}\n-------------------------------------------------------',
+    instructors: '{index}. {name}({category}) / {phone} / {virtues}',
+    'self.schedules': '- {date} ({dayOfWeek}) : {instructors}',
+    'self.mySchedules': '- {date} ({dayOfWeek}) : {name}',
+  };
 
   // 확정 배정 메시지 - 팀원용
-  const confirmedMemberTemplate = `[확정 배정 알림]
-{{self.name}} 강사님, 배정이 확정되었습니다.
+  const confirmedMemberBody = {
+    tokens: [
+      { text: '[확정 배정 알림]', type: 'text' },
+      { type: 'newline' },
+      { key: 'self.name', type: 'var' },
+      { text: ' 강사님, 배정이 확정되었습니다.', type: 'text' },
+      { type: 'newline' },
+      { text: '- 부대: ', type: 'text' },
+      { key: 'unit.name', type: 'var' },
+      { type: 'newline' },
+      { text: '- 광역: ', type: 'text' },
+      { key: 'unit.wideArea', type: 'var' },
+      { type: 'newline' },
+      { text: '- 지역: ', type: 'text' },
+      { key: 'unit.region', type: 'var' },
+      { type: 'newline' },
+      { text: '- 주소: ', type: 'text' },
+      { key: 'unit.addressDetail', type: 'var' },
+      { type: 'newline' },
+      { text: '- 상세주소: ', type: 'text' },
+      { key: 'unit.detailAddress', type: 'var' },
+      { type: 'newline' },
+      { type: 'newline' },
+      { text: '강의 일정:', type: 'text' },
+      { type: 'newline' },
+      { key: 'self.schedules', type: 'format', format: '- {date} ({dayOfWeek}) : {instructors}' },
+    ],
+  };
 
-- 부대: {{unit.name}}
-- 광역: {{unit.wideArea}}
-- 주소: {{unit.addressDetail}}
-강의 일정:
-{{self.schedules:format=- {date} ({dayOfWeek})}}`;
-
-  // 포맷 프리셋 (확정(팀장) 본문 기준으로 맞춤)
-  const defaultFormatPresets = {
-    'self.schedules': '- {date} ({dayOfWeek})',
+  const confirmedMemberPresets = {
+    locations:
+      '장소명: {placeName} 참여인원: {actualCount}\n강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}, 휴대폰불출: {allowsPhoneBeforeAfter}\n특이사항: {note}\n-------------------------------------------------------',
     instructors: '{index}. {name}({category}) / {phone}',
-    locations: `장소명: {placeName} 참여인원: {actualCount}
-강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}, 휴대폰불출: {allowsPhoneBeforeAfter}
-특이사항: {note}
--------------------------------------------------------`,
+    'self.schedules': '- {date} ({dayOfWeek}) : {instructors}',
+    'self.mySchedules': '- {date} ({dayOfWeek}) : {name}',
+  };
+
+  // 확정 배정 메시지 - 팀장용
+  const confirmedLeaderBody = {
+    tokens: [
+      { text: '[확정 배정 알림]', type: 'text' },
+      { type: 'newline' },
+      { key: 'self.name', type: 'var' },
+      { text: ' 강사님, 배정이 확정되었습니다.', type: 'text' },
+      { type: 'newline' },
+      { text: '- 부대: ', type: 'text' },
+      { key: 'unit.name', type: 'var' },
+      { type: 'newline' },
+      { text: '- 지역: ', type: 'text' },
+      { key: 'unit.region', type: 'var' },
+      { type: 'newline' },
+      { text: '- 광역: ', type: 'text' },
+      { key: 'unit.wideArea', type: 'var' },
+      { type: 'newline' },
+      { text: '- 주소: ', type: 'text' },
+      { key: 'unit.addressDetail', type: 'var' },
+      { type: 'newline' },
+      { text: '- 상세주소: ', type: 'text' },
+      { key: 'unit.detailAddress', type: 'var' },
+      { type: 'newline' },
+      { text: '- 교육일정: ', type: 'text' },
+      { key: 'unit.startDate', type: 'var' },
+      { text: ' ~ ', type: 'text' },
+      { key: 'unit.endDate', type: 'var' },
+      { type: 'newline' },
+      { text: '- 교육 시간: ', type: 'text' },
+      { key: 'unit.startTime', type: 'var' },
+      { text: ' ~ ', type: 'text' },
+      { key: 'unit.endTime', type: 'var' },
+      { type: 'newline' },
+      { text: '- 교육불가일: ', type: 'text' },
+      { key: 'unit.excludedDates', type: 'var' },
+      { type: 'newline' },
+      { type: 'newline' },
+      { text: '- 교육장소', type: 'text' },
+      { type: 'newline' },
+      {
+        key: 'locations',
+        type: 'format',
+        format:
+          '장소명: {placeName} 참여인원: {actualCount}\n강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}, 휴대폰불출: {allowsPhoneBeforeAfter}\n특이사항: {note}\n-------------------------------------------------------',
+      },
+      { type: 'newline' },
+      { type: 'newline' },
+      { text: '[배정 강사]', type: 'text' },
+      { type: 'newline' },
+      { key: 'self.schedules', type: 'format', format: '- {date} ({dayOfWeek}) : {instructors}' },
+      { type: 'newline' },
+      { type: 'newline' },
+      { text: '부대 담당자: ', type: 'text' },
+      { key: 'unit.officerName', type: 'var' },
+      { text: ' / ', type: 'text' },
+      { key: 'unit.officerPhone', type: 'var' },
+      { type: 'newline' },
+      { text: '수탁급식여부: ', type: 'text' },
+      { key: 'location.hasCateredMeals', type: 'var' },
+      { type: 'newline' },
+      { text: '회관숙박여부: ', type: 'text' },
+      { key: 'location.hasHallLodging', type: 'var' },
+      { type: 'newline' },
+      { text: '----------------------------------------------------------------', type: 'text' },
+      { type: 'newline' },
+      {
+        key: 'instructors',
+        type: 'format',
+        format: '{index}. {name}({category}) / {phone} / {virtues}',
+      },
+    ],
+  };
+
+  const confirmedLeaderPresets = {
+    locations:
+      '장소명: {placeName} 참여인원: {actualCount}\n강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}, 휴대폰불출: {allowsPhoneBeforeAfter}\n특이사항: {note}\n-------------------------------------------------------',
+    instructors: '{index}. {name}({category}) / {phone} / {virtues}',
+    'self.schedules': '- {date} ({dayOfWeek}) : {instructors}',
+    'self.mySchedules': '- {date} ({dayOfWeek}) : {name}',
   };
 
   await prisma.messageTemplate.upsert({
     where: { key: 'TEMPORARY' },
     update: {
-      title: '임시 배정 알림',
-      body: createTemplateBody(temporaryTemplate),
-      formatPresets: defaultFormatPresets,
+      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
+      body: temporaryBody as Prisma.InputJsonValue,
+      formatPresets: temporaryPresets,
     },
     create: {
       key: 'TEMPORARY',
-      title: '임시 배정 알림',
-      body: createTemplateBody(temporaryTemplate),
-      formatPresets: defaultFormatPresets,
-    },
-  });
-
-  await prisma.messageTemplate.upsert({
-    where: { key: 'CONFIRMED_LEADER' },
-    update: {
-      title: '확정 배정 알림 (책임강사)',
-      body: createTemplateBody(confirmedLeaderTemplate),
-      formatPresets: defaultFormatPresets,
-    },
-    create: {
-      key: 'CONFIRMED_LEADER',
-      title: '확정 배정 알림 (책임강사)',
-      body: createTemplateBody(confirmedLeaderTemplate),
-      formatPresets: defaultFormatPresets,
+      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
+      body: temporaryBody as Prisma.InputJsonValue,
+      formatPresets: temporaryPresets,
     },
   });
 
   await prisma.messageTemplate.upsert({
     where: { key: 'CONFIRMED_MEMBER' },
     update: {
-      title: '확정 배정 알림 (일반강사)',
-      body: createTemplateBody(confirmedMemberTemplate),
-      formatPresets: defaultFormatPresets,
+      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
+      body: confirmedMemberBody as Prisma.InputJsonValue,
+      formatPresets: confirmedMemberPresets,
     },
     create: {
       key: 'CONFIRMED_MEMBER',
-      title: '확정 배정 알림 (일반강사)',
-      body: createTemplateBody(confirmedMemberTemplate),
-      formatPresets: defaultFormatPresets,
+      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
+      body: confirmedMemberBody as Prisma.InputJsonValue,
+      formatPresets: confirmedMemberPresets,
+    },
+  });
+
+  await prisma.messageTemplate.upsert({
+    where: { key: 'CONFIRMED_LEADER' },
+    update: {
+      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
+      body: confirmedLeaderBody as Prisma.InputJsonValue,
+      formatPresets: confirmedLeaderPresets,
+    },
+    create: {
+      key: 'CONFIRMED_LEADER',
+      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
+      body: confirmedLeaderBody as Prisma.InputJsonValue,
+      formatPresets: confirmedLeaderPresets,
     },
   });
 

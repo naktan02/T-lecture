@@ -55,7 +55,8 @@ export const UnassignedUnitDetailModal: React.FC<Props> = ({ unit, onClose }) =>
               <InfoRow label="부대명" value={unit.unitName} />
               <InfoRow label="광역" value={String(detail.wideArea || '-')} />
               <InfoRow label="지역" value={unit.region} />
-              <InfoRow label="상세주소" value={String(detail.address || '-')} isLong />
+              <InfoRow label="부대주소" value={String(detail.address || '-')} isLong />
+              <InfoRow label="상세주소" value={String(detail.detailAddress || '-')} isLong />
 
               {/* 교육 기간 */}
               <InfoRow label="교육 시작일" value={formatDateDisplay(detail.educationStart)} />

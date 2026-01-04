@@ -35,5 +35,18 @@ export const withdraw = asyncHandler(async (req: Request, res: Response) => {
   res.json(result);
 });
 
+// ✅ 내 주소 전용 수정 (좌표 재계산 포함)
+export const updateMyAddress = asyncHandler(async (req: Request, res: Response) => {
+  const { address } = req.body;
+  const updatedProfile = await userMeService.updateMyAddress(req.user!.id, address);
+
+  logger.info('[user.updateMyAddress]', {
+    userId: req.user!.id,
+    address,
+  });
+
+  res.json(updatedProfile);
+});
+
 // CommonJS 호환 (JS 파일에서 require() 사용 시)
-module.exports = { getMyProfile, updateMyProfile, withdraw };
+module.exports = { getMyProfile, updateMyProfile, withdraw, updateMyAddress };

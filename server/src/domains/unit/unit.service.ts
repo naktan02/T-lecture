@@ -10,12 +10,24 @@ import { ScheduleInput, UnitQueryInput } from '../../types/unit.types';
 type RawUnitInput = RawUnitData;
 type ScheduleData = ScheduleInput;
 
+/**
+ * 날짜 문자열을 UTC 자정으로 변환 (시간 없는 날짜 전용)
+ * 예: "2026-01-04" -> 2026-01-04T00:00:00.000Z
+ */
+const toUTCMidnight = (dateValue: string | Date | null | undefined): Date | null => {
+  if (!dateValue) return null;
+  const dateStr =
+    typeof dateValue === 'string' ? dateValue.split('T')[0] : dateValue.toISOString().split('T')[0];
+  return new Date(`${dateStr}T00:00:00.000Z`);
+};
+
 interface UnitBasicInfoInput {
   name?: string;
   unitType?: MilitaryType;
   wideArea?: string;
   region?: string;
   addressDetail?: string;
+  detailAddress?: string;
 }
 
 interface UnitContactInput {
@@ -180,16 +192,13 @@ class UnitService {
     // 2. 순차적으로 처리 (Rate Limit 고려)
     let successCount = 0;
 
-    // geocoding.service를 동적 import 하거나 상단 import 사용
-    // 여기서는 상단에 import 했다고 가정하고 사용하지만,
-    // 실제로는 circular dependency 방지를 위해 필요시 동적 import 사용 가능
-    // (현재 구조상 unit.service -> geocoding.service는 문제 없음)
-    const geocodingService = require('../../infra/geocoding.service').default;
+    // kakao.service 사용
+    const kakaoService = require('../../infra/kakao.service').default;
 
     for (const unit of units) {
       if (!unit.addressDetail) continue;
 
-      const coords = await geocodingService.addressToCoords(unit.addressDetail);
+      const coords = await kakaoService.addressToCoordsOrNull(unit.addressDetail);
       if (coords) {
         await unitRepository.updateCoords(unit.id, coords.lat, coords.lng);
         successCount++;
@@ -331,20 +340,35 @@ class UnitService {
         rawData.unitType as Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput['set'];
     if (rawData.wideArea !== undefined) unitUpdateData.wideArea = rawData.wideArea;
     if (rawData.region !== undefined) unitUpdateData.region = rawData.region;
+    // 주소 변경 시 즉시 좌표 재계산
     if (rawData.addressDetail !== undefined && rawData.addressDetail !== unit.addressDetail) {
       unitUpdateData.addressDetail = rawData.addressDetail;
-      unitUpdateData.lat = null;
-      unitUpdateData.lng = null;
+
+      // 주소가 비어있으면 좌표도 null
+      if (!rawData.addressDetail || rawData.addressDetail.trim() === '') {
+        unitUpdateData.lat = null;
+        unitUpdateData.lng = null;
+      } else {
+        // 주소가 변경되었으면 즉시 좌표 재계산
+        const kakaoService = require('../../infra/kakao.service').default;
+        const coords = await kakaoService.addressToCoordsOrNull(rawData.addressDetail);
+        if (coords) {
+          unitUpdateData.lat = coords.lat;
+          unitUpdateData.lng = coords.lng;
+        } else {
+          // 좌표 변환 실패 시 null로 설정 (백그라운드에서 재시도 가능)
+          unitUpdateData.lat = null;
+          unitUpdateData.lng = null;
+        }
+      }
     }
     if (rawData.officerName !== undefined) unitUpdateData.officerName = rawData.officerName;
     if (rawData.officerPhone !== undefined) unitUpdateData.officerPhone = rawData.officerPhone;
     if (rawData.officerEmail !== undefined) unitUpdateData.officerEmail = rawData.officerEmail;
     if (rawData.educationStart !== undefined)
-      unitUpdateData.educationStart = rawData.educationStart
-        ? new Date(rawData.educationStart)
-        : null;
+      unitUpdateData.educationStart = toUTCMidnight(rawData.educationStart);
     if (rawData.educationEnd !== undefined)
-      unitUpdateData.educationEnd = rawData.educationEnd ? new Date(rawData.educationEnd) : null;
+      unitUpdateData.educationEnd = toUTCMidnight(rawData.educationEnd);
     if (rawData.workStartTime !== undefined)
       unitUpdateData.workStartTime = rawData.workStartTime ? new Date(rawData.workStartTime) : null;
     if (rawData.workEndTime !== undefined)
@@ -372,7 +396,7 @@ class UnitService {
     } else if (rawData.schedules && rawData.schedules.length > 0) {
       // excludedDates가 없고 schedules 배열이 있으면 그것으로 업데이트
       schedules = rawData.schedules.map((s) => ({
-        date: typeof s.date === 'string' ? new Date(s.date) : s.date,
+        date: toUTCMidnight(s.date) || new Date(),
       }));
     }
     // schedules가 undefined이면 updateUnitWithNested에서 기존 일정 유지
@@ -381,6 +405,88 @@ class UnitService {
       id,
       unitUpdateData,
       rawData.trainingLocations,
+      schedules,
+    );
+  }
+
+  /**
+   * 부대 주소만 수정 (좌표 재계산)
+   */
+  async updateUnitAddress(id: number | string, addressDetail: string) {
+    const unit = await unitRepository.findUnitWithRelations(id);
+    if (!unit) {
+      throw new AppError('해당 부대를 찾을 수 없습니다.', 404, 'UNIT_NOT_FOUND');
+    }
+
+    // 주소가 같으면 아무것도 하지 않음
+    if (addressDetail === unit.addressDetail) {
+      return unit;
+    }
+
+    const updateData: Prisma.UnitUpdateInput = {
+      addressDetail: addressDetail === '' ? null : addressDetail,
+    };
+
+    // 주소가 비어있으면 좌표도 null
+    if (!addressDetail || addressDetail.trim() === '') {
+      updateData.lat = null;
+      updateData.lng = null;
+    } else {
+      // 주소가 변경되었으면 즉시 좌표 재계산
+      const kakaoService = require('../../infra/kakao.service').default;
+      const coords = await kakaoService.addressToCoordsOrNull(addressDetail);
+      if (coords) {
+        updateData.lat = coords.lat;
+        updateData.lng = coords.lng;
+      } else {
+        updateData.lat = null;
+        updateData.lng = null;
+      }
+    }
+
+    return await unitRepository.updateUnitById(id, updateData);
+  }
+
+  /**
+   * 부대 일정만 수정 (교육시작, 교육종료, 교육불가일자)
+   * - 일정 재계산 및 자동 재배정 로직 포함
+   */
+  async updateUnitSchedule(
+    id: number | string,
+    rawData: {
+      educationStart?: string | Date | null;
+      educationEnd?: string | Date | null;
+      excludedDates?: string[];
+    },
+  ) {
+    const unit = await unitRepository.findUnitWithRelations(id);
+    if (!unit) {
+      throw new AppError('해당 부대를 찾을 수 없습니다.', 404, 'UNIT_NOT_FOUND');
+    }
+
+    const updateData: Prisma.UnitUpdateInput = {};
+
+    if (rawData.educationStart !== undefined) {
+      updateData.educationStart = rawData.educationStart ? new Date(rawData.educationStart) : null;
+    }
+    if (rawData.educationEnd !== undefined) {
+      updateData.educationEnd = rawData.educationEnd ? new Date(rawData.educationEnd) : null;
+    }
+    if (rawData.excludedDates !== undefined) {
+      updateData.excludedDates = rawData.excludedDates;
+    }
+
+    // 일정 재계산
+    const start = rawData.educationStart || unit.educationStart || undefined;
+    const end = rawData.educationEnd || unit.educationEnd || undefined;
+    const excluded = rawData.excludedDates ?? (unit.excludedDates as string[]) ?? [];
+    const schedules = this._calculateSchedules(start, end, excluded);
+
+    // updateUnitWithNested 호출 (자동 재배정 및 크레딧 부여 로직은 repository에서 처리)
+    return await unitRepository.updateUnitWithNested(
+      id,
+      updateData,
+      undefined, // locations는 건드리지 않음
       schedules,
     );
   }
@@ -473,6 +579,7 @@ class UnitService {
 
   /**
    * 교육 기간에서 일정 자동 계산 (제외된 날짜는 스킵)
+   * 날짜는 UTC 자정으로 저장
    */
   _calculateSchedules(
     start: string | Date | undefined,
@@ -490,8 +597,9 @@ class UnitService {
       const dateStr = current.toISOString().split('T')[0];
       // 제외된 날짜는 스케줄에 추가하지 않음
       if (!excludedSet.has(dateStr)) {
+        // UTC 자정으로 저장 (타임존 일관성)
         schedules.push({
-          date: new Date(current),
+          date: new Date(`${dateStr}T00:00:00.000Z`),
         });
       }
       current.setDate(current.getDate() + 1);

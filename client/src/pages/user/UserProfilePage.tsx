@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getMyProfile,
   updateMyProfile,
+  updateMyAddress,
   UpdateProfilePayload,
 } from '../../features/user/api/user.me.api';
 import { ContentWrapper } from '../../shared/ui';
@@ -39,6 +40,10 @@ const UserProfilePage: React.FC = () => {
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [emailVerificationMsg, setEmailVerificationMsg] = useState('');
+
+  // 주소 분리 저장 관련 상태
+  const [originalAddress, setOriginalAddress] = useState('');
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
 
   // 메타데이터 상태 (덕목 목록)
   const [virtueOptions, setVirtueOptions] = useState<{ id: number; name: string }[]>([]);
@@ -107,6 +112,7 @@ const UserProfilePage: React.FC = () => {
         hasCar: user.instructor?.hasCar || false,
         virtueIds: user.instructor?.virtues?.map((v) => v.virtue.id) || [],
       });
+      setOriginalAddress(user.instructor?.location || ''); // 원본 주소 저장
       setIsEditing(true);
       // 초기화
       setPasswordConfirm('');
@@ -193,6 +199,31 @@ const UserProfilePage: React.FC = () => {
       showWarning('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
     }
   };
+
+  // 주소 분리 저장 핸들러
+  const handleSaveAddress = async () => {
+    if (!formData.address) {
+      showWarning('주소를 입력해주세요.');
+      return;
+    }
+    if (formData.address === originalAddress) {
+      showWarning('주소가 변경되지 않았습니다.');
+      return;
+    }
+    try {
+      setIsSavingAddress(true);
+      await updateMyAddress(formData.address);
+      setOriginalAddress(formData.address);
+      queryClient.invalidateQueries({ queryKey: ['myProfile'] });
+      showSuccess('주소가 저장되었습니다. 좌표가 자동 계산됩니다.');
+    } catch (err: any) {
+      showError(err.message || '주소 저장에 실패했습니다.');
+    } finally {
+      setIsSavingAddress(false);
+    }
+  };
+
+  const isAddressChanged = formData.address !== originalAddress;
 
   // 이메일 인증 발송
   const handleSendCode = async () => {
@@ -487,27 +518,44 @@ const UserProfilePage: React.FC = () => {
                     </div>
 
                     <div className="sm:col-span-3">
-                      <label className="block text-sm font-medium text-gray-700">
-                        활동 지역 (주소)
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700">주소</label>
                       {isEditing ? (
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            name="address"
-                            readOnly
-                            value={formData.address || ''}
-                            onChange={handleInputChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-50 sm:text-sm p-2 border cursor-pointer"
-                            onClick={handleAddressSearch}
-                          />
-                          <button
-                            type="button"
-                            onClick={handleAddressSearch}
-                            className="mt-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap"
-                          >
-                            주소 검색
-                          </button>
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              name="address"
+                              readOnly
+                              value={formData.address || ''}
+                              onChange={handleInputChange}
+                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-50 sm:text-sm p-2 border cursor-pointer"
+                              onClick={handleAddressSearch}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddressSearch}
+                              className="mt-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap"
+                            >
+                              주소 검색
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleSaveAddress}
+                              disabled={!isAddressChanged || isSavingAddress}
+                              className={`mt-1 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
+                                isAddressChanged
+                                  ? 'bg-green-600 text-white hover:bg-green-700'
+                                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              }`}
+                            >
+                              {isSavingAddress ? '저장중...' : '💾 주소 저장'}
+                            </button>
+                          </div>
+                          {isAddressChanged && (
+                            <p className="text-xs text-amber-600">
+                              ⚠️ 주소가 변경되었습니다. [주소 저장]을 눌러 저장하세요.
+                            </p>
+                          )}
                         </div>
                       ) : (
                         <div className="mt-1 text-sm text-gray-900">

@@ -126,9 +126,15 @@ export const UnitList = ({
                   <td className="px-4 py-3">
                     <div className="font-semibold text-gray-900 flex items-center gap-1">
                       {unit.name}
-                      {/* 주소 오류 경고 아이콘: 상세주소는 있는데 lat가 없는 경우 */}
-                      {unit.addressDetail && unit.lat === null && (
-                        <span title="주소 좌표를 찾을 수 없습니다. 주소를 확인해주세요.">
+                      {/* 주소 오류 경고 아이콘: addressDetail이 비어있거나 lat/lng가 null인 경우 */}
+                      {(!unit.addressDetail || unit.lat === null) && (
+                        <span
+                          title={
+                            !unit.addressDetail
+                              ? '주소가 입력되지 않았습니다.'
+                              : '주소 좌표를 찾을 수 없습니다. 주소를 확인해주세요.'
+                          }
+                        >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"

@@ -75,13 +75,9 @@ class AdminRepository {
 
     // 근무 가능일 기간 필터
     if (availableFrom || availableTo) {
-      const fromDate = availableFrom ? new Date(availableFrom) : undefined;
-      const toDate = availableTo ? new Date(availableTo) : undefined;
-
-      if (fromDate) fromDate.setHours(0, 0, 0, 0);
-      if (toDate) {
-        toDate.setHours(23, 59, 59, 999);
-      }
+      // UTC 자정 기준으로 변환 (타임존 일관성)
+      const fromDate = availableFrom ? new Date(`${availableFrom}T00:00:00.000Z`) : undefined;
+      const toDate = availableTo ? new Date(`${availableTo}T23:59:59.999Z`) : undefined;
 
       const dateCondition: Prisma.DateTimeFilter = {};
       if (fromDate) dateCondition.gte = fromDate;
@@ -254,7 +250,8 @@ class AdminRepository {
         await tx.instructorAvailability.createMany({
           data: availabilities.map((date) => ({
             instructorId,
-            availableOn: new Date(date),
+            // UTC 자정 기준으로 저장
+            availableOn: new Date(`${date}T00:00:00.000Z`),
           })),
         });
       }

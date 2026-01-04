@@ -5,19 +5,38 @@ export interface NoticeData {
   title: string;
   body: string;
 }
+
 export interface DispatchCreateData {
   type: 'Temporary' | 'Confirmed';
   title?: string;
   body: string;
   userId: number;
-  assignmentIds: number[];
+  assignmentIds?: number[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type AssignmentTarget = any;
+// 강사 목록 포맷용 타입
+export interface InstructorForFormat {
+  name?: string | null;
+  phone?: string | null;
+  category?: string | null;
+  isTeamLeader?: boolean;
+  virtues?: Array<{ virtue?: { name?: string | null } }>;
+}
 
-export interface UserDispatchGroup {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  user: any;
-  assignments: AssignmentTarget[];
+// 스케줄 포맷용 타입
+export interface ScheduleForFormat {
+  date: Date | null;
+  assignments?: Array<{
+    state?: string;
+    User?: {
+      id: number;
+      name?: string | null;
+      userphoneNumber?: string | null;
+      instructor?: {
+        category?: string | null;
+        isTeamLeader?: boolean;
+        virtues?: Array<{ virtue?: { name?: string | null } }>;
+      } | null;
+    };
+  }>;
 }

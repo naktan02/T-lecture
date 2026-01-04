@@ -50,10 +50,8 @@ export const getCandidates = asyncHandler(async (req: Request, res: Response) =>
     throw new AppError('조회 기간이 필요합니다. (startDate, endDate)', 400, 'VALIDATION_ERROR');
   }
 
-  const { unitsRaw, instructorsRaw } = await assignmentService.getAssignmentCandidatesRaw(
-    startDate as string,
-    endDate as string,
-  );
+  const { unitsRaw, instructorsRaw, actualDateRange } =
+    await assignmentService.getAssignmentCandidatesRaw(startDate as string, endDate as string);
 
   // 설정에서 강사당 교육생 수 조회
   const traineesPerInstructor = await assignmentService.getTraineesPerInstructor();
@@ -76,6 +74,7 @@ export const getCandidates = asyncHandler(async (req: Request, res: Response) =>
     ...responseData,
     pendingAssignments, // 임시 배정 (배정 작업 공간)
     acceptedAssignments, // 확정 배정 (확정 배정 완료)
+    actualDateRange, // 부대 전체 일정 범위 (임시 발송 시 사용)
   });
 });
 

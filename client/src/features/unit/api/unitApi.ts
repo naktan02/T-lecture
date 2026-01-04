@@ -105,6 +105,31 @@ export const unitApi = {
     return response.json();
   },
 
+  // 주소만 수정 (좌표 재계산)
+  updateUnitAddress: async (id: number | string, addressDetail: string) => {
+    const response = await apiClient(`/api/v1/units/${id}/address`, {
+      method: 'PATCH',
+      body: JSON.stringify({ addressDetail }),
+    });
+    return response.json();
+  },
+
+  // 일정만 수정 (교육시작, 교육종료, 교육불가일자)
+  updateUnitSchedule: async (
+    id: number | string,
+    data: {
+      educationStart?: string | null;
+      educationEnd?: string | null;
+      excludedDates?: string[];
+    },
+  ) => {
+    const response = await apiClient(`/api/v1/units/${id}/schedule`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  },
+
   // 삭제
   deleteUnit: async (id: number | string) => {
     await apiClient(`/api/v1/units/${id}`, { method: 'DELETE' });

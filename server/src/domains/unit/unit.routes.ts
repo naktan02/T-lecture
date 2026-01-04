@@ -34,6 +34,12 @@ router.patch('/:id/officer', unitController.updateOfficerInfo);
 // 부대 전체 정보 수정 (기본정보 + 교육장소 + 일정)
 router.put('/:id', unitController.updateUnitFull);
 
+// 부대 주소만 수정 (좌표 재계산)
+router.patch('/:id/address', unitController.updateUnitAddress);
+
+// 부대 일정만 수정 (교육시작, 교육종료, 교육불가일자)
+router.patch('/:id/schedule', unitController.updateUnitSchedule);
+
 // 부대 일정 추가
 router.post('/:id/schedules', unitController.addSchedule);
 

@@ -70,6 +70,7 @@ model InstructorPriorityCredit {
   id           Int      @id @default(autoincrement())
   instructorId Int      @unique @map("강사id")
   credits      Int      @default(1) @map("우선배정크레딧")
+  reasons      Json?    @map("사유목록") // [{"unit": "부대명", "date": "YYYY-MM-DD", "type": "변경"}]
   createdAt    DateTime @default(now()) @map("생성일시")
   updatedAt    DateTime @updatedAt @map("수정일시")
 
@@ -94,6 +95,7 @@ model InstructorPenalty {
   userId     Int      @unique @map("강사id")
   count      Int      @default(1) @map("누적횟수")
   expiresAt  DateTime @map("만료일")
+  reasons    Json?    @map("사유목록") // [{"unit": "부대명", "date": "YYYY-MM-DD", "type": "거절"}]
   createdAt  DateTime @default(now()) @map("생성일시")
   updatedAt  DateTime @updatedAt @map("수정일시")
 

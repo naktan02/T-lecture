@@ -42,11 +42,42 @@ class AssignmentService {
 
   /**
    * 배정 후보 데이터 조회 (Raw Data 반환)
+   * - 부대 전체 일정 범위를 계산하여 actualDateRange 반환
+   * - 강사 가용일도 해당 범위로 조회
    */
   async getAssignmentCandidatesRaw(startDate: string, endDate: string) {
-    const unitsRaw = await assignmentRepository.findScheduleCandidates(startDate, endDate);
-    const instructorsRaw = await instructorRepository.findAvailableInPeriod(startDate, endDate);
-    return { unitsRaw, instructorsRaw };
+    // 날짜 문자열을 UTC 자정으로 변환 (DB 저장 형식과 일치)
+    const start = new Date(`${startDate}T00:00:00.000Z`);
+    const end = new Date(`${endDate}T00:00:00.000Z`);
+
+    // 1) 부대 조회
+    const unitsRaw = await assignmentRepository.findScheduleCandidates(start, end);
+
+    // 2) 부대의 실제 스케줄 날짜 범위 계산
+    let minScheduleDate = start;
+    let maxScheduleDate = end;
+    for (const unit of unitsRaw) {
+      for (const schedule of unit.schedules || []) {
+        if (!schedule.date) continue;
+        const scheduleDate = new Date(schedule.date);
+        if (scheduleDate < minScheduleDate) minScheduleDate = scheduleDate;
+        if (scheduleDate > maxScheduleDate) maxScheduleDate = scheduleDate;
+      }
+    }
+
+    // 3) 강사 가용일은 부대의 실제 스케줄 범위로 조회
+    const instructorsRaw = await instructorRepository.findAvailableInPeriod(
+      minScheduleDate.toISOString(),
+      maxScheduleDate.toISOString(),
+    );
+
+    // 4) 실제 날짜 범위 반환 (클라이언트에서 임시 발송 시 사용)
+    const actualDateRange = {
+      startDate: minScheduleDate.toISOString().split('T')[0],
+      endDate: maxScheduleDate.toISOString().split('T')[0],
+    };
+
+    return { unitsRaw, instructorsRaw, actualDateRange };
   }
 
   async createAutoAssignments(startDate: Date, endDate: Date) {
@@ -60,16 +91,31 @@ class AssignmentService {
       throw new AppError('시작일은 종료일보다 클 수 없습니다.', 400, 'VALIDATION_ERROR');
     }
 
-    // 1) 데이터 준비
+    // 1) 데이터 준비 - 부대 조회 먼저
     const units = await assignmentRepository.findScheduleCandidates(start, end);
-    const instructors = await instructorRepository.findAvailableInPeriod(
-      start.toISOString(),
-      end.toISOString(),
-    );
 
     if (!units || units.length === 0) {
       throw new AppError('해당 기간에 조회되는 부대 일정이 없습니다.', 404, 'NO_UNITS');
     }
+
+    // 부대의 실제 스케줄 날짜 범위 계산 (부대 전체 일정 커버)
+    let minScheduleDate = start;
+    let maxScheduleDate = end;
+    for (const unit of units) {
+      for (const schedule of unit.schedules || []) {
+        if (!schedule.date) continue;
+        const scheduleDate = new Date(schedule.date);
+        if (scheduleDate < minScheduleDate) minScheduleDate = scheduleDate;
+        if (scheduleDate > maxScheduleDate) maxScheduleDate = scheduleDate;
+      }
+    }
+
+    // 강사 가능일은 부대의 실제 스케줄 범위로 조회
+    const instructors = await instructorRepository.findAvailableInPeriod(
+      minScheduleDate.toISOString(),
+      maxScheduleDate.toISOString(),
+    );
+
     if (!instructors || instructors.length === 0) {
       throw new AppError('해당 기간에 배정 가능한 강사가 없습니다.', 404, 'NO_INSTRUCTORS');
     }
@@ -156,14 +202,29 @@ class AssignmentService {
     }
 
     const units = await assignmentRepository.findScheduleCandidates(start, end);
-    const instructors = await instructorRepository.findAvailableInPeriod(
-      start.toISOString(),
-      end.toISOString(),
-    );
 
     if (!units || units.length === 0) {
       throw new AppError('해당 기간에 조회되는 부대 일정이 없습니다.', 404, 'NO_UNITS');
     }
+
+    // 부대의 실제 스케줄 날짜 범위 계산 (부대 전체 일정 커버)
+    let minScheduleDate = start;
+    let maxScheduleDate = end;
+    for (const unit of units) {
+      for (const schedule of unit.schedules || []) {
+        if (!schedule.date) continue;
+        const scheduleDate = new Date(schedule.date);
+        if (scheduleDate < minScheduleDate) minScheduleDate = scheduleDate;
+        if (scheduleDate > maxScheduleDate) maxScheduleDate = scheduleDate;
+      }
+    }
+
+    // 강사 가능일은 부대의 실제 스케줄 범위로 조회
+    const instructors = await instructorRepository.findAvailableInPeriod(
+      minScheduleDate.toISOString(),
+      maxScheduleDate.toISOString(),
+    );
+
     if (!instructors || instructors.length === 0) {
       throw new AppError('해당 기간에 배정 가능한 강사가 없습니다.', 404, 'NO_INSTRUCTORS');
     }
@@ -275,10 +336,25 @@ class AssignmentService {
       await this.checkAndAutoConfirm(Number(unitScheduleId));
     }
 
-    // 거절 시: 패널티 추가
+    // 거절 시: 패널티 추가 (사유 포함)
     if (newState === 'Rejected') {
       const penaltyDays = await this.getSystemConfigNumber('REJECTION_PENALTY_DAYS', 15);
-      await this.addPenaltyToInstructor(instructorId, penaltyDays);
+
+      // 배정 정보에서 부대/날짜 가져오기
+      const schedule = await prisma.unitSchedule.findUnique({
+        where: { id: Number(unitScheduleId) },
+        include: { unit: { select: { name: true } } },
+      });
+      const unitName = schedule?.unit?.name || 'unknown';
+      const dateStr = schedule?.date
+        ? new Date(schedule.date).toISOString().split('T')[0]
+        : 'unknown';
+
+      await this.addPenaltyToInstructor(instructorId, penaltyDays, {
+        unit: unitName,
+        date: dateStr,
+        type: '거절',
+      });
     }
 
     return {
@@ -287,9 +363,13 @@ class AssignmentService {
   }
 
   /**
-   * 강사에게 패널티 추가 (만료일 연장)
+   * 강사에게 패널티 추가 (만료일 연장, 사유 포함)
    */
-  private async addPenaltyToInstructor(instructorId: number, days: number) {
+  private async addPenaltyToInstructor(
+    instructorId: number,
+    days: number,
+    reason?: { unit: string; date: string; type: string },
+  ) {
     const now = new Date();
     const existing = await prisma.instructorPenalty.findUnique({
       where: { userId: instructorId },
@@ -298,13 +378,15 @@ class AssignmentService {
     if (existing) {
       const baseDate = existing.expiresAt > now ? existing.expiresAt : now;
       const newExpiresAt = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
+      const existingReasons = ((existing as any)?.reasons as Array<unknown>) || [];
 
       await prisma.instructorPenalty.update({
         where: { userId: instructorId },
         data: {
           count: { increment: 1 },
           expiresAt: newExpiresAt,
-        },
+          reasons: reason ? [...existingReasons, reason] : existingReasons,
+        } as any, // Prisma generate 후 제거
       });
     } else {
       await prisma.instructorPenalty.create({
@@ -312,7 +394,8 @@ class AssignmentService {
           userId: instructorId,
           count: 1,
           expiresAt: new Date(now.getTime() + days * 24 * 60 * 60 * 1000),
-        },
+          reasons: reason ? [reason] : [],
+        } as any, // Prisma generate 후 제거
       });
     }
   }

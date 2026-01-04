@@ -149,6 +149,51 @@ class UserMeService {
 
     return { message: '회원 탈퇴가 완료되었습니다.' };
   }
+
+  // 내 주소 전용 수정 (좌표 재계산 포함)
+  async updateMyAddress(userId: number | string, address: string) {
+    if (address === undefined || address === null || typeof address !== 'string') {
+      throw new AppError('address는 문자열이어야 합니다.', 400, 'INVALID_ADDRESS');
+    }
+
+    const user = await userRepository.findByIdWithDetails(userId);
+    if (!user) {
+      throw new AppError('사용자 정보를 찾을 수 없습니다.', 404, 'USER_NOT_FOUND');
+    }
+
+    if (!user.instructor) {
+      throw new AppError('강사만 주소를 수정할 수 있습니다.', 403, 'NOT_INSTRUCTOR');
+    }
+
+    const instructorData: Prisma.InstructorUpdateInput = {
+      location: address === '' ? null : address,
+    };
+
+    // 주소가 있으면 좌표 재계산
+    if (address && address.trim() !== '') {
+      const kakaoService = require('../../../infra/kakao.service').default;
+      const coords = await kakaoService.addressToCoordsOrNull(address);
+      if (coords) {
+        instructorData.lat = coords.lat;
+        instructorData.lng = coords.lng;
+      } else {
+        instructorData.lat = null;
+        instructorData.lng = null;
+      }
+    } else {
+      instructorData.lat = null;
+      instructorData.lng = null;
+    }
+
+    const updatedUser = await userRepository.update(userId, {}, instructorData);
+
+    const { password: _password, ...result } = updatedUser;
+    const { instructor, ...restResult } = result;
+    if (instructor) {
+      return { ...restResult, instructor };
+    }
+    return restResult;
+  }
 }
 
 export default new UserMeService();
