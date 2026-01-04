@@ -29,6 +29,9 @@ const STATUS_LABELS: Record<ScheduleStatus, string> = {
   unassigned: '미배정 교육',
 };
 
+// Modal type for tracking navigation history
+type ModalType = 'schedule' | 'instructorList' | 'teamDetail' | 'instructorDashboard' | null;
+
 export const AdminDashboard: React.FC = () => {
   // Data states
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -37,6 +40,9 @@ export const AdminDashboard: React.FC = () => {
   const [period, setPeriod] = useState<PeriodFilter>('1m');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Modal navigation stack - tracks parent modal for back navigation
+  const [modalStack, setModalStack] = useState<ModalType[]>([]);
 
   // Modal states
   const [scheduleModal, setScheduleModal] = useState<{
@@ -88,12 +94,40 @@ export const AdminDashboard: React.FC = () => {
     loadData();
   }, [loadData]);
 
+  // Close all modals helper
+  const closeAllModals = () => {
+    setScheduleModal((prev) => ({ ...prev, open: false }));
+    setInstructorListModal((prev) => ({ ...prev, open: false }));
+    setTeamDetailModal((prev) => ({ ...prev, open: false }));
+    setInstructorDashboardModal((prev) => ({ ...prev, open: false }));
+    setModalStack([]);
+  };
+
+  // Navigate back to previous modal
+  const handleBack = () => {
+    if (modalStack.length > 0) {
+      const newStack = [...modalStack];
+      newStack.pop(); // Remove current modal
+      setModalStack(newStack);
+
+      // Close current instructor dashboard modal
+      setInstructorDashboardModal((prev) => ({ ...prev, open: false }));
+
+      // The parent modal is still open if it was in the stack
+      // Since we didn't close parent modals when navigating forward, they're still open
+    } else {
+      // No parent, close everything
+      closeAllModals();
+    }
+  };
+
   // Handlers
   const handlePeriodChange = (newPeriod: PeriodFilter) => {
     setPeriod(newPeriod);
   };
 
   const handleScheduleClick = async (status: ScheduleStatus) => {
+    setModalStack(['schedule']);
     setScheduleModal({ open: true, status, data: [], loading: true });
     try {
       const data = await fetchSchedulesByStatus(status);
@@ -105,10 +139,12 @@ export const AdminDashboard: React.FC = () => {
 
   const handleWorkloadBarClick = (count: number, instructorList: InstructorAnalysis[]) => {
     const title = count === 13 ? '12회 이상 강사' : `${count}회 강사`;
+    setModalStack(['instructorList']);
     setInstructorListModal({ open: true, title, data: instructorList });
   };
 
   const handleTeamChartClick = async (team: TeamAnalysis) => {
+    setModalStack(['teamDetail']);
     setTeamDetailModal({ open: true, data: null, loading: true });
     try {
       const data = await fetchTeamDetail(team.id, period);
@@ -119,6 +155,7 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const handleInstructorRowClick = (instructor: InstructorAnalysis) => {
+    setModalStack(['instructorDashboard']);
     setInstructorDashboardModal({ open: true, id: instructor.id, name: instructor.name });
   };
 
@@ -126,14 +163,42 @@ export const AdminDashboard: React.FC = () => {
     await handleTeamChartClick(team);
   };
 
+  // Navigate from InstructorList to InstructorDashboard (keep parent open)
   const handleInstructorFromList = (instructor: InstructorAnalysis) => {
-    setInstructorListModal((prev) => ({ ...prev, open: false }));
+    setModalStack((prev) => [...prev, 'instructorDashboard']);
     setInstructorDashboardModal({ open: true, id: instructor.id, name: instructor.name });
   };
 
+  // Navigate from TeamDetail to InstructorDashboard (keep parent open)
   const handleMemberFromTeam = (member: { id: number; name: string }) => {
-    setTeamDetailModal((prev) => ({ ...prev, open: false }));
+    setModalStack((prev) => [...prev, 'instructorDashboard']);
     setInstructorDashboardModal({ open: true, id: member.id, name: member.name });
+  };
+
+  // Close handlers with back navigation support
+  const handleScheduleModalClose = () => {
+    setScheduleModal((prev) => ({ ...prev, open: false }));
+    setModalStack([]);
+  };
+
+  const handleInstructorListModalClose = () => {
+    setInstructorListModal((prev) => ({ ...prev, open: false }));
+    setModalStack([]);
+  };
+
+  const handleTeamDetailModalClose = () => {
+    setTeamDetailModal((prev) => ({ ...prev, open: false }));
+    setModalStack([]);
+  };
+
+  const handleInstructorDashboardModalClose = () => {
+    // Check if we should go back to a parent modal
+    if (modalStack.length > 1) {
+      handleBack();
+    } else {
+      setInstructorDashboardModal((prev) => ({ ...prev, open: false }));
+      setModalStack([]);
+    }
   };
 
   if (loading && !stats) {
@@ -198,7 +263,7 @@ export const AdminDashboard: React.FC = () => {
       {/* Modals */}
       <ScheduleListModal
         isOpen={scheduleModal.open}
-        onClose={() => setScheduleModal((prev) => ({ ...prev, open: false }))}
+        onClose={handleScheduleModalClose}
         title={scheduleModal.status ? STATUS_LABELS[scheduleModal.status] : ''}
         schedules={scheduleModal.data}
         loading={scheduleModal.loading}
@@ -206,7 +271,7 @@ export const AdminDashboard: React.FC = () => {
 
       <InstructorListModal
         isOpen={instructorListModal.open}
-        onClose={() => setInstructorListModal((prev) => ({ ...prev, open: false }))}
+        onClose={handleInstructorListModalClose}
         title={instructorListModal.title}
         instructors={instructorListModal.data}
         onInstructorClick={handleInstructorFromList}
@@ -214,7 +279,7 @@ export const AdminDashboard: React.FC = () => {
 
       <TeamDetailModal
         isOpen={teamDetailModal.open}
-        onClose={() => setTeamDetailModal((prev) => ({ ...prev, open: false }))}
+        onClose={handleTeamDetailModalClose}
         teamDetail={teamDetailModal.data}
         loading={teamDetailModal.loading}
         onMemberClick={handleMemberFromTeam}
@@ -222,7 +287,8 @@ export const AdminDashboard: React.FC = () => {
 
       <InstructorDashboardModal
         isOpen={instructorDashboardModal.open}
-        onClose={() => setInstructorDashboardModal((prev) => ({ ...prev, open: false }))}
+        onClose={handleInstructorDashboardModalClose}
+        onBack={modalStack.length > 1 ? handleBack : undefined}
         instructorId={instructorDashboardModal.id}
         instructorName={instructorDashboardModal.name}
       />

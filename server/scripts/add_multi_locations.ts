@@ -35,7 +35,7 @@ async function main() {
   console.log(`컬럼 인덱스: 부대명=${unitNameCol}, 기존교육장소=${placeCol}`);
 
   // 마지막 데이터 행 찾기
-  let lastRow = 103; // 기존 100개 부대
+  const lastRow = 103; // 기존 100개 부대
 
   // 다중 교육장소 테스트 케이스 추가 (Row 104~110)
   // 기존 부대에 추가 교육장소 추가

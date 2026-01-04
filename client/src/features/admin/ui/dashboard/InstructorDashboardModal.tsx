@@ -10,6 +10,7 @@ import { apiClient } from '@/shared/apiClient';
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  onBack?: () => void;
   instructorId: number;
   instructorName: string;
 }
@@ -50,6 +51,7 @@ const colorStyles = {
 export const InstructorDashboardModal: React.FC<Props> = ({
   isOpen,
   onClose,
+  onBack,
   instructorId,
   instructorName,
 }) => {
@@ -86,7 +88,16 @@ export const InstructorDashboardModal: React.FC<Props> = ({
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden">
         <div className="flex justify-between items-center p-5 border-b">
-          <h3 className="text-xl font-bold text-gray-900">{instructorName} 대시보드</h3>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onBack || onClose}
+              className="text-gray-400 hover:text-gray-600 text-xl"
+              title="뒤로가기"
+            >
+              ←
+            </button>
+            <h3 className="text-xl font-bold text-gray-900">{instructorName} 대시보드</h3>
+          </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-3xl leading-none"
