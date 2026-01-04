@@ -14,6 +14,7 @@ interface RegisterFormData {
   name: string;
   email: string;
   password: string;
+  passwordConfirm: string;
   phoneNumber: string;
   code: string;
   address: string;
@@ -32,6 +33,7 @@ export const RegisterForm: React.FC = () => {
     name: '',
     email: '',
     password: '',
+    passwordConfirm: '',
     phoneNumber: '',
     code: '',
     address: '',
@@ -128,6 +130,11 @@ export const RegisterForm: React.FC = () => {
       return;
     }
 
+    if (form.password !== form.passwordConfirm) {
+      setError('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
     if (userType === 'INSTRUCTOR') {
       if (!form.address.trim()) {
         setError('강사 등록 시 거주지 주소는 필수입니다.');
@@ -169,9 +176,34 @@ export const RegisterForm: React.FC = () => {
 
   return (
     <div className="min-h-full flex items-center justify-center bg-gray-100 p-4">
-      <div className="max-w-lg w-full bg-white rounded-xl shadow-lg p-8">
-        <h2 className="text-2xl font-bold text-center mb-2 text-gray-800">회원가입</h2>
-        <p className="text-center text-gray-500 mb-8">푸른나무재단에 오신 것을 환영합니다.</p>
+      <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-6">
+        {/* 헤더 - 뒤로가기 + 제목 */}
+        <div className="flex items-center gap-4 mb-5">
+          <button
+            type="button"
+            onClick={() => navigate('/login')}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+            title="로그인으로 돌아가기"
+          >
+            <svg
+              className="w-5 h-5 text-gray-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </button>
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">회원가입</h2>
+            <p className="text-sm text-gray-500">푸른나무재단에 오신 것을 환영합니다.</p>
+          </div>
+        </div>
 
         {/* 안내/에러 메시지 */}
         {displayError && (
@@ -186,10 +218,11 @@ export const RegisterForm: React.FC = () => {
         )}
 
         {/* 탭 버튼 */}
-        <div className="flex gap-2 mb-8">
+        <div className="flex gap-2 mb-6">
           <Button
             type="button"
             fullWidth
+            size="small"
             variant={userType === 'INSTRUCTOR' ? 'primary' : 'secondary'}
             onClick={() => setUserType('INSTRUCTOR')}
           >
@@ -198,6 +231,7 @@ export const RegisterForm: React.FC = () => {
           <Button
             type="button"
             fullWidth
+            size="small"
             variant={userType === 'USER' ? 'primary' : 'secondary'}
             onClick={() => setUserType('USER')}
           >
@@ -205,7 +239,7 @@ export const RegisterForm: React.FC = () => {
           </Button>
         </div>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-3" onSubmit={handleSubmit}>
           {/* 공통 기본 정보 입력 */}
           <UserBasicFields
             form={form}

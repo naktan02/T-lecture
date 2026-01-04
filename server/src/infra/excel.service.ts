@@ -9,7 +9,8 @@ const COLUMN_MAPPING: Record<string, string> = {
   군구분: 'unitType',
   광역: 'wideArea',
   지역: 'region',
-  부대상세주소: 'addressDetail',
+  부대주소: 'addressDetail',
+  부대상세주소: 'detailAddress',
   위도: 'lat',
   경도: 'lng',
 
@@ -39,7 +40,6 @@ const COLUMN_MAPPING: Record<string, string> = {
   '사전사후 휴대폰 불출 여부': 'allowsPhoneBeforeAfter',
   계획인원: 'plannedCount',
   참여인원: 'actualCount',
-  투입강사수: 'instructorsNumbers',
   특이사항: 'note',
 };
 
@@ -182,7 +182,7 @@ class ExcelService {
     }
 
     // 숫자 필드
-    const numberFields = ['lat', 'lng', 'plannedCount', 'actualCount', 'instructorsNumbers'];
+    const numberFields = ['lat', 'lng', 'plannedCount', 'actualCount'];
     if (numberFields.includes(fieldName)) {
       return this._parseNumber(value);
     }

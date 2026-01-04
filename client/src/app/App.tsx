@@ -10,12 +10,19 @@ const queryClient = new QueryClient();
 import LoginPage from '../pages/auth/LoginPage';
 import SignupPage from '../pages/auth/SignupPage';
 import InstructorSchedulePage from '../pages/instructor/SchedulePage';
+import DispatchInboxPage from '../pages/instructor/DispatchInboxPage';
 import AdminPage from '../pages/admin/AdminPage';
 import UserMainHome from '../pages/user/UserMainPage';
 import SuperAdminPage from '../pages/admin/SuperAdminPage';
 import AssignmentPage from '../pages/admin/AssignmentPage';
 import UnitPage from '../pages/admin/UnitPage';
+import UserPage from '../pages/admin/UserPage';
 import SettingsPage from '../pages/admin/SettingsPage';
+import AssignmentSettingsPage from '../pages/admin/AssignmentSettingsPage';
+import AdminNoticePage from '../pages/admin/NoticePage';
+import InstructorNoticePage from '../pages/instructor/NoticePage';
+import AdminInquiryPage from '../pages/admin/InquiryPage';
+import InstructorInquiryPage from '../pages/instructor/InquiryPage';
 
 function App(): ReactElement {
   return (
@@ -30,11 +37,13 @@ function App(): ReactElement {
 
           {/* 일반 유저 및 강사 */}
           <Route path="/instructor/schedule" element={<InstructorSchedulePage />} />
+          <Route path="/user-main/dispatches" element={<DispatchInboxPage />} />
           <Route path="/user-main/*" element={<UserMainHome />} />
 
           {/* 일반 관리자 */}
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/admin/assignments" element={<AssignmentPage />} />
+          <Route path="/admin/assignment-settings" element={<AssignmentSettingsPage />} />
           <Route path="/admin/settings" element={<SettingsPage />} />
 
           {/* 슈퍼 관리자 */}
@@ -42,6 +51,17 @@ function App(): ReactElement {
 
           {/* 부대 관리 */}
           <Route path="/admin/units" element={<UnitPage />} />
+
+          {/* 유저 관리 */}
+          <Route path="/admin/users" element={<UserPage />} />
+
+          {/* 공지사항 관리 */}
+          <Route path="/admin/notices" element={<AdminNoticePage />} />
+          <Route path="/instructor/notices" element={<InstructorNoticePage />} />
+
+          {/* 문의사항 관리 */}
+          <Route path="/admin/inquiries" element={<AdminInquiryPage />} />
+          <Route path="/instructor/inquiries" element={<InstructorInquiryPage />} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/login" replace />} />

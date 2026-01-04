@@ -14,7 +14,8 @@ model Unit {
   name          String?       @map("부대명")
   wideArea      String?       @map("광역")
   region        String?       @map("지역")
-  addressDetail String?       @map("부대상세주소") @db.Text
+  addressDetail String?       @map("부대주소") @db.Text
+  detailAddress String?       @map("부대상세주소") @db.Text
   lat           Float?        @map("위도")
   lng           Float?        @map("경도")
 
@@ -30,8 +31,11 @@ model Unit {
   officerPhone String? @map("간부 전화번호")
   officerEmail String? @map("간부 이메일 주소")
 
+  isStaffLocked Boolean @default(false) @map("인원고정")
+
   trainingLocations TrainingLocation[]
   schedules         UnitSchedule[]
+  excludedDates     String[]      @default([]) @map("교육불가일자")
   distances         InstructorUnitDistance[]
 
   @@map("부대")
@@ -49,19 +53,18 @@ model TrainingLocation {
   allowsPhoneBeforeAfter Boolean? @map("사전사후 휴대폰 불출 여부")
   plannedCount           Int?     @map("계획인원")
   actualCount            Int?     @map("참여인원")
-  instructorsNumbers     Int?     @map("투입강사수")
   note                   String?  @map("특이사항")
 
-  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  unit        Unit                       @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  assignments InstructorUnitAssignment[]
 
   @@map("교육장소")
 }
 
 model UnitSchedule {
-  id         Int       @id @default(autoincrement())
-  unitId     Int       @map("부대id")
-  date       DateTime? @map("교육일")
-  isExcluded Boolean   @default(false) @map("교육불가")
+  id        Int       @id @default(autoincrement())
+  unitId    Int       @map("부대id")
+  date      DateTime? @map("교육일")
 
   unit        Unit                       @relation(fields: [unitId], references: [id], onDelete: Cascade)
   assignments InstructorUnitAssignment[]

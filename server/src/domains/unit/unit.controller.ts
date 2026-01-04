@@ -34,9 +34,17 @@ export const uploadExcelAndRegisterUnits = asyncHandler(async (req: Request, res
   const rawRows = await excelService.bufferToJson(req.file.buffer);
   const result = await unitService.processExcelDataAndRegisterUnits(rawRows);
 
+  // 메시지 구성
+  const messages: string[] = [];
+  if (result.created > 0) messages.push(`${result.created}개 부대 생성`);
+  if (result.updated > 0) messages.push(`${result.updated}개 부대 업데이트`);
+  if (result.locationsSkipped > 0) messages.push(`${result.locationsSkipped}개 교육장소 중복 스킵`);
+
+  const message = messages.length > 0 ? messages.join(', ') + ' 완료' : '처리된 데이터가 없습니다.';
+
   res.status(201).json({
     result: 'Success',
-    message: `${result.count}개 부대 정보가 성공적으로 등록되었습니다.`,
+    message,
     data: result,
   });
 });
@@ -74,6 +82,26 @@ export const updateOfficerInfo = asyncHandler(async (req: Request, res: Response
 // 부대 전체 정보 수정 (기본정보 + 교육장소 + 일정)
 export const updateUnitFull = asyncHandler(async (req: Request, res: Response) => {
   const unit = await unitService.updateUnitFull(req.params.id, req.body);
+
+  res.status(200).json({
+    result: 'Success',
+    data: unit,
+  });
+});
+
+// 부대 주소만 수정 (좌표 재계산)
+export const updateUnitAddress = asyncHandler(async (req: Request, res: Response) => {
+  const unit = await unitService.updateUnitAddress(req.params.id, req.body.addressDetail);
+
+  res.status(200).json({
+    result: 'Success',
+    data: unit,
+  });
+});
+
+// 부대 일정만 수정 (교육시작, 교육종료, 교육불가일자)
+export const updateUnitSchedule = asyncHandler(async (req: Request, res: Response) => {
+  const unit = await unitService.updateUnitSchedule(req.params.id, req.body);
 
   res.status(200).json({
     result: 'Success',
@@ -133,6 +161,8 @@ module.exports = {
   updateBasicInfo,
   updateOfficerInfo,
   updateUnitFull,
+  updateUnitAddress,
+  updateUnitSchedule,
   addSchedule,
   removeSchedule,
   deleteUnit,

@@ -110,6 +110,7 @@ class InstructorRepository {
         },
         team: true,
         virtues: { include: { virtue: true } },
+        priorityCredit: true, // 우선배정 크레딧
       },
     });
   }

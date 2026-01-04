@@ -2,9 +2,8 @@
 import { useState, ReactElement } from 'react';
 import { TeamsSection } from './TeamsSection';
 import { VirtuesSection } from './VirtuesSection';
-import { TemplatesSection } from './TemplatesSection';
 
-type TabKey = 'teams' | 'virtues' | 'templates';
+type TabKey = 'teams' | 'virtues';
 
 interface Tab {
   key: TabKey;
@@ -15,7 +14,6 @@ interface Tab {
 const TABS: Tab[] = [
   { key: 'teams', label: '팀 관리', icon: '👥' },
   { key: 'virtues', label: '덕목 관리', icon: '📚' },
-  { key: 'templates', label: '메시지 템플릿', icon: '✉️' },
 ];
 
 export const SettingsTabs = (): ReactElement => {
@@ -48,7 +46,6 @@ export const SettingsTabs = (): ReactElement => {
       <div className="flex-1 overflow-auto p-6">
         {activeTab === 'teams' && <TeamsSection />}
         {activeTab === 'virtues' && <VirtuesSection />}
-        {activeTab === 'templates' && <TemplatesSection />}
       </div>
     </div>
   );

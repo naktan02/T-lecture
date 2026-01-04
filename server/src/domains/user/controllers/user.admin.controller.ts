@@ -24,15 +24,33 @@ function parseUserIdParam(req: Request): number {
   return userId;
 }
 
-// ✅ 전체 사용자 조회
+// ✅ 전체 사용자 조회 (페이지네이션 지원)
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
-  const { status, name, role } = req.query;
-  const users = await adminService.getAllUsers({
+  const {
+    status,
+    name,
+    role,
+    page,
+    limit,
+    teamId,
+    category,
+    availableFrom,
+    availableTo,
+    profileIncomplete,
+  } = req.query;
+  const result = await adminService.getAllUsers({
     status: typeof status === 'string' ? status : undefined,
     name: typeof name === 'string' ? name : undefined,
     role: typeof role === 'string' ? role : undefined,
+    teamId: typeof teamId === 'string' ? teamId : undefined,
+    category: typeof category === 'string' ? category : undefined,
+    availableFrom: typeof availableFrom === 'string' ? availableFrom : undefined,
+    availableTo: typeof availableTo === 'string' ? availableTo : undefined,
+    profileIncomplete: typeof profileIncomplete === 'string' ? profileIncomplete : undefined,
+    page: typeof page === 'string' ? page : undefined,
+    limit: typeof limit === 'string' ? limit : undefined,
   });
-  res.json(users);
+  res.json(result);
 });
 
 // ✅ 대기 사용자 조회
@@ -57,6 +75,23 @@ export const updateUser = asyncHandler(async (req: Request, res: Response) => {
     actorId: req.user?.id,
     targetUserId: userId,
     bodyKeys: Object.keys(req.body || {}),
+  });
+
+  res.json(updatedUser);
+});
+
+// ✅ 사용자 주소 전용 수정 (좌표 재계산 포함)
+export const updateUserAddress = asyncHandler(async (req: Request, res: Response) => {
+  const userId = parseUserIdParam(req);
+  const { address } = req.body;
+
+  // 주소만 업데이트 (service에서 좌표 재계산 처리)
+  const updatedUser = await adminService.updateUser(userId, { address });
+
+  logger.info('[admin.updateUserAddress]', {
+    actorId: req.user?.id,
+    targetUserId: userId,
+    address,
   });
 
   res.json(updatedUser);
@@ -162,6 +197,7 @@ module.exports = {
   getPendingUsers,
   getUserById,
   updateUser,
+  updateUserAddress,
   deleteUser,
   approveUser,
   approveUsersBulk,

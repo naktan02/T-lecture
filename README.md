@@ -55,11 +55,16 @@ npm run db:migrate # 후에 엔터
 
 # 만약 db 초기화 할 일이 생길경우
 npx prisma migrate reset # yes 나오면 y
+
+npx prisma generate
+
+# 스키마 바로 적용
+npx prisma db push
 ```
 
 ```bash
 npx tsx prisma/seed.ts
-
+npx tsx prisma/seedunit.js
 npx prisma db seed
 ```
 
@@ -84,5 +89,9 @@ npm run dev
 ```bash
 # T-lecture/ 폴더로 이동 (cd ..)
 npm run dev:client
+```
+```bash
+instructor1@test.com
+1234
 ```
 

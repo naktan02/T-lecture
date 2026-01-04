@@ -27,6 +27,9 @@ router.delete('/users/:userId/reject', auth, requireAdmin, adminController.rejec
 // [일반 관리자 전용] 회원 정보 수정
 router.patch('/users/:userId', auth, requireAdmin, adminController.updateUser);
 
+// [일반 관리자 전용] 회원 주소 전용 수정 (좌표 재계산)
+router.patch('/users/:userId/address', auth, requireAdmin, adminController.updateUserAddress);
+
 // [일반 관리자 전용] 회원 삭제
 router.delete('/users/:userId', auth, requireAdmin, adminController.deleteUser);
 

@@ -58,7 +58,6 @@ export interface TrainingLocationInput {
   changedPlace?: string;
   plannedCount?: number | string;
   actualCount?: number | string;
-  instructorsNumbers?: number | string;
   hasInstructorLounge?: boolean | string;
   hasWomenRestroom?: boolean | string;
   hasCateredMeals?: boolean | string;
@@ -73,6 +72,7 @@ export interface RawUnitInput {
   wideArea?: string;
   region?: string;
   addressDetail?: string;
+  detailAddress?: string;
   lat?: number;
   lng?: number;
   educationStart?: string | Date;
@@ -92,7 +92,6 @@ export interface RawUnitInput {
 
 export interface ScheduleInput {
   date: Date | string;
-  isExcluded?: boolean;
 }
 
 export interface UnitQueryInput {
@@ -106,6 +105,7 @@ export interface UnitQueryInput {
   endDate?: string;
   minPersonnel?: string | number;
   maxPersonnel?: string | number;
+  hasAddressError?: string | boolean; // 주소 오류(좌표 미변환) 필터
 }
 
 // Excel 파일 동적 데이터 - 다양한 속성 접근 필요

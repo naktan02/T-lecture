@@ -1,8 +1,16 @@
 // client/src/features/unit/ui/UnitDetailDrawer.tsx
 import { useEffect, useMemo, useState, ChangeEvent, FormEvent } from 'react';
+import {
+  showWarning,
+  showError,
+  showSuccess,
+  showConfirm,
+  showInfo,
+} from '../../../shared/utils/toast';
 import { useQuery } from '@tanstack/react-query';
 import { unitApi, UnitData } from '../api/unitApi';
-import { Button, InputField } from '../../../shared/ui';
+import { Button, InputField, DateInput, TimeInput } from '../../../shared/ui';
+import { AddressSearchInput } from '../../../shared/ui/AddressSearchInput';
 
 /**
  * ✅ 포인트
@@ -18,7 +26,6 @@ type UnitType = 'Army' | 'Navy' | 'AirForce' | 'Marines' | 'MND';
 interface Schedule {
   id?: number;
   date: string; // YYYY-MM-DD (UI용)
-  isExcluded: boolean; // 교육불가 여부
 }
 
 interface TrainingLocation {
@@ -29,7 +36,6 @@ interface TrainingLocation {
   // 폼에서는 input 특성상 string으로 관리 (submit 때 number 변환)
   plannedCount: string;
   actualCount: string;
-  instructorsNumbers?: string;
 
   hasInstructorLounge: boolean;
   hasWomenRestroom: boolean;
@@ -61,7 +67,8 @@ interface Unit {
   lunchEndTime?: string;
 
   trainingLocations?: TrainingLocation[] | any[];
-  schedules?: { id?: number; date?: string; isExcluded?: boolean }[] | any[];
+  schedules?: { id?: number; date?: string }[] | any[];
+  excludedDates?: string[];
 }
 
 // 서버 API 응답: { result: 'Success', data: Unit }
@@ -75,6 +82,7 @@ interface FormData {
   region: string;
   wideArea: string;
   addressDetail: string;
+  detailAddress: string;
 
   officerName: string;
   officerPhone: string;
@@ -142,6 +150,7 @@ const INITIAL_FORM: FormData = {
   region: '',
   wideArea: '',
   addressDetail: '',
+  detailAddress: '',
 
   officerName: '',
   officerPhone: '',
@@ -161,7 +170,6 @@ const createEmptyLocation = (): TrainingLocation => ({
   changedPlace: '',
   plannedCount: '0',
   actualCount: '0',
-  instructorsNumbers: '0',
 
   hasInstructorLounge: false,
   hasWomenRestroom: false,
@@ -189,6 +197,13 @@ export const UnitDetailDrawer = ({
   // 신규 등록 시 사용: 개별 교육불가일자 목록
   const [excludedDates, setExcludedDates] = useState<string[]>([]);
   const [newExcludedDate, setNewExcludedDate] = useState('');
+
+  // 초기값 저장 (dirty check용)
+  const [initialFormData, setInitialFormData] = useState<FormData>(INITIAL_FORM);
+  const [initialLocations, setInitialLocations] = useState<string>('[]');
+
+  // 배정 존재 여부 (서버에서 가져온 schedules에 assignments가 있는지)
+  const [hasAssignments, setHasAssignments] = useState(false);
 
   const unitId = initialUnit?.id;
 
@@ -235,6 +250,7 @@ export const UnitDetailDrawer = ({
       region: target.region || '',
       wideArea: target.wideArea || '',
       addressDetail: target.addressDetail || '',
+      detailAddress: (target as { detailAddress?: string }).detailAddress || '',
 
       officerName: target.officerName || '',
       officerPhone: target.officerPhone || '',
@@ -258,7 +274,6 @@ export const UnitDetailDrawer = ({
           changedPlace: String(loc?.changedPlace ?? ''),
           plannedCount: String(loc?.plannedCount ?? '0'),
           actualCount: String(loc?.actualCount ?? '0'),
-          instructorsNumbers: String(loc?.instructorsNumbers ?? '0'),
           hasInstructorLounge: Boolean(loc?.hasInstructorLounge),
           hasWomenRestroom: Boolean(loc?.hasWomenRestroom),
           hasCateredMeals: Boolean(loc?.hasCateredMeals),
@@ -277,20 +292,53 @@ export const UnitDetailDrawer = ({
       const schedulesNormalized = target.schedules.map((s: any) => ({
         id: s?.id,
         date: toDateValue(s?.date),
-        isExcluded: Boolean(s?.isExcluded),
       }));
       setSchedules(schedulesNormalized);
-
-      // excludedDates도 schedules에서 추출하여 설정 (isExcluded가 true인 날짜들)
-      const excluded = schedulesNormalized.filter((s) => s.isExcluded && s.date).map((s) => s.date);
-      setExcludedDates(excluded);
     } else {
       setSchedules([]);
+    }
+
+    if (Array.isArray(target.excludedDates)) {
+      setExcludedDates(target.excludedDates);
+    } else {
       setExcludedDates([]);
     }
 
+    // 초기값 저장 (dirty check용)
+    const initialForm: FormData = {
+      name: target.name || '',
+      unitType: (['Army', 'Navy', 'AirForce', 'Marines', 'MND'].includes(target.unitType as string)
+        ? target.unitType
+        : 'Army') as UnitType,
+      region: target.region || '',
+      wideArea: target.wideArea || '',
+      addressDetail: target.addressDetail || '',
+      detailAddress: (target as { detailAddress?: string }).detailAddress || '',
+      officerName: target.officerName || '',
+      officerPhone: target.officerPhone || '',
+      officerEmail: target.officerEmail || '',
+      educationStart: toDateValue(target.educationStart),
+      educationEnd: toDateValue(target.educationEnd),
+      workStartTime: toTimeValue(target.workStartTime),
+      workEndTime: toTimeValue(target.workEndTime),
+      lunchStartTime: toTimeValue(target.lunchStartTime),
+      lunchEndTime: toTimeValue(target.lunchEndTime),
+    };
+    setInitialFormData(initialForm);
+    setInitialLocations(JSON.stringify(target.trainingLocations || []));
+
+    // 배정 존재 여부 확인 (스케줄에 assignments가 있으면 true)
+    // detailData에서 schedules.assignments를 확인
+    const schedulesFromServer = (
+      detailData?.data as Unit & { schedules: Array<{ assignments?: unknown[] }> }
+    )?.schedules;
+    const hasAny =
+      schedulesFromServer?.some((s) => Array.isArray(s.assignments) && s.assignments.length > 0) ??
+      false;
+    setHasAssignments(hasAny);
+
     setActiveTab('basic');
-  }, [isOpen, initialUnit, boundUnit, isSuccess]);
+  }, [isOpen, initialUnit, boundUnit, isSuccess, detailData]);
 
   // ---------- Handlers ----------
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -298,13 +346,15 @@ export const UnitDetailDrawer = ({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // schedules - isExcluded 토글
-  const toggleScheduleExcluded = (idx: number) => {
-    setSchedules((prev) => {
-      const n = [...prev];
-      n[idx] = { ...n[idx], isExcluded: !n[idx].isExcluded };
-      return n;
-    });
+  // 주소 검색 완료 핸들러
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleAddressSelect = (data: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      wideArea: data.sido || '',
+      region: data.sigungu || '',
+      addressDetail: data.roadAddress || data.jibunAddress || '',
+    }));
   };
 
   // locations
@@ -324,6 +374,46 @@ export const UnitDetailDrawer = ({
 
   const removeLocation = (i: number) => setLocations((prev) => prev.filter((_, idx) => idx !== i));
 
+  // 주소만 저장 (수정 모드에서만)
+  const handleSaveAddress = async () => {
+    if (!initialUnit?.id) return;
+
+    try {
+      await unitApi.updateUnitAddress(initialUnit.id, formData.addressDetail);
+      showSuccess('주소가 저장되었습니다.');
+    } catch (err) {
+      console.error(err);
+      showError('주소 저장에 실패했습니다.');
+    }
+  };
+
+  // 일정만 저장 (수정 모드에서만)
+  // 배정이 있으면 경고 표시, 없으면 바로 저장
+  const handleSaveSchedule = () => {
+    if (!initialUnit?.id) return;
+
+    const doSave = async () => {
+      try {
+        await unitApi.updateUnitSchedule(initialUnit.id, {
+          educationStart: makeDateISO(formData.educationStart),
+          educationEnd: makeDateISO(formData.educationEnd),
+          excludedDates: excludedDates,
+        });
+        showSuccess('일정이 저장되었습니다.');
+      } catch {
+        showError('일정 저장에 실패했습니다.');
+      }
+    };
+
+    if (hasAssignments) {
+      // 배정이 있으면 경고 표시
+      showConfirm('이미 배정된 일정이 있습니다. 변경하시겠습니까?', doSave);
+    } else {
+      // 배정이 없으면 바로 저장
+      doSave();
+    }
+  };
+
   // submit
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -337,7 +427,7 @@ export const UnitDetailDrawer = ({
       'officerName',
     ];
     if (required.some((f) => !formData[f])) {
-      alert('필수 항목을 모두 입력해주세요.');
+      showWarning('필수 항목을 모두 입력해주세요.');
       return;
     }
 
@@ -346,42 +436,78 @@ export const UnitDetailDrawer = ({
       ...loc,
       plannedCount: toNumberOrNull(loc.plannedCount) ?? 0,
       actualCount: toNumberOrNull(loc.actualCount) ?? 0,
-      instructorsNumbers: toNumberOrNull(loc.instructorsNumbers) ?? 0,
     }));
 
-    const payload = {
+    // 기본 payload (신규 등록용)
+    const basePayload = {
       ...formData,
       educationStart: makeDateISO(formData.educationStart),
       educationEnd: makeDateISO(formData.educationEnd),
-      // excludedDates는 항상 전송하여 일정 재계산 가능하게 함
       excludedDates: excludedDates,
       workStartTime: makeTimeISO(formData.workStartTime),
       workEndTime: makeTimeISO(formData.workEndTime),
       lunchStartTime: makeTimeISO(formData.lunchStartTime),
       lunchEndTime: makeTimeISO(formData.lunchEndTime),
-
       trainingLocations: locationsPayload,
-
-      // 수정 모드에서도 schedules를 보내되, excludedDates가 있으면 서버에서 재계산됨
       schedules: schedules
         .filter((s) => s.date)
         .map((s) => ({
           id: s.id,
           date: makeDateISO(s.date),
-          isExcluded: s.isExcluded,
         })),
     };
 
     try {
       if (initialUnit) {
-        onUpdate({ id: initialUnit.id, data: payload });
+        // 수정 모드: 주소와 일정 관련 필드는 별도 저장 버튼으로 처리하므로 제외
+        const {
+          addressDetail: _addr,
+          educationStart: _edStart,
+          educationEnd: _edEnd,
+          excludedDates: _exDates,
+          schedules: _sched,
+          ...safeFields
+        } = basePayload;
+
+        // dirty check: 변경된 데이터가 있는지 확인
+        const keysToCheck: (keyof typeof safeFields)[] = [
+          'name',
+          'unitType',
+          'region',
+          'wideArea',
+          'officerName',
+          'officerPhone',
+          'officerEmail',
+          'workStartTime',
+          'workEndTime',
+          'lunchStartTime',
+          'lunchEndTime',
+        ];
+        const hasFormChange = keysToCheck.some(
+          (key) =>
+            safeFields[key] !== (initialFormData as unknown as Record<string, unknown>)[key] &&
+            !(
+              safeFields[key] === null &&
+              (initialFormData as unknown as Record<string, unknown>)[key] === ''
+            ),
+        );
+        const hasLocationChange = JSON.stringify(locationsPayload) !== initialLocations;
+
+        if (!hasFormChange && !hasLocationChange) {
+          showInfo('변경된 내용이 없습니다.');
+          return;
+        }
+
+        // 담당자, 근무시간, 교육장소 등 나머지 필드만 전송
+        onUpdate({ id: initialUnit.id, data: safeFields });
       } else {
-        await onRegister(payload);
+        // 신규 등록: 모든 필드 전송
+        await onRegister(basePayload);
       }
       onClose();
     } catch (err) {
       console.error(err);
-      alert('저장 실패');
+      showError('저장 실패');
     }
   };
 
@@ -492,11 +618,39 @@ export const UnitDetailDrawer = ({
                       onChange={handleChange}
                     />
                     <div className="col-span-2">
-                      <InputField
-                        label="상세주소"
-                        name="addressDetail"
-                        value={formData.addressDetail}
+                      <label className="block text-sm font-medium mb-1">부대주소</label>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <AddressSearchInput
+                            value={formData.addressDetail}
+                            onChange={(val) =>
+                              setFormData((prev) => ({ ...prev, addressDetail: val }))
+                            }
+                            onSelect={handleAddressSelect}
+                            placeholder="주소 검색을 클릭하여 주소를 입력하세요"
+                          />
+                        </div>
+                        {/* 수정 모드에서만 주소 저장 버튼 표시 */}
+                        {initialUnit && (
+                          <button
+                            type="button"
+                            onClick={handleSaveAddress}
+                            className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 whitespace-nowrap"
+                          >
+                            주소 저장
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium mb-1">상세주소</label>
+                      <input
+                        type="text"
+                        name="detailAddress"
+                        value={formData.detailAddress || ''}
                         onChange={handleChange}
+                        placeholder="상세주소 입력 (예: 301동 근무대대 강당)"
+                        className="w-full px-3 py-2 border rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
                   </div>
@@ -505,16 +659,14 @@ export const UnitDetailDrawer = ({
                 <section className="bg-white p-5 rounded-xl border shadow-sm">
                   <h3 className="font-bold mb-4">⏰ 일정 관리</h3>
                   <div className="grid grid-cols-2 gap-4">
-                    <InputField
-                      type="date"
+                    <DateInput
                       label="교육 시작 *"
                       name="educationStart"
                       value={formData.educationStart}
                       onChange={handleChange}
                       required
                     />
-                    <InputField
-                      type="date"
+                    <DateInput
                       label="교육 종료 *"
                       name="educationEnd"
                       value={formData.educationEnd}
@@ -526,13 +678,13 @@ export const UnitDetailDrawer = ({
                       <label className="text-sm font-medium">
                         교육불가일자 ({excludedDates.length}개)
                       </label>
-                      <div className="flex gap-2 mt-1">
-                        <input
-                          type="date"
-                          value={newExcludedDate}
-                          onChange={(e) => setNewExcludedDate(e.target.value)}
-                          className="flex-1 p-2 border rounded-lg"
-                        />
+                      <div className="flex gap-2 mt-1 items-end">
+                        <div className="flex-1">
+                          <DateInput
+                            value={newExcludedDate}
+                            onChange={(e) => setNewExcludedDate(e.target.value)}
+                          />
+                        </div>
                         <button
                           type="button"
                           onClick={() => {
@@ -569,33 +721,61 @@ export const UnitDetailDrawer = ({
                       )}
                     </div>
 
+                    {/* 수정 모드에서만 일정 저장 버튼 표시 */}
+                    {initialUnit && (
+                      <div className="col-span-2 mt-2">
+                        <div
+                          className={`flex items-center justify-between p-2 rounded-lg ${
+                            hasAssignments
+                              ? 'bg-yellow-50 border border-yellow-200'
+                              : 'bg-gray-50 border border-gray-200'
+                          }`}
+                        >
+                          <span
+                            className={`text-sm ${hasAssignments ? 'text-yellow-800' : 'text-gray-600'}`}
+                          >
+                            {hasAssignments
+                              ? '⚠️ 일정 변경 시 기존 배정에 영향이 있습니다.'
+                              : '📅 일정을 저장합니다.'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleSaveSchedule}
+                            className={`px-3 py-1.5 text-sm text-white rounded-lg ${
+                              hasAssignments
+                                ? 'bg-yellow-500 hover:bg-yellow-600'
+                                : 'bg-blue-500 hover:bg-blue-600'
+                            }`}
+                          >
+                            일정 저장
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="col-span-2 border-t my-2" />
 
-                    <InputField
-                      type="time"
+                    <TimeInput
                       label="근무 시작 *"
                       name="workStartTime"
                       value={formData.workStartTime}
                       onChange={handleChange}
                       required
                     />
-                    <InputField
-                      type="time"
+                    <TimeInput
                       label="근무 종료 *"
                       name="workEndTime"
                       value={formData.workEndTime}
                       onChange={handleChange}
                       required
                     />
-                    <InputField
-                      type="time"
+                    <TimeInput
                       label="점심 시작"
                       name="lunchStartTime"
                       value={formData.lunchStartTime}
                       onChange={handleChange}
                     />
-                    <InputField
-                      type="time"
+                    <TimeInput
                       label="점심 종료"
                       name="lunchEndTime"
                       value={formData.lunchEndTime}
@@ -675,12 +855,6 @@ export const UnitDetailDrawer = ({
                         value={loc.actualCount}
                         onChange={(e) => updateLocation(idx, 'actualCount', e.target.value)}
                       />
-                      <InputField
-                        type="number"
-                        label="강사 수"
-                        value={loc.instructorsNumbers ?? ''}
-                        onChange={(e) => updateLocation(idx, 'instructorsNumbers', e.target.value)}
-                      />
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm bg-gray-50 p-3 rounded mb-3">
@@ -719,36 +893,45 @@ export const UnitDetailDrawer = ({
                 {schedules.length > 0 ? (
                   <>
                     <div className="bg-blue-50 p-3 rounded text-center text-sm text-blue-800 mb-4">
-                      <b>📅 등록된 교육 일정 ({schedules.filter((s) => !s.isExcluded).length}일)</b>
-                      <br />
-                      <span className="text-red-600">
-                        🚫 교육불가: {schedules.filter((s) => s.isExcluded).length}일
-                      </span>
+                      <b>📅 등록된 교육 일정 ({schedules.length}일)</b>
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {schedules.map((sch, idx) => (
                         <div
                           key={idx}
-                          className={`border p-3 rounded text-center shadow-sm cursor-pointer transition-colors ${
-                            sch.isExcluded
-                              ? 'bg-red-50 border-red-300'
-                              : 'bg-white hover:bg-blue-50'
-                          }`}
-                          onClick={() => toggleScheduleExcluded(idx)}
+                          className="border p-3 rounded text-center shadow-sm bg-white"
                         >
                           <div className="text-xs text-gray-400 mb-1">{idx + 1}일차</div>
-                          <div
-                            className={`font-bold ${sch.isExcluded ? 'text-red-500 line-through' : ''}`}
-                          >
-                            {sch.date}
-                          </div>
-                          <div className="text-xs mt-1">
-                            {sch.isExcluded ? '🚫 교육불가' : '✅ 교육가능'}
-                          </div>
+                          <div className="font-bold">{sch.date}</div>
                         </div>
                       ))}
                     </div>
+
+                    {excludedDates.length > 0 && (
+                      <div className="mt-4 p-3 bg-red-50 rounded">
+                        <b className="text-red-700">🚫 교육불가일 ({excludedDates.length}일)</b>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {excludedDates.map((date) => (
+                            <span
+                              key={date}
+                              className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded text-sm"
+                            >
+                              {date}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExcludedDates((prev) => prev.filter((d) => d !== date))
+                                }
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="p-10 text-center text-gray-400 border border-dashed rounded bg-gray-50">
