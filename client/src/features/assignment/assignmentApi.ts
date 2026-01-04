@@ -7,6 +7,7 @@ export interface UnitScheduleDetail {
   region: string;
   wideArea: string;
   address: string;
+  detailAddress: string | null;
   officerName: string | null;
   officerPhone: string | null;
   officerEmail: string | null;

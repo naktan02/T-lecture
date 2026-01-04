@@ -283,6 +283,7 @@ export const UserToolbar = ({
                   name="availableFrom"
                   value={filters.availableFrom}
                   onChange={handleChange}
+                  max="2099-12-31"
                   className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-green-500"
                 />
                 <span className="text-gray-400">~</span>
@@ -291,6 +292,7 @@ export const UserToolbar = ({
                   name="availableTo"
                   value={filters.availableTo}
                   onChange={handleChange}
+                  max="2099-12-31"
                   className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>

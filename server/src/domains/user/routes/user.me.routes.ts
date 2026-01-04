@@ -11,6 +11,9 @@ router.get('/me', auth, userMeController.getMyProfile);
 // [내 정보 수정] - 로그인 필요
 router.patch('/me', auth, userMeController.updateMyProfile);
 
+// [내 주소 전용 수정] - 로그인 필요 (좌표 재계산)
+router.patch('/me/address', auth, userMeController.updateMyAddress);
+
 // [회원 탈퇴] - 로그인 필요
 router.delete('/me', auth, userMeController.withdraw);
 

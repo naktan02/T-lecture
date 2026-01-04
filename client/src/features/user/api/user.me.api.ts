@@ -83,3 +83,16 @@ export async function updateMyProfile(payload: UpdateProfilePayload): Promise<Us
   });
   return response.json();
 }
+
+// 내 주소 전용 수정 (좌표 재계산 포함)
+export async function updateMyAddress(address: string): Promise<UserProfile> {
+  const response = await apiClient('/api/v1/users/me/address', {
+    method: 'PATCH',
+    body: JSON.stringify({ address }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || '주소 저장 실패');
+  }
+  return response.json();
+}

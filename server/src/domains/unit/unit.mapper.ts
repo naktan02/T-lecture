@@ -47,6 +47,7 @@ export function toCreateUnitDto(rawData: RawUnitData = {}): Prisma.UnitCreateInp
     wideArea: rawData.wideArea,
     region: rawData.region,
     addressDetail: rawData.addressDetail,
+    detailAddress: rawData.detailAddress,
     lat: rawData.lat,
     lng: rawData.lng,
 

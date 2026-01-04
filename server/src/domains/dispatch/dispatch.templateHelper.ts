@@ -38,6 +38,7 @@ interface UnitData {
   region?: string | null;
   wideArea?: string | null;
   addressDetail?: string | null;
+  detailAddress?: string | null;
   officerName?: string | null;
   officerPhone?: string | null;
   educationStart?: Date | null;
@@ -143,6 +144,7 @@ export function buildVariables(
     'unit.region': unit.region || '',
     'unit.wideArea': unit.wideArea || '',
     'unit.addressDetail': unit.addressDetail || '',
+    'unit.detailAddress': unit.detailAddress || '',
     'unit.officerName': unit.officerName || '',
     'unit.officerPhone': unit.officerPhone || '',
     'unit.startDate': unitStartDate,

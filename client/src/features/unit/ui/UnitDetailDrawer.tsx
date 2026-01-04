@@ -82,6 +82,7 @@ interface FormData {
   region: string;
   wideArea: string;
   addressDetail: string;
+  detailAddress: string;
 
   officerName: string;
   officerPhone: string;
@@ -149,6 +150,7 @@ const INITIAL_FORM: FormData = {
   region: '',
   wideArea: '',
   addressDetail: '',
+  detailAddress: '',
 
   officerName: '',
   officerPhone: '',
@@ -248,6 +250,7 @@ export const UnitDetailDrawer = ({
       region: target.region || '',
       wideArea: target.wideArea || '',
       addressDetail: target.addressDetail || '',
+      detailAddress: (target as { detailAddress?: string }).detailAddress || '',
 
       officerName: target.officerName || '',
       officerPhone: target.officerPhone || '',
@@ -310,6 +313,7 @@ export const UnitDetailDrawer = ({
       region: target.region || '',
       wideArea: target.wideArea || '',
       addressDetail: target.addressDetail || '',
+      detailAddress: (target as { detailAddress?: string }).detailAddress || '',
       officerName: target.officerName || '',
       officerPhone: target.officerPhone || '',
       officerEmail: target.officerEmail || '',
@@ -614,25 +618,40 @@ export const UnitDetailDrawer = ({
                       onChange={handleChange}
                     />
                     <div className="col-span-2">
-                      <label className="block text-sm font-medium mb-1">상세주소</label>
-                      <AddressSearchInput
-                        value={formData.addressDetail}
-                        onChange={(val) => setFormData((prev) => ({ ...prev, addressDetail: val }))}
-                        onSelect={handleAddressSelect}
-                        placeholder="주소 검색을 클릭하여 주소를 입력하세요"
-                      />
-                      {/* 수정 모드에서만 주소 저장 버튼 표시 */}
-                      {initialUnit && (
-                        <div className="flex justify-end mt-2">
+                      <label className="block text-sm font-medium mb-1">부대주소</label>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <AddressSearchInput
+                            value={formData.addressDetail}
+                            onChange={(val) =>
+                              setFormData((prev) => ({ ...prev, addressDetail: val }))
+                            }
+                            onSelect={handleAddressSelect}
+                            placeholder="주소 검색을 클릭하여 주소를 입력하세요"
+                          />
+                        </div>
+                        {/* 수정 모드에서만 주소 저장 버튼 표시 */}
+                        {initialUnit && (
                           <button
                             type="button"
                             onClick={handleSaveAddress}
-                            className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                            className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 whitespace-nowrap"
                           >
                             주소 저장
                           </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium mb-1">상세주소</label>
+                      <input
+                        type="text"
+                        name="detailAddress"
+                        value={formData.detailAddress || ''}
+                        onChange={handleChange}
+                        placeholder="상세주소 입력 (예: 301동 근무대대 강당)"
+                        className="w-full px-3 py-2 border rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
                     </div>
                   </div>
                 </section>

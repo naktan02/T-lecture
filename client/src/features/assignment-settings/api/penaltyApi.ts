@@ -1,11 +1,19 @@
 // client/src/features/assignment-settings/api/penaltyApi.ts
 import { apiClient } from '../../../shared/apiClient';
 
+// 사유 아이템 타입
+export interface ReasonItem {
+  unit?: string;
+  date?: string;
+  type?: string;
+}
+
 export interface Penalty {
   id: number;
   userId: number;
   count: number;
   expiresAt: string;
+  reasons: ReasonItem[] | null;
   createdAt: string;
   updatedAt: string;
   user: {

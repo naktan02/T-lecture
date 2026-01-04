@@ -75,6 +75,7 @@ export interface UnitRaw {
   region: string | null;
   wideArea: string | null;
   addressDetail: string | null;
+  detailAddress?: string | null;
   officerName: string | null;
   officerPhone: string | null;
   officerEmail: string | null;

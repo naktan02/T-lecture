@@ -16,6 +16,7 @@ interface UnitBasicInfoInput {
   wideArea?: string;
   region?: string;
   addressDetail?: string;
+  detailAddress?: string;
 }
 
 interface UnitContactInput {

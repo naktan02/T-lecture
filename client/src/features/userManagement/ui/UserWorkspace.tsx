@@ -134,7 +134,7 @@ export const UserWorkspace = (): ReactElement => {
           <UserToolbar
             onSearch={handleSearch}
             totalCount={meta?.total || 0}
-            pendingCount={searchParams.status === 'ALL' ? pendingCount : undefined}
+            pendingCount={pendingCount}
           />
         </div>
 

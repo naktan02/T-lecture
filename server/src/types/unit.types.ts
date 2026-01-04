@@ -72,6 +72,7 @@ export interface RawUnitInput {
   wideArea?: string;
   region?: string;
   addressDetail?: string;
+  detailAddress?: string;
   lat?: number;
   lng?: number;
   educationStart?: string | Date;

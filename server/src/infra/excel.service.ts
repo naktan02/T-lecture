@@ -9,7 +9,8 @@ const COLUMN_MAPPING: Record<string, string> = {
   군구분: 'unitType',
   광역: 'wideArea',
   지역: 'region',
-  부대상세주소: 'addressDetail',
+  부대주소: 'addressDetail',
+  부대상세주소: 'detailAddress',
   위도: 'lat',
   경도: 'lng',
 
