@@ -71,22 +71,23 @@ export const TeamWorkloadChart: React.FC<Props> = ({
           ))}
         </select>
       </div>
-      <div className="w-full h-80">
+      <div className="w-full h-64">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
             layout="vertical"
-            margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+            margin={{ top: 5, right: 20, left: 5, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-            <XAxis type="number" axisLine={false} tickLine={false} fontSize={12} />
+            <XAxis type="number" axisLine={false} tickLine={false} fontSize={11} />
             <YAxis
               type="category"
               dataKey="teamName"
               axisLine={false}
               tickLine={false}
-              fontSize={12}
-              width={75}
+              fontSize={11}
+              width={60}
+              tick={{ style: { whiteSpace: 'nowrap' } }}
             />
             <Tooltip
               cursor={{ fill: '#F3F4F6' }}

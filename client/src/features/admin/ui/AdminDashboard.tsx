@@ -159,7 +159,7 @@ export const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="p-8 bg-gray-50">
+    <div className="p-8 bg-gray-50 min-h-screen overflow-auto">
       {/* Header */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900">관리자 대시보드</h2>
@@ -168,8 +168,8 @@ export const AdminDashboard: React.FC = () => {
         </p>
       </div>
 
-      {/* Charts Row - 2 columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      {/* Charts Row - 3 columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <EducationStatusChart stats={stats} onSegmentClick={handleScheduleClick} />
         <WorkloadHistogram
           instructors={instructors}
@@ -177,10 +177,6 @@ export const AdminDashboard: React.FC = () => {
           onPeriodChange={handlePeriodChange}
           onBarClick={handleWorkloadBarClick}
         />
-      </div>
-
-      {/* Team Chart - Full width */}
-      <div className="mb-6">
         <TeamWorkloadChart
           teams={teams}
           period={period}
