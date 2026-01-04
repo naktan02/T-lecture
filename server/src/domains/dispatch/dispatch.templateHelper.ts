@@ -45,6 +45,7 @@ interface UnitData {
   educationEnd?: Date | null;
   workStartTime?: Date | string | null;
   workEndTime?: Date | string | null;
+  excludedDates?: string[];
   trainingLocations?: TrainingLocationData[];
   schedules?: ScheduleData[];
 }
@@ -151,6 +152,7 @@ export function buildVariables(
     'unit.endDate': unitEndDate,
     'unit.startTime': formatTime(unit.workStartTime),
     'unit.endTime': formatTime(unit.workEndTime),
+    'unit.excludedDates': (unit.excludedDates || []).join(' / '),
 
     // location.* 첫 번째 교육장소 정보 (단수형)
     'location.placeName': firstLocation?.originalPlace || '',

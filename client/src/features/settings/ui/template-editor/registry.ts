@@ -76,6 +76,7 @@ export const variableConfig: VariableDef[] = [
   { key: 'unit.endDate', label: '교육 종료일', icon: '📅', category: 'unit' },
   { key: 'unit.startTime', label: '시작 시간', icon: '⏰', category: 'unit' },
   { key: 'unit.endTime', label: '종료 시간', icon: '⏰', category: 'unit' },
+  { key: 'unit.excludedDates', label: '교육불가일', icon: '🚫', category: 'unit' },
   { key: 'location.originalPlace', label: '기존교육장소', icon: '📍', category: 'location' },
   { key: 'location.changedPlace', label: '변경교육장소', icon: '📍', category: 'location' },
   { key: 'location.hasInstructorLounge', label: '강사휴게실', icon: '🛋️', category: 'location' },

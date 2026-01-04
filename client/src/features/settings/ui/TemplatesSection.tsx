@@ -76,16 +76,30 @@ export const TemplatesSection = (): ReactElement => {
     // Token[] → 문자열 변환 (에디터용)
     const bodyStr = template.body?.tokens ? tokensToTemplate(template.body.tokens) : '';
     setEditBody(bodyStr);
-    // 포맷 프리셋 로드
-    setEditFormatPresets(template.formatPresets || {});
+
+    // ✅ 모든 포맷 변수에 대해 기본 프리셋 초기화 (기존 값 유지, 누락된 것만 추가)
+    const existingPresets = template.formatPresets || {};
+    const allPresets = { ...existingPresets };
+
+    // registry에서 모든 포맷 변수 가져와서 기본값 설정
+    variableConfig.forEach((v) => {
+      if (v.isFormat && !allPresets[v.key]) {
+        // defaultFormat이 있으면 사용, 없으면 빈 문자열
+        allPresets[v.key] = v.defaultFormat || '';
+      }
+    });
+
+    setEditFormatPresets(allPresets);
   };
 
-  // 저장 시 문자열 → Token[] 변환 + formatPresets 포함
+  // 저장 시 문자열 → Token[] 변환 (프리셋은 마스터로 그대로 저장)
   const handleSave = async () => {
     if (!editingKey) return;
     try {
-      // 에디터 문자열을 Token[] 변환하여 저장
-      const body: MessageTemplateBody = { tokens: parseTemplateToTokens(editBody) };
+      // 에디터 문자열을 Token[] 변환
+      const tokens = parseTemplateToTokens(editBody);
+      const body: MessageTemplateBody = { tokens };
+
       await updateTemplate({
         key: editingKey,
         title: editTitle,
@@ -131,7 +145,7 @@ export const TemplatesSection = (): ReactElement => {
     [registry, toFormatVar],
   );
 
-  // ✅ 포맷 수정 확정: 문자열 치환 금지 → 토큰 인덱스 기반 업데이트 + formatPresets 동기화
+  // ✅ 포맷 수정 확정: 프리셋 업데이트 + 본문 토큰 업데이트
   const handleConfirmFormat = (newFormat: string) => {
     if (!formatEditInfo) return;
 
@@ -139,7 +153,7 @@ export const TemplatesSection = (): ReactElement => {
     const idx = formatEditInfo.index;
     const tokenKey = formatEditInfo.token.key;
 
-    // formatPresets 동기화 (수정된 포맷을 프리셋에도 저장)
+    // 프리셋 업데이트 (마스터)
     setEditFormatPresets((prev) => ({
       ...prev,
       [tokenKey]: newFormat,
@@ -168,7 +182,7 @@ export const TemplatesSection = (): ReactElement => {
     setFormatEditInfo(null);
   };
 
-  // 패널에서 포맷 클릭/드래그 요청 (기존 있으면 수정, 프리셋 있으면 바로 삽입, 없으면 모달)
+  // 패널에서 포맷 클릭/드래그 요청 (기존 있으면 수정 모달, 없으면 삽입 모달 - 항상 모달 열기)
   const handleInsertFormat = useCallback(
     (varDef: VariableDef, callback: (format: string) => void) => {
       const tokens = parseTemplateToTokens(editBody);
@@ -184,24 +198,18 @@ export const TemplatesSection = (): ReactElement => {
           varDef: toFormatVar(varDef),
         });
       } else {
-        // 프리셋이 있으면 바로 삽입 (모달 없이)
-        const presetFormat = editFormatPresets[varDef.key];
-        if (presetFormat) {
-          callback(presetFormat);
-        } else {
-          // 새 포맷 삽입 모드 (프리셋 없으면 모달 열기)
-          setFormatInsertInfo({ varDef: toFormatVar(varDef), callback });
-        }
+        // 새 포맷 삽입 모드 - 항상 모달 열기 (프리셋은 모달의 기본값으로 사용됨)
+        setFormatInsertInfo({ varDef: toFormatVar(varDef), callback });
       }
     },
-    [toFormatVar, editBody, editFormatPresets],
+    [toFormatVar, editBody],
   );
 
-  // 포맷 삽입 확정 + formatPresets 동기화
+  // 포맷 삽입 확정 + 프리셋 업데이트
   const handleConfirmInsert = (format: string) => {
     if (formatInsertInfo) {
       const varKey = formatInsertInfo.varDef.key;
-      // 삽입한 포맷을 프리셋에도 저장 (나중에 다시 삽입할 때 기본값으로 사용)
+      // 프리셋 업데이트 (마스터)
       setEditFormatPresets((prev) => ({
         ...prev,
         [varKey]: format,
@@ -293,6 +301,7 @@ export const TemplatesSection = (): ReactElement => {
                       registry={registry}
                       onEditFormat={handleEditFormat}
                       onInsertFormat={handleInsertFormat}
+                      getFormatPreset={(key) => editFormatPresets[key] || ''}
                     />
                   </div>
                 </div>

@@ -12,12 +12,14 @@ const SAMPLE_DATA: Record<string, string> = {
   'unit.region': '인제군',
   'unit.wideArea': '강원도',
   'unit.addressDetail': '인제읍 이평로 255',
+  'unit.detailAddress': '3층 대강당',
   'unit.officerName': '대위 이용준',
   'unit.officerPhone': '010-6640-9433',
   'unit.startDate': '2024-11-17',
   'unit.endDate': '2024-11-19',
   'unit.startTime': '09:00',
   'unit.endTime': '16:00',
+  'unit.excludedDates': '2024-11-18 / 2024-11-20',
 
   // 교육장소
   'location.originalPlace': '교육관',
@@ -32,7 +34,7 @@ const SAMPLE_DATA: Record<string, string> = {
   'location.note': 'TV, 마이크 있음',
 
   // 본인 정보
-  'self.name': '유혜경',
+  'self.name': '홍길동',
   'self.phone': '010-1234-5678',
   'self.category': '부강사',
   'self.position': '책임강사',
@@ -47,22 +49,22 @@ function renderFormatSample(key: string, format: string): string {
   if (key === 'self.schedules') {
     const schedules = [
       {
-        name: '유혜경',
+        name: '홍길동',
         date: '2024-11-17',
         dayOfWeek: '일',
-        instructors: '도혜승(주), 유혜경(부), 김철수(보조)',
+        instructors: '김민지(주), 홍길동(부), 김철수(보조)',
       },
       {
-        name: '유혜경',
+        name: '홍길동',
         date: '2024-11-18',
         dayOfWeek: '월',
-        instructors: '도혜승(주), 유혜경(부)',
+        instructors: '김민지(주), 홍길동(부)',
       },
       {
-        name: '유혜경',
+        name: '홍길동',
         date: '2024-11-19',
         dayOfWeek: '화',
-        instructors: '유혜경(부), 김철수(보조)',
+        instructors: '홍길동(부), 김철수(보조)',
       },
     ];
     return schedules
@@ -82,17 +84,17 @@ function renderFormatSample(key: string, format: string): string {
       {
         date: '2024-11-17',
         dayOfWeek: '일',
-        name: '유혜경',
+        name: '홍길동',
       },
       {
         date: '2024-11-18',
         dayOfWeek: '월',
-        name: '유혜경',
+        name: '홍길동',
       },
       {
         date: '2024-11-19',
         dayOfWeek: '화',
-        name: '유혜경',
+        name: '홍길동',
       },
     ];
     return schedules
@@ -142,10 +144,10 @@ function renderFormatSample(key: string, format: string): string {
   // instructors - 강사 목록 (세로)
   if (key === 'instructors') {
     const instructors = [
-      { index: '1', name: '도혜승', phone: '010-6254-1209', category: '주', virtues: '협력, 정의' },
+      { index: '1', name: '김민지', phone: '010-6254-1209', category: '주', virtues: '협력, 정의' },
       {
         index: '2',
-        name: '유혜경',
+        name: '홍길동',
         phone: '010-1234-5678',
         category: '부',
         virtues: '리더십, 소통',
