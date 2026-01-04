@@ -6,7 +6,7 @@ body,
 #root {
   height: 100%;
   margin: 0;
-  overflow: hidden; /* 이중 스크롤 방지 */
+  overflow: auto; /* 브라우저 스크롤 허용 */
 }
 
 body {

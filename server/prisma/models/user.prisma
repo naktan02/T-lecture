@@ -114,6 +114,17 @@ model InstructorStats {
   legacyPracticumCount Int     @default(0) @map("legacy_practicum_count")
   autoPromotionEnabled Boolean @default(true) @map("auto_promotion_enabled")
 
+  // [NEW] Accumulated Stats (한글 매핑)
+  totalWorkHours        Float    @default(0) @map("총근무시간")
+  totalDistance         Float    @default(0) @map("총이동거리")
+  totalWorkDays         Int      @default(0) @map("총근무일수")
+  
+  // [NEW] Performance Stats
+  acceptedCount         Int      @default(0) @map("수락건수")
+  totalAssignmentsCount Int      @default(0) @map("총제안건수")
+  
+  lastCalculatedAt      DateTime @default(now()) @updatedAt @map("최근집계일시")
+
   // Relations
   instructor Instructor @relation(fields: [instructorId], references: [userId])
 
