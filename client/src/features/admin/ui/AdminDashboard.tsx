@@ -163,9 +163,6 @@ export const AdminDashboard: React.FC = () => {
       {/* Header */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900">관리자 대시보드</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          {new Date().getFullYear()}년 {new Date().getMonth() + 1}월 현황 요약
-        </p>
       </div>
 
       {/* Charts Row - 3 columns */}
