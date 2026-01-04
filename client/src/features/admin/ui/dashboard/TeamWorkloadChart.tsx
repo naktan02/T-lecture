@@ -98,7 +98,13 @@ export const TeamWorkloadChart: React.FC<Props> = ({
               }}
               formatter={(value) => [`${value ?? 0}건`, '총 교육수']}
             />
-            <Bar dataKey="value" radius={[0, 4, 4, 0]} cursor="pointer" onClick={handleBarClick}>
+            <Bar
+              dataKey="value"
+              radius={[0, 4, 4, 0]}
+              cursor="pointer"
+              onClick={handleBarClick}
+              barSize={10}
+            >
               {data.map((_, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}

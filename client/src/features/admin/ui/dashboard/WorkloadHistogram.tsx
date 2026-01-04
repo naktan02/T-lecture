@@ -104,6 +104,7 @@ export const WorkloadHistogram: React.FC<Props> = ({
               radius={[4, 4, 0, 0]}
               cursor="pointer"
               onClick={handleBarClick}
+              barSize={10}
             >
               {distribution.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.count > 0 ? '#6366F1' : '#E5E7EB'} />
