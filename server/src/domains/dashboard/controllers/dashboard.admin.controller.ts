@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import dashboardAdminService from '../services/dashboard.admin.service';
+import dashboardUserService from '../services/dashboard.user.service';
 
 type PeriodFilter = '1m' | '3m' | '6m' | '12m';
 type ScheduleStatus = 'completed' | 'inProgress' | 'scheduled' | 'unassigned';
@@ -63,6 +64,22 @@ class DashboardAdminController {
         res.status(404).json({ message: 'Team not found' });
         return;
       }
+      res.status(200).json(data);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getInstructorDashboard = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const instructorId = parseInt(req.params.instructorId, 10);
+
+      if (isNaN(instructorId)) {
+        res.status(400).json({ message: 'Invalid instructor ID' });
+        return;
+      }
+
+      const data = await dashboardUserService.getUserDashboardStats(instructorId);
       res.status(200).json(data);
     } catch (error) {
       next(error);

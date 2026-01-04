@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   BarChart,
   Bar,
@@ -18,8 +18,6 @@ interface Props {
   onBarClick: (team: TeamAnalysis) => void;
 }
 
-type ViewMode = 'total' | 'average';
-
 const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
   { value: '1m', label: '이번달' },
   { value: '3m', label: '3개월' },
@@ -27,7 +25,16 @@ const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
   { value: '12m', label: '12개월' },
 ];
 
-const COLORS = ['#6366F1', '#8B5CF6', '#A78BFA', '#C4B5FD', '#DDD6FE'];
+const COLORS = [
+  '#6366F1',
+  '#8B5CF6',
+  '#A78BFA',
+  '#C4B5FD',
+  '#DDD6FE',
+  '#10B981',
+  '#3B82F6',
+  '#F59E0B',
+];
 
 export const TeamWorkloadChart: React.FC<Props> = ({
   teams,
@@ -35,20 +42,16 @@ export const TeamWorkloadChart: React.FC<Props> = ({
   onPeriodChange,
   onBarClick,
 }) => {
-  const [viewMode, setViewMode] = useState<ViewMode>('total');
+  const data = teams
+    .map((team) => ({
+      ...team,
+      value: team.completedCount,
+    }))
+    .sort((a, b) => b.value - a.value);
 
-  const data = teams.map((team) => ({
-    ...team,
-    value: viewMode === 'total' ? team.completedCount : team.averageCompleted,
-  }));
-
-  // Sort by value descending
-  data.sort((a, b) => b.value - a.value);
-
-  const handleBarClick = (data: any) => {
-    if (data && data.activePayload && data.activePayload[0]) {
-      const payload = data.activePayload[0].payload as TeamAnalysis;
-      onBarClick(payload);
+  const handleBarClick = (_: unknown, index: number) => {
+    if (data[index]) {
+      onBarClick(data[index]);
     }
   };
 
@@ -56,49 +59,24 @@ export const TeamWorkloadChart: React.FC<Props> = ({
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-bold text-gray-800">팀 업무량 분포</h3>
-        <div className="flex items-center gap-2">
-          <div className="flex bg-gray-100 rounded-md p-0.5">
-            <button
-              onClick={() => setViewMode('total')}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                viewMode === 'total'
-                  ? 'bg-white text-indigo-700 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              총 교육수
-            </button>
-            <button
-              onClick={() => setViewMode('average')}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                viewMode === 'average'
-                  ? 'bg-white text-indigo-700 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              인당 평균
-            </button>
-          </div>
-          <select
-            value={period}
-            onChange={(e) => onPeriodChange(e.target.value as PeriodFilter)}
-            className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          >
-            {PERIOD_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <select
+          value={period}
+          onChange={(e) => onPeriodChange(e.target.value as PeriodFilter)}
+          className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        >
+          {PERIOD_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
       </div>
-      <div className="w-full h-64">
+      <div className="w-full h-80">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
             layout="vertical"
-            margin={{ top: 5, right: 30, left: 60, bottom: 5 }}
-            onClick={handleBarClick}
+            margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" horizontal={false} />
             <XAxis type="number" axisLine={false} tickLine={false} fontSize={12} />
@@ -108,7 +86,7 @@ export const TeamWorkloadChart: React.FC<Props> = ({
               axisLine={false}
               tickLine={false}
               fontSize={12}
-              width={55}
+              width={75}
             />
             <Tooltip
               cursor={{ fill: '#F3F4F6' }}
@@ -117,13 +95,10 @@ export const TeamWorkloadChart: React.FC<Props> = ({
                 border: 'none',
                 boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
               }}
-              formatter={(value) => [
-                viewMode === 'total' ? `${value ?? 0}건` : `${value ?? 0}건/인`,
-                viewMode === 'total' ? '총 교육수' : '인당 평균',
-              ]}
+              formatter={(value) => [`${value ?? 0}건`, '총 교육수']}
             />
-            <Bar dataKey="value" radius={[0, 4, 4, 0]} cursor="pointer">
-              {data.map((entry, index) => (
+            <Bar dataKey="value" radius={[0, 4, 4, 0]} cursor="pointer" onClick={handleBarClick}>
+              {data.map((_, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Bar>

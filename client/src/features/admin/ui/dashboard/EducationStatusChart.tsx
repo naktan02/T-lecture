@@ -8,12 +8,6 @@ interface Props {
 }
 
 const COLORS = ['#10B981', '#3B82F6', '#6366F1', '#EF4444'];
-const STATUS_LABELS: Record<string, string> = {
-  inProgress: '진행 중',
-  completed: '완료됨',
-  scheduled: '예정됨',
-  unassigned: '미배정',
-};
 
 export const EducationStatusChart: React.FC<Props> = ({ stats, onSegmentClick }) => {
   const { educationStatus } = stats;
@@ -49,7 +43,7 @@ export const EducationStatusChart: React.FC<Props> = ({ stats, onSegmentClick })
               onClick={(_, index) => handleClick(data[index])}
               style={{ cursor: 'pointer' }}
             >
-              {data.map((entry, index) => (
+              {data.map((_, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>

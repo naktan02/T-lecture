@@ -25,6 +25,13 @@ const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
   { value: '12m', label: '12개월' },
 ];
 
+interface DistributionItem {
+  name: string;
+  count: number;
+  value: number;
+  instructorList: InstructorAnalysis[];
+}
+
 export const WorkloadHistogram: React.FC<Props> = ({
   instructors,
   period,
@@ -32,12 +39,7 @@ export const WorkloadHistogram: React.FC<Props> = ({
   onBarClick,
 }) => {
   // Build distribution 0-12+
-  const distribution: {
-    name: string;
-    count: number;
-    value: number;
-    instructorList: InstructorAnalysis[];
-  }[] = [];
+  const distribution: DistributionItem[] = [];
 
   for (let i = 0; i <= 12; i++) {
     const matching = instructors.filter((inst) => inst.completedCount === i);
@@ -57,10 +59,10 @@ export const WorkloadHistogram: React.FC<Props> = ({
     instructorList: above12,
   });
 
-  const handleBarClick = (data: any) => {
-    if (data && data.activePayload && data.activePayload[0]) {
-      const payload = data.activePayload[0].payload;
-      onBarClick(payload.value, payload.instructorList);
+  const handleBarClick = (_: unknown, index: number) => {
+    const item = distribution[index];
+    if (item) {
+      onBarClick(item.value, item.instructorList);
     }
   };
 
@@ -80,13 +82,9 @@ export const WorkloadHistogram: React.FC<Props> = ({
           ))}
         </select>
       </div>
-      <div className="w-full h-64">
+      <div className="w-full h-72">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={distribution}
-            margin={{ top: 10, right: 10, left: -10, bottom: 5 }}
-            onClick={handleBarClick}
-          >
+          <BarChart data={distribution} margin={{ top: 10, right: 10, left: -10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={12} />
             <YAxis axisLine={false} tickLine={false} fontSize={12} />
@@ -100,7 +98,13 @@ export const WorkloadHistogram: React.FC<Props> = ({
               formatter={(value) => [`${value ?? 0}명`, '강사 수']}
               labelFormatter={(label) => `${label}회 완료`}
             />
-            <Bar dataKey="count" fill="#6366F1" radius={[4, 4, 0, 0]} cursor="pointer">
+            <Bar
+              dataKey="count"
+              fill="#6366F1"
+              radius={[4, 4, 0, 0]}
+              cursor="pointer"
+              onClick={handleBarClick}
+            >
               {distribution.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.count > 0 ? '#6366F1' : '#E5E7EB'} />
               ))}

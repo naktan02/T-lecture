@@ -168,8 +168,8 @@ export const AdminDashboard: React.FC = () => {
         </p>
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      {/* Charts Row - 2 columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <EducationStatusChart stats={stats} onSegmentClick={handleScheduleClick} />
         <WorkloadHistogram
           instructors={instructors}
@@ -177,6 +177,10 @@ export const AdminDashboard: React.FC = () => {
           onPeriodChange={handlePeriodChange}
           onBarClick={handleWorkloadBarClick}
         />
+      </div>
+
+      {/* Team Chart - Full width */}
+      <div className="mb-6">
         <TeamWorkloadChart
           teams={teams}
           period={period}
