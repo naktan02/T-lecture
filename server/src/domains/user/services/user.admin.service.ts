@@ -273,11 +273,27 @@ class AdminService {
     const isInstructor = !!user.instructor;
 
     if (isInstructor) {
-      // 주소가 변경된 경우에만 lat/lng 초기화
+      // 주소가 변경된 경우 즉시 좌표 재계산
       if (address !== undefined && address !== user.instructor!.location) {
         instructorData.location = address === '' ? null : address;
-        instructorData.lat = null;
-        instructorData.lng = null;
+
+        // 주소가 비어있으면 좌표도 null
+        if (!address || String(address).trim() === '') {
+          instructorData.lat = null;
+          instructorData.lng = null;
+        } else {
+          // 주소가 변경되었으면 즉시 좌표 재계산
+          const kakaoService = require('../../../infra/kakao.service').default;
+          const coords = await kakaoService.addressToCoordsOrNull(address);
+          if (coords) {
+            instructorData.lat = coords.lat;
+            instructorData.lng = coords.lng;
+          } else {
+            // 좌표 변환 실패 시 null로 설정
+            instructorData.lat = null;
+            instructorData.lng = null;
+          }
+        }
       }
       if (typeof isTeamLeader === 'boolean') {
         instructorData.isTeamLeader = isTeamLeader;

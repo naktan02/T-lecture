@@ -62,9 +62,14 @@ class AssignmentService {
 
     // 1) 데이터 준비
     const units = await assignmentRepository.findScheduleCandidates(start, end);
+
+    // 강사 가능일은 부대 전체 스케줄을 커버하기 위해 +9일 확장
+    const extendedEnd = new Date(end);
+    extendedEnd.setDate(extendedEnd.getDate() + 9);
+
     const instructors = await instructorRepository.findAvailableInPeriod(
       start.toISOString(),
-      end.toISOString(),
+      extendedEnd.toISOString(),
     );
 
     if (!units || units.length === 0) {
@@ -275,10 +280,25 @@ class AssignmentService {
       await this.checkAndAutoConfirm(Number(unitScheduleId));
     }
 
-    // 거절 시: 패널티 추가
+    // 거절 시: 패널티 추가 (사유 포함)
     if (newState === 'Rejected') {
       const penaltyDays = await this.getSystemConfigNumber('REJECTION_PENALTY_DAYS', 15);
-      await this.addPenaltyToInstructor(instructorId, penaltyDays);
+
+      // 배정 정보에서 부대/날짜 가져오기
+      const schedule = await prisma.unitSchedule.findUnique({
+        where: { id: Number(unitScheduleId) },
+        include: { unit: { select: { name: true } } },
+      });
+      const unitName = schedule?.unit?.name || 'unknown';
+      const dateStr = schedule?.date
+        ? new Date(schedule.date).toISOString().split('T')[0]
+        : 'unknown';
+
+      await this.addPenaltyToInstructor(instructorId, penaltyDays, {
+        unit: unitName,
+        date: dateStr,
+        type: '거절',
+      });
     }
 
     return {
@@ -287,9 +307,13 @@ class AssignmentService {
   }
 
   /**
-   * 강사에게 패널티 추가 (만료일 연장)
+   * 강사에게 패널티 추가 (만료일 연장, 사유 포함)
    */
-  private async addPenaltyToInstructor(instructorId: number, days: number) {
+  private async addPenaltyToInstructor(
+    instructorId: number,
+    days: number,
+    reason?: { unit: string; date: string; type: string },
+  ) {
     const now = new Date();
     const existing = await prisma.instructorPenalty.findUnique({
       where: { userId: instructorId },
@@ -298,13 +322,15 @@ class AssignmentService {
     if (existing) {
       const baseDate = existing.expiresAt > now ? existing.expiresAt : now;
       const newExpiresAt = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
+      const existingReasons = ((existing as any)?.reasons as Array<unknown>) || [];
 
       await prisma.instructorPenalty.update({
         where: { userId: instructorId },
         data: {
           count: { increment: 1 },
           expiresAt: newExpiresAt,
-        },
+          reasons: reason ? [...existingReasons, reason] : existingReasons,
+        } as any, // Prisma generate 후 제거
       });
     } else {
       await prisma.instructorPenalty.create({
@@ -312,7 +338,8 @@ class AssignmentService {
           userId: instructorId,
           count: 1,
           expiresAt: new Date(now.getTime() + days * 24 * 60 * 60 * 1000),
-        },
+          reasons: reason ? [reason] : [],
+        } as any, // Prisma generate 후 제거
       });
     }
   }

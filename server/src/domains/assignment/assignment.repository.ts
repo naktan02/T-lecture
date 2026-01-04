@@ -139,12 +139,8 @@ class AssignmentRepository {
       include: {
         trainingLocations: true,
         schedules: {
-          where: {
-            date: {
-              gte: startKST,
-              lte: endKST,
-            },
-          },
+          // 부대의 모든 스케줄을 가져옴 (날짜 필터 제거)
+          // 부대가 선택된 기간에 포함되면 해당 부대의 전체 일정을 표시
           orderBy: { date: 'asc' },
           include: {
             assignments: {
@@ -568,6 +564,71 @@ class AssignmentRepository {
       // 기존 Rejected/Canceled 배정이 있으면 Pending으로 업데이트 (upsert)
       if (changes.add.length > 0) {
         for (const a of changes.add) {
+          // 기존 배정 상태 확인 (Rejected였던 경우 패널티 사유 제거용)
+          const existingAssignment = await tx.instructorUnitAssignment.findUnique({
+            where: {
+              assignment_instructor_schedule_unique: {
+                unitScheduleId: a.unitScheduleId,
+                userId: a.instructorId,
+              },
+            },
+            include: {
+              UnitSchedule: {
+                include: { unit: { select: { name: true } } },
+              },
+            },
+          });
+
+          // 기존 배정이 Rejected였다면 패널티 사유 제거
+          if (existingAssignment?.state === 'Rejected') {
+            const unitName = existingAssignment.UnitSchedule?.unit?.name || 'unknown';
+            const dateStr = existingAssignment.UnitSchedule?.date
+              ? new Date(existingAssignment.UnitSchedule.date).toISOString().split('T')[0]
+              : 'unknown';
+
+            // 패널티에서 해당 사유 제거
+            const penalty = await tx.instructorPenalty.findUnique({
+              where: { userId: a.instructorId },
+            });
+
+            if (penalty) {
+              const existingReasons =
+                ((penalty as any)?.reasons as Array<{
+                  unit: string;
+                  date: string;
+                  type: string;
+                }>) || [];
+              const filteredReasons = existingReasons.filter(
+                (r) => !(r.unit === unitName && r.date === dateStr && r.type === '거절'),
+              );
+
+              if (penalty.count <= 1) {
+                // 마지막 패널티면 삭제
+                await tx.instructorPenalty.delete({
+                  where: { userId: a.instructorId },
+                });
+              } else {
+                // 남은 패널티가 있으면 count 감소 및 사유 업데이트
+                // 만료일 재계산 (남은 패널티 수에 맞게)
+                const penaltyDaysPerReject = 15; // 시스템 설정값 (하드코딩 임시)
+                const newCount = penalty.count - 1;
+                const now = new Date();
+                const newExpiresAt = new Date(
+                  now.getTime() + newCount * penaltyDaysPerReject * 24 * 60 * 60 * 1000,
+                );
+
+                await tx.instructorPenalty.update({
+                  where: { userId: a.instructorId },
+                  data: {
+                    count: { decrement: 1 },
+                    expiresAt: newExpiresAt,
+                    reasons: filteredReasons,
+                  } as any, // Prisma generate 후 제거
+                });
+              }
+            }
+          }
+
           await tx.instructorUnitAssignment.upsert({
             where: {
               assignment_instructor_schedule_unique: {

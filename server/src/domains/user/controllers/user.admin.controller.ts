@@ -80,6 +80,23 @@ export const updateUser = asyncHandler(async (req: Request, res: Response) => {
   res.json(updatedUser);
 });
 
+// ✅ 사용자 주소 전용 수정 (좌표 재계산 포함)
+export const updateUserAddress = asyncHandler(async (req: Request, res: Response) => {
+  const userId = parseUserIdParam(req);
+  const { address } = req.body;
+
+  // 주소만 업데이트 (service에서 좌표 재계산 처리)
+  const updatedUser = await adminService.updateUser(userId, { address });
+
+  logger.info('[admin.updateUserAddress]', {
+    actorId: req.user?.id,
+    targetUserId: userId,
+    address,
+  });
+
+  res.json(updatedUser);
+});
+
 // ✅ 사용자 ID로 삭제
 export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
   const userId = parseUserIdParam(req);
@@ -180,6 +197,7 @@ module.exports = {
   getPendingUsers,
   getUserById,
   updateUser,
+  updateUserAddress,
   deleteUser,
   approveUser,
   approveUsersBulk,
