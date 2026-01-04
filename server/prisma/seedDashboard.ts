@@ -72,11 +72,10 @@ async function main() {
       try {
         const targetUnit = associatedUnits[Math.floor(Math.random() * associatedUnits.length)];
 
-        // 해당 부대의 모든 유효한 일정 조회 (날짜 범위 제한 없음)
+        // 해당 부대의 모든 일정 조회 (새 스키마: 모든 스케줄이 유효함)
         const availableSchedules = await prisma.unitSchedule.findMany({
           where: {
             unitId: targetUnit.id,
-            isExcluded: false, // 교육불가일 제외
           },
         });
 

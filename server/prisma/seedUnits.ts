@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+/* eslint-disable no-console */
+import { PrismaClient, MilitaryType } from '@prisma/client';
 import ExcelJS from 'exceljs';
 import path from 'path';
 import 'dotenv/config';
@@ -8,216 +9,233 @@ const prisma = new PrismaClient();
 // 엑셀 파일 경로
 const EXCEL_PATH = path.join(__dirname, '../test-data/test-units-100.xlsx');
 
-async function main() {
-  console.log('🚀 부대 데이터 및 교육장소 시딩 시작 (Excel 기반)... \n');
+// === 파싱 헬퍼 함수들 ===
 
+function parseTime(val: unknown): Date | null {
+  if (!val) return null;
+  const timeStr = String(val).trim();
+  const match = timeStr.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (match) {
+    return new Date(2000, 0, 1, parseInt(match[1]), parseInt(match[2]), parseInt(match[3] || '0'));
+  }
+  return null;
+}
+
+function parseDate(val: unknown): Date | null {
+  if (!val) return null;
+  const d = new Date(String(val));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function parseUnitType(val: unknown): MilitaryType {
+  if (!val) return 'Army';
+  const v = String(val).trim();
+  if (v.includes('육군') || v === 'Army') return 'Army';
+  if (v.includes('해군') || v === 'Navy') return 'Navy';
+  if (v.includes('공군') || v === 'AirForce') return 'AirForce';
+  if (v.includes('해병') || v === 'Marines') return 'Marines';
+  if (v.includes('국직') || v === 'MND') return 'MND';
+  return 'Army';
+}
+
+function parseBool(val: unknown): boolean {
+  if (!val) return false;
+  const v = String(val).trim().toLowerCase();
+  return ['o', 'yes', 'y', 'true', '1', 'v', '○', '예'].includes(v);
+}
+
+function parseNumber(val: unknown): number | null {
+  if (!val) return null;
+  const n = parseInt(String(val), 10);
+  return isNaN(n) ? null : n;
+}
+
+async function main() {
+  console.log('🚀 부대 데이터 시딩 시작 (Upsert 로직)... \n');
   console.log(`📂 엑셀 파일 로딩: ${EXCEL_PATH}`);
 
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(EXCEL_PATH);
-  const worksheet = workbook.getWorksheet(1); // 첫 번째 시트
+  const worksheet = workbook.getWorksheet(1);
 
   if (!worksheet) {
     console.error('❌ 엑셀 시트를 찾을 수 없습니다.');
     return;
   }
 
-  // 헤더 행 찾기 (부대명 컬럼이 있는 행)
+  // 헤더 행 찾기
   let headerRowIndex = 1;
   const headers: string[] = [];
 
   worksheet.eachRow((row, rowNumber) => {
-    // 이미 헤더를 찾았으면 스킵
     if (headers.length > 0) return;
-
     let isHeader = false;
     row.eachCell((cell) => {
-      const text = cell.text ? cell.text.trim() : '';
-      if (text === '부대명') {
-        isHeader = true;
-      }
+      if (cell.text?.trim() === '부대명') isHeader = true;
     });
-
     if (isHeader) {
       headerRowIndex = rowNumber;
       console.log(`🔎 헤더 행 발견: ${rowNumber}행`);
       row.eachCell((cell, colNumber) => {
-        headers[colNumber] = cell.text ? cell.text.trim() : '';
+        headers[colNumber] = cell.text?.trim() || '';
       });
     }
   });
 
-  console.log('📊 Headers:', headers);
-
-  const unitDataList: any[] = [];
+  // 데이터 행 파싱
+  const unitDataList: Record<string, string>[] = [];
   worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber <= headerRowIndex) return; // 헤더 및 그 이전 행 스킵
-    const rowData: any = {};
+    if (rowNumber <= headerRowIndex) return;
+
+    const rowData: Record<string, string> = {};
     row.eachCell((cell, colNumber) => {
       const header = headers[colNumber];
       if (header) {
-        rowData[header] = cell.text;
+        rowData[header] = cell.text || '';
       }
     });
-    // 빈 행이면 스킵
-    if (!rowData['부대명'] && !rowData['name']) return;
-    unitDataList.push(rowData);
+
+    if (rowData['부대명']) {
+      unitDataList.push(rowData);
+    }
   });
 
-  console.log(`📋 부대 데이터 ${unitDataList.length}건 읽음. DB 생성 중...`);
+  console.log(`📋 부대 데이터 ${unitDataList.length}건 읽음. Upsert 중...`);
 
-  const createdUnits = [];
+  let createdCount = 0;
+  let updatedCount = 0;
+  let scheduleCount = 0;
+  let locationCount = 0;
+
   for (const row of unitDataList) {
-    const name = row['부대명'] || row['name'];
+    const name = row['부대명'];
     if (!name) continue;
 
     try {
-      let unit = await prisma.unit.findFirst({ where: { name } });
+      // 부대 데이터 준비
+      const unitData = {
+        name,
+        unitType: parseUnitType(row['군구분']),
+        wideArea: row['광역'] || null,
+        region: row['지역'] || null,
+        addressDetail: row['부대상세주소'] || null,
+        lat: parseNumber(row['위도']) || 37.5,
+        lng: parseNumber(row['경도']) || 127.0,
+        educationStart: parseDate(row['교육시작일자']),
+        educationEnd: parseDate(row['교육종료일자']),
+        workStartTime: parseTime(row['근무시작시간']),
+        workEndTime: parseTime(row['근무종료시간']),
+        lunchStartTime: parseTime(row['점심시작시간']),
+        lunchEndTime: parseTime(row['점심종료시간']),
+        officerName: row['간부명'] || null,
+        officerPhone: row['간부 전화번호'] || null,
+        officerEmail: row['간부 이메일 주소'] || null,
+        excludedDates: row['교육불가일자']
+          ? row['교육불가일자']
+              .split(/[,;]/)
+              .map((d) => d.trim())
+              .filter(Boolean)
+          : [],
+      };
 
-      if (!unit) {
-        // 시간 파싱 헬퍼 (HH:mm 또는 HH:mm:ss 형식을 Date로 변환)
-        const parseTime = (val: any): Date | null => {
-          if (!val) return null;
-          const timeStr = String(val).trim();
-          // HH:mm 또는 HH:mm:ss 형식 파싱
-          const match = timeStr.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
-          if (match) {
-            const d = new Date(
-              2000,
-              0,
-              1,
-              parseInt(match[1]),
-              parseInt(match[2]),
-              parseInt(match[3] || '0'),
-            );
-            return d;
-          }
-          return null;
-        };
+      // 기존 부대 확인
+      const existingUnit = await prisma.unit.findFirst({ where: { name } });
 
-        // 군구분 파싱
-        const parseUnitType = (
-          val: any,
-        ): 'Army' | 'Navy' | 'AirForce' | 'Marines' | 'MND' | null => {
-          if (!val) return 'Army';
-          const v = String(val).trim();
-          if (v.includes('육군') || v === 'Army') return 'Army';
-          if (v.includes('해군') || v === 'Navy') return 'Navy';
-          if (v.includes('공군') || v === 'AirForce') return 'AirForce';
-          if (v.includes('해병') || v === 'Marines') return 'Marines';
-          if (v.includes('국직') || v === 'MND') return 'MND';
-          return 'Army';
-        };
-
-        unit = await prisma.unit.create({
-          data: {
-            name,
-            addressDetail: row['부대상세주소'] || row['주소'] || row['address'] || '주소 미정',
-            lat: row['위도'] || row['lat'] ? parseFloat(row['위도'] || row['lat']) : 37.5,
-            lng: row['경도'] || row['lng'] ? parseFloat(row['경도'] || row['lng']) : 127.0,
-            region: row['지역'] || row['region'] || '서울',
-            wideArea: row['광역'] || null,
-            unitType: parseUnitType(row['군구분']),
-            // 담당자 정보
-            officerName: row['간부명'] || null,
-            officerPhone: row['간부 전화번호'] || null,
-            officerEmail: row['간부 이메일 주소'] || null,
-            // 근무 시간 정보 (통계 계산에 필수!)
-            workStartTime: parseTime(row['근무시작시간']),
-            workEndTime: parseTime(row['근무종료시간']),
-            lunchStartTime: parseTime(row['점심시작시간']),
-            lunchEndTime: parseTime(row['점심종료시간']),
-          },
+      let unit;
+      if (existingUnit) {
+        // 업데이트 (upsert)
+        unit = await prisma.unit.update({
+          where: { id: existingUnit.id },
+          data: unitData,
         });
+        updatedCount++;
+      } else {
+        // 새로 생성
+        unit = await prisma.unit.create({ data: unitData });
+        createdCount++;
       }
-      createdUnits.push(unit);
 
-      // TrainingLocation 생성
-      const parseBool = (val: any) => val === 'O';
-
-      // 이미 존재하는지 확인하지 않고 create하면 에러날 수 있으므로 upsert나 create (test data라 그냥 create 시도하지만 중복 에러 가능성 있음)
-      // clear_dashboard_data.ts로 다 지우고 할 것이므로 create해도 됨.
-      // 하지만 unit이 이미 있으면(findFirst로 찾은 경우) trainingLocation도 있을 수 있음.
-      // 안전하게 deleteMany 후 create 또는 upsert? TrainingLocation은 id가 PK. unitId는 FK.
-      // unitId로 조회해서 있으면 skip?
-
+      // TrainingLocation: 기존 삭제 후 재생성
       await prisma.trainingLocation.deleteMany({ where: { unitId: unit.id } });
-
       await prisma.trainingLocation.create({
         data: {
           unitId: unit.id,
-          originalPlace: row['기존교육장소'],
-          changedPlace: row['변경교육장소'], // 엑셀에 없을 수도 있음
+          originalPlace: row['기존교육장소'] || null,
+          changedPlace: row['변경교육장소'] || null,
           hasInstructorLounge: parseBool(row['강사휴게실 여부']),
           hasWomenRestroom: parseBool(row['여자화장실 여부']),
           hasCateredMeals: parseBool(row['수탁급식여부']),
           hasHallLodging: parseBool(row['회관숙박여부']),
           allowsPhoneBeforeAfter: parseBool(row['사전사후 휴대폰 불출 여부']),
-          plannedCount: row['계획인원'] ? parseInt(row['계획인원']) : 0,
-          actualCount: row['참여인원'] ? parseInt(row['참여인원']) : 0,
-          instructorsNumbers: row['투입강사수'] ? parseInt(row['투입강사수']) : 0,
-          note: row['특이사항'],
+          plannedCount: parseNumber(row['계획인원']) || 0,
+          actualCount: parseNumber(row['참여인원']) || 0,
+          note: row['특이사항'] || null,
         },
       });
+      locationCount++;
 
-      // UnitSchedule 생성 (교육시작일자 ~ 교육종료일자)
-      // 교육불가일자 고려: "YYYY-MM-DD, YYYY-MM-DD" 형태일 수 있다고 가정 (아니면 단일 날짜)
-      const parseDate = (val: any) => {
-        if (!val) return null;
-        const d = new Date(val);
-        return isNaN(d.getTime()) ? null : d;
-      };
-
+      // UnitSchedule: 기존 삭제 후 재생성 (배정 데이터는 CASCADE로 삭제됨)
       const startDate = parseDate(row['교육시작일자']);
       const endDate = parseDate(row['교육종료일자']);
-      const excludedDateRaw = row['교육불가일자'];
-
-      const excludedDatesStr = excludedDateRaw ? String(excludedDateRaw) : '';
-      // 콤마나 공백으로 분리? 일단 단순 포함 여부 체크나 파싱 필요.
-      // 여기서는 간단히 문자열 포함 여부로 체크하거나, 정확한 포맷을 알 수 없으므로 우선 스킵하고
-      // startDate ~ endDate 사이의 모든 날짜 생성.
+      const excludedDatesStr = row['교육불가일자'] || '';
 
       if (startDate && endDate) {
-        // 기존 스케줄 삭제 (중복 방지)
-        await prisma.unitSchedule.deleteMany({ where: { unitId: unit.id } });
+        // 기존 배정 삭제 (cascade 관계가 아니므로 수동 삭제)
+        const existingSchedules = await prisma.unitSchedule.findMany({
+          where: { unitId: unit.id },
+          select: { id: true },
+        });
 
-        const schedulesToCreate = [];
+        if (existingSchedules.length > 0) {
+          const scheduleIds = existingSchedules.map((s) => s.id);
+          await prisma.instructorUnitAssignment.deleteMany({
+            where: { unitScheduleId: { in: scheduleIds } },
+          });
+          await prisma.unitSchedule.deleteMany({ where: { unitId: unit.id } });
+        }
+
+        // 새 스케줄 생성 (교육불가일자 제외)
+        const schedulesToCreate: { unitId: number; date: Date }[] = [];
         const current = new Date(startDate);
         const end = new Date(endDate);
 
         while (current <= end) {
-          // 날짜 복사
-          const dateToSave = new Date(current);
-
-          // 교육불가일자 체크 (단순 문자열 매칭)
-          // 엑셀 포맷에 따라 다르겠지만, YYYY-MM-DD 문자열이 포함되어 있으면 제외
-          const dateStr = dateToSave.toISOString().split('T')[0];
+          const dateStr = current.toISOString().split('T')[0];
           const isExcluded = excludedDatesStr.includes(dateStr);
 
-          // 서버 로직(UnitService)과 동일하게:
-          // 모든 날짜에 대해 Schedule을 생성하되, isExcluded 플래그를 설정함.
-          schedulesToCreate.push({
-            unitId: unit.id,
-            date: dateToSave,
-            isExcluded: isExcluded,
-          });
-
-          // 하루 증가
+          if (!isExcluded) {
+            schedulesToCreate.push({
+              unitId: unit.id,
+              date: new Date(current),
+            });
+          }
           current.setDate(current.getDate() + 1);
         }
 
         if (schedulesToCreate.length > 0) {
-          await prisma.unitSchedule.createMany({
-            data: schedulesToCreate,
-          });
-          // console.log(`   └ 📅 일정 ${schedulesToCreate.length}일 생성`);
+          await prisma.unitSchedule.createMany({ data: schedulesToCreate });
+          scheduleCount += schedulesToCreate.length;
+        }
+
+        // 교육불가일자가 있으면 로그
+        if (excludedDatesStr) {
+          const totalDays =
+            Math.ceil((end.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+          console.log(
+            `  📅 ${name}: 총 ${totalDays}일 중 ${schedulesToCreate.length}일 유효 (제외: ${excludedDatesStr})`,
+          );
         }
       }
     } catch (e) {
-      // console.error(`부대 생성 실패: ${name}`, e);
+      console.error(`❌ 부대 처리 실패: ${name}`, e);
     }
   }
-  console.log(`✅ 부대 및 일정 ${createdUnits.length}개 처리 완료\n`);
+
+  console.log(`\n✅ 부대 처리 완료`);
+  console.log(`   - 신규 생성: ${createdCount}개`);
+  console.log(`   - 업데이트: ${updatedCount}개`);
+  console.log(`   - 교육장소: ${locationCount}개`);
+  console.log(`   - 부대일정: ${scheduleCount}개\n`);
 
   console.log('Step 2: run `npm run seed:dashboard` to create assignments and stats.');
 }
@@ -230,3 +248,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+/* eslint-enable no-console */
