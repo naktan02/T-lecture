@@ -89,6 +89,7 @@ class AssignmentDTO {
               region: unit.region,
               wideArea: unit.wideArea,
               address: unit.addressDetail,
+              detailAddress: unit.detailAddress,
               officerName: unit.officerName,
               officerPhone: unit.officerPhone,
               officerEmail: unit.officerEmail,

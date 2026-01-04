@@ -12,6 +12,8 @@ type UseTemplateEditorOptions = {
   registry: VariableRegistry;
   onEditFormat?: (index: number, token: Token & { type: 'format' }) => void;
   onInsertFormat?: (varDef: VariableDef, callback: (format: string) => void) => void;
+  /** 드래그 삽입 시 프리셋 값을 반환하는 콜백 (드래그 시 모달 없이 바로 삽입) */
+  getFormatPreset?: (key: string) => string;
 };
 
 export function useTemplateEditor({
@@ -20,6 +22,7 @@ export function useTemplateEditor({
   registry,
   onEditFormat,
   onInsertFormat,
+  getFormatPreset,
 }: UseTemplateEditorOptions) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<string | null>(null);
@@ -246,50 +249,45 @@ export function useTemplateEditor({
         const data = e.dataTransfer.getData('application/json');
         const v: VariableDef = JSON.parse(data);
 
-        // skipModal이 true면 바로 삽입
-        if (v.isFormat && v.skipModal) {
+        // 포맷 변수 드래그 시: 프리셋 값으로 바로 삽입 (모달 없이)
+        if (v.isFormat) {
           const info = registry.get(registry.normalizeKey(v.key));
+          // getFormatPreset이 있으면 프리셋 사용, 없으면 defaultFormat 사용
+          const format = getFormatPreset?.(v.key) || v.defaultFormat || '';
           const html = createVariableHtml(
             v.key,
             info?.label ?? v.key,
             info?.icon ?? '🏷️',
             info?.category || 'default',
             true,
-            v.defaultFormat,
+            format,
           );
           insertHtmlAtPoint(html, e.clientX, e.clientY);
           return;
         }
 
-        if (v.isFormat && onInsertFormat) {
-          onInsertFormat(v, (format) => {
-            const info = registry.get(registry.normalizeKey(v.key));
-            const html = createVariableHtml(
-              v.key,
-              info?.label ?? v.key,
-              info?.icon ?? '🏷️',
-              info?.category || 'default',
-              true,
-              format,
-            );
-            insertHtmlAtPoint(html, e.clientX, e.clientY);
-          });
-        } else {
-          const info = registry.get(registry.normalizeKey(v.key));
-          const html = createVariableHtml(
-            v.key,
-            info?.label ?? v.key,
-            info?.icon ?? '🏷️',
-            info?.category || 'default',
-            !!v.isFormat,
-          );
-          insertHtmlAtPoint(html, e.clientX, e.clientY);
-        }
+        // 일반 변수 드래그
+        const info = registry.get(registry.normalizeKey(v.key));
+        const html = createVariableHtml(
+          v.key,
+          info?.label ?? v.key,
+          info?.icon ?? '🏷️',
+          info?.category || 'default',
+          false,
+        );
+        insertHtmlAtPoint(html, e.clientX, e.clientY);
       } catch {
         // ignore
       }
     },
-    [draggedInternal, registry, onInsertFormat, syncToTemplate, insertHtmlAtPoint, removeDragCaret],
+    [
+      draggedInternal,
+      registry,
+      getFormatPreset,
+      syncToTemplate,
+      insertHtmlAtPoint,
+      removeDragCaret,
+    ],
   );
 
   // 에디터 클릭 (삭제, 포맷 편집)

@@ -187,6 +187,7 @@ export const UnitToolbar = ({
             name="startDate"
             value={filters.startDate}
             onChange={handleChange}
+            max="2099-12-31"
             className="text-sm bg-transparent outline-none w-28 lg:w-32 cursor-pointer"
           />
           <span className="text-gray-400">~</span>
@@ -195,6 +196,7 @@ export const UnitToolbar = ({
             name="endDate"
             value={filters.endDate}
             onChange={handleChange}
+            max="2099-12-31"
             className="text-sm bg-transparent outline-none w-28 lg:w-32 cursor-pointer"
           />
         </div>
@@ -308,6 +310,7 @@ export const UnitToolbar = ({
               name="startDate"
               value={filters.startDate}
               onChange={handleChange}
+              max="2099-12-31"
               className="flex-1 px-3 py-3 border border-gray-200 rounded-lg text-sm outline-none"
             />
             <input
@@ -315,6 +318,7 @@ export const UnitToolbar = ({
               name="endDate"
               value={filters.endDate}
               onChange={handleChange}
+              max="2099-12-31"
               className="flex-1 px-3 py-3 border border-gray-200 rounded-lg text-sm outline-none"
             />
           </div>

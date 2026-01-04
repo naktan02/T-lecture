@@ -1,7 +1,15 @@
 // client/src/features/assignment-settings/ui/PriorityCreditSection.tsx
 import { ReactElement, useState } from 'react';
-import { TrashIcon, PencilIcon, XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
+import {
+  TrashIcon,
+  PencilIcon,
+  XMarkIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+} from '@heroicons/react/24/outline';
 import { usePriorityCredits } from '../model/usePriorityCredits';
+import { ReasonItem } from '../api/priorityCreditApi';
 
 /**
  * 우선배정 크레딧 관리 섹션
@@ -10,6 +18,16 @@ export const PriorityCreditSection = (): ReactElement => {
   const { credits, isLoading, updateCredit, deleteCredit } = usePriorityCredits();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState<number>(1);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  // 사유 포맷 (부대명 - 날짜)
+  const formatReason = (reason: ReasonItem): string => {
+    const parts = [];
+    if (reason.unit) parts.push(reason.unit);
+    if (reason.date) parts.push(reason.date);
+    if (reason.type) parts.push(`(${reason.type})`);
+    return parts.join(' ') || '-';
+  };
 
   // 편집 시작
   const startEdit = (instructorId: number, currentCredits: number) => {
@@ -36,6 +54,11 @@ export const PriorityCreditSection = (): ReactElement => {
     if (confirm(`${userName || '강사'}의 우선배정 크레딧을 삭제하시겠습니까?`)) {
       deleteCredit(instructorId);
     }
+  };
+
+  // 사유 목록 펼침/접기 토글
+  const toggleExpand = (instructorId: number) => {
+    setExpandedId(expandedId === instructorId ? null : instructorId);
   };
 
   if (isLoading) {
@@ -76,6 +99,9 @@ export const PriorityCreditSection = (): ReactElement => {
                   팀
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  사유
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   크레딧
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -84,67 +110,112 @@ export const PriorityCreditSection = (): ReactElement => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {credits.map((credit) => (
-                <tr key={credit.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {credit.instructor.user.name || `강사 #${credit.instructorId}`}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                    {credit.instructor.team?.name || '-'}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm">
-                    {editingId === credit.instructorId ? (
-                      <input
-                        type="number"
-                        value={editValue}
-                        onChange={(e) => setEditValue(Number(e.target.value))}
-                        min={1}
-                        max={10}
-                        className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                        {credit.credits}회
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
-                    {editingId === credit.instructorId ? (
-                      <div className="flex justify-end gap-1">
-                        <button
-                          onClick={cancelEdit}
-                          className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                        >
-                          <XMarkIcon className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => saveEdit(credit.instructorId)}
-                          className="p-1 text-green-500 hover:text-green-700 transition-colors"
-                        >
-                          <CheckIcon className="w-5 h-5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex justify-end gap-1">
-                        <button
-                          onClick={() => startEdit(credit.instructorId, credit.credits)}
-                          className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                        >
-                          <PencilIcon className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleDelete(credit.instructorId, credit.instructor.user.name)
-                          }
-                          className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                        >
-                          <TrashIcon className="w-5 h-5" />
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {credits.map((credit) => {
+                const reasons = credit.reasons || [];
+                const hasMultipleReasons = reasons.length > 1;
+                const isExpanded = expandedId === credit.instructorId;
+                const firstReason = reasons[0];
+
+                return (
+                  <tr key={credit.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {credit.instructor.user.name || `강사 #${credit.instructorId}`}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      {credit.instructor.team?.name || '-'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">
+                      {reasons.length === 0 ? (
+                        <span className="text-gray-400">-</span>
+                      ) : (
+                        <div>
+                          {/* 첫 번째 사유 + 펼침 버튼 */}
+                          <div className="flex items-center gap-1">
+                            <span>{formatReason(firstReason)}</span>
+                            {hasMultipleReasons && (
+                              <button
+                                onClick={() => toggleExpand(credit.instructorId)}
+                                className="ml-1 p-0.5 text-gray-400 hover:text-gray-600 transition-colors"
+                                title={isExpanded ? '접기' : `+${reasons.length - 1}개 더 보기`}
+                              >
+                                {isExpanded ? (
+                                  <ChevronUpIcon className="w-4 h-4" />
+                                ) : (
+                                  <span className="flex items-center text-xs text-blue-500">
+                                    +{reasons.length - 1}
+                                    <ChevronDownIcon className="w-3 h-3 ml-0.5" />
+                                  </span>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                          {/* 펼쳐진 사유 목록 */}
+                          {isExpanded && hasMultipleReasons && (
+                            <div className="mt-2 pl-2 border-l-2 border-gray-200 space-y-1">
+                              {reasons.slice(1).map((reason, idx) => (
+                                <div key={idx} className="text-xs text-gray-500">
+                                  {formatReason(reason)}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm">
+                      {editingId === credit.instructorId ? (
+                        <input
+                          type="number"
+                          value={editValue}
+                          onChange={(e) => setEditValue(Number(e.target.value))}
+                          min={1}
+                          max={10}
+                          className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                          {credit.credits}회
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
+                      {editingId === credit.instructorId ? (
+                        <div className="flex justify-end gap-1">
+                          <button
+                            onClick={cancelEdit}
+                            className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                          >
+                            <XMarkIcon className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => saveEdit(credit.instructorId)}
+                            className="p-1 text-green-500 hover:text-green-700 transition-colors"
+                          >
+                            <CheckIcon className="w-5 h-5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex justify-end gap-1">
+                          <button
+                            onClick={() => startEdit(credit.instructorId, credit.credits)}
+                            className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                          >
+                            <PencilIcon className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleDelete(credit.instructorId, credit.instructor.user.name)
+                            }
+                            className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                          >
+                            <TrashIcon className="w-5 h-5" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

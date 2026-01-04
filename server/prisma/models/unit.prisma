@@ -14,7 +14,8 @@ model Unit {
   name          String?       @map("부대명")
   wideArea      String?       @map("광역")
   region        String?       @map("지역")
-  addressDetail String?       @map("부대상세주소") @db.Text
+  addressDetail String?       @map("부대주소") @db.Text
+  detailAddress String?       @map("부대상세주소") @db.Text
   lat           Float?        @map("위도")
   lng           Float?        @map("경도")
 

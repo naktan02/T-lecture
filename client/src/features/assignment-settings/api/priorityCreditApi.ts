@@ -1,10 +1,18 @@
 // client/src/features/assignment-settings/api/priorityCreditApi.ts
 import { apiClient } from '../../../shared/apiClient';
 
+// 사유 아이템 타입 (penaltyApi와 동일)
+export interface ReasonItem {
+  unit?: string;
+  date?: string;
+  type?: string;
+}
+
 export interface PriorityCredit {
   id: number;
   instructorId: number;
   credits: number;
+  reasons: ReasonItem[] | null;
   createdAt: string;
   updatedAt: string;
   instructor: {

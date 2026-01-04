@@ -144,6 +144,16 @@ export const userManagementApi = {
     return res.json();
   },
 
+  // 유저 주소 전용 수정 (좌표 재계산 자동 처리)
+  updateUserAddress: async (id: number, address: string): Promise<User> => {
+    const res = await apiClient(`/api/v1/admin/users/${id}/address`, {
+      method: 'PATCH',
+      body: JSON.stringify({ address }),
+    });
+    if (!res.ok) throw new Error('주소 수정 실패');
+    return res.json();
+  },
+
   // 유저 삭제
   deleteUser: async (id: number): Promise<UserActionResponse> => {
     const res = await apiClient(`/api/v1/admin/users/${id}`, {

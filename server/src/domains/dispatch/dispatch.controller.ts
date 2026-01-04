@@ -20,9 +20,13 @@ export const sendTemporaryDispatches = asyncHandler(async (req: Request, res: Re
   res.json(result);
 });
 
-// 확정 배정 발송 일괄 발송
+// 확정 배정 발송 일괄 발송 (날짜 범위 필터링)
 export const sendConfirmedDispatches = asyncHandler(async (req: Request, res: Response) => {
-  const result = await dispatchService.sendConfirmedDispatches();
+  const { startDate, endDate } = req.query;
+  const result = await dispatchService.sendConfirmedDispatches(
+    startDate ? String(startDate) : undefined,
+    endDate ? String(endDate) : undefined,
+  );
   res.json(result);
 });
 

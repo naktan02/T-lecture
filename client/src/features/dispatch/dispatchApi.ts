@@ -67,9 +67,17 @@ export const markDispatchAsReadApi = async (dispatchId: number): Promise<{ succe
   return res.json();
 };
 
-// 확정 발송 일괄 발송
-export const sendConfirmedDispatchesApi = async (): Promise<{ createdCount: number }> => {
-  const res = await apiClient('/api/v1/dispatches/send/confirmed', {
+// 확정 발송 일괄 발송 (날짜 범위 필터링)
+export const sendConfirmedDispatchesApi = async (
+  startDate?: string,
+  endDate?: string,
+): Promise<{ createdCount: number; message: string }> => {
+  const params = new URLSearchParams();
+  if (startDate) params.append('startDate', startDate);
+  if (endDate) params.append('endDate', endDate);
+
+  const url = `/api/v1/dispatches/send/confirmed${params.toString() ? `?${params}` : ''}`;
+  const res = await apiClient(url, {
     method: 'POST',
   });
   if (!res.ok) {

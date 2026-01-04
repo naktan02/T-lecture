@@ -15,6 +15,8 @@ type Props = {
   className?: string;
   onEditFormat?: (index: number, token: Token & { type: 'format' }) => void;
   onInsertFormat?: (varDef: VariableDef, callback: (format: string) => void) => void;
+  /** 드래그 삽입 시 프리셋 값을 반환하는 콜백 */
+  getFormatPreset?: (key: string) => string;
   /** 제목처럼 한 줄 입력용 컴팩트 모드 */
   singleLine?: boolean;
   /** 변수 패널 숨김 (외부 패널 공유 시 사용) */
@@ -28,6 +30,7 @@ export function TemplateEditor({
   className,
   onEditFormat,
   onInsertFormat,
+  getFormatPreset,
   singleLine = false,
   hidePanel = false,
 }: Props) {
@@ -53,6 +56,7 @@ export function TemplateEditor({
     registry,
     onEditFormat,
     onInsertFormat,
+    getFormatPreset,
   });
 
   // singleLine 모드 높이 설정
