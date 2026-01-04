@@ -4,17 +4,19 @@ import { compileTemplate } from '../../common/utils/templateHelper';
 import AppError from '../../common/errors/AppError';
 import metadataRepository from '../metadata/metadata.repository';
 import { PrismaError } from '../../types/common.types';
-import { UserDispatchGroup } from '../../types/dispatch.types';
 import { tokensToTemplate, MessageTemplateBody } from '../../types/template.types';
 import {
   buildVariables,
   buildLocationsFormat,
   buildInstructorsFormat,
   buildMySchedulesFormat,
+  getDayOfWeek,
+  categoryKorean,
 } from './dispatch.templateHelper';
 
 class DispatchService {
   // 임시 배정 발송 일괄 발송 (부대별로 별도 발송, 날짜 범위 필터링)
+  // 클라이언트가 actualDateRange를 전달하므로 서버는 그대로 사용
   async sendTemporaryDispatches(startDate?: string, endDate?: string) {
     // 템플릿 조회
     const template = await metadataRepository.findTemplateByKey('TEMPORARY');
@@ -26,7 +28,7 @@ class DispatchService {
       );
     }
 
-    // 대상 조회 (날짜 범위 적용)
+    // 대상 조회 (클라이언트가 전달한 날짜 범위 적용)
     const targets = await dispatchRepository.findTargetsForTemporaryDispatch(startDate, endDate);
     if (targets.length === 0) {
       throw new AppError('발송할 대상(임시 배정 미수신자)이 없습니다.', 404, 'NO_TARGETS');
@@ -94,22 +96,11 @@ class DispatchService {
           return (categoryOrder[cat1] || 99) - (categoryOrder[cat2] || 99);
         });
 
-        // 이름(등급) 형식으로 변환 - 영어→한글 변환
-        const categoryKorean: Record<string, string> = {
-          Main: '주',
-          Sub: '부',
-          Assistant: '보조',
-          Trainee: '실습',
-          주강사: '주',
-          부강사: '부',
-          보조강사: '보조',
-          실습강사: '실습',
-        };
+        // 이름(등급) 형식으로 변환 - 공통 categoryKorean 사용
         const instructorNames = sortedInstructors
           .map((ua) => {
             const name = ua.User?.name || '';
             let category = ua.User?.instructor?.category || '';
-            // 영어 또는 한글 → 축약형 한글 변환
             category = categoryKorean[category] || category.replace('강사', '');
             return category ? `${name}(${category})` : name;
           })
@@ -134,9 +125,13 @@ class DispatchService {
       // 장소 목록 (locations 포맷 변수)
       const locationsList = buildLocationsFormat(unit.trainingLocations || []);
 
-      // 본인 일정 (self.mySchedules)
+      // 본인 일정 (self.mySchedules) - 해당 부대의 모든 배정 일정 (필터 기간 무관)
+      const allUserAssignments = await dispatchRepository.findAllAssignmentsForUserInUnit(
+        user.id,
+        unit.id,
+      );
       const mySchedulesList = buildMySchedulesFormat(
-        assignments.map((a) => ({ date: a.UnitSchedule.date ?? new Date() })),
+        allUserAssignments.map((a) => ({ date: a.UnitSchedule.date ?? new Date() })),
         user.name || '',
       );
 
@@ -158,7 +153,8 @@ class DispatchService {
         title,
         body,
         userId: user.id,
-        assignmentIds: assignments.map((a) => a.unitScheduleId),
+        // 해당 부대의 모든 배정 ID 포함 (수락/거절 시 부대 단위로 처리)
+        assignmentIds: allUserAssignments.map((a) => a.unitScheduleId),
       });
     }
 
@@ -200,8 +196,8 @@ class DispatchService {
     return result;
   }
 
-  // 확정 배정 발송 일괄 발송
-  async sendConfirmedDispatches() {
+  // 확정 배정 발송 일괄 발송 (날짜 범위 필터링)
+  async sendConfirmedDispatches(startDate?: string, endDate?: string) {
     // 템플릿 조회
     const leaderTemplate = await metadataRepository.findTemplateByKey('CONFIRMED_LEADER');
     const memberTemplate = await metadataRepository.findTemplateByKey('CONFIRMED_MEMBER');
@@ -214,20 +210,32 @@ class DispatchService {
       );
     }
 
-    // 대상 조회
-    const targets = await dispatchRepository.findTargetsForConfirmedDispatch();
+    // 대상 조회 (날짜 범위 적용)
+    const targets = await dispatchRepository.findTargetsForConfirmedDispatch(startDate, endDate);
     if (targets.length === 0) {
       throw new AppError('발송할 대상(확정 배정 미수신자)이 없습니다.', 404, 'NO_TARGETS');
     }
 
-    // 그룹화
-    const userMap = new Map<number, UserDispatchGroup>();
-    targets.forEach((assign) => {
-      const userId = assign.userId;
-      if (!userMap.has(userId)) {
-        userMap.set(userId, { user: assign.User, assignments: [] });
+    // 그룹화 (User ID + Unit ID 기준 - 부대별로 별도 발송)
+    const groupMap = new Map<
+      string,
+      {
+        user: (typeof targets)[0]['User'];
+        unit: (typeof targets)[0]['UnitSchedule']['unit'];
+        assignments: (typeof targets)[0][];
       }
-      userMap.get(userId)!.assignments.push(assign);
+    >();
+
+    targets.forEach((assign) => {
+      const key = `${assign.userId}-${assign.UnitSchedule.unit.id}`;
+      if (!groupMap.has(key)) {
+        groupMap.set(key, {
+          user: assign.User,
+          unit: assign.UnitSchedule.unit,
+          assignments: [],
+        });
+      }
+      groupMap.get(key)!.assignments.push(assign);
     });
 
     const dispatchesToCreate: Array<{
@@ -239,10 +247,9 @@ class DispatchService {
     }> = [];
 
     // 발송 본문 생성
-    for (const [userId, data] of userMap) {
-      const { user, assignments } = data;
-      const representative = assignments[0];
-      const unit = representative.UnitSchedule.unit;
+    for (const [, data] of groupMap) {
+      const { user, unit, assignments } = data;
+      const userId = user.id;
       // 팀장 판단: role이 Head 또는 Supervisor면 리더용 템플릿
       const isLeader = assignments.some((a) => a.role === 'Head' || a.role === 'Supervisor');
 
@@ -250,39 +257,24 @@ class DispatchService {
       const targetTemplate = isLeader ? leaderTemplate : memberTemplate;
 
       // 기본 변수들 (헬퍼 사용 - assignments 전달해서 position 계산)
-      const variables = buildVariables(user, unit, assignments);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const variables = buildVariables(user, unit as any, assignments);
 
       // 장소 목록 (locations 포맷 변수)
       const locationsList = buildLocationsFormat(unit.trainingLocations || []);
 
-      // 일정 목록 (self.schedules 포맷 변수)
-      const getDayOfWeek = (date: Date): string => {
-        const days = ['일', '월', '화', '수', '목', '금', '토'];
-        return days[date.getDay()];
-      };
-
-      const schedulesList = (unit.schedules || [])
+      // 일정 목록 (self.schedules 포맷 변수) - 공통 유틸리티 사용
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const schedulesList = ((unit.schedules || []) as any[])
         .filter((schedule: { assignments?: unknown[] }) => (schedule.assignments || []).length > 0)
         .map(
           (schedule: {
-            date: Date;
+            date: Date | null;
             assignments?: { User?: { name?: string; instructor?: { category?: string } } }[];
           }) => {
-            const scheduleDate = new Date(schedule.date);
+            const scheduleDate = schedule.date ? new Date(schedule.date) : new Date();
             const dateStr = scheduleDate.toISOString().split('T')[0];
             const dayOfWeek = getDayOfWeek(scheduleDate);
-
-            // 카테고리 한글 축약
-            const categoryKorean: Record<string, string> = {
-              Main: '주',
-              Co: '부',
-              Assistant: '보조',
-              Practicum: '실습',
-              주강사: '주',
-              부강사: '부',
-              보조강사: '보조',
-              실습강사: '실습',
-            };
 
             const instructorNames = (schedule.assignments || [])
               .map((a) => {

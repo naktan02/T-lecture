@@ -5,8 +5,6 @@ import { useAssignment } from '../model/useAssignment';
 import { Button, MiniCalendar, ConfirmModal } from '../../../shared/ui';
 import { AssignmentDetailModal, AssignmentGroupDetailModal } from './AssignmentDetailModal';
 import { UnassignedUnitDetailModal } from './UnassignedUnitDetailModal';
-import { sendConfirmedDispatchesApi } from '../../dispatch/dispatchApi';
-import { showSuccess, showError } from '../../../shared/utils';
 
 // ID 기반 선택 키
 type SelectionKey =
@@ -46,6 +44,7 @@ export const AssignmentWorkspace: React.FC = () => {
     fetchData,
     executeAutoAssign,
     sendTemporaryMessages,
+    sendConfirmedMessages,
   } = useAssignment();
 
   // ID 기반 선택 (스냅샷 대신 ID만 저장)
@@ -110,12 +109,19 @@ export const AssignmentWorkspace: React.FC = () => {
   const handleDateChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
     if (!value) return;
-    setDateRange((prev) => ({ ...prev, [name]: new Date(value) }));
+    // YYYY-MM-DD 문자열을 로컬 자정으로 명시적 변환
+    const [year, month, day] = value.split('-').map(Number);
+    const date = new Date(year, month - 1, day, 0, 0, 0, 0);
+    setDateRange((prev) => ({ ...prev, [name]: date }));
   };
 
   const formatDate = (date: Date | null): string => {
     if (!date) return '';
-    return date.toISOString().split('T')[0];
+    // toISOString()은 UTC 기준이므로 로컬 시간 기준으로 직접 포맷
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const handleMouseEnter = (
@@ -156,17 +162,6 @@ export const AssignmentWorkspace: React.FC = () => {
 
   const handleMouseLeave = (): void => {
     setCalendarPopup({ visible: false, x: 0, y: 0, dates: [] });
-  };
-
-  // 확정 발송 핸들러
-  const handleSendConfirmedMessages = async () => {
-    try {
-      const result = await sendConfirmedDispatchesApi();
-      showSuccess(`확정 발송 ${result.createdCount}건 완료`);
-      await fetchData();
-    } catch (e) {
-      showError((e as Error).message);
-    }
   };
 
   return (
@@ -265,9 +260,6 @@ export const AssignmentWorkspace: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      <span className="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-bold border border-blue-100 text-[10px]">
-                        {unit.totalRequired}명
-                      </span>
                     </div>
                     <div className="text-[10px] text-gray-500 mb-1">📍 {unit.region}</div>
                     <div className="flex flex-wrap gap-0.5">
@@ -424,7 +416,7 @@ export const AssignmentWorkspace: React.FC = () => {
             <div className="p-3 bg-blue-50 border-b border-blue-100 border-l-4 border-l-blue-500 font-bold text-gray-700 flex justify-between items-center">
               <span>✅ 확정 배정 완료</span>
               <button
-                onClick={handleSendConfirmedMessages}
+                onClick={sendConfirmedMessages}
                 disabled={confirmedAssignments.length === 0}
                 className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
                            disabled:bg-gray-300 disabled:cursor-not-allowed

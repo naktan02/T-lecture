@@ -35,7 +35,7 @@ export interface UnitSchedule {
   id: string; // "u-${unitId}-s-${scheduleId}-l-${locationId}" 형식
   unitName: string;
   originalPlace: string;
-  instructorsNumbers: number;
+  actualCount: number | null; // 서버에서 계산된 참여인원
   date: string;
   time: string;
   location: string;
@@ -69,6 +69,10 @@ export interface Instructor {
 export interface AssignmentCandidatesResponse {
   unassignedUnits: UnitSchedule[];
   availableInstructors: Instructor[];
+  actualDateRange?: {
+    startDate: string;
+    endDate: string;
+  };
 }
 
 export interface AutoAssignmentResult {

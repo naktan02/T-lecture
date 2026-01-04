@@ -36,6 +36,15 @@ const safeInt = (val: unknown): number | null => {
 const safeBool = (val: unknown): boolean =>
   val === true || val === 'true' || String(val).toUpperCase() === 'O';
 
+/**
+ * 날짜 문자열을 UTC 자정으로 변환
+ * 예: "2026-01-04" -> 2026-01-04T00:00:00.000Z
+ */
+const toUTCMidnight = (date: Date | string): Date => {
+  const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0];
+  return new Date(`${dateStr}T00:00:00.000Z`);
+};
+
 class UnitRepository {
   /**
    * 교육장소 데이터 매핑 (내부 헬퍼)
@@ -226,7 +235,7 @@ class UnitRepository {
         },
         schedules: {
           create: (schedules || []).map((s) => ({
-            date: new Date(s.date),
+            date: toUTCMidnight(s.date),
           })),
         },
       },
@@ -379,7 +388,7 @@ class UnitRepository {
           await tx.unitSchedule.createMany({
             data: datesToAdd.map((s) => ({
               unitId,
-              date: new Date(s.date),
+              date: toUTCMidnight(s.date),
             })),
           });
         }

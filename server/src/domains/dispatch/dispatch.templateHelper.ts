@@ -4,19 +4,21 @@
 /**
  * 요일 문자열 반환
  */
-const getDayOfWeek = (date: Date): string => {
+export const getDayOfWeek = (date: Date): string => {
   const days = ['일', '월', '화', '수', '목', '금', '토'];
   return days[date.getDay()];
 };
 
 /**
- * 카테고리 한글 변환
+ * 카테고리 한글 변환 (영어/한글 → 축약형 한글)
  */
-const categoryKorean: Record<string, string> = {
+export const categoryKorean: Record<string, string> = {
   Main: '주',
+  Sub: '부',
   Co: '부',
   Assistant: '보조',
   Practicum: '실습',
+  Trainee: '실습',
   주강사: '주',
   부강사: '부',
   보조강사: '보조',
@@ -64,7 +66,7 @@ interface TrainingLocationData {
 }
 
 interface ScheduleData {
-  date: Date;
+  date: Date | null;
   assignments?: Array<{
     User?: {
       name?: string | null;
@@ -94,8 +96,9 @@ export function buildVariables(
       ? new Date(unit.educationStart).toISOString().split('T')[0]
       : '';
 
-  const unitEndDate = unit.schedules?.[unit.schedules.length - 1]?.date
-    ? new Date(unit.schedules[unit.schedules.length - 1].date).toISOString().split('T')[0]
+  const lastScheduleDate = unit.schedules?.[unit.schedules.length - 1]?.date;
+  const unitEndDate = lastScheduleDate
+    ? new Date(lastScheduleDate).toISOString().split('T')[0]
     : unit.educationEnd
       ? new Date(unit.educationEnd).toISOString().split('T')[0]
       : '';
@@ -136,7 +139,8 @@ export function buildVariables(
     // self.* 본인 정보
     'self.name': user.name || '',
     'self.phone': user.userphoneNumber || '',
-    'self.category': user.instructor?.category || '',
+    'self.category':
+      categoryKorean[user.instructor?.category || ''] || user.instructor?.category || '',
     'self.position': position,
     'self.virtues': virtues,
 
@@ -156,8 +160,10 @@ export function buildVariables(
 
     // location.* 첫 번째 교육장소 정보 (단수형)
     'location.placeName': firstLocation?.originalPlace || '',
+    'location.originalPlace': firstLocation?.originalPlace || '',
     'location.changedPlace': firstLocation?.changedPlace || '',
     'location.actualCount': String(firstLocation?.actualCount ?? 0),
+    'location.plannedCount': String(firstLocation?.plannedCount ?? 0),
     'location.hasInstructorLounge': firstLocation?.hasInstructorLounge ? 'O' : 'X',
     'location.hasWomenRestroom': firstLocation?.hasWomenRestroom ? 'O' : 'X',
     'location.hasCateredMeals': firstLocation?.hasCateredMeals ? 'O' : 'X',
@@ -173,7 +179,7 @@ export function buildVariables(
  */
 export function buildSchedulesFormat(schedules: ScheduleData[]): Array<Record<string, string>> {
   return schedules.map((schedule) => {
-    const scheduleDate = new Date(schedule.date);
+    const scheduleDate = schedule.date ? new Date(schedule.date) : new Date();
     const dateStr = scheduleDate.toISOString().split('T')[0];
     const dayOfWeek = getDayOfWeek(scheduleDate);
 

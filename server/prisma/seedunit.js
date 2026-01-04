@@ -355,12 +355,18 @@ async function main() {
   for (let i = 0; i < unitConfigs.length; i++) {
     const cfg = unitConfigs[i];
 
-    // 스케줄 생성
+    // 스케줄 생성 (UTC 자정 형식으로 저장)
     const schedulesToCreate = [];
     for (let d = 0; d < cfg.days; d++) {
-      const date = new Date(dec15);
-      date.setDate(dec15.getDate() + cfg.startOffset + d);
-      schedulesToCreate.push({ date: date });
+      const offsetDays = cfg.startOffset + d;
+      // UTC 자정 기준 계산: 2025-12-15 + offsetDays
+      const year = 2025;
+      const month = 11; // 12월 (0-indexed)
+      const day = 15 + offsetDays;
+
+      // 날짜 계산 (월/연도 넘김 처리)
+      const tempDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+      schedulesToCreate.push({ date: tempDate });
     }
 
     // 교육장소 생성
@@ -368,7 +374,6 @@ async function main() {
     for (let j = 1; j <= cfg.locations; j++) {
       locationsToCreate.push({
         originalPlace: `${cfg.name}_${j}교육장`,
-        instructorsNumbers: 2,
         plannedCount: 60 + i * 5,
         actualCount: 55 + i * 5,
         hasInstructorLounge: Math.random() > 0.3, // 70% 확률로 있음

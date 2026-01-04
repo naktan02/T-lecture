@@ -118,20 +118,22 @@ class AssignmentRepository {
   }
 
   async findScheduleCandidates(startDate: Date | string, endDate: Date | string) {
-    // KST 기준 날짜로 변환 (UTC 기준으로 -9시간 → KST 00:00 = UTC 전날 15:00)
-    const startKST = new Date(startDate);
-    startKST.setUTCHours(-9, 0, 0, 0); // KST 00:00 = UTC -9시간
+    // 입력: "YYYY-MM-DD" 형식의 문자열 또는 Date 객체
+    const startStr =
+      typeof startDate === 'string' ? startDate : startDate.toISOString().split('T')[0];
+    const endStr = typeof endDate === 'string' ? endDate : endDate.toISOString().split('T')[0];
 
-    const endKST = new Date(endDate);
-    endKST.setUTCHours(23 - 9, 59, 59, 999); // KST 23:59:59 = UTC 14:59:59
+    // UTC 자정 기준으로 조회 (DB 저장 형식과 동일)
+    const startOfDay = new Date(`${startStr}T00:00:00.000Z`);
+    const endOfDay = new Date(`${endStr}T00:00:00.000Z`);
 
     return await prisma.unit.findMany({
       where: {
         schedules: {
           some: {
             date: {
-              gte: startKST,
-              lte: endKST,
+              gte: startOfDay,
+              lte: endOfDay,
             },
           },
         },

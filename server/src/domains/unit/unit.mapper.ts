@@ -8,9 +8,12 @@ export type RawUnitData = RawUnitInput;
 // 헬퍼: 문자열 확인
 const isNonEmptyString = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 0;
 
-// 헬퍼: 날짜 변환
-const toDateOrUndef = (v: unknown): Date | undefined =>
-  v ? new Date(v as string | Date) : undefined;
+// 헬퍼: 날짜 변환 (UTC 자정으로 변환 - 시간 없는 날짜 전용)
+const toDateOrUndef = (v: unknown): Date | undefined => {
+  if (!v) return undefined;
+  const dateStr = typeof v === 'string' ? v.split('T')[0] : (v as Date).toISOString().split('T')[0];
+  return new Date(`${dateStr}T00:00:00.000Z`);
+};
 
 // 헬퍼: 한글 군구분 -> MilitaryType enum 변환
 const UNIT_TYPE_MAP: Record<string, MilitaryType> = {

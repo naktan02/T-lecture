@@ -10,6 +10,17 @@ import { ScheduleInput, UnitQueryInput } from '../../types/unit.types';
 type RawUnitInput = RawUnitData;
 type ScheduleData = ScheduleInput;
 
+/**
+ * 날짜 문자열을 UTC 자정으로 변환 (시간 없는 날짜 전용)
+ * 예: "2026-01-04" -> 2026-01-04T00:00:00.000Z
+ */
+const toUTCMidnight = (dateValue: string | Date | null | undefined): Date | null => {
+  if (!dateValue) return null;
+  const dateStr =
+    typeof dateValue === 'string' ? dateValue.split('T')[0] : dateValue.toISOString().split('T')[0];
+  return new Date(`${dateStr}T00:00:00.000Z`);
+};
+
 interface UnitBasicInfoInput {
   name?: string;
   unitType?: MilitaryType;
@@ -355,11 +366,9 @@ class UnitService {
     if (rawData.officerPhone !== undefined) unitUpdateData.officerPhone = rawData.officerPhone;
     if (rawData.officerEmail !== undefined) unitUpdateData.officerEmail = rawData.officerEmail;
     if (rawData.educationStart !== undefined)
-      unitUpdateData.educationStart = rawData.educationStart
-        ? new Date(rawData.educationStart)
-        : null;
+      unitUpdateData.educationStart = toUTCMidnight(rawData.educationStart);
     if (rawData.educationEnd !== undefined)
-      unitUpdateData.educationEnd = rawData.educationEnd ? new Date(rawData.educationEnd) : null;
+      unitUpdateData.educationEnd = toUTCMidnight(rawData.educationEnd);
     if (rawData.workStartTime !== undefined)
       unitUpdateData.workStartTime = rawData.workStartTime ? new Date(rawData.workStartTime) : null;
     if (rawData.workEndTime !== undefined)
@@ -387,7 +396,7 @@ class UnitService {
     } else if (rawData.schedules && rawData.schedules.length > 0) {
       // excludedDates가 없고 schedules 배열이 있으면 그것으로 업데이트
       schedules = rawData.schedules.map((s) => ({
-        date: typeof s.date === 'string' ? new Date(s.date) : s.date,
+        date: toUTCMidnight(s.date) || new Date(),
       }));
     }
     // schedules가 undefined이면 updateUnitWithNested에서 기존 일정 유지
@@ -570,6 +579,7 @@ class UnitService {
 
   /**
    * 교육 기간에서 일정 자동 계산 (제외된 날짜는 스킵)
+   * 날짜는 UTC 자정으로 저장
    */
   _calculateSchedules(
     start: string | Date | undefined,
@@ -587,8 +597,9 @@ class UnitService {
       const dateStr = current.toISOString().split('T')[0];
       // 제외된 날짜는 스케줄에 추가하지 않음
       if (!excludedSet.has(dateStr)) {
+        // UTC 자정으로 저장 (타임존 일관성)
         schedules.push({
-          date: new Date(current),
+          date: new Date(`${dateStr}T00:00:00.000Z`),
         });
       }
       current.setDate(current.getDate() + 1);

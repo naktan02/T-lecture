@@ -10,6 +10,7 @@ import {
   addAssignmentApi,
   toggleStaffLockApi,
 } from '../assignmentApi';
+import { sendConfirmedDispatchesApi } from '../../dispatch/dispatchApi';
 import { logger, showSuccess, showError } from '../../../shared/utils';
 import {
   groupUnassignedUnits,
@@ -62,19 +63,32 @@ interface UseAssignmentReturn {
   fetchData: () => Promise<void>;
   executeAutoAssign: () => Promise<void>;
   sendTemporaryMessages: () => Promise<void>;
+  sendConfirmedMessages: () => Promise<void>; // 확정 발송
   removeAssignment: (unitScheduleId: number, instructorId: number) => Promise<void>;
 }
 
 export const useAssignment = (): UseAssignmentReturn => {
-  const [dateRange, setDateRange] = useState<DateRange>({
-    startDate: new Date(),
-    endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
-  });
+  // 초기 날짜를 자정으로 설정 (시분초 제거)
+  const getInitialDateRange = (): DateRange => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const weekLater = new Date(today);
+    weekLater.setDate(today.getDate() + 7);
+    return { startDate: today, endDate: weekLater };
+  };
+
+  const [dateRange, setDateRange] = useState<DateRange>(getInitialDateRange);
 
   const [sourceData, setSourceData] = useState<SourceData>({
     units: [],
     instructors: [],
   });
+
+  // 서버에서 계산된 실제 날짜 범위 (부대 전체 일정 커버)
+  const [actualDateRange, setActualDateRange] = useState<{
+    startDate: string;
+    endDate: string;
+  } | null>(null);
 
   const [assignments, setAssignments] = useState<AssignmentData[]>([]);
   const [confirmedAssignments, setConfirmedAssignments] = useState<AssignmentData[]>([]);
@@ -103,6 +117,11 @@ export const useAssignment = (): UseAssignmentReturn => {
         units: data.unassignedUnits || [],
         instructors: data.availableInstructors || [],
       });
+
+      // 서버에서 계산된 실제 날짜 범위 저장
+      if (data.actualDateRange) {
+        setActualDateRange(data.actualDateRange);
+      }
 
       // 배정 현황 설정 (상태별 분리)
       const pending = (data as any).pendingAssignments || [];
@@ -139,12 +158,13 @@ export const useAssignment = (): UseAssignmentReturn => {
     }
   };
 
-  // 3. 임시 배정 메시지 일괄 발송 (현재 조회된 날짜 범위만)
+  // 3. 임시 배정 메시지 일괄 발송 (부대 전체 일정 범위 사용)
   const sendTemporaryMessages = async (): Promise<void> => {
     setLoading(true);
     try {
-      const startStr = toLocalDateString(dateRange.startDate);
-      const endStr = toLocalDateString(dateRange.endDate);
+      // 서버에서 계산한 실제 날짜 범위 사용 (없으면 화면 날짜 범위 fallback)
+      const startStr = actualDateRange?.startDate || toLocalDateString(dateRange.startDate);
+      const endStr = actualDateRange?.endDate || toLocalDateString(dateRange.endDate);
       const result = await sendTemporaryMessagesApi(startStr, endStr);
       showSuccess(result.message);
     } catch (err) {
@@ -153,6 +173,24 @@ export const useAssignment = (): UseAssignmentReturn => {
       setLoading(false);
     }
   };
+
+  // 4. 확정 배정 메시지 일괄 발송 (부대 전체 일정 범위 사용)
+  const sendConfirmedMessages = async (): Promise<void> => {
+    setLoading(true);
+    try {
+      // 서버에서 계산한 실제 날짜 범위 사용 (없으면 화면 날짜 범위 fallback)
+      const startStr = actualDateRange?.startDate || toLocalDateString(dateRange.startDate);
+      const endStr = actualDateRange?.endDate || toLocalDateString(dateRange.endDate);
+      const result = await sendConfirmedDispatchesApi(startStr, endStr);
+      showSuccess(result.message || `확정 발송 ${result.createdCount}건 완료`);
+      await fetchData();
+    } catch (err) {
+      showError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 배정 취소 (모달에서 확인 후 호출됨)
   const removeAssignment = async (unitScheduleId: number, instructorId: number): Promise<void> => {
     try {
@@ -215,6 +253,7 @@ export const useAssignment = (): UseAssignmentReturn => {
     fetchData,
     executeAutoAssign,
     sendTemporaryMessages,
+    sendConfirmedMessages,
     removeAssignment,
     addAssignment,
     toggleStaffLock,

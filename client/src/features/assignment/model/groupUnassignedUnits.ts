@@ -59,15 +59,21 @@ export const groupUnassignedUnits = (units: UnitSchedule[]): GroupedUnassignedUn
     // 장소 찾기 또는 추가
     let location = group.locations.find((l) => l.locationId === locationId);
     if (!location) {
+      // actualCount를 기반으로 필요인원 계산 (강사당 36명 기준)
+      const actualCount = unit.actualCount || 0;
+      const traineesPerInstructor = 36; // TODO: 서버 설정값 사용
+      const requiredInstructors =
+        actualCount > 0 ? Math.floor(actualCount / traineesPerInstructor) || 1 : 1;
+
       location = {
         locationId,
         locationName: unit.originalPlace || `장소 ${locationId}`,
-        instructorsRequired: unit.instructorsNumbers,
+        instructorsRequired: requiredInstructors,
         schedules: [],
       };
       group.locations.push(location);
       // 장소 추가 시에만 인원 합산 (중복 방지)
-      group.totalRequired += unit.instructorsNumbers;
+      group.totalRequired += requiredInstructors;
     }
 
     // 스케줄 추가

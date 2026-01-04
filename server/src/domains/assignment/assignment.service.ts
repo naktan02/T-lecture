@@ -42,11 +42,42 @@ class AssignmentService {
 
   /**
    * 배정 후보 데이터 조회 (Raw Data 반환)
+   * - 부대 전체 일정 범위를 계산하여 actualDateRange 반환
+   * - 강사 가용일도 해당 범위로 조회
    */
   async getAssignmentCandidatesRaw(startDate: string, endDate: string) {
-    const unitsRaw = await assignmentRepository.findScheduleCandidates(startDate, endDate);
-    const instructorsRaw = await instructorRepository.findAvailableInPeriod(startDate, endDate);
-    return { unitsRaw, instructorsRaw };
+    // 날짜 문자열을 UTC 자정으로 변환 (DB 저장 형식과 일치)
+    const start = new Date(`${startDate}T00:00:00.000Z`);
+    const end = new Date(`${endDate}T00:00:00.000Z`);
+
+    // 1) 부대 조회
+    const unitsRaw = await assignmentRepository.findScheduleCandidates(start, end);
+
+    // 2) 부대의 실제 스케줄 날짜 범위 계산
+    let minScheduleDate = start;
+    let maxScheduleDate = end;
+    for (const unit of unitsRaw) {
+      for (const schedule of unit.schedules || []) {
+        if (!schedule.date) continue;
+        const scheduleDate = new Date(schedule.date);
+        if (scheduleDate < minScheduleDate) minScheduleDate = scheduleDate;
+        if (scheduleDate > maxScheduleDate) maxScheduleDate = scheduleDate;
+      }
+    }
+
+    // 3) 강사 가용일은 부대의 실제 스케줄 범위로 조회
+    const instructorsRaw = await instructorRepository.findAvailableInPeriod(
+      minScheduleDate.toISOString(),
+      maxScheduleDate.toISOString(),
+    );
+
+    // 4) 실제 날짜 범위 반환 (클라이언트에서 임시 발송 시 사용)
+    const actualDateRange = {
+      startDate: minScheduleDate.toISOString().split('T')[0],
+      endDate: maxScheduleDate.toISOString().split('T')[0],
+    };
+
+    return { unitsRaw, instructorsRaw, actualDateRange };
   }
 
   async createAutoAssignments(startDate: Date, endDate: Date) {
@@ -60,21 +91,31 @@ class AssignmentService {
       throw new AppError('시작일은 종료일보다 클 수 없습니다.', 400, 'VALIDATION_ERROR');
     }
 
-    // 1) 데이터 준비
+    // 1) 데이터 준비 - 부대 조회 먼저
     const units = await assignmentRepository.findScheduleCandidates(start, end);
-
-    // 강사 가능일은 부대 전체 스케줄을 커버하기 위해 +9일 확장
-    const extendedEnd = new Date(end);
-    extendedEnd.setDate(extendedEnd.getDate() + 9);
-
-    const instructors = await instructorRepository.findAvailableInPeriod(
-      start.toISOString(),
-      extendedEnd.toISOString(),
-    );
 
     if (!units || units.length === 0) {
       throw new AppError('해당 기간에 조회되는 부대 일정이 없습니다.', 404, 'NO_UNITS');
     }
+
+    // 부대의 실제 스케줄 날짜 범위 계산 (부대 전체 일정 커버)
+    let minScheduleDate = start;
+    let maxScheduleDate = end;
+    for (const unit of units) {
+      for (const schedule of unit.schedules || []) {
+        if (!schedule.date) continue;
+        const scheduleDate = new Date(schedule.date);
+        if (scheduleDate < minScheduleDate) minScheduleDate = scheduleDate;
+        if (scheduleDate > maxScheduleDate) maxScheduleDate = scheduleDate;
+      }
+    }
+
+    // 강사 가능일은 부대의 실제 스케줄 범위로 조회
+    const instructors = await instructorRepository.findAvailableInPeriod(
+      minScheduleDate.toISOString(),
+      maxScheduleDate.toISOString(),
+    );
+
     if (!instructors || instructors.length === 0) {
       throw new AppError('해당 기간에 배정 가능한 강사가 없습니다.', 404, 'NO_INSTRUCTORS');
     }
@@ -161,14 +202,29 @@ class AssignmentService {
     }
 
     const units = await assignmentRepository.findScheduleCandidates(start, end);
-    const instructors = await instructorRepository.findAvailableInPeriod(
-      start.toISOString(),
-      end.toISOString(),
-    );
 
     if (!units || units.length === 0) {
       throw new AppError('해당 기간에 조회되는 부대 일정이 없습니다.', 404, 'NO_UNITS');
     }
+
+    // 부대의 실제 스케줄 날짜 범위 계산 (부대 전체 일정 커버)
+    let minScheduleDate = start;
+    let maxScheduleDate = end;
+    for (const unit of units) {
+      for (const schedule of unit.schedules || []) {
+        if (!schedule.date) continue;
+        const scheduleDate = new Date(schedule.date);
+        if (scheduleDate < minScheduleDate) minScheduleDate = scheduleDate;
+        if (scheduleDate > maxScheduleDate) maxScheduleDate = scheduleDate;
+      }
+    }
+
+    // 강사 가능일은 부대의 실제 스케줄 범위로 조회
+    const instructors = await instructorRepository.findAvailableInPeriod(
+      minScheduleDate.toISOString(),
+      maxScheduleDate.toISOString(),
+    );
+
     if (!instructors || instructors.length === 0) {
       throw new AppError('해당 기간에 배정 가능한 강사가 없습니다.', 404, 'NO_INSTRUCTORS');
     }
