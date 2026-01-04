@@ -1,11 +1,16 @@
 import prisma from '../../../libs/prisma';
 
+// Types
+type PeriodFilter = '1m' | '3m' | '6m' | '12m';
+type ScheduleStatus = 'completed' | 'inProgress' | 'scheduled' | 'unassigned';
+
 interface DashboardStats {
   educationStatus: {
     completed: number;
     inProgress: number;
     scheduled: number;
     unassigned: number;
+    total: number;
   };
 }
 
@@ -14,34 +19,62 @@ interface InstructorAnalysis {
   name: string;
   role: string | null;
   team: string | null;
-  requestCount: number;
-  acceptedCount: number;
+  completedCount: number;
   acceptanceRate: number;
   isActive: boolean;
 }
 
 interface TeamAnalysis {
+  id: number;
   teamName: string;
   memberCount: number;
-  totalAssignments: number;
-  averageAssignments: number;
+  completedCount: number;
+  averageCompleted: number;
   activeMemberRate: number;
+}
+
+interface ScheduleListItem {
+  id: number;
+  unitName: string;
+  date: string;
+  instructorNames: string[];
+}
+
+// Helper function to get date range from period
+function getDateRangeFromPeriod(period: PeriodFilter): { start: Date; end: Date } {
+  const now = new Date();
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59); // End of current month
+  let start: Date;
+
+  switch (period) {
+    case '3m':
+      start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+      break;
+    case '6m':
+      start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      break;
+    case '12m':
+      start = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+      break;
+    case '1m':
+    default:
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      break;
+  }
+
+  return { start, end };
 }
 
 class DashboardAdminService {
   /**
-   * 교육 진행 현황 (상단 파이 차트)
+   * 교육 진행 현황 (도넛 차트)
    */
   async getDashboardStats(): Promise<DashboardStats> {
-    // Total Scheduled (Assigned)
     const assignedSchedules = await prisma.unitSchedule.findMany({
       where: {
         assignments: {
           some: { state: 'Accepted' },
         },
-      },
-      include: {
-        unit: true,
       },
     });
 
@@ -49,13 +82,13 @@ class DashboardAdminService {
     let inProgress = 0;
     let scheduled = 0;
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     for (const schedule of assignedSchedules) {
-      // Logic: compare schedule.date with today
       if (!schedule.date) continue;
 
       const scheduleDate = new Date(schedule.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
       scheduleDate.setHours(0, 0, 0, 0);
 
       if (scheduleDate < today) {
@@ -67,8 +100,7 @@ class DashboardAdminService {
       }
     }
 
-    // Unassigned
-    const unassignedCount = await prisma.unitSchedule.count({
+    const unassigned = await prisma.unitSchedule.count({
       where: {
         assignments: {
           none: { state: 'Accepted' },
@@ -81,21 +113,69 @@ class DashboardAdminService {
         completed,
         inProgress,
         scheduled,
-        unassigned: unassignedCount,
+        unassigned,
+        total: completed + inProgress + scheduled + unassigned,
       },
     };
   }
 
   /**
-   * 강사 분석 (활동률, 수락률 등)
+   * 상태별 교육 일정 목록 (모달용)
    */
-  async getInstructorAnalysis(year?: number, month?: number): Promise<InstructorAnalysis[]> {
-    const now = new Date();
-    const targetYear = year || now.getFullYear();
-    const targetMonth = month || now.getMonth() + 1;
+  async getSchedulesByStatus(status: ScheduleStatus): Promise<ScheduleListItem[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    const startOfMonth = new Date(targetYear, targetMonth - 1, 1);
-    const endOfMonth = new Date(targetYear, targetMonth, 0, 23, 59, 59);
+    let whereClause: any = {};
+
+    if (status === 'unassigned') {
+      whereClause = {
+        assignments: { none: { state: 'Accepted' } },
+      };
+    } else {
+      whereClause = {
+        assignments: { some: { state: 'Accepted' } },
+      };
+    }
+
+    const schedules = await prisma.unitSchedule.findMany({
+      where: whereClause,
+      include: {
+        unit: true,
+        assignments: {
+          where: { state: 'Accepted' },
+          include: { User: true },
+        },
+      },
+      orderBy: { date: 'desc' },
+      take: 100,
+    });
+
+    // Filter by status
+    const filtered = schedules.filter((s) => {
+      if (!s.date) return status === 'unassigned';
+      const scheduleDate = new Date(s.date);
+      scheduleDate.setHours(0, 0, 0, 0);
+
+      if (status === 'completed') return scheduleDate < today;
+      if (status === 'inProgress') return scheduleDate.getTime() === today.getTime();
+      if (status === 'scheduled') return scheduleDate > today;
+      return true; // unassigned already filtered by query
+    });
+
+    return filtered.map((s) => ({
+      id: s.id,
+      unitName: s.unit?.name || 'Unknown',
+      date: s.date ? new Date(s.date).toISOString().split('T')[0] : '',
+      instructorNames: s.assignments.map((a) => a.User?.name || 'Unknown'),
+    }));
+  }
+
+  /**
+   * 강사 분석 (기간 필터 지원)
+   */
+  async getInstructorAnalysis(period: PeriodFilter = '1m'): Promise<InstructorAnalysis[]> {
+    const { start, end } = getDateRangeFromPeriod(period);
 
     const instructors = await prisma.user.findMany({
       where: {
@@ -108,62 +188,70 @@ class DashboardAdminService {
         },
         unitAssignments: {
           where: {
-            // Note: unitAssignments is relation field in User model for InstructorUnitAssignment
-            // CreatedAt is usually existing or we use Schedule date?
-            // Model says: InstructorUnitAssignment
-            // Assuming simplified check on proposal creation for now.
-            // If createdAt is available:
-            // createdAt: { gte: startOfMonth, lte: endOfMonth }
-            // If not, we might need to rely on UnitSchedule date.
-            // Let's assume UnitSchedule based for "Requests" in this month (Schedules in this month)
             UnitSchedule: {
-              date: { gte: startOfMonth, lte: endOfMonth },
+              date: { gte: start, lte: end },
             },
           },
           include: {
-            UnitSchedule: true, // needed for state check? No state is on Assignment
+            UnitSchedule: true,
           },
         },
       },
     });
 
-    // Active means "Has Accepted Assignment in this month"
-    // The query above filters assignments by Schedule Date in this month.
-    // So if any assignment in `unitAssignments` is 'Accepted', they are active.
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    const analysis: InstructorAnalysis[] = [];
+    return instructors.map((inst) => {
+      const allAssignments = inst.unitAssignments;
+      const accepted = allAssignments.filter((a) => a.state === 'Accepted');
 
-    for (const inst of instructors) {
-      const proposals = inst.unitAssignments; // These are assignments for schedules in this month
-      const accepted = proposals.filter((p) => p.state === 'Accepted');
+      // Completed = Accepted AND schedule date < today
+      const completed = accepted.filter((a) => {
+        if (!a.UnitSchedule?.date) return false;
+        const d = new Date(a.UnitSchedule.date);
+        d.setHours(0, 0, 0, 0);
+        return d < today;
+      });
 
-      analysis.push({
+      return {
         id: inst.id,
         name: inst.name || 'Unknown',
-        role: inst.instructor?.category || 'Unassigned',
-        team: inst.instructor?.team?.name || 'Unassigned',
-        requestCount: proposals.length,
-        acceptedCount: accepted.length,
-        acceptanceRate: proposals.length > 0 ? (accepted.length / proposals.length) * 100 : 0,
-        isActive: accepted.length > 0,
-      });
-    }
-
-    return analysis;
+        role: inst.instructor?.category || null,
+        team: inst.instructor?.team?.name || null,
+        completedCount: completed.length,
+        acceptanceRate:
+          allAssignments.length > 0
+            ? Math.round((accepted.length / allAssignments.length) * 100)
+            : 0,
+        isActive: completed.length > 0,
+      };
+    });
   }
 
   /**
-   * 팀 분석
+   * 팀 분석 (기간 필터 지원)
    */
-  async getTeamAnalysis(): Promise<TeamAnalysis[]> {
+  async getTeamAnalysis(period: PeriodFilter = '1m'): Promise<TeamAnalysis[]> {
+    const { start, end } = getDateRangeFromPeriod(period);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const teams = await prisma.team.findMany({
+      where: { deletedAt: null },
       include: {
         instructors: {
           include: {
             user: {
               include: {
                 unitAssignments: {
-                  where: { state: 'Accepted' },
+                  where: {
+                    state: 'Accepted',
+                    UnitSchedule: {
+                      date: { gte: start, lte: end },
+                    },
+                  },
+                  include: { UnitSchedule: true },
                 },
               },
             },
@@ -174,19 +262,95 @@ class DashboardAdminService {
 
     return teams.map((team) => {
       const members = team.instructors.map((i) => i.user);
-      const totalAssignments = members.reduce((sum, user) => sum + user.unitAssignments.length, 0);
-      const activeMembers = members.filter((user) => user.unitAssignments.length > 0).length;
+
+      // Count completed assignments per member
+      let totalCompleted = 0;
+      let activeMembers = 0;
+
+      members.forEach((user) => {
+        const completed = user.unitAssignments.filter((a) => {
+          if (!a.UnitSchedule?.date) return false;
+          const d = new Date(a.UnitSchedule.date);
+          d.setHours(0, 0, 0, 0);
+          return d < today;
+        }).length;
+
+        totalCompleted += completed;
+        if (completed > 0) activeMembers++;
+      });
 
       return {
+        id: team.id,
         teamName: team.name || 'Unnamed',
         memberCount: members.length,
-        totalAssignments,
-        averageAssignments:
-          members.length > 0 ? Math.round((totalAssignments / members.length) * 10) / 10 : 0,
+        completedCount: totalCompleted,
+        averageCompleted:
+          members.length > 0 ? Math.round((totalCompleted / members.length) * 10) / 10 : 0,
         activeMemberRate:
           members.length > 0 ? Math.round((activeMembers / members.length) * 100) : 0,
       };
     });
+  }
+
+  /**
+   * 팀 상세 정보 (모달용)
+   */
+  async getTeamDetail(teamId: number, period: PeriodFilter = '1m') {
+    const { start, end } = getDateRangeFromPeriod(period);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+      include: {
+        instructors: {
+          include: {
+            user: {
+              include: {
+                unitAssignments: {
+                  where: {
+                    state: 'Accepted',
+                    UnitSchedule: {
+                      date: { gte: start, lte: end },
+                    },
+                  },
+                  include: { UnitSchedule: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!team) return null;
+
+    const members = team.instructors.map((i) => {
+      const completed = i.user.unitAssignments.filter((a) => {
+        if (!a.UnitSchedule?.date) return false;
+        const d = new Date(a.UnitSchedule.date);
+        d.setHours(0, 0, 0, 0);
+        return d < today;
+      }).length;
+
+      return {
+        id: i.user.id,
+        name: i.user.name || 'Unknown',
+        role: i.category || null,
+        completedCount: completed,
+      };
+    });
+
+    const totalCompleted = members.reduce((sum, m) => sum + m.completedCount, 0);
+
+    return {
+      teamName: team.name,
+      memberCount: members.length,
+      totalCompleted,
+      averageCompleted:
+        members.length > 0 ? Math.round((totalCompleted / members.length) * 10) / 10 : 0,
+      members,
+    };
   }
 }
 
