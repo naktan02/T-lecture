@@ -263,29 +263,37 @@ class DashboardAdminService {
     return teams.map((team) => {
       const members = team.instructors.map((i) => i.user);
 
-      // Count completed assignments per member
-      let totalCompleted = 0;
+      // Collect unique schedule IDs for team-level education count
+      const uniqueScheduleIds = new Set<number>();
       let activeMembers = 0;
 
       members.forEach((user) => {
-        const completed = user.unitAssignments.filter((a) => {
-          if (!a.UnitSchedule?.date) return false;
+        let memberHasCompleted = false;
+
+        user.unitAssignments.forEach((a) => {
+          if (!a.UnitSchedule?.date) return;
           const d = new Date(a.UnitSchedule.date);
           d.setHours(0, 0, 0, 0);
-          return d < today;
-        }).length;
+          if (d < today) {
+            // Add schedule ID to set (automatically deduplicates)
+            uniqueScheduleIds.add(a.UnitSchedule.id);
+            memberHasCompleted = true;
+          }
+        });
 
-        totalCompleted += completed;
-        if (completed > 0) activeMembers++;
+        if (memberHasCompleted) activeMembers++;
       });
+
+      // Team-level completed count = unique schedules, not sum of individuals
+      const teamCompletedCount = uniqueScheduleIds.size;
 
       return {
         id: team.id,
         teamName: team.name || 'Unnamed',
         memberCount: members.length,
-        completedCount: totalCompleted,
+        completedCount: teamCompletedCount,
         averageCompleted:
-          members.length > 0 ? Math.round((totalCompleted / members.length) * 10) / 10 : 0,
+          members.length > 0 ? Math.round((teamCompletedCount / members.length) * 10) / 10 : 0,
         activeMemberRate:
           members.length > 0 ? Math.round((activeMembers / members.length) * 100) : 0,
       };
@@ -325,12 +333,20 @@ class DashboardAdminService {
 
     if (!team) return null;
 
+    // Collect unique schedule IDs for team-level count
+    const uniqueScheduleIds = new Set<number>();
+
     const members = team.instructors.map((i) => {
       const completed = i.user.unitAssignments.filter((a) => {
         if (!a.UnitSchedule?.date) return false;
         const d = new Date(a.UnitSchedule.date);
         d.setHours(0, 0, 0, 0);
-        return d < today;
+        if (d < today) {
+          // Also add to team-level unique set
+          uniqueScheduleIds.add(a.UnitSchedule.id);
+          return true;
+        }
+        return false;
       }).length;
 
       return {
@@ -341,7 +357,8 @@ class DashboardAdminService {
       };
     });
 
-    const totalCompleted = members.reduce((sum, m) => sum + m.completedCount, 0);
+    // Team-level completed = unique schedules
+    const totalCompleted = uniqueScheduleIds.size;
 
     return {
       teamName: team.name,
