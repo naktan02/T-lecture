@@ -11,6 +11,9 @@ interface UserListProps {
   onUserClick?: (user: User) => void;
   onApprove?: (id: number) => void;
   onReject?: (id: number) => void;
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
+  onSort?: (field: string) => void;
 }
 
 // 역할 정보 헬퍼
@@ -89,6 +92,9 @@ export const UserList = ({
   onUserClick,
   onApprove,
   onReject,
+  sortField,
+  sortOrder,
+  onSort,
 }: UserListProps): ReactElement => {
   if (!users || !Array.isArray(users) || users.length === 0) {
     return (
@@ -106,6 +112,15 @@ export const UserList = ({
     onToggleAll?.(e.target.checked);
   };
 
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) return <span className="text-gray-300 ml-1 text-xs">⇅</span>;
+    return sortOrder === 'asc' ? (
+      <span className="text-blue-600 ml-1">↑</span>
+    ) : (
+      <span className="text-blue-600 ml-1">↓</span>
+    );
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* 데스크톱: 테이블 뷰 */}
@@ -121,11 +136,36 @@ export const UserList = ({
                   className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
                 />
               </th>
-              <th className="px-4 py-3">이름</th>
-              <th className="px-4 py-3">이메일</th>
-              <th className="px-4 py-3">유형</th>
-              <th className="px-4 py-3">상태</th>
-              <th className="px-4 py-3">소속</th>
+              <th
+                className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                onClick={() => onSort?.('name')}
+              >
+                이름 {getSortIcon('name')}
+              </th>
+              <th
+                className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                onClick={() => onSort?.('email')}
+              >
+                이메일 {getSortIcon('email')}
+              </th>
+              <th
+                className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                onClick={() => onSort?.('role')}
+              >
+                유형 {getSortIcon('role')}
+              </th>
+              <th
+                className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                onClick={() => onSort?.('status')}
+              >
+                상태 {getSortIcon('status')}
+              </th>
+              <th
+                className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                onClick={() => onSort?.('team')}
+              >
+                소속 {getSortIcon('team')}
+              </th>
               <th className="px-4 py-3 w-32"></th>
             </tr>
           </thead>

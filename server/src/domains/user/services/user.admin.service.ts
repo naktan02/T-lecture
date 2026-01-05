@@ -153,6 +153,8 @@ interface UpdateUserDto {
 interface PaginationQuery extends QueryFilters {
   page?: number | string;
   limit?: number | string;
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 class AdminService {
@@ -161,8 +163,12 @@ class AdminService {
     const filters = normalizeFilters(query);
     const page = typeof query.page === 'string' ? parseInt(query.page, 10) : query.page || 1;
     const limit = typeof query.limit === 'string' ? parseInt(query.limit, 10) : query.limit || 20;
+    const sort =
+      query.sortField && query.sortOrder
+        ? { field: query.sortField, order: query.sortOrder }
+        : undefined;
 
-    const result = await adminRepository.findAll(filters, page, limit);
+    const result = await adminRepository.findAll(filters, page, limit, sort);
 
     return {
       data: result.data.map(mapUserForAdmin),

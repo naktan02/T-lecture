@@ -26,6 +26,8 @@ export interface NoticeSearchParams {
   page?: number;
   limit?: number;
   search?: string;
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 // API 경로: /api/v1/notices (독립 도메인)
@@ -33,13 +35,19 @@ const BASE_PATH = '/api/v1/notices';
 
 export const noticeApi = {
   getNotices: async (params: NoticeSearchParams = {}) => {
-    const { page = 1, limit = 10, search } = params;
+    const { page = 1, limit = 10, search, sortField, sortOrder } = params;
     const urlParams = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
     });
     if (search) {
       urlParams.append('search', search);
+    }
+    if (sortField) {
+      urlParams.append('sortField', sortField);
+    }
+    if (sortOrder) {
+      urlParams.append('sortOrder', sortOrder);
     }
     const response = await apiClient(`${BASE_PATH}?${urlParams.toString()}`);
     return response.json() as Promise<NoticeListResponse>;

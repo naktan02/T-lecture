@@ -37,6 +37,9 @@ export const InquiryWorkspace = (): ReactElement => {
     closeDrawer,
     handleAnswer,
     setPage,
+    sortField,
+    sortOrder,
+    onSort,
   } = useInquiry();
 
   return (
@@ -95,6 +98,9 @@ export const InquiryWorkspace = (): ReactElement => {
               currentPage={page}
               totalCount={totalCount}
               pageSize={PAGE_SIZE}
+              sortField={sortField}
+              sortOrder={sortOrder}
+              onSort={onSort}
             />
           </div>
           {/* 페이지네이션 */}

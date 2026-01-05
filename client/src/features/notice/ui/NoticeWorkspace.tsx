@@ -29,6 +29,9 @@ export const NoticeWorkspace = (): ReactElement => {
     handleSave,
     handleDelete,
     setPage,
+    sortField,
+    sortOrder,
+    onSort,
   } = useNotice();
 
   return (
@@ -70,6 +73,9 @@ export const NoticeWorkspace = (): ReactElement => {
               currentPage={page}
               totalCount={totalCount}
               pageSize={PAGE_SIZE}
+              sortField={sortField}
+              sortOrder={sortOrder}
+              onSort={onSort}
             />
           </div>
           {/* 페이지네이션 */}

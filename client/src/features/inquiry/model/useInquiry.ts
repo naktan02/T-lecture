@@ -36,7 +36,13 @@ interface UseInquiryReturn {
   handleAnswer: (id: number, answer: string) => Promise<void>;
 
   // 페이지네이션
+  // 페이지네이션
   setPage: (page: number) => void;
+
+  // 정렬
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
+  onSort: (field: string) => void;
 }
 
 export const useInquiry = (): UseInquiryReturn => {
@@ -56,15 +62,31 @@ export const useInquiry = (): UseInquiryReturn => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
 
+  // 정렬 상태
+  const [sortField, setSortField] = useState<string | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | undefined>(undefined);
+
+  // 정렬 핸들러
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
+
   // React Query로 데이터 조회
   const { data, isLoading } = useQuery({
-    queryKey: ['inquiries', page, statusFilter, searchQuery],
+    queryKey: ['inquiries', page, statusFilter, searchQuery, sortField, sortOrder],
     queryFn: () =>
       inquiryApi.getInquiries({
         page,
         limit: PAGE_SIZE,
         status: statusFilter === 'all' ? undefined : statusFilter,
         search: searchQuery || undefined,
+        sortField,
+        sortOrder,
       }),
   });
 
@@ -137,6 +159,10 @@ export const useInquiry = (): UseInquiryReturn => {
     openDrawer,
     closeDrawer,
     handleAnswer,
+    handleAnswer,
     setPage,
+    sortField,
+    sortOrder,
+    onSort: handleSort,
   };
 };

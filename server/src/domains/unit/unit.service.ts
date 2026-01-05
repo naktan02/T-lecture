@@ -244,14 +244,32 @@ class UnitService {
   /**
    * 목록 조회
    */
-  async searchUnitList(query: UnitQueryInput) {
+  /**
+   * 목록 조회
+   */
+  async searchUnitList(query: UnitQueryInput & { sortField?: string; sortOrder?: 'asc' | 'desc' }) {
     const paging = buildPaging(query);
     const where = buildUnitWhere(query);
+
+    let orderBy: Prisma.UnitOrderByWithRelationInput | undefined;
+    if (query.sortField && query.sortOrder) {
+      if (query.sortField === 'name') orderBy = { name: query.sortOrder };
+      else if (query.sortField === 'unitType') orderBy = { unitType: query.sortOrder };
+      else if (query.sortField === 'region') orderBy = { region: query.sortOrder };
+      else if (query.sortField === 'wideArea') orderBy = { wideArea: query.sortOrder };
+      else if (query.sortField === 'date')
+        orderBy = { id: query.sortOrder }; // Proxy for creation date
+      // educationStart?
+      else if (query.sortField === 'educationStart') {
+        orderBy = { educationStart: query.sortOrder };
+      }
+    }
 
     const { total, units } = await unitRepository.findUnitsByFilterAndCount({
       skip: paging.skip,
       take: paging.take,
       where,
+      orderBy,
     });
 
     return {

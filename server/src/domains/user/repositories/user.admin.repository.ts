@@ -17,7 +17,12 @@ interface UserFilters {
 
 class AdminRepository {
   // 전체 유저 목록 조회 (페이지네이션 지원)
-  async findAll(filters: UserFilters = {}, page = 1, limit = 20) {
+  async findAll(
+    filters: UserFilters = {},
+    page = 1,
+    limit = 20,
+    sort?: { field: string; order: 'asc' | 'desc' },
+  ) {
     const {
       status,
       name,
@@ -32,6 +37,8 @@ class AdminRepository {
     } = filters;
 
     const where: Prisma.UserWhereInput = {};
+
+    // ... (existing logic) ...
 
     if (status) {
       where.status = status;
@@ -105,12 +112,31 @@ class AdminRepository {
 
     const skip = (page - 1) * limit;
 
+    // Sort Construction
+    let orderBy: Prisma.UserOrderByWithRelationInput = { id: 'desc' };
+    if (sort && sort.field) {
+      const { field, order } = sort;
+      if (field === 'name') orderBy = { name: order };
+      else if (field === 'status') orderBy = { status: order };
+      else if (field === 'phoneNumber') orderBy = { userphoneNumber: order };
+      else if (field === 'email') orderBy = { userEmail: order };
+      else if (field === 'createdAt') orderBy = { createdAt: order };
+      // Instructor related sort?? (complex)
+      // Prisma supports relation sort? yes.
+      // e.g. team name? category?
+      else if (field === 'role' || field === 'category') {
+        orderBy = { instructor: { category: order } };
+      } else if (field === 'team') {
+        orderBy = { instructor: { team: { name: order } } };
+      }
+    }
+
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { id: 'desc' },
+        orderBy,
         include: {
           instructor: {
             include: {

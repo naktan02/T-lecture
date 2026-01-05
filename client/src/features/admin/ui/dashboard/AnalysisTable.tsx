@@ -46,16 +46,23 @@ export const AnalysisTable: React.FC<Props> = ({
     )
     .sort((a, b) => {
       if (!sortField) return 0;
-      let aVal: number = 0,
-        bVal: number = 0;
-      if (sortField === 'completedCount') {
-        aVal = a.completedCount;
-        bVal = b.completedCount;
+      let diff = 0;
+
+      if (sortField === 'name') {
+        diff = a.name.localeCompare(b.name);
+      } else if (sortField === 'role') {
+        diff = (a.role || '').localeCompare(b.role || '');
+      } else if (sortField === 'team') {
+        diff = (a.team || '').localeCompare(b.team || '');
+      } else if (sortField === 'completedCount') {
+        diff = a.completedCount - b.completedCount;
       } else if (sortField === 'acceptanceRate') {
-        aVal = a.acceptanceRate;
-        bVal = b.acceptanceRate;
+        diff = a.acceptanceRate - b.acceptanceRate;
+      } else if (sortField === 'isActive') {
+        diff = Number(a.isActive) - Number(b.isActive);
       }
-      return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+
+      return sortDirection === 'asc' ? diff : -diff;
     });
 
   // Filter & Sort Teams
@@ -63,22 +70,21 @@ export const AnalysisTable: React.FC<Props> = ({
     .filter((t) => t.teamName.toLowerCase().includes(filter.toLowerCase()))
     .sort((a, b) => {
       if (!sortField) return 0;
-      let aVal: number = 0,
-        bVal: number = 0;
-      if (sortField === 'memberCount') {
-        aVal = a.memberCount;
-        bVal = b.memberCount;
+      let diff = 0;
+
+      if (sortField === 'teamName') {
+        diff = a.teamName.localeCompare(b.teamName);
+      } else if (sortField === 'memberCount') {
+        diff = a.memberCount - b.memberCount;
       } else if (sortField === 'completedCount') {
-        aVal = a.completedCount;
-        bVal = b.completedCount;
+        diff = a.completedCount - b.completedCount;
       } else if (sortField === 'averageCompleted') {
-        aVal = a.averageCompleted;
-        bVal = b.averageCompleted;
+        diff = a.averageCompleted - b.averageCompleted;
       } else if (sortField === 'activeMemberRate') {
-        aVal = a.activeMemberRate;
-        bVal = b.activeMemberRate;
+        diff = a.activeMemberRate - b.activeMemberRate;
       }
-      return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+
+      return sortDirection === 'asc' ? diff : -diff;
     });
 
   return (
@@ -131,14 +137,23 @@ export const AnalysisTable: React.FC<Props> = ({
           <thead className="bg-gray-50 sticky top-0">
             {activeTab === 'INSTRUCTOR' ? (
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  이름
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('name')}
+                >
+                  이름 {getSortIcon('name')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  직책
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('role')}
+                >
+                  직책 {getSortIcon('role')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  팀
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('team')}
+                >
+                  팀 {getSortIcon('team')}
                 </th>
                 <th
                   className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
@@ -152,14 +167,20 @@ export const AnalysisTable: React.FC<Props> = ({
                 >
                   수락률 {getSortIcon('acceptanceRate')}
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                  활동 여부
+                <th
+                  className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('isActive')}
+                >
+                  활동 여부 {getSortIcon('isActive')}
                 </th>
               </tr>
             ) : (
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  팀명
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('teamName')}
+                >
+                  팀명 {getSortIcon('teamName')}
                 </th>
                 <th
                   className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"

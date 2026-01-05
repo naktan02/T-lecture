@@ -19,21 +19,26 @@ class InquiryService {
   }
 
   // 문의사항 목록 조회
-  async getAll(params: {
-    page?: number;
-    limit?: number;
-    authorId?: number;
-    status?: 'Waiting' | 'Answered';
-    search?: string;
-  }) {
-    const { page = 1, limit = 10, authorId, status, search } = params;
+  async getAll(params: InquiryGetParams = {}) {
+    const { page = 1, limit = 10, authorId, status, search, sortField, sortOrder } = params;
     const skip = (page - 1) * limit;
+
+    let orderBy: any;
+    if (sortField && sortOrder) {
+      if (sortField === 'title') orderBy = { title: sortOrder };
+      else if (sortField === 'status') orderBy = { status: sortOrder };
+      else if (sortField === 'createdAt' || sortField === 'date')
+        orderBy = { createdAt: sortOrder };
+      else if (sortField === 'author') orderBy = { author: { name: sortOrder } };
+    }
+
     const { inquiries, total, waitingCount } = await inquiryRepository.findAll({
       skip,
       take: limit,
       authorId,
       status,
       search,
+      orderBy,
     });
 
     // 작성자 이름 일괄 조회
