@@ -6,7 +6,7 @@ import { InquiryAnswerDrawer } from './InquiryAnswerDrawer';
 import { Pagination } from '../../../shared/ui';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 30;
 
 // 상태 필터 옵션
 const STATUS_OPTIONS = [

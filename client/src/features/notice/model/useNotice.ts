@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { noticeApi, Notice } from '../api/noticeApi';
 import { showError, showSuccess } from '../../../shared/utils/toast';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 30;
 
 interface UseNoticeReturn {
   // 데이터

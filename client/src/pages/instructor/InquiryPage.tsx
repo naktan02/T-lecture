@@ -26,7 +26,7 @@ const InquiryPage = (): ReactElement => {
     try {
       const data = await inquiryApi.getInquiries({
         page,
-        limit: 10,
+        limit: 30,
         status: statusFilter === 'all' ? undefined : statusFilter,
         search: searchQuery || undefined,
       });
@@ -124,7 +124,7 @@ const InquiryPage = (): ReactElement => {
               onInquiryClick={handleInquiryClick}
               currentPage={page}
               totalCount={totalCount}
-              pageSize={10}
+              pageSize={30}
             />
           </div>
 

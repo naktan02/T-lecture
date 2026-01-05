@@ -6,7 +6,7 @@ import { NoticeDrawer } from './NoticeDrawer';
 import { Pagination } from '../../../shared/ui';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 30;
 
 /**
  * 공지사항 관리 워크스페이스

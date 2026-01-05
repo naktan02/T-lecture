@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { inquiryApi, Inquiry } from '../api/inquiryApi';
 import { showError } from '../../../shared/utils/toast';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 30;
 
 type StatusFilter = 'all' | 'Waiting' | 'Answered';
 
