@@ -12,13 +12,13 @@ const prisma = new PrismaClient();
 
 // 팀 데이터 (7개)
 const TEAMS = [
-  { id: 1, name: '서울1팀' },
-  { id: 2, name: '서울2팀' },
-  { id: 3, name: '경기팀' },
-  { id: 4, name: '강원팀' },
-  { id: 5, name: '충청팀' },
-  { id: 6, name: '전라팀' },
-  { id: 7, name: '경상팀' },
+  { id: 1, name: '1팀' },
+  { id: 2, name: '2팀' },
+  { id: 3, name: '3팀' },
+  { id: 4, name: '4팀' },
+  { id: 5, name: '5팀' },
+  { id: 6, name: '6팀' },
+  { id: 7, name: '7팀' },
 ];
 
 // 덕목 데이터 (15개)
@@ -115,7 +115,38 @@ export async function runSeedCore() {
     }
   }
 
-  // 4. 메시지 템플릿 생성
+  // 4. 시스템 설정 생성
+  console.log('⚙️ 시스템 설정 생성 중...');
+  const SYSTEM_CONFIGS = [
+    { key: 'ASSIGNMENT_DISTANCE_WEIGHT', value: '0.3', description: '배정 알고리즘 - 거리 가중치' },
+    {
+      key: 'ASSIGNMENT_AVAILABILITY_WEIGHT',
+      value: '0.4',
+      description: '배정 알고리즘 - 가용일 가중치',
+    },
+    {
+      key: 'ASSIGNMENT_WORKLOAD_WEIGHT',
+      value: '0.3',
+      description: '배정 알고리즘 - 업무량 가중치',
+    },
+    { key: 'PENALTY_DURATION_DAYS', value: '30', description: '패널티 기간 (일)' },
+    {
+      key: 'PRIORITY_CREDIT_EXPIRY_DAYS',
+      value: '60',
+      description: '우선배정 크레딧 만료 기간 (일)',
+    },
+    { key: 'DEFAULT_RESPONSE_DEADLINE_HOURS', value: '48', description: '배정 응답 기한 (시간)' },
+  ];
+  for (const config of SYSTEM_CONFIGS) {
+    await prisma.systemConfig.upsert({
+      where: { key: config.key },
+      update: { value: config.value, description: config.description },
+      create: { key: config.key, value: config.value, description: config.description },
+    });
+  }
+  console.log(`  ✅ 시스템 설정 ${SYSTEM_CONFIGS.length}개 생성 완료`);
+
+  // 5. 메시지 템플릿 생성
   console.log('📝 메시지 템플릿 생성 중...');
 
   // 임시 배정 템플릿
