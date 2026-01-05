@@ -151,32 +151,61 @@ export const UserDashboardPage: React.FC = () => {
   const [endDate, setEndDate] = useState<string>('');
 
   useEffect(() => {
-    // 필터 변경 시 날짜 자동 설정 (UI 표시용)
+    // 필터 변경 시 날짜 자동 설정 (월 단위 - UI 표시용)
     const today = new Date();
     const formatDate = (d: Date) => d.toISOString().split('T')[0];
 
-    if (rangeType === '1m') {
-      const start = new Date(today);
-      start.setMonth(today.getMonth() - 1);
-      setStartDate(formatDate(start));
-      setEndDate(formatDate(today));
-    } else if (rangeType === '3m') {
-      const start = new Date(today);
-      start.setMonth(today.getMonth() - 3);
-      setStartDate(formatDate(start));
-      setEndDate(formatDate(today));
-    } else if (rangeType === '6m') {
-      const start = new Date(today);
-      start.setMonth(today.getMonth() - 6);
-      setStartDate(formatDate(start));
-      setEndDate(formatDate(today));
-    } else if (rangeType === '12m') {
-      const start = new Date(today);
-      start.setMonth(today.getMonth() - 12);
-      setStartDate(formatDate(start));
-      setEndDate(formatDate(today));
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth(); // 0-indexed
+
+    if (rangeType === 'custom') {
+      // custom일 때는 기존 값 유지
+      return;
     }
-    // custom일 때는 기존 값 유지
+
+    let startMonth: number;
+    let startYear: number;
+
+    switch (rangeType) {
+      case '1m':
+        // 이번 달만
+        startMonth = currentMonth;
+        startYear = currentYear;
+        break;
+      case '3m':
+        // 최근 3개월 (이번 달 포함)
+        startMonth = currentMonth - 2;
+        startYear = currentYear;
+        break;
+      case '6m':
+        // 최근 6개월
+        startMonth = currentMonth - 5;
+        startYear = currentYear;
+        break;
+      case '12m':
+        // 최근 12개월
+        startMonth = currentMonth - 11;
+        startYear = currentYear;
+        break;
+      default:
+        startMonth = currentMonth;
+        startYear = currentYear;
+    }
+
+    // 음수 월 처리 (연도 조정)
+    while (startMonth < 0) {
+      startMonth += 12;
+      startYear -= 1;
+    }
+
+    // 시작일: 해당 월의 1일
+    const start = new Date(startYear, startMonth, 1);
+
+    // 종료일: 이번 달의 마지막 날
+    const end = new Date(currentYear, currentMonth + 1, 0);
+
+    setStartDate(formatDate(start));
+    setEndDate(formatDate(end));
   }, [rangeType]);
 
   useEffect(() => {

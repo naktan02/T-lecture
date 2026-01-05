@@ -1,6 +1,12 @@
 // server/src/domains/dashboard/services/dashboard.user.service.ts
 import prisma from '../../../libs/prisma';
 
+// Helper: 오늘 UTC 자정 생성
+function getTodayUTC(): Date {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+}
+
 interface MonthlyActivity {
   month: string;
   count: number;
@@ -104,27 +110,31 @@ class DashboardService {
         },
       });
     } else {
-      // 1-B. 커스텀 기간: UTC 자정 기준 필터링
+      // 1-B. 커스텀 기간: UTC 자정 기준 필터링 (완료된 교육만)
       const start = new Date(`${startDate!}T00:00:00.000Z`);
       const end = new Date(`${endDate!}T23:59:59.999Z`);
+      const today = getTodayUTC();
+
+      // 종료일이 오늘 이후면 오늘 직전까지만 (완료된 교육만)
+      const effectiveEnd = end < today ? end : new Date(today.getTime() - 1);
 
       const assignments = await prisma.instructorUnitAssignment.findMany({
         where: {
           userId,
           state: 'Accepted',
           UnitSchedule: {
-            date: { gte: start, lte: end },
+            date: { gte: start, lt: today }, // 완료된 교육만
           },
         },
         include: { UnitSchedule: { include: { unit: true } } },
       });
 
-      // 전체 제안 건수도 해당 기간 내로 필터링해야 정확한 수락률이 나옴
+      // 전체 제안 건수도 완료된 교육만 집계
       const periodTotalProposals = await prisma.instructorUnitAssignment.count({
         where: {
           userId,
           UnitSchedule: {
-            date: { gte: start, lte: end },
+            date: { gte: start, lt: today }, // 완료된 교육만
           },
         },
       });
@@ -217,13 +227,17 @@ class DashboardService {
       }
     }
 
-    // 월별 데이터 조회
+    // 월별 데이터 조회 (완료된 교육만)
+    const today = getTodayUTC();
     const recentActivity = await prisma.instructorUnitAssignment.findMany({
       where: {
         userId,
         state: 'Accepted',
         UnitSchedule: {
-          date: { gte: monthlyQueryStart, lt: monthlyQueryEnd },
+          date: {
+            gte: monthlyQueryStart,
+            lt: today, // 완료된 교육만 (오늘 이전)
+          },
         },
       },
       include: { UnitSchedule: { include: { unit: true } } },
@@ -277,10 +291,13 @@ class DashboardService {
     };
 
     if (isCustomRange) {
-      // 커스텀 기간: UTC 자정 기준
+      // 커스텀 기간: UTC 자정 기준, 완료된 건만 (오늘 이전)
+      const today = getTodayUTC();
+      const rangeStart = new Date(`${startDate!}T00:00:00.000Z`);
+
       recentAssignmentsQuery.where.UnitSchedule.date = {
-        gte: new Date(`${startDate!}T00:00:00.000Z`),
-        lte: new Date(`${endDate!}T23:59:59.999Z`),
+        gte: rangeStart,
+        lt: today, // 완료된 것만
       };
       recentAssignmentsQuery.take = 50;
     }
