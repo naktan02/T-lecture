@@ -73,39 +73,70 @@ export const AdminDashboard: React.FC = () => {
     name: string;
   }>({ open: false, id: 0, name: '' });
 
-  // Date calculation effect
-  useEffect(() => {
+  // Helper function to get date range based on rangeType (월 단위)
+  // 1m = 이번 달 (1월 1일 ~ 1월 31일)
+  // 3m = 최근 3개월 (11월 1일 ~ 1월 31일)
+  const getDateRange = useCallback(() => {
     const today = new Date();
     const formatDate = (d: Date) => d.toISOString().split('T')[0];
 
-    if (rangeType === '1m') {
-      const start = new Date(today);
-      start.setMonth(today.getMonth() - 1);
-      setStartDate(formatDate(start));
-      setEndDate(formatDate(today));
-    } else if (rangeType === '3m') {
-      const start = new Date(today);
-      start.setMonth(today.getMonth() - 3);
-      setStartDate(formatDate(start));
-      setEndDate(formatDate(today));
-    } else if (rangeType === '6m') {
-      const start = new Date(today);
-      start.setMonth(today.getMonth() - 6);
-      setStartDate(formatDate(start));
-      setEndDate(formatDate(today));
-    } else if (rangeType === '12m') {
-      const start = new Date(today);
-      start.setMonth(today.getMonth() - 12);
-      setStartDate(formatDate(start));
-      setEndDate(formatDate(today));
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth(); // 0-indexed
+
+    if (rangeType === 'custom') {
+      return { startDate, endDate };
     }
-    // custom: keep existing values
-  }, [rangeType]);
+
+    let startMonth: number;
+    let startYear: number;
+
+    switch (rangeType) {
+      case '1m':
+        // 이번 달만
+        startMonth = currentMonth;
+        startYear = currentYear;
+        break;
+      case '3m':
+        // 최근 3개월 (이번 달 포함)
+        startMonth = currentMonth - 2;
+        startYear = currentYear;
+        break;
+      case '6m':
+        // 최근 6개월
+        startMonth = currentMonth - 5;
+        startYear = currentYear;
+        break;
+      case '12m':
+        // 최근 12개월
+        startMonth = currentMonth - 11;
+        startYear = currentYear;
+        break;
+      default:
+        startMonth = currentMonth;
+        startYear = currentYear;
+    }
+
+    // 음수 월 처리 (연도 조정)
+    while (startMonth < 0) {
+      startMonth += 12;
+      startYear -= 1;
+    }
+
+    // 시작일: 해당 월의 1일
+    const start = new Date(startYear, startMonth, 1);
+
+    // 종료일: 이번 달의 마지막 날
+    const end = new Date(currentYear, currentMonth + 1, 0);
+
+    return { startDate: formatDate(start), endDate: formatDate(end) };
+  }, [rangeType, startDate, endDate]);
 
   // Load data
   const loadData = useCallback(async () => {
+    const { startDate: start, endDate: end } = getDateRange();
+
     // If custom and dates are missing, don't fetch yet
-    if (rangeType === 'custom' && (!startDate || !endDate)) {
+    if (rangeType === 'custom' && (!start || !end)) {
       return;
     }
 
@@ -113,8 +144,8 @@ export const AdminDashboard: React.FC = () => {
       setLoading(true);
 
       const queryParams = {
-        startDate,
-        endDate,
+        startDate: start,
+        endDate: end,
       };
 
       const [statsData, instructorsData, teamsData] = await Promise.all([
@@ -131,7 +162,7 @@ export const AdminDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [rangeType, startDate, endDate]);
+  }, [getDateRange, rangeType]);
 
   useEffect(() => {
     loadData();

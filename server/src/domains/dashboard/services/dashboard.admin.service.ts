@@ -52,16 +52,25 @@ interface ScheduleListItem {
   date: string;
   instructorNames: string[];
 }
-
 class DashboardAdminService {
   /**
    * 교육 진행 현황 (도넛 차트)
+   * - 부대 수 기준 (일정 수 X)
+   * - 기간 필터 없음 (전체 데이터)
+   * - 상태 판단: 오늘이 일정 기간에 포함되면 진행중
    */
   async getDashboardStats(): Promise<DashboardStats> {
-    const assignedSchedules = await prisma.unitSchedule.findMany({
-      where: {
-        assignments: {
-          some: { state: 'Accepted' },
+    const today = getTodayUTC();
+
+    // 모든 부대 조회 (일정 포함)
+    const units = await prisma.unit.findMany({
+      include: {
+        schedules: {
+          include: {
+            assignments: {
+              where: { state: 'Accepted' },
+            },
+          },
         },
       },
     });
@@ -69,30 +78,42 @@ class DashboardAdminService {
     let completed = 0;
     let inProgress = 0;
     let scheduled = 0;
+    let unassigned = 0;
 
-    const today = getTodayUTC();
+    for (const unit of units) {
+      // 배정이 있는 일정만 필터링
+      const assignedScheduleDates = unit.schedules
+        .filter((s) => s.date && s.assignments.length > 0)
+        .map((s) => toUTCMidnight(new Date(s.date!)));
 
-    for (const schedule of assignedSchedules) {
-      if (!schedule.date) continue;
+      if (assignedScheduleDates.length === 0) {
+        // 배정 없음
+        unassigned++;
+        continue;
+      }
 
-      const scheduleDate = toUTCMidnight(new Date(schedule.date));
+      // 날짜 정렬
+      assignedScheduleDates.sort((a, b) => a.getTime() - b.getTime());
+      const firstDate = assignedScheduleDates[0];
+      const lastDate = assignedScheduleDates[assignedScheduleDates.length - 1];
 
-      if (scheduleDate < today) {
+      // 오늘이 일정에 포함되는지 확인
+      const todayIsScheduled = assignedScheduleDates.some((d) => d.getTime() === today.getTime());
+
+      if (todayIsScheduled) {
+        // 오늘이 일정 중 하나에 해당
+        inProgress++;
+      } else if (lastDate < today) {
+        // 모든 일정이 과거
         completed++;
-      } else if (scheduleDate > today) {
+      } else if (firstDate > today) {
+        // 모든 일정이 미래
         scheduled++;
       } else {
+        // 일정이 과거~미래에 걸쳐있지만 오늘은 아님 → 진행중으로 처리
         inProgress++;
       }
     }
-
-    const unassigned = await prisma.unitSchedule.count({
-      where: {
-        assignments: {
-          none: { state: 'Accepted' },
-        },
-      },
-    });
 
     return {
       educationStatus: {
