@@ -1,7 +1,7 @@
 import prisma from '../../../libs/prisma';
 
 // Types
-type PeriodFilter = '1m' | '3m' | '6m' | '12m';
+
 type ScheduleStatus = 'completed' | 'inProgress' | 'scheduled' | 'unassigned';
 
 // Helper: 오늘 UTC 자정 생성
@@ -51,37 +51,6 @@ interface ScheduleListItem {
   unitName: string;
   date: string;
   instructorNames: string[];
-}
-
-// Helper function to get date range from period (UTC 자정 기준)
-function getDateRangeFromPeriod(period: PeriodFilter): { start: Date; end: Date } {
-  const now = new Date();
-  const currentYear = now.getUTCFullYear();
-  const currentMonth = now.getUTCMonth();
-
-  // End: 현재 월 말일 23:59:59 UTC
-  const endDay = new Date(Date.UTC(currentYear, currentMonth + 1, 0)).getUTCDate();
-  const end = new Date(Date.UTC(currentYear, currentMonth, endDay, 23, 59, 59, 999));
-
-  let start: Date;
-
-  switch (period) {
-    case '3m':
-      start = new Date(Date.UTC(currentYear, currentMonth - 2, 1, 0, 0, 0, 0));
-      break;
-    case '6m':
-      start = new Date(Date.UTC(currentYear, currentMonth - 5, 1, 0, 0, 0, 0));
-      break;
-    case '12m':
-      start = new Date(Date.UTC(currentYear, currentMonth - 11, 1, 0, 0, 0, 0));
-      break;
-    case '1m':
-    default:
-      start = new Date(Date.UTC(currentYear, currentMonth, 1, 0, 0, 0, 0));
-      break;
-  }
-
-  return { start, end };
 }
 
 class DashboardAdminService {
@@ -170,8 +139,7 @@ class DashboardAdminService {
     // Filter by status
     const filtered = schedules.filter((s) => {
       if (!s.date) return status === 'unassigned';
-      const scheduleDate = new Date(s.date);
-      scheduleDate.setHours(0, 0, 0, 0);
+      const scheduleDate = toUTCMidnight(new Date(s.date));
 
       if (status === 'completed') return scheduleDate < today;
       if (status === 'inProgress') return scheduleDate.getTime() === today.getTime();
@@ -225,8 +193,7 @@ class DashboardAdminService {
       // Completed = Accepted AND schedule date < today
       const completed = accepted.filter((a) => {
         if (!a.UnitSchedule?.date) return false;
-        const d = new Date(a.UnitSchedule.date);
-        d.setHours(0, 0, 0, 0);
+        const d = toUTCMidnight(new Date(a.UnitSchedule.date));
         return d < today;
       });
 
@@ -286,8 +253,7 @@ class DashboardAdminService {
 
         user.unitAssignments.forEach((a) => {
           if (!a.UnitSchedule?.date) return;
-          const d = new Date(a.UnitSchedule.date);
-          d.setHours(0, 0, 0, 0);
+          const d = toUTCMidnight(new Date(a.UnitSchedule.date));
           if (d < today) {
             // Add schedule ID to set (automatically deduplicates)
             uniqueScheduleIds.add(a.UnitSchedule.id);
@@ -351,8 +317,7 @@ class DashboardAdminService {
     const members = team.instructors.map((i) => {
       const completed = i.user.unitAssignments.filter((a) => {
         if (!a.UnitSchedule?.date) return false;
-        const d = new Date(a.UnitSchedule.date);
-        d.setHours(0, 0, 0, 0);
+        const d = toUTCMidnight(new Date(a.UnitSchedule.date));
         if (d < today) {
           // Also add to team-level unique set
           uniqueScheduleIds.add(a.UnitSchedule.id);
