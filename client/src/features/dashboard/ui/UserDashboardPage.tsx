@@ -146,7 +146,7 @@ export const UserDashboardPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // 날짜 필터 상태
-  const [rangeType, setRangeType] = useState<string>('all'); // 'all', '1m', '3m', 'custom'
+  const [rangeType, setRangeType] = useState<string>('thisMonth'); // 'thisMonth', '3m', '6m', '12m', 'custom'
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
@@ -155,9 +155,9 @@ export const UserDashboardPage: React.FC = () => {
     const today = new Date();
     const formatDate = (d: Date) => d.toISOString().split('T')[0];
 
-    if (rangeType === '1m') {
-      const start = new Date(today);
-      start.setMonth(today.getMonth() - 1);
+    if (rangeType === 'thisMonth') {
+      // 이번 달 (1일 ~ 오늘)
+      const start = new Date(today.getFullYear(), today.getMonth(), 1);
       setStartDate(formatDate(start));
       setEndDate(formatDate(today));
     } else if (rangeType === '3m') {
@@ -165,9 +165,16 @@ export const UserDashboardPage: React.FC = () => {
       start.setMonth(today.getMonth() - 3);
       setStartDate(formatDate(start));
       setEndDate(formatDate(today));
-    } else if (rangeType === 'all') {
-      setStartDate('');
-      setEndDate('');
+    } else if (rangeType === '6m') {
+      const start = new Date(today);
+      start.setMonth(today.getMonth() - 6);
+      setStartDate(formatDate(start));
+      setEndDate(formatDate(today));
+    } else if (rangeType === '12m') {
+      const start = new Date(today);
+      start.setMonth(today.getMonth() - 12);
+      setStartDate(formatDate(start));
+      setEndDate(formatDate(today));
     }
     // custom일 때는 기존 값 유지
   }, [rangeType]);
@@ -176,16 +183,15 @@ export const UserDashboardPage: React.FC = () => {
     const fetchStats = async () => {
       try {
         setIsLoading(true);
-        // custom이고 날짜가 없으면 요청 안함 (혹은 전체로?)
+        // custom이고 날짜가 없으면 요청 안함
         if (rangeType === 'custom' && (!startDate || !endDate)) {
-          // 날짜 선택 대기
           setIsLoading(false);
           return;
         }
 
         const data = await dashboardApi.getUserStats({
-          startDate: rangeType !== 'all' ? startDate : undefined,
-          endDate: rangeType !== 'all' ? endDate : undefined,
+          startDate,
+          endDate,
         });
         setStats(data);
       } catch (err) {
@@ -196,7 +202,7 @@ export const UserDashboardPage: React.FC = () => {
       }
     };
 
-    // custom일 때는 날짜가 둘 다 있을 때만 요청
+    // custom일 때는 날짜가 둘 다 있을 때만 요청, 그 외에는 rangeType 변경 시 자동 요청
     if (rangeType !== 'custom' || (startDate && endDate)) {
       fetchStats();
     }
@@ -235,9 +241,10 @@ export const UserDashboardPage: React.FC = () => {
             onChange={(e) => setRangeType(e.target.value)}
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
           >
-            <option value="all">전체 기간 (누적)</option>
-            <option value="1m">최근 1개월</option>
+            <option value="thisMonth">이번 달</option>
             <option value="3m">최근 3개월</option>
+            <option value="6m">최근 6개월</option>
+            <option value="12m">최근 12개월</option>
             <option value="custom">직접 설정</option>
           </select>
 
@@ -274,16 +281,14 @@ export const UserDashboardPage: React.FC = () => {
             <StatCard
               title="총 근무 시간"
               value={`${stats.summary.totalWorkHours}시간`}
-              subtitle={rangeType === 'all' ? '누적 완료된 교육 시간' : '선택 기간 내 교육 시간'}
+              subtitle={'선택 기간 내 교육 시간'}
               icon={<ClockIcon className="h-6 w-6" />}
               color="blue"
             />
             <StatCard
               title="총 이동 거리"
               value={`${stats.summary.totalDistance}km`}
-              subtitle={
-                rangeType === 'all' ? '부대 방문 누적 거리 (왕복)' : '선택 기간 내 이동 거리'
-              }
+              subtitle={'선택 기간 내 이동 거리'}
               icon={<MapPinIcon className="h-6 w-6" />}
               color="green"
             />
@@ -297,11 +302,7 @@ export const UserDashboardPage: React.FC = () => {
             <StatCard
               title="근무 일수"
               value={`${stats.summary.totalWorkDays}일`}
-              subtitle={
-                rangeType === 'all'
-                  ? `올해 ${stats.summary.yearCount}건 / 이번달 ${stats.summary.monthCount}건`
-                  : '선택 기간 내 근무일수'
-              }
+              subtitle={'선택 기간 내 근무일수'}
               icon={<CheckCircleIcon className="h-6 w-6" />}
               color="orange"
             />
@@ -312,7 +313,7 @@ export const UserDashboardPage: React.FC = () => {
             <MonthlyChart data={stats.monthlyTrend} />
             <ActivityHistory
               assignments={stats.recentAssignments}
-              rangeLabel={rangeType === 'all' ? '전체 기간' : `${startDate} ~ ${endDate}`}
+              rangeLabel={`${startDate} ~ ${endDate}`}
             />
           </div>
         </>

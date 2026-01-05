@@ -80,17 +80,28 @@ class DashboardService {
       }
 
       // 올해/이번달 건수는 별도 조회 (UTC 기준)
+      // "올해" 기준을 "최근 1년" (이번 달 포함 12개월)으로 변경
       const now = new Date();
-      const startOfYear = new Date(Date.UTC(now.getUTCFullYear(), 0, 1, 0, 0, 0, 0));
+      const startOfRollingYear = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1, 0, 0, 0, 0),
+      );
       const startOfMonth = new Date(
         Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0),
       );
 
       yearCount = await prisma.instructorUnitAssignment.count({
-        where: { userId, state: 'Accepted', UnitSchedule: { date: { gte: startOfYear } } },
+        where: {
+          userId,
+          state: 'Accepted',
+          UnitSchedule: { date: { gte: startOfRollingYear } },
+        },
       });
       monthCount = await prisma.instructorUnitAssignment.count({
-        where: { userId, state: 'Accepted', UnitSchedule: { date: { gte: startOfMonth } } },
+        where: {
+          userId,
+          state: 'Accepted',
+          UnitSchedule: { date: { gte: startOfMonth } },
+        },
       });
     } else {
       // 1-B. 커스텀 기간: UTC 자정 기준 필터링
@@ -162,7 +173,7 @@ class DashboardService {
 
     // --- 2. 월별 추이 & 최근 배정 ---
     // 기간 설정 시: 해당 기간의 월별 데이터 표시
-    // 기본 모드: 현재 연도 전체 (1월~12월)
+    // 기본 모드: 최근 1년 (이번 달 포함 12개월)
 
     const now = new Date();
     const monthlyMap = new Map<string, { count: number; hours: number }>();
@@ -185,14 +196,21 @@ class DashboardService {
         current.setMonth(current.getMonth() + 1);
       }
     } else {
-      // 기본 모드: 현재 연도 1월~12월 (UTC 기준)
+      // 기본 모드: 최근 1년 (이번 달 포함 12개월)
       const currentYear = now.getUTCFullYear();
-      monthlyQueryStart = new Date(Date.UTC(currentYear, 0, 1, 0, 0, 0, 0)); // 1월 1일
+      const currentMonth = now.getUTCMonth();
+
+      // 시작일: 11개월 전 1일
+      monthlyQueryStart = new Date(Date.UTC(currentYear, currentMonth - 11, 1, 0, 0, 0, 0));
       monthlyQueryEnd = now;
 
-      for (let month = 0; month < 12; month++) {
-        const key = `${currentYear}-${String(month + 1).padStart(2, '0')}`;
+      // 맵 초기화
+      const ptr = new Date(monthlyQueryStart);
+      // 12개월치 버킷 생성
+      for (let i = 0; i < 12; i++) {
+        const key = `${ptr.getUTCFullYear()}-${String(ptr.getUTCMonth() + 1).padStart(2, '0')}`;
         monthlyMap.set(key, { count: 0, hours: 0 });
+        ptr.setUTCMonth(ptr.getUTCMonth() + 1);
       }
     }
 
