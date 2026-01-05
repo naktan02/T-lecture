@@ -1,6 +1,6 @@
-// server/prisma/seed.ts
+// server/prisma/testseed.ts
 // 통합 테스트 데이터 시드 스크립트
-// 실행: npx tsx prisma/seed.ts
+// 실행: npx tsx prisma/testseed.ts
 
 /* eslint-disable no-console */
 
