@@ -28,5 +28,12 @@ export const UserHeader: React.FC = () => {
   // 내 정보는 항상 마지막
   links.push({ label: '내 정보', path: '/user-main/profile' });
 
-  return <CommonHeader title="T-Lecture" userLabel={userLabel} links={links} />;
+  return (
+    <CommonHeader
+      title="T-Lecture"
+      userLabel={userLabel}
+      links={links}
+      logoPath="/user-main/profile"
+    />
+  );
 };

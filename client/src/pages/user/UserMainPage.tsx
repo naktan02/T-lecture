@@ -14,15 +14,7 @@ const UserMainPage: React.FC = () => {
     <>
       <UserHeader />
       <Routes>
-        <Route path="/" element={<Navigate to="dashboard" replace />} />
-        <Route
-          path="dashboard"
-          element={
-            <ContentWrapper>
-              <UserDashboard />
-            </ContentWrapper>
-          }
-        />
+        <Route path="/" element={<Navigate to="profile" replace />} />
         <Route path="profile" element={<UserProfilePage />} />
       </Routes>
     </>
