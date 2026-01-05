@@ -19,12 +19,18 @@ const NoticePage = (): ReactElement => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
 
+  // 정렬 상태
+  const [sortField, setSortField] = useState<string | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | undefined>(undefined);
+
   const fetchNotices = useCallback(async () => {
     try {
       const data = await noticeApi.getNotices({
         page,
         limit: 30,
         search: searchQuery || undefined,
+        sortField,
+        sortOrder,
       });
       setNotices(data.notices);
       setTotalPage(data.meta.lastPage);
@@ -32,11 +38,20 @@ const NoticePage = (): ReactElement => {
     } catch {
       showError('공지사항을 불러오는데 실패했습니다.');
     }
-  }, [page, searchQuery]);
+  }, [page, searchQuery, sortField, sortOrder]);
 
   useEffect(() => {
     fetchNotices();
   }, [fetchNotices]);
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +99,9 @@ const NoticePage = (): ReactElement => {
               currentPage={page}
               totalCount={totalCount}
               pageSize={30}
+              sortField={sortField}
+              sortOrder={sortOrder}
+              onSort={handleSort}
             />
           </div>
 

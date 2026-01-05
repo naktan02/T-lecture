@@ -113,19 +113,22 @@ class AdminRepository {
     const skip = (page - 1) * limit;
 
     // Sort Construction
-    let orderBy: Prisma.UserOrderByWithRelationInput = { id: 'desc' };
+    let orderBy: Prisma.UserOrderByWithRelationInput | Prisma.UserOrderByWithRelationInput[] = {
+      id: 'desc',
+    };
     if (sort && sort.field) {
       const { field, order } = sort;
       if (field === 'name') orderBy = { name: order };
       else if (field === 'status') orderBy = { status: order };
       else if (field === 'phoneNumber') orderBy = { userphoneNumber: order };
       else if (field === 'email') orderBy = { userEmail: order };
-      else if (field === 'createdAt') orderBy = { createdAt: order };
+      else if (field === 'createdAt') orderBy = { id: order };
       // Instructor related sort?? (complex)
       // Prisma supports relation sort? yes.
       // e.g. team name? category?
       else if (field === 'role' || field === 'category') {
-        orderBy = { instructor: { category: order } };
+        // Prioritize Admin (level), then Instructor (category)
+        orderBy = [{ admin: { level: order } }, { instructor: { category: order } }];
       } else if (field === 'team') {
         orderBy = { instructor: { team: { name: order } } };
       }

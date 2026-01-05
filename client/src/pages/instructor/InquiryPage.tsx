@@ -22,6 +22,10 @@ const InquiryPage = (): ReactElement => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
 
+  // 정렬 상태
+  const [sortField, setSortField] = useState<string | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | undefined>(undefined);
+
   const fetchInquiries = useCallback(async () => {
     try {
       const data = await inquiryApi.getInquiries({
@@ -29,6 +33,8 @@ const InquiryPage = (): ReactElement => {
         limit: 30,
         status: statusFilter === 'all' ? undefined : statusFilter,
         search: searchQuery || undefined,
+        sortField,
+        sortOrder,
       });
       setInquiries(data.inquiries);
       setTotalPage(data.meta.lastPage);
@@ -36,7 +42,7 @@ const InquiryPage = (): ReactElement => {
     } catch {
       showError('문의사항을 불러오는데 실패했습니다.');
     }
-  }, [page, statusFilter, searchQuery]);
+  }, [page, statusFilter, searchQuery, sortField, sortOrder]);
 
   useEffect(() => {
     fetchInquiries();
@@ -48,6 +54,15 @@ const InquiryPage = (): ReactElement => {
     if (inquiry) {
       setSelectedInquiry(inquiry);
       setIsDetailOpen(true);
+    }
+  };
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
     }
   };
 
@@ -125,6 +140,9 @@ const InquiryPage = (): ReactElement => {
               currentPage={page}
               totalCount={totalCount}
               pageSize={30}
+              sortField={sortField}
+              sortOrder={sortOrder}
+              onSort={handleSort}
             />
           </div>
 

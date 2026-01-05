@@ -13,6 +13,8 @@ export interface UserFilters {
   profileIncomplete?: boolean; // 정보 입력 미완료 강사
   page?: number;
   limit?: number;
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface VirtueInfo {
@@ -119,6 +121,8 @@ export const userManagementApi = {
     if (filters.profileIncomplete) params.append('profileIncomplete', 'true');
     if (filters.page) params.append('page', String(filters.page));
     if (filters.limit) params.append('limit', String(filters.limit));
+    if (filters.sortField) params.append('sortField', filters.sortField);
+    if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
 
     const queryString = params.toString();
     const url = `/api/v1/admin/users${queryString ? `?${queryString}` : ''}`;
