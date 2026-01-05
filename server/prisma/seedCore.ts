@@ -121,6 +121,11 @@ export async function runSeedCore() {
   // 임시 배정 템플릿
   const temporaryBody = {
     tokens: [
+      {
+        key: 'instructors',
+        type: 'format',
+        format: '{index}. {name}({category}) / {phone} / {virtues}',
+      },
       { text: '[임시 배정 알림]', type: 'text' },
       { type: 'newline' },
       { key: 'self.name', type: 'var' },
@@ -135,16 +140,21 @@ export async function runSeedCore() {
       { text: '- 지역: ', type: 'text' },
       { key: 'unit.region', type: 'var' },
       { type: 'newline' },
+      { type: 'newline' },
       { text: '- 교육일정:', type: 'text' },
       { type: 'newline' },
       { key: 'self.mySchedules', type: 'format', format: '- {date} ({dayOfWeek}) : {name}' },
+      { type: 'newline' },
       { type: 'newline' },
       { text: '* 하단의 버튼을 통해 [수락] 또는 [거절]을 선택해주세요.', type: 'text' },
     ],
   };
 
   const temporaryPresets = {
+    locations:
+      '장소명: {placeName} 참여인원: {actualCount}\n강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}, 휴대폰불출: {allowsPhoneBeforeAfter}\n특이사항: {note}\n-------------------------------------------------------',
     instructors: '{index}. {name}({category}) / {phone} / {virtues}',
+    'self.schedules': '- {date} ({dayOfWeek}) : {instructors}',
     'self.mySchedules': '- {date} ({dayOfWeek}) : {name}',
   };
 
@@ -174,8 +184,18 @@ export async function runSeedCore() {
       { text: '- 부대: ', type: 'text' },
       { key: 'unit.name', type: 'var' },
       { type: 'newline' },
+      { text: '- 광역: ', type: 'text' },
+      { key: 'unit.wideArea', type: 'var' },
+      { type: 'newline' },
+      { text: '- 지역: ', type: 'text' },
+      { key: 'unit.region', type: 'var' },
+      { type: 'newline' },
       { text: '- 주소: ', type: 'text' },
       { key: 'unit.addressDetail', type: 'var' },
+      { type: 'newline' },
+      { text: '- 상세주소: ', type: 'text' },
+      { key: 'unit.detailAddress', type: 'var' },
+      { type: 'newline' },
       { type: 'newline' },
       { text: '강의 일정:', type: 'text' },
       { type: 'newline' },
@@ -183,25 +203,33 @@ export async function runSeedCore() {
     ],
   };
 
+  const confirmedMemberPresets = {
+    locations:
+      '장소명: {placeName} 참여인원: {actualCount}\n강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}, 휴대폰불출: {allowsPhoneBeforeAfter}\n특이사항: {note}\n-------------------------------------------------------',
+    instructors: '{index}. {name}({category}) / {phone}',
+    'self.schedules': '- {date} ({dayOfWeek}) : {instructors}',
+    'self.mySchedules': '- {date} ({dayOfWeek}) : {name}',
+  };
+
   await prisma.messageTemplate.upsert({
     where: { key: 'CONFIRMED_MEMBER' },
     update: {
       title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
       body: confirmedMemberBody as Prisma.InputJsonValue,
-      formatPresets: temporaryPresets,
+      formatPresets: confirmedMemberPresets,
     },
     create: {
       key: 'CONFIRMED_MEMBER',
       title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
       body: confirmedMemberBody as Prisma.InputJsonValue,
-      formatPresets: temporaryPresets,
+      formatPresets: confirmedMemberPresets,
     },
   });
 
   // 확정 배정 (팀장용) 템플릿
   const confirmedLeaderBody = {
     tokens: [
-      { text: '[확정 배정 알림 - 팀장]', type: 'text' },
+      { text: '[확정 배정 알림]', type: 'text' },
       { type: 'newline' },
       { key: 'self.name', type: 'var' },
       { text: ' 강사님, 배정이 확정되었습니다.', type: 'text' },
@@ -209,18 +237,74 @@ export async function runSeedCore() {
       { text: '- 부대: ', type: 'text' },
       { key: 'unit.name', type: 'var' },
       { type: 'newline' },
+      { text: '- 지역: ', type: 'text' },
+      { key: 'unit.region', type: 'var' },
+      { type: 'newline' },
+      { text: '- 광역: ', type: 'text' },
+      { key: 'unit.wideArea', type: 'var' },
+      { type: 'newline' },
       { text: '- 주소: ', type: 'text' },
       { key: 'unit.addressDetail', type: 'var' },
       { type: 'newline' },
-      { text: '- 담당자: ', type: 'text' },
+      { text: '- 상세주소: ', type: 'text' },
+      { key: 'unit.detailAddress', type: 'var' },
+      { type: 'newline' },
+      { text: '- 교육일정: ', type: 'text' },
+      { key: 'unit.startDate', type: 'var' },
+      { text: ' ~ ', type: 'text' },
+      { key: 'unit.endDate', type: 'var' },
+      { type: 'newline' },
+      { text: '- 교육 시간: ', type: 'text' },
+      { key: 'unit.startTime', type: 'var' },
+      { text: ' ~ ', type: 'text' },
+      { key: 'unit.endTime', type: 'var' },
+      { type: 'newline' },
+      { text: '- 교육불가일: ', type: 'text' },
+      { key: 'unit.excludedDates', type: 'var' },
+      { type: 'newline' },
+      { type: 'newline' },
+      { text: '- 교육장소', type: 'text' },
+      { type: 'newline' },
+      {
+        key: 'locations',
+        type: 'format',
+        format:
+          '장소명: {placeName} 참여인원: {actualCount}\n강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}, 휴대폰불출: {allowsPhoneBeforeAfter}\n특이사항: {note}\n-------------------------------------------------------',
+      },
+      { type: 'newline' },
+      { type: 'newline' },
+      { text: '[배정 강사]', type: 'text' },
+      { type: 'newline' },
+      { key: 'self.schedules', type: 'format', format: '- {date} ({dayOfWeek}) : {instructors}' },
+      { type: 'newline' },
+      { type: 'newline' },
+      { text: '부대 담당자: ', type: 'text' },
       { key: 'unit.officerName', type: 'var' },
       { text: ' / ', type: 'text' },
       { key: 'unit.officerPhone', type: 'var' },
       { type: 'newline' },
-      { text: '[배정 강사]', type: 'text' },
+      { text: '수탁급식여부: ', type: 'text' },
+      { key: 'location.hasCateredMeals', type: 'var' },
       { type: 'newline' },
-      { key: 'instructors', type: 'format', format: '{index}. {name}({category}) / {phone}' },
+      { text: '회관숙박여부: ', type: 'text' },
+      { key: 'location.hasHallLodging', type: 'var' },
+      { type: 'newline' },
+      { text: '----------------------------------------------------------------', type: 'text' },
+      { type: 'newline' },
+      {
+        key: 'instructors',
+        type: 'format',
+        format: '{index}. {name}({category}) / {phone} / {virtues}',
+      },
     ],
+  };
+
+  const confirmedLeaderPresets = {
+    locations:
+      '장소명: {placeName} 참여인원: {actualCount}\n강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}, 휴대폰불출: {allowsPhoneBeforeAfter}\n특이사항: {note}\n-------------------------------------------------------',
+    instructors: '{index}. {name}({category}) / {phone} / {virtues}',
+    'self.schedules': '- {date} ({dayOfWeek}) : {instructors}',
+    'self.mySchedules': '- {date} ({dayOfWeek}) : {name}',
   };
 
   await prisma.messageTemplate.upsert({
@@ -228,13 +312,13 @@ export async function runSeedCore() {
     update: {
       title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
       body: confirmedLeaderBody as Prisma.InputJsonValue,
-      formatPresets: temporaryPresets,
+      formatPresets: confirmedLeaderPresets,
     },
     create: {
       key: 'CONFIRMED_LEADER',
       title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
       body: confirmedLeaderBody as Prisma.InputJsonValue,
-      formatPresets: temporaryPresets,
+      formatPresets: confirmedLeaderPresets,
     },
   });
 
