@@ -234,26 +234,40 @@ export async function runSeedAssignments() {
         }
       }
 
-      // 거리 데이터 생성
-      if (instructor.lat && instructor.lng && unit.lat && unit.lng) {
-        const distance = calculateDistance(instructor.lat, instructor.lng, unit.lat, unit.lng);
-        const duration = Math.round(distance * 1.5);
+      // 거리 데이터 생성 (현실적인 한국 이동거리 기준)
+      // 가까운 거리(60%): 15-40km
+      // 중거리(30%): 40-80km
+      // 장거리(10%): 80-120km
+      const rand = Math.random();
+      let distance: number;
+      if (rand < 0.6) {
+        distance = 15 + Math.random() * 25; // 15~40km
+      } else if (rand < 0.9) {
+        distance = 40 + Math.random() * 40; // 40~80km
+      } else {
+        distance = 80 + Math.random() * 40; // 80~120km
+      }
 
-        try {
-          await prisma.instructorUnitDistance.upsert({
-            where: { userId_unitId: { userId: instructor.userId, unitId: unit.id } },
-            update: {},
-            create: {
-              userId: instructor.userId,
-              unitId: unit.id,
-              distance: parseFloat(distance.toFixed(1)),
-              duration: duration,
-            },
-          });
-          distanceCount++;
-        } catch {
-          // 무시
-        }
+      // 소요시간: 평균 시속 40km 기준 (도로 상황 반영)
+      const duration = Math.round((distance / 40) * 60);
+
+      try {
+        await prisma.instructorUnitDistance.upsert({
+          where: { userId_unitId: { userId: instructor.userId, unitId: unit.id } },
+          update: {
+            distance: parseFloat(distance.toFixed(1)),
+            duration: duration,
+          },
+          create: {
+            userId: instructor.userId,
+            unitId: unit.id,
+            distance: parseFloat(distance.toFixed(1)),
+            duration: duration,
+          },
+        });
+        distanceCount++;
+      } catch {
+        // 무시
       }
     }
 

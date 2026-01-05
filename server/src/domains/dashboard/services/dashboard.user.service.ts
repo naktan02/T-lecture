@@ -156,12 +156,13 @@ class DashboardService {
       );
 
       const workedDates = new Set<string>();
+      const countedUnitsForDistance = new Set<number>(); // 거리 계산한 부대 추적
 
       for (const assignment of assignments) {
         if (!assignment.UnitSchedule?.unit || !assignment.UnitSchedule.date) continue;
         const unit = assignment.UnitSchedule.unit;
 
-        // 시간
+        // 시간 (일정마다 계산)
         let workHours = 0;
         if (unit.workStartTime && unit.workEndTime) {
           const s = new Date(unit.workStartTime);
@@ -172,9 +173,12 @@ class DashboardService {
         }
         summaryStats.totalWorkHours += workHours;
 
-        // 거리
-        const dist = distanceMap.get(unit.id) || 0;
-        summaryStats.totalDistance += dist * 2;
+        // 거리 (부대별 한 번만 - 파견 형태이므로 왕복 1회만)
+        if (!countedUnitsForDistance.has(unit.id)) {
+          const dist = distanceMap.get(unit.id) || 0;
+          summaryStats.totalDistance += dist * 2; // 왕복
+          countedUnitsForDistance.add(unit.id);
+        }
 
         workedDates.add(new Date(assignment.UnitSchedule.date).toDateString());
       }
