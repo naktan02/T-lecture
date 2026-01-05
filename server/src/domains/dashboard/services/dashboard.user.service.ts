@@ -189,11 +189,14 @@ class DashboardService {
       monthlyQueryEnd = rangeEnd;
 
       // 시작 월부터 종료 월까지 초기화
-      const current = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+      const current = new Date(Date.UTC(rangeStart.getUTCFullYear(), rangeStart.getUTCMonth(), 1));
       while (current <= rangeEnd) {
-        const key = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
+        const key = `${current.getUTCFullYear()}-${String(current.getUTCMonth() + 1).padStart(
+          2,
+          '0',
+        )}`;
         monthlyMap.set(key, { count: 0, hours: 0 });
-        current.setMonth(current.getMonth() + 1);
+        current.setUTCMonth(current.getUTCMonth() + 1);
       }
     } else {
       // 기본 모드: 최근 1년 (이번 달 포함 12개월)

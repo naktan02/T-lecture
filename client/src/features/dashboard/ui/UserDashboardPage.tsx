@@ -146,18 +146,18 @@ export const UserDashboardPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // 날짜 필터 상태
-  const [rangeType, setRangeType] = useState<string>('thisMonth'); // 'thisMonth', '3m', '6m', '12m', 'custom'
+  const [rangeType, setRangeType] = useState<string>('12m'); // '1m', '3m', '6m', '12m', 'custom'
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
   useEffect(() => {
-    // 필터 변경 시 날짜 자동 설정
+    // 필터 변경 시 날짜 자동 설정 (UI 표시용)
     const today = new Date();
     const formatDate = (d: Date) => d.toISOString().split('T')[0];
 
-    if (rangeType === 'thisMonth') {
-      // 이번 달 (1일 ~ 오늘)
-      const start = new Date(today.getFullYear(), today.getMonth(), 1);
+    if (rangeType === '1m') {
+      const start = new Date(today);
+      start.setMonth(today.getMonth() - 1);
       setStartDate(formatDate(start));
       setEndDate(formatDate(today));
     } else if (rangeType === '3m') {
@@ -189,10 +189,15 @@ export const UserDashboardPage: React.FC = () => {
           return;
         }
 
-        const data = await dashboardApi.getUserStats({
-          startDate,
-          endDate,
-        });
+        const params: any = {};
+        if (rangeType === 'custom') {
+          params.startDate = startDate;
+          params.endDate = endDate;
+        } else {
+          params.period = rangeType;
+        }
+
+        const data = await dashboardApi.getUserStats(params);
         setStats(data);
       } catch (err) {
         console.error(err);
@@ -241,7 +246,7 @@ export const UserDashboardPage: React.FC = () => {
             onChange={(e) => setRangeType(e.target.value)}
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
           >
-            <option value="thisMonth">이번 달</option>
+            <option value="1m">최근 1개월</option>
             <option value="3m">최근 3개월</option>
             <option value="6m">최근 6개월</option>
             <option value="12m">최근 12개월</option>
