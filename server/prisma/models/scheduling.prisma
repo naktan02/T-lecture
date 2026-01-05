@@ -41,9 +41,9 @@ model InstructorUnitAssignment {
   state              AssignmentState     @default(Pending) @map("배정상태")
   role               AssignmentRole?     @map("배정역할")
 
-  User             User              @relation(fields: [userId], references: [id])
-  UnitSchedule     UnitSchedule      @relation(fields: [unitScheduleId], references: [id])
-  TrainingLocation TrainingLocation? @relation(fields: [trainingLocationId], references: [id])
+  User             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  UnitSchedule     UnitSchedule      @relation(fields: [unitScheduleId], references: [id], onDelete: Cascade)
+  TrainingLocation TrainingLocation? @relation(fields: [trainingLocationId], references: [id], onDelete: Cascade)
 
   dispatchAssignments DispatchAssignment[]
 
