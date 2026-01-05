@@ -159,7 +159,6 @@ export const useInquiry = (): UseInquiryReturn => {
     openDrawer,
     closeDrawer,
     handleAnswer,
-    handleAnswer,
     setPage,
     sortField,
     sortOrder,
