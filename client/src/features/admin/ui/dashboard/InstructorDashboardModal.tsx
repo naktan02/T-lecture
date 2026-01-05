@@ -60,7 +60,7 @@ export const InstructorDashboardModal: React.FC<Props> = ({
   const [error, setError] = useState<string | null>(null);
 
   // Filter states
-  const [rangeType, setRangeType] = useState<string>('1m'); // '1m', '3m', '6m', '12m', 'custom'
+  const [rangeType, setRangeType] = useState<string>('12m'); // Default 12m
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
@@ -110,12 +110,8 @@ export const InstructorDashboardModal: React.FC<Props> = ({
           query.append('startDate', startDate);
           query.append('endDate', endDate);
         } else {
-          query.append('period', rangeType); // Backend can handle 'period' too via our controller update
-          // But wait, our controller update parses 'period' OR 'startDate/endDate'.
-          // However, using explicit dates is safer/consistent if we already calculated them.
-          // Let's pass explicit dates if we have them.
-          query.append('startDate', startDate);
-          query.append('endDate', endDate);
+          query.append('period', rangeType);
+          // For standard periods, rely on backend calculation to avoid stale state issues
         }
 
         const res = await apiClient(
