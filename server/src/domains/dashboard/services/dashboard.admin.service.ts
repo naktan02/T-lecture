@@ -190,9 +190,10 @@ class DashboardAdminService {
   /**
    * 강사 분석 (기간 필터 지원)
    */
-  async getInstructorAnalysis(period: PeriodFilter = '1m'): Promise<InstructorAnalysis[]> {
-    const { start, end } = getDateRangeFromPeriod(period);
-
+  /**
+   * 강사 분석 (기간 필터 지원)
+   */
+  async getInstructorAnalysis(start: Date, end: Date): Promise<InstructorAnalysis[]> {
     const instructors = await prisma.user.findMany({
       where: {
         status: 'APPROVED',
@@ -247,8 +248,7 @@ class DashboardAdminService {
   /**
    * 팀 분석 (기간 필터 지원)
    */
-  async getTeamAnalysis(period: PeriodFilter = '1m'): Promise<TeamAnalysis[]> {
-    const { start, end } = getDateRangeFromPeriod(period);
+  async getTeamAnalysis(start: Date, end: Date): Promise<TeamAnalysis[]> {
     const today = getTodayUTC();
 
     const teams = await prisma.team.findMany({
@@ -317,8 +317,7 @@ class DashboardAdminService {
   /**
    * 팀 상세 정보 (모달용)
    */
-  async getTeamDetail(teamId: number, period: PeriodFilter = '1m') {
-    const { start, end } = getDateRangeFromPeriod(period);
+  async getTeamDetail(teamId: number, start: Date, end: Date) {
     const today = getTodayUTC();
 
     const team = await prisma.team.findUnique({

@@ -66,25 +66,47 @@ export const fetchSchedulesByStatus = async (
   return res.json();
 };
 
+interface DashboardParams {
+  period?: PeriodFilter;
+  startDate?: string;
+  endDate?: string;
+}
+
+const buildQuery = (params?: DashboardParams) => {
+  const query = new URLSearchParams();
+  if (params?.startDate && params?.endDate) {
+    query.append('startDate', params.startDate);
+    query.append('endDate', params.endDate);
+  } else if (params?.period) {
+    query.append('period', params.period);
+  } else {
+    query.append('period', '1m'); // Default
+  }
+  return query.toString();
+};
+
 export const fetchInstructorAnalysis = async (
-  period: PeriodFilter = '1m',
+  params?: DashboardParams,
 ): Promise<InstructorAnalysis[]> => {
-  const res = await apiClient(`/api/v1/dashboard/admin/instructors?period=${period}`);
+  const query = buildQuery(params);
+  const res = await apiClient(`/api/v1/dashboard/admin/instructors?${query}`);
   if (!res.ok) throw new Error('강사 분석 데이터 조회 실패');
   return res.json();
 };
 
-export const fetchTeamAnalysis = async (period: PeriodFilter = '1m'): Promise<TeamAnalysis[]> => {
-  const res = await apiClient(`/api/v1/dashboard/admin/teams?period=${period}`);
+export const fetchTeamAnalysis = async (params?: DashboardParams): Promise<TeamAnalysis[]> => {
+  const query = buildQuery(params);
+  const res = await apiClient(`/api/v1/dashboard/admin/teams?${query}`);
   if (!res.ok) throw new Error('팀 분석 데이터 조회 실패');
   return res.json();
 };
 
 export const fetchTeamDetail = async (
   teamId: number,
-  period: PeriodFilter = '1m',
+  params?: DashboardParams,
 ): Promise<TeamDetail> => {
-  const res = await apiClient(`/api/v1/dashboard/admin/teams/${teamId}?period=${period}`);
+  const query = buildQuery(params);
+  const res = await apiClient(`/api/v1/dashboard/admin/teams/${teamId}?${query}`);
   if (!res.ok) throw new Error('팀 상세 조회 실패');
   return res.json();
 };

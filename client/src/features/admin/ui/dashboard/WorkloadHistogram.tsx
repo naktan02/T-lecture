@@ -13,17 +13,8 @@ import { InstructorAnalysis, PeriodFilter } from '../../dashboardApi';
 
 interface Props {
   instructors: InstructorAnalysis[];
-  period: PeriodFilter;
-  onPeriodChange: (period: PeriodFilter) => void;
   onBarClick: (count: number, instructors: InstructorAnalysis[]) => void;
 }
-
-const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
-  { value: '1m', label: '이번달' },
-  { value: '3m', label: '3개월' },
-  { value: '6m', label: '6개월' },
-  { value: '12m', label: '12개월' },
-];
 
 interface DistributionItem {
   name: string;
@@ -32,12 +23,7 @@ interface DistributionItem {
   instructorList: InstructorAnalysis[];
 }
 
-export const WorkloadHistogram: React.FC<Props> = ({
-  instructors,
-  period,
-  onPeriodChange,
-  onBarClick,
-}) => {
+export const WorkloadHistogram: React.FC<Props> = ({ instructors, onBarClick }) => {
   // Build distribution 0-12+
   const distribution: DistributionItem[] = [];
 
@@ -70,17 +56,6 @@ export const WorkloadHistogram: React.FC<Props> = ({
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-bold text-gray-800">강사 업무량 분포</h3>
-        <select
-          value={period}
-          onChange={(e) => onPeriodChange(e.target.value as PeriodFilter)}
-          className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-        >
-          {PERIOD_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
       </div>
       <div className="w-full h-72">
         <ResponsiveContainer width="100%" height="100%">

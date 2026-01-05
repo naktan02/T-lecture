@@ -4,8 +4,6 @@ import { InstructorAnalysis, TeamAnalysis, PeriodFilter } from '../../dashboardA
 interface Props {
   instructors: InstructorAnalysis[];
   teams: TeamAnalysis[];
-  period: PeriodFilter;
-  onPeriodChange: (period: PeriodFilter) => void;
   onInstructorClick: (instructor: InstructorAnalysis) => void;
   onTeamClick: (team: TeamAnalysis) => void;
 }
@@ -14,18 +12,9 @@ type Tab = 'INSTRUCTOR' | 'TEAM';
 type SortField = string;
 type SortDirection = 'asc' | 'desc';
 
-const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
-  { value: '1m', label: '이번달' },
-  { value: '3m', label: '3개월' },
-  { value: '6m', label: '6개월' },
-  { value: '12m', label: '12개월' },
-];
-
 export const AnalysisTable: React.FC<Props> = ({
   instructors,
   teams,
-  period,
-  onPeriodChange,
   onInstructorClick,
   onTeamClick,
 }) => {
@@ -127,17 +116,6 @@ export const AnalysisTable: React.FC<Props> = ({
           </button>
         </div>
         <div className="flex items-center gap-3">
-          <select
-            value={period}
-            onChange={(e) => onPeriodChange(e.target.value as PeriodFilter)}
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          >
-            {PERIOD_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
           <input
             type="text"
             placeholder="검색..."

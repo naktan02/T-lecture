@@ -37,9 +37,13 @@ export const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [instructors, setInstructors] = useState<InstructorAnalysis[]>([]);
   const [teams, setTeams] = useState<TeamAnalysis[]>([]);
-  const [period, setPeriod] = useState<PeriodFilter>('1m');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Filter states
+  const [rangeType, setRangeType] = useState<string>('1m'); // '1m', '3m', '6m', '12m', 'custom'
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
 
   // Modal navigation stack - tracks parent modal for back navigation
   const [modalStack, setModalStack] = useState<ModalType[]>([]);
@@ -70,14 +74,64 @@ export const AdminDashboard: React.FC = () => {
     name: string;
   }>({ open: false, id: 0, name: '' });
 
+  // Date calculation effect
+  useEffect(() => {
+    const today = new Date();
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+
+    if (rangeType === '1m') {
+      const start = new Date(today);
+      start.setMonth(today.getMonth() - 1);
+      setStartDate(formatDate(start));
+      setEndDate(formatDate(today));
+    } else if (rangeType === '3m') {
+      const start = new Date(today);
+      start.setMonth(today.getMonth() - 3);
+      setStartDate(formatDate(start));
+      setEndDate(formatDate(today));
+    } else if (rangeType === '6m') {
+      const start = new Date(today);
+      start.setMonth(today.getMonth() - 6);
+      setStartDate(formatDate(start));
+      setEndDate(formatDate(today));
+    } else if (rangeType === '12m') {
+      const start = new Date(today);
+      start.setMonth(today.getMonth() - 12);
+      setStartDate(formatDate(start));
+      setEndDate(formatDate(today));
+    }
+    // custom: keep existing values
+  }, [rangeType]);
+
   // Load data
   const loadData = useCallback(async () => {
+    // If custom and dates are missing, don't fetch yet
+    if (rangeType === 'custom' && (!startDate || !endDate)) {
+      return;
+    }
+
     try {
       setLoading(true);
+
+      const params = {
+        startDate: rangeType === 'custom' ? startDate : undefined,
+        endDate: rangeType === 'custom' ? endDate : undefined,
+        period: rangeType !== 'custom' ? (rangeType as PeriodFilter) : undefined,
+      };
+
+      // If we pass explicit dates even for '1m', '3m', etc., backend can handle it universally
+      // Let's pass explicit dates if calculated, to be safe and consistent.
+      // However, our backend controller supports 'period' fallback.
+      // Let's pass startDate/endDate if they exist.
+      const queryParams = {
+        startDate,
+        endDate,
+      };
+
       const [statsData, instructorsData, teamsData] = await Promise.all([
         fetchDashboardStats(),
-        fetchInstructorAnalysis(period),
-        fetchTeamAnalysis(period),
+        fetchInstructorAnalysis(queryParams),
+        fetchTeamAnalysis(queryParams),
       ]);
 
       setStats(statsData);
@@ -88,7 +142,7 @@ export const AdminDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, [rangeType, startDate, endDate]);
 
   useEffect(() => {
     loadData();
@@ -122,10 +176,6 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // Handlers
-  const handlePeriodChange = (newPeriod: PeriodFilter) => {
-    setPeriod(newPeriod);
-  };
-
   const handleScheduleClick = async (status: ScheduleStatus) => {
     setModalStack(['schedule']);
     setScheduleModal({ open: true, status, data: [], loading: true });
@@ -147,7 +197,8 @@ export const AdminDashboard: React.FC = () => {
     setModalStack(['teamDetail']);
     setTeamDetailModal({ open: true, data: null, loading: true });
     try {
-      const data = await fetchTeamDetail(team.id, period);
+      const queryParams = { startDate, endDate };
+      const data = await fetchTeamDetail(team.id, queryParams);
       setTeamDetailModal({ open: true, data, loading: false });
     } catch {
       setTeamDetailModal((prev) => ({ ...prev, loading: false }));
@@ -226,25 +277,48 @@ export const AdminDashboard: React.FC = () => {
   return (
     <div className="p-8 bg-gray-50 min-h-screen overflow-auto">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h2 className="text-2xl font-bold text-gray-900">관리자 대시보드</h2>
+
+        {/* Global Filter */}
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={rangeType}
+            onChange={(e) => setRangeType(e.target.value)}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+          >
+            <option value="1m">최근 1개월</option>
+            <option value="3m">최근 3개월</option>
+            <option value="6m">최근 6개월</option>
+            <option value="12m">최근 12개월</option>
+            <option value="custom">직접 설정</option>
+          </select>
+
+          {rangeType === 'custom' && (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              />
+              <span className="text-gray-400">~</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Charts Row - 3 columns */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <EducationStatusChart stats={stats} onSegmentClick={handleScheduleClick} />
-        <WorkloadHistogram
-          instructors={instructors}
-          period={period}
-          onPeriodChange={handlePeriodChange}
-          onBarClick={handleWorkloadBarClick}
-        />
-        <TeamWorkloadChart
-          teams={teams}
-          period={period}
-          onPeriodChange={handlePeriodChange}
-          onBarClick={handleTeamChartClick}
-        />
+        <WorkloadHistogram instructors={instructors} onBarClick={handleWorkloadBarClick} />
+        <TeamWorkloadChart teams={teams} onBarClick={handleTeamChartClick} />
       </div>
 
       {/* Analysis Table */}
@@ -253,8 +327,6 @@ export const AdminDashboard: React.FC = () => {
         <AnalysisTable
           instructors={instructors}
           teams={teams}
-          period={period}
-          onPeriodChange={handlePeriodChange}
           onInstructorClick={handleInstructorRowClick}
           onTeamClick={handleTeamRowClick}
         />
