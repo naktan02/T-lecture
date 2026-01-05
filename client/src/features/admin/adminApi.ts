@@ -40,7 +40,8 @@ export interface UserActionResponse {
 // 1. 유저 목록 조회
 export const fetchUsers = async (): Promise<UsersResponse> => {
   // URL 앞부분(API_BASE_URL)은 apiClient가 알아서 붙여줌
-  const res = await apiClient('/api/v1/admin/users');
+  // 모든 유저를 가져오기 위해 limit를 충분히 크게 설정
+  const res = await apiClient('/api/v1/admin/users?limit=10000');
 
   // apiClient는 response 객체를 반환하므로 .json() 등은 여기서 처리
   if (!res.ok) throw new Error('승인 유저 조회 실패');
