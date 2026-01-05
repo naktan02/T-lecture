@@ -167,10 +167,10 @@ function generatePhoneNumber(): string {
   return `010-${randomInt(1000, 9999)}-${randomInt(1000, 9999)}`;
 }
 
-// 교육가능일 생성 (2025년 12월 ~ 2026년 2월)
+// 교육가능일 생성 (2025년 6월 ~ 2026년 2월, 9개월)
 function generateAvailableDates(count: number): Date[] {
   const dates: Date[] = [];
-  const startDate = new Date(Date.UTC(2025, 11, 1)); // 2025-12-01
+  const startDate = new Date(Date.UTC(2025, 5, 1)); // 2025-06-01
   const endDate = new Date(Date.UTC(2026, 1, 28)); // 2026-02-28
 
   const allDates: Date[] = [];
@@ -291,8 +291,8 @@ export async function runSeedUsers() {
             .catch(() => {}); // 중복 무시
         }
 
-        // 교육가능일 생성 (15~25일)
-        const availableDates = generateAvailableDates(randomInt(15, 25));
+        // 교육가능일 생성 (60~90일, 9개월 기간에 맞춤)
+        const availableDates = generateAvailableDates(randomInt(60, 90));
         for (const date of availableDates) {
           await prisma.instructorAvailability
             .create({

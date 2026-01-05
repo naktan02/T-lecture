@@ -10,6 +10,7 @@ import { runSeedCore } from './seedCore';
 import { runSeedUsers } from './seedUsers';
 import { runSeedUnits } from './seedUnits';
 import { runSeedAssignments } from './seedAssignments';
+import { runSeedDispatches } from './seedDispatches';
 import { runSeedNotices } from './seedNotices';
 import { runSeedInquiries } from './seedInquiries';
 
@@ -26,31 +27,35 @@ async function main() {
 
   try {
     // 1. DB 초기화
-    console.log('\n[1/7] DB 초기화...');
+    console.log('\n[1/8] DB 초기화...');
     await runSeedReset();
 
     // 2. 핵심 데이터 (팀, 덕목, 관리자, 메시지 템플릿)
-    console.log('\n[2/7] 핵심 메타데이터 생성...');
+    console.log('\n[2/8] 핵심 메타데이터 생성...');
     await runSeedCore();
 
     // 3. 유저 데이터 (강사 90명, 일반유저 10명)
-    console.log('\n[3/7] 유저 데이터 생성...');
+    console.log('\n[3/8] 유저 데이터 생성...');
     await runSeedUsers();
 
     // 4. 부대 데이터 (1000개)
-    console.log('\n[4/7] 부대 데이터 생성...');
+    console.log('\n[4/8] 부대 데이터 생성...');
     await runSeedUnits();
 
     // 5. 배정 데이터 (400세트 + 거리)
-    console.log('\n[5/7] 배정 데이터 생성...');
+    console.log('\n[5/8] 배정 데이터 생성...');
     await runSeedAssignments();
 
-    // 6. 공지사항 (500개)
-    console.log('\n[6/7] 공지사항 생성...');
+    // 6. Dispatch 메시지 데이터
+    console.log('\n[6/8] 배정 메시지 생성...');
+    await runSeedDispatches();
+
+    // 7. 공지사항 (500개)
+    console.log('\n[7/8] 공지사항 생성...');
     await runSeedNotices();
 
-    // 7. 문의사항 (100개)
-    console.log('\n[7/7] 문의사항 생성...');
+    // 8. 문의사항 (100개)
+    console.log('\n[8/8] 문의사항 생성...');
     await runSeedInquiries();
 
     const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1);

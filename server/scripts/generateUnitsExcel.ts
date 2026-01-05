@@ -254,7 +254,7 @@ async function generateExcel() {
   // 1-2행은 메타정보
   worksheet.getCell('A1').value = '통합 테스트용 부대 데이터 (1000개)';
   worksheet.getCell('A2').value =
-    `생성일: ${formatDate(new Date())} | 기간: 2025년 12월 ~ 2026년 2월`;
+    `생성일: ${formatDate(new Date())} | 기간: 2025년 6월 ~ 2026년 2월`;
 
   // 헤더 행 (3행)
   headers.forEach((header, index) => {
@@ -265,11 +265,22 @@ async function generateExcel() {
     cell.alignment = { horizontal: 'center' };
   });
 
-  // 분포 설정
+  // 분포 설정: 2025년 6월 ~ 2026년 2월 (9개월, 균등 분포)
+  const monthsConfig = [
+    { year: 2025, month: 5 }, // 6월
+    { year: 2025, month: 6 }, // 7월
+    { year: 2025, month: 7 }, // 8월
+    { year: 2025, month: 8 }, // 9월
+    { year: 2025, month: 9 }, // 10월
+    { year: 2025, month: 10 }, // 11월
+    { year: 2025, month: 11 }, // 12월
+    { year: 2026, month: 0 }, // 1월
+    { year: 2026, month: 1 }, // 2월
+  ];
   const educationMonths: { year: number; month: number }[] = [];
-  for (let i = 0; i < 400; i++) educationMonths.push({ year: 2025, month: 11 }); // 12월
-  for (let i = 0; i < 400; i++) educationMonths.push({ year: 2026, month: 0 }); // 1월
-  for (let i = 0; i < 200; i++) educationMonths.push({ year: 2026, month: 1 }); // 2월
+  for (let i = 0; i < 1000; i++) {
+    educationMonths.push(monthsConfig[i % 9]);
+  }
   educationMonths.sort(() => Math.random() - 0.5);
 
   const unitLevels: string[] = [];

@@ -232,11 +232,23 @@ function formatDate(date: Date): string {
 export async function runSeedUnits() {
   console.log('🏢 부대 1000개 생성 시작...\n');
 
-  // 교육 기간 분포: 12월 40%, 1월 40%, 2월 20%
+  // 교육 기간 분포: 2025년 6월 ~ 2026년 2월 (9개월, 균등 분포)
   const educationMonths: { year: number; month: number }[] = [];
-  for (let i = 0; i < 400; i++) educationMonths.push({ year: 2025, month: 11 }); // 12월
-  for (let i = 0; i < 400; i++) educationMonths.push({ year: 2026, month: 0 }); // 1월
-  for (let i = 0; i < 200; i++) educationMonths.push({ year: 2026, month: 1 }); // 2월
+  // 각 월별 약 111개씩 (1000 / 9 ≈ 111)
+  const monthsConfig = [
+    { year: 2025, month: 5 }, // 6월
+    { year: 2025, month: 6 }, // 7월
+    { year: 2025, month: 7 }, // 8월
+    { year: 2025, month: 8 }, // 9월
+    { year: 2025, month: 9 }, // 10월
+    { year: 2025, month: 10 }, // 11월
+    { year: 2025, month: 11 }, // 12월
+    { year: 2026, month: 0 }, // 1월
+    { year: 2026, month: 1 }, // 2월
+  ];
+  for (let i = 0; i < 1000; i++) {
+    educationMonths.push(monthsConfig[i % 9]);
+  }
   educationMonths.sort(() => Math.random() - 0.5);
 
   // 부대 레벨 분포
@@ -264,23 +276,30 @@ export async function runSeedUnits() {
     const regionData = randomChoice(REGIONS);
 
     const { year, month } = educationMonths[i];
-    const dayOfMonth = randomInt(1, 25);
-    const startDate = new Date(Date.UTC(year, month, dayOfMonth));
-    const endDate = new Date(Date.UTC(year, month, dayOfMonth + 2)); // 3일차
+    const dayOfMonth = randomInt(1, 22); // 불가일자 포함해도 월 내 수용 가능하도록
 
     // 불가일자 생성
     let excludedDates: string[] = [];
     const excludedType = excludedDateTypes[i];
+    let extraDays = 0; // 불가일자만큼 기간 연장
+
     if (excludedType === 'single') {
-      // 교육 둘째날을 불가일자로
-      excludedDates = [formatDate(new Date(Date.UTC(year, month, dayOfMonth + 1)))];
+      extraDays = 1;
+      // 교육 기간 중 랜덤 위치에 불가일자 배치
+      const excludedDay = dayOfMonth + randomInt(1, 2);
+      excludedDates = [formatDate(new Date(Date.UTC(year, month, excludedDay)))];
     } else if (excludedType === 'multiple') {
-      // 교육 둘째날, 셋째날을 불가일자로
+      extraDays = 2;
+      // 교육 기간 중 2일 불가일자
       excludedDates = [
         formatDate(new Date(Date.UTC(year, month, dayOfMonth + 1))),
-        formatDate(new Date(Date.UTC(year, month, dayOfMonth + 2))),
+        formatDate(new Date(Date.UTC(year, month, dayOfMonth + 3))),
       ];
     }
+
+    // 교육 시작일과 종료일 (불가일자 포함해서 3일 교육 보장)
+    const startDate = new Date(Date.UTC(year, month, dayOfMonth));
+    const endDate = new Date(Date.UTC(year, month, dayOfMonth + 2 + extraDays)); // 불가일자 포함
 
     const lat = randomFloat(regionData.latRange[0], regionData.latRange[1]);
     const lng = randomFloat(regionData.lngRange[0], regionData.lngRange[1]);
