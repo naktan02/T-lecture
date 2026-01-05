@@ -110,9 +110,12 @@ class DashboardAdminService {
    */
   async getSchedulesByStatus(status: ScheduleStatus): Promise<ScheduleListItem[]> {
     const today = getTodayUTC();
+    const tomorrow = new Date(today);
+    tomorrow.setUTCDate(today.getUTCDate() + 1);
 
     let whereClause: any = {};
 
+    // 1. Assignment status filter
     if (status === 'unassigned') {
       whereClause = {
         assignments: { none: { state: 'Accepted' } },
@@ -122,6 +125,24 @@ class DashboardAdminService {
         assignments: { some: { state: 'Accepted' } },
       };
     }
+
+    // 2. Date filter (moved from in-memory to DB)
+    if (status === 'completed') {
+      whereClause.date = { lt: today };
+    } else if (status === 'inProgress') {
+      whereClause.date = { gte: today, lt: tomorrow };
+    } else if (status === 'scheduled') {
+      whereClause.date = { gte: tomorrow };
+    }
+    // unassigned logic regarding dates?
+    // Original code: if (!s.date) return status === 'unassigned';
+    // If we want to include null dates only for unassigned?
+    // The previous in-memory filter allowed any date for unassigned ("return true").
+    // But it had `if (!s.date) return status === 'unassigned';` check at start of loop.
+    // If status IS unassigned and date is null, it returns true (kept).
+    // If status is NOT unassigned and date is null, it returns false (dropped).
+    // So for 'completed'/'inProgress'/'scheduled', we implicitly require non-null date.
+    // My date filters { lt: today } etc will implicitly exclude nulls.
 
     const schedules = await prisma.unitSchedule.findMany({
       where: whereClause,
@@ -136,18 +157,7 @@ class DashboardAdminService {
       take: 100,
     });
 
-    // Filter by status
-    const filtered = schedules.filter((s) => {
-      if (!s.date) return status === 'unassigned';
-      const scheduleDate = toUTCMidnight(new Date(s.date));
-
-      if (status === 'completed') return scheduleDate < today;
-      if (status === 'inProgress') return scheduleDate.getTime() === today.getTime();
-      if (status === 'scheduled') return scheduleDate > today;
-      return true; // unassigned already filtered by query
-    });
-
-    return filtered.map((s) => ({
+    return schedules.map((s) => ({
       id: s.id,
       unitName: s.unit?.name || 'Unknown',
       date: s.date ? new Date(s.date).toISOString().split('T')[0] : '',
