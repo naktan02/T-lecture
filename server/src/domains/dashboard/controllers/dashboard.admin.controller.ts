@@ -143,7 +143,18 @@ class DashboardAdminController {
         return;
       }
 
-      const data = await dashboardUserService.getUserDashboardStats(instructorId);
+      // 기간 필터 적용
+      // getDatesFromQuery returns Date objects (UTC midnight or end of day)
+      // getUserDashboardStats expects YYYY-MM-DD strings
+      const { start, end } = this.getDatesFromQuery(req.query);
+      const startDate = start.toISOString().split('T')[0];
+      const endDate = end.toISOString().split('T')[0];
+
+      const data = await dashboardUserService.getUserDashboardStats(
+        instructorId,
+        startDate,
+        endDate,
+      );
       res.status(200).json(data);
     } catch (error) {
       next(error);
