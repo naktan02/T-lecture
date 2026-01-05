@@ -10,7 +10,6 @@ import {
   TeamAnalysis,
   ScheduleListItem,
   TeamDetail,
-  PeriodFilter,
   ScheduleStatus,
 } from '../dashboardApi';
 import { EducationStatusChart } from './dashboard/EducationStatusChart';
@@ -113,16 +112,6 @@ export const AdminDashboard: React.FC = () => {
     try {
       setLoading(true);
 
-      const params = {
-        startDate: rangeType === 'custom' ? startDate : undefined,
-        endDate: rangeType === 'custom' ? endDate : undefined,
-        period: rangeType !== 'custom' ? (rangeType as PeriodFilter) : undefined,
-      };
-
-      // If we pass explicit dates even for '1m', '3m', etc., backend can handle it universally
-      // Let's pass explicit dates if calculated, to be safe and consistent.
-      // However, our backend controller supports 'period' fallback.
-      // Let's pass startDate/endDate if they exist.
       const queryParams = {
         startDate,
         endDate,
@@ -187,8 +176,8 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleWorkloadBarClick = (count: number, instructorList: InstructorAnalysis[]) => {
-    const title = count === 13 ? '12회 이상 강사' : `${count}회 강사`;
+  const handleWorkloadBarClick = (label: string, instructorList: InstructorAnalysis[]) => {
+    const title = `${label} 완료 강사`;
     setModalStack(['instructorList']);
     setInstructorListModal({ open: true, title, data: instructorList });
   };
@@ -317,7 +306,11 @@ export const AdminDashboard: React.FC = () => {
       {/* Charts Row - 3 columns */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <EducationStatusChart stats={stats} onSegmentClick={handleScheduleClick} />
-        <WorkloadHistogram instructors={instructors} onBarClick={handleWorkloadBarClick} />
+        <WorkloadHistogram
+          instructors={instructors}
+          onBarClick={handleWorkloadBarClick}
+          rangeType={rangeType}
+        />
         <TeamWorkloadChart teams={teams} onBarClick={handleTeamChartClick} />
       </div>
 
