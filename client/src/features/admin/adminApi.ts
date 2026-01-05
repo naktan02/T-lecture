@@ -23,7 +23,13 @@ export interface User {
 }
 
 export interface UsersResponse {
-  users: User[];
+  data: User[];
+  meta?: {
+    total: number;
+    page: number;
+    limit: number;
+    lastPage: number;
+  };
 }
 
 export interface UserActionResponse {
@@ -42,7 +48,7 @@ export const fetchUsers = async (): Promise<UsersResponse> => {
 };
 
 // 2. 승인 대기 목록 조회
-export const fetchPendingUsers = async (): Promise<UsersResponse> => {
+export const fetchPendingUsers = async (): Promise<User[]> => {
   const res = await apiClient('/api/v1/admin/users/pending');
   if (!res.ok) throw new Error('승인 대기 목록 조회 실패');
   return res.json();

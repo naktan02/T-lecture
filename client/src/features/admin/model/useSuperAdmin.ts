@@ -53,7 +53,7 @@ export const useSuperAdmin = (): UseSuperAdminReturn => {
 
         const [approvedData, pendingData] = await Promise.all([fetchUsers(), fetchPendingUsers()]);
 
-        setUsers(approvedData as unknown as UserWithAdmin[]);
+        setUsers(approvedData.data as unknown as UserWithAdmin[]);
         setPendingUsers(pendingData as unknown as User[]);
       } catch (e) {
         setError((e as Error).message);
