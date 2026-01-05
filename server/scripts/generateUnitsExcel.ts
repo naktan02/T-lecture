@@ -165,10 +165,6 @@ function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function randomFloat(min: number, max: number): number {
-  return min + Math.random() * (max - min);
-}
-
 function getMilitaryType(): string {
   const rand = randomInt(1, 100);
   let cumulative = 0;
@@ -180,28 +176,33 @@ function getMilitaryType(): string {
 }
 
 function generateUnitName(level: string, index: number): string {
-  const corpsNum = (index % 8) + 1;
-  const divisionNum = (index % 30) + 1;
-  const brigadeNum = (index % 10) + 1;
-  const battalionNum = (index % 5) + 1;
-  const companyNum = (index % 4) + 1;
-  const platoonNum = (index % 3) + 1;
+  // 실제 부대명처럼 보이면서도 고유한 이름 생성
+  // index를 기반으로 계층적 번호를 계산하여 중복 방지
+  const seqNum = index + 1;
+
+  // 군단(1~8), 사단(1~30), 여단(1~10), 대대(1~20), 중대(1~10), 소대(1~4)
+  const corpsNum = Math.floor(seqNum / 125) + 1; // 1~8
+  const divisionNum = Math.floor((seqNum % 125) / 4) + 1; // 1~31
+  const brigadeNum = (seqNum % 10) + 1; // 1~10
+  const battalionNum = (seqNum % 20) + 1; // 1~20
+  const companyNum = (seqNum % 10) + 1; // 1~10
+  const platoonNum = (seqNum % 4) + 1; // 1~4
 
   switch (level) {
     case 'corps':
-      return `제${corpsNum}군단`;
+      return `제${seqNum}군단`;
     case 'division':
-      return `제${corpsNum}군단 제${divisionNum}사단`;
+      return `제${corpsNum}군단 제${seqNum}사단`;
     case 'brigade':
-      return `제${corpsNum}군단 제${divisionNum}사단 제${brigadeNum}여단`;
+      return `제${corpsNum}군단 제${divisionNum}사단 제${seqNum}여단`;
     case 'battalion':
-      return `제${corpsNum}군단 제${divisionNum}사단 제${brigadeNum}여단 제${battalionNum}대대`;
+      return `제${corpsNum}군단 제${divisionNum}사단 제${brigadeNum}여단 제${seqNum}대대`;
     case 'company':
-      return `제${corpsNum}군단 제${divisionNum}사단 제${brigadeNum}여단 제${battalionNum}대대 제${companyNum}중대`;
+      return `제${divisionNum}사단 제${brigadeNum}여단 제${battalionNum}대대 제${seqNum}중대`;
     case 'platoon':
-      return `제${corpsNum}군단 제${divisionNum}사단 제${brigadeNum}여단 제${battalionNum}대대 제${platoonNum}소대`;
+      return `제${divisionNum}사단 제${brigadeNum}여단 제${battalionNum}대대 제${companyNum}중대 제${seqNum}소대`;
     default:
-      return `테스트부대${index + 1}`;
+      return `테스트부대${seqNum}`;
   }
 }
 
@@ -225,7 +226,7 @@ async function generateExcel() {
     '군구분',
     '광역',
     '지역',
-    '부대상세주소',
+    '부대주소',
     '부대주소(상세)',
     '위도',
     '경도',
@@ -324,8 +325,6 @@ async function generateExcel() {
       ].join(', ');
     }
 
-    const lat = randomFloat(regionData.latRange[0], regionData.latRange[1]).toFixed(6);
-    const lng = randomFloat(regionData.lngRange[0], regionData.lngRange[1]).toFixed(6);
     const officerName = `${randomChoice(LAST_NAMES)}${randomChoice(FIRST_NAMES)}`;
 
     // 교육장소 수
@@ -333,6 +332,7 @@ async function generateExcel() {
     const plannedPerLocation = level === 'battalion' ? 100 : randomInt(40, 150);
 
     // 첫 번째 장소 (부대 정보 포함)
+    // 위도/경도는 빈값으로 설정 (업로드 후 주소 변환 로직 테스트용)
     const mainRow: (string | number | null)[] = [
       unitName,
       militaryType,
@@ -340,8 +340,8 @@ async function generateExcel() {
       region,
       `${regionData.wideArea} ${region} 군부대로 ${randomInt(1, 999)}`,
       `본관 ${randomInt(1, 5)}층`,
-      lat,
-      lng,
+      '', // lat - 빈값 (주소 변환 대상)
+      '', // lng - 빈값 (주소 변환 대상)
       formatDate(startDate),
       formatDate(endDate),
       excludedDates,
