@@ -103,10 +103,13 @@ export const useAuthGuard = (requiredRole: RequiredRole): AuthGuardResult => {
 
     // ----------------------------------------------------
     // 4. Instructor Profile Completion Check
+    // (INSTRUCTOR 가드 뿐 아니라, 강사인 경우 USER 가드에서도 체크)
     // ----------------------------------------------------
-    if (requiredRole === 'INSTRUCTOR') {
+    if (isInstructor && (requiredRole === 'INSTRUCTOR' || requiredRole === 'USER')) {
       const profileCompleted = localStorage.getItem('instructorProfileCompleted') === 'true';
-      if (!profileCompleted) {
+      // 프로필 페이지 자체에서는 리다이렉트하지 않음 (무한 루프 방지)
+      const isProfilePage = window.location.pathname.includes('/profile');
+      if (!profileCompleted && !isProfilePage) {
         toastShownRef.current = true;
         showWarning('강사 프로필을 먼저 완성해주세요.');
         navigate('/user-main/profile', { replace: true });
