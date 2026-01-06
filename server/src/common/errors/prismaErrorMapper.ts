@@ -1,19 +1,14 @@
 // server/src/common/errors/prismaErrorMapper.ts
-import {
-  PrismaClientKnownRequestError,
-  PrismaClientValidationError,
-  PrismaClientInitializationError,
-} from '@prisma/client/runtime/library';
-
+import { Prisma } from '../../generated/prisma/client.js';
 import AppError from './AppError';
 
 export function mapPrismaError(err: unknown): AppError | null {
   // 1. Known Request Error (P2002, P2025 등)
-  if (err instanceof PrismaClientKnownRequestError) {
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
     switch (err.code) {
       case 'P2002': {
         const target = Array.isArray(err.meta?.target)
-          ? err.meta.target.join(',')
+          ? (err.meta.target as string[]).join(',')
           : String(err.meta?.target || 'field');
 
         return new AppError(`${target} 값이 이미 존재합니다.`, 409, 'DUPLICATE_RESOURCE', {
@@ -46,12 +41,12 @@ export function mapPrismaError(err: unknown): AppError | null {
   }
 
   // 2. Validation Error
-  if (err instanceof PrismaClientValidationError) {
+  if (err instanceof Prisma.PrismaClientValidationError) {
     return new AppError('데이터 형식이 올바르지 않습니다.', 400, 'PRISMA_VALIDATION_ERROR');
   }
 
   // 3. Initialization Error
-  if (err instanceof PrismaClientInitializationError) {
+  if (err instanceof Prisma.PrismaClientInitializationError) {
     return new AppError('데이터베이스 연결에 실패했습니다.', 503, 'DB_CONNECTION_ERROR');
   }
 

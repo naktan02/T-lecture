@@ -297,6 +297,3 @@ class DistanceService {
 }
 
 export default new DistanceService();
-
-// CommonJS 호환
-module.exports = new DistanceService();

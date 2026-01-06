@@ -1,7 +1,9 @@
 // server/src/domains/user/services/user.me.service.ts
 import userRepository from '../repositories/user.repository';
+import kakaoService from '../../../infra/kakao.service';
+import distanceService from '../../distance/distance.service';
 import AppError from '../../../common/errors/AppError';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../../generated/prisma/client.js';
 
 interface UpdateProfileDto {
   name?: string;
@@ -159,7 +161,6 @@ class UserMeService {
 
     // 주소가 있으면 좌표 재계산
     if (address && address.trim() !== '') {
-      const kakaoService = require('../../../infra/kakao.service').default;
       const coords = await kakaoService.addressToCoordsOrNull(address);
       if (coords) {
         instructorData.lat = coords.lat;
@@ -176,8 +177,7 @@ class UserMeService {
     const updatedUser = await userRepository.update(userId, {}, instructorData);
 
     // 주소 변경 시 해당 강사의 모든 거리 무효화 (재계산 대기열에 추가)
-    const distanceService = require('../../distance/distance.service').default;
-    await distanceService.invalidateDistancesForInstructor(userId);
+    await distanceService.invalidateDistancesForInstructor(Number(userId));
 
     const { password: _password, ...result } = updatedUser;
     const { instructor, ...restResult } = result;
@@ -189,6 +189,3 @@ class UserMeService {
 }
 
 export default new UserMeService();
-
-// CommonJS 호환 (JS 파일에서 require() 사용 시)
-module.exports = new UserMeService();

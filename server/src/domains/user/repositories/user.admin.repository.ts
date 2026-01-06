@@ -1,6 +1,6 @@
 // server/src/domains/user/repositories/user.admin.repository.ts
 import prisma from '../../../libs/prisma';
-import { AdminLevel, UserStatus, Prisma, UserCategory } from '@prisma/client';
+import { AdminLevel, UserStatus, Prisma, UserCategory } from '../../../generated/prisma/client.js';
 
 interface UserFilters {
   status?: UserStatus;

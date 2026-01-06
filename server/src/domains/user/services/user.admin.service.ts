@@ -1,5 +1,6 @@
 import adminRepository from '../repositories/user.admin.repository';
 import userRepository from '../repositories/user.repository';
+import kakaoService from '../../../infra/kakao.service';
 import AppError from '../../../common/errors/AppError';
 import {
   UserStatus,
@@ -9,7 +10,7 @@ import {
   Instructor,
   Admin,
   UserCategory,
-} from '@prisma/client';
+} from '../../../generated/prisma/client.js';
 
 const ALLOWED_USER_STATUS = ['PENDING', 'APPROVED', 'RESTING', 'INACTIVE'] as const;
 
@@ -296,8 +297,7 @@ class AdminService {
           instructorData.lng = null;
         } else {
           // 주소가 변경되었으면 즉시 좌표 재계산
-          const kakaoService = require('../../../infra/kakao.service').default;
-          const coords = await kakaoService.addressToCoordsOrNull(address);
+          const coords = await kakaoService.addressToCoordsOrNull(String(address));
           if (coords) {
             instructorData.lat = coords.lat;
             instructorData.lng = coords.lng;

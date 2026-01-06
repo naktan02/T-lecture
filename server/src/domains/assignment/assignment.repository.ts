@@ -1,6 +1,6 @@
 // server/src/domains/assignment/assignment.repository.ts
 import prisma from '../../libs/prisma';
-import { Prisma, AssignmentState } from '@prisma/client';
+import { Prisma, AssignmentState } from '../../generated/prisma/client.js';
 
 interface MatchResult {
   unitScheduleId: number;

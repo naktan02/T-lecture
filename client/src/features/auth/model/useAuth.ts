@@ -86,24 +86,27 @@ function handleNavigation(
   navigate: NavigateFunction,
   user: User,
 ): void {
-  // 0. 강사 프로필 미완성 시 프로필 페이지로 이동 (강사인 경우)
+  // 0. 슈퍼관리자는 어디서 로그인해도 관리자 페이지로 이동
+  if (role === 'SUPER_ADMIN') {
+    navigate('/admin/super');
+    return;
+  }
+
+  // 1. 강사 프로필 미완성 시 프로필 페이지로 이동 (강사인 경우)
   if (user.isInstructor && user.instructorProfileCompleted === false) {
     navigate('/user-main/profile');
     return;
   }
 
-  // 1. '일반/강사' 탭(GENERAL)으로 로그인했다면,
+  // 2. '일반/강사' 탭(GENERAL)으로 로그인했다면,
   //    관리자 권한이 있어도 무조건 사용자 메인 페이지로 보냄
   if (loginType === USER_ROLES.GENERAL) {
     navigate('/user-main');
     return;
   }
 
-  // 2. '관리자' 탭으로 로그인했을 때만 권한에 따라 관리자 페이지로 이동
+  // 3. '관리자' 탭으로 로그인했을 때만 권한에 따라 관리자 페이지로 이동
   switch (role) {
-    case 'SUPER_ADMIN':
-      navigate('/admin/super');
-      break;
     case 'ADMIN':
       navigate('/admin');
       break;

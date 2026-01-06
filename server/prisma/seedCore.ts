@@ -4,11 +4,10 @@
 
 /* eslint-disable no-console */
 
-import { PrismaClient, Prisma } from '@prisma/client';
-import bcrypt from 'bcrypt';
 import 'dotenv/config';
-
-const prisma = new PrismaClient();
+import { Prisma } from '../src/generated/prisma/client.js';
+import prisma from '../src/libs/prisma.js';
+import bcrypt from 'bcrypt';
 
 // 팀 데이터 (7개)
 const TEAMS = [

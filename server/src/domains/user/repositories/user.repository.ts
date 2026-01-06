@@ -1,6 +1,6 @@
 // domains/user/repositories/user.repository.ts
 import prisma from '../../../libs/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../../generated/prisma/client.js';
 
 class UserRepository {
   // 이메일로 사용자 찾기 (로그인, 중복확인용)

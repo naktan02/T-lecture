@@ -1,6 +1,6 @@
 // server/src/domains/auth/auth.repository.ts
 import prisma from '../../libs/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client.js';
 
 export class AuthRepository {
   // 인증 코드 생성/저장

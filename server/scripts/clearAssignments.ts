@@ -1,7 +1,6 @@
 /* eslint-disable no-console */
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import 'dotenv/config';
+import prisma from '../src/libs/prisma.js';
 
 async function clearAssignments() {
   console.log('기존 배정 데이터 삭제 중...');

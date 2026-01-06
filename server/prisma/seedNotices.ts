@@ -4,9 +4,7 @@
 
 /* eslint-disable no-console */
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../src/libs/prisma.js';
 
 // 공지사항 제목 템플릿
 const NOTICE_TITLES = [

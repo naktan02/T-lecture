@@ -13,7 +13,7 @@ import {
   UserActionResponse,
 } from '../adminApi';
 import type { AdminLevel } from '../../../shared/constants';
-import { showSuccess, showError } from '../../../shared/utils';
+import { showSuccess, showError, showConfirm } from '../../../shared/utils';
 
 interface AdminInfo {
   userId: number;
@@ -129,6 +129,11 @@ export const useSuperAdmin = (): UseSuperAdminReturn => {
   };
 
   const revokeInstructor = async (userId: number): Promise<void> => {
+    const confirmed = await showConfirm(
+      '강사 역할을 회수하시겠습니까?\n\n⚠️ 강사 정보(주소, 덕목, 가용일 등)가 삭제됩니다.',
+    );
+    if (!confirmed) return;
+
     try {
       await revokeInstructorApi(userId);
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, instructor: null } : u)));

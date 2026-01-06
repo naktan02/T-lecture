@@ -1,7 +1,7 @@
 // server/src/types/auth.types.ts
 // Auth 도메인 중앙화된 타입 정의
 
-import { UserCategory } from '@prisma/client';
+import { UserCategory } from '../generated/prisma/client.js';
 
 export interface RegisterDto {
   email: string;
