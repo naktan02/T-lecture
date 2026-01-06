@@ -11,51 +11,15 @@ import 'dotenv/config';
 const prisma = new PrismaClient();
 
 // 팀 데이터 (7개)
-const TEAMS = [
-  { id: 1, name: '1팀' },
-  { id: 2, name: '2팀' },
-  { id: 3, name: '3팀' },
-  { id: 4, name: '4팀' },
-  { id: 5, name: '5팀' },
-  { id: 6, name: '6팀' },
-  { id: 7, name: '7팀' },
-];
+const TEAMS = [{ id: 1, name: 'test' }];
 
 // 덕목(과목) 데이터 (15개)
-const VIRTUES = [
-  { id: 1, name: '예' },
-  { id: 2, name: '효' },
-  { id: 3, name: '정직' },
-  { id: 4, name: '책임' },
-  { id: 5, name: '존중' },
-  { id: 6, name: '배려' },
-  { id: 7, name: '소통' },
-  { id: 8, name: '협동' },
-  { id: 9, name: '성실' },
-  { id: 10, name: '용기' },
-  { id: 11, name: '지혜' },
-  { id: 12, name: '인내' },
-  { id: 13, name: '겸손' },
-  { id: 14, name: '감사' },
-  { id: 15, name: '봉사' },
-];
+const VIRTUES = [{ id: 1, name: '예' }];
 
 // 시스템 설정 기본값
 const SYSTEM_CONFIGS = [
-  { key: 'ASSIGNMENT_DISTANCE_WEIGHT', value: '0.3', description: '배정 알고리즘 - 거리 가중치' },
-  {
-    key: 'ASSIGNMENT_AVAILABILITY_WEIGHT',
-    value: '0.4',
-    description: '배정 알고리즘 - 가용일 가중치',
-  },
-  { key: 'ASSIGNMENT_WORKLOAD_WEIGHT', value: '0.3', description: '배정 알고리즘 - 업무량 가중치' },
-  { key: 'PENALTY_DURATION_DAYS', value: '30', description: '패널티 기간 (일)' },
-  {
-    key: 'PRIORITY_CREDIT_EXPIRY_DAYS',
-    value: '60',
-    description: '우선배정 크레딧 만료 기간 (일)',
-  },
-  { key: 'DEFAULT_RESPONSE_DEADLINE_HOURS', value: '48', description: '배정 응답 기한 (시간)' },
+  { key: 'REJECTION_PENALTY_DAYS', value: '15', description: '거절 패널티 기간 (일)' },
+  { key: 'TRAINEES_PER_INSTRUCTOR', value: '36', description: '강사당 교육생 수' },
 ];
 
 async function main() {
@@ -87,13 +51,11 @@ async function main() {
   }
   console.log(`  ✅ 덕목 ${VIRTUES.length}개 생성 완료`);
 
-  // 3. 관리자 생성
-  console.log('👤 관리자 생성 중...');
+  // 3. 슈퍼관리자 생성
+  console.log('👤 슈퍼관리자 생성 중...');
 
   const superEmail = process.env.SUPER_ADMIN_EMAIL;
   const superPassword = process.env.SUPER_ADMIN_PASSWORD;
-  const generalEmail = process.env.GENERAL_ADMIN_EMAIL;
-  const generalPassword = process.env.GENERAL_ADMIN_PASSWORD;
 
   if (superEmail && superPassword) {
     const hashedPassword = await bcrypt.hash(superPassword, 10);
@@ -116,29 +78,6 @@ async function main() {
     }
   } else {
     console.log('  ⚠️ SUPER_ADMIN_EMAIL/PASSWORD가 .env에 설정되지 않았습니다.');
-  }
-
-  if (generalEmail && generalPassword) {
-    const hashedPassword = await bcrypt.hash(generalPassword, 10);
-    const existingUser = await prisma.user.findUnique({ where: { userEmail: generalEmail } });
-
-    if (!existingUser) {
-      await prisma.user.create({
-        data: {
-          userEmail: generalEmail,
-          password: hashedPassword,
-          name: '일반관리자',
-          userphoneNumber: '010-0000-0002',
-          status: 'APPROVED',
-          admin: { create: { level: 'GENERAL' } },
-        },
-      });
-      console.log(`  ✅ 일반관리자 생성: ${generalEmail}`);
-    } else {
-      console.log(`  ⚠️ 일반관리자 이미 존재: ${generalEmail}`);
-    }
-  } else {
-    console.log('  ⚠️ GENERAL_ADMIN_EMAIL/PASSWORD가 .env에 설정되지 않았습니다.');
   }
 
   // 4. 시스템 설정 생성
