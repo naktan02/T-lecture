@@ -125,9 +125,9 @@ export const runStatsAggregation = async () => {
 };
 
 /**
- * 매일 새벽 03:00에 실행되는 강사 통계 집계 배치
+ * 매일 새벽 01:00에 실행되는 강사 통계 집계 배치
  */
-const job = cron.schedule('0 3 * * *', runStatsAggregation);
+const job = cron.schedule('0 1 * * *', runStatsAggregation);
 
 // 직접 실행 시 (npx tsx src/jobs/statsBatch.job.ts)
 if (require.main === module) {
