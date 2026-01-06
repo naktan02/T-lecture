@@ -64,15 +64,23 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 });
 
 // 토큰 재발급
+// 토큰 재발급 (Rotation: 리프레시 토큰도 갱신됨)
 export const refresh = asyncHandler(async (req: Request, res: Response) => {
   try {
     const refreshToken = req.cookies?.refreshToken;
     if (!refreshToken) throw new AppError('refreshToken이 없습니다.', 401, 'UNAUTHORIZED');
 
     const result = await authService.refreshAccessToken(refreshToken);
-    res.status(200).json(result);
+
+    // Rotation된 새 리프레시 토큰을 쿠키에 설정
+    res.cookie('refreshToken', result.refreshToken, {
+      ...getRefreshCookieOptions(),
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(200).json({ accessToken: result.accessToken });
   } catch (err) {
-    // 실패 시 쿠키 삭제 후 에러 던지기
+    // 실패 시 쿠키 삭제
     res.clearCookie('refreshToken', getRefreshCookieOptions());
     throw err;
   }
