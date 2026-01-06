@@ -41,25 +41,9 @@ if (!isProd && allowedOrigins.length === 0) {
   allowedOrigins.push('http://localhost:5173');
 }
 
-// 🛡️ 보안 헤더 설정 (Helmet)
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        // 필요 시 외부 이미지/스크립트 허용 추가 (예: Google Fonts, Analytics 등)
-        scriptSrc: ["'self'", "'unsafe-inline'"], // React Inline Script 허용 필요 시
-        imgSrc: ["'self'", 'data:', 'https:'],
-        connectSrc: ["'self'"],
-      },
-    },
-    // Cross-Origin-Resource-Policy 등 다른 헤더들도 기본값 적용됨
-  }),
-);
-
-// 🛡️ 프록시 신뢰 설정 (Rate Limit 정확도 향상)
-// AWS ALB, Nginx 등 로드밸런서 뒤에 있다면 필수
-app.set('trust proxy', 1);
+// 🛡️ 보안 헤더 설정 (Helmet) - API 서버용 간소화
+// CSP는 HTML을 직접 제공하는 서버에만 필요하므로 비활성화
+app.use(helmet({ contentSecurityPolicy: false }));
 
 app.use(
   cors({
