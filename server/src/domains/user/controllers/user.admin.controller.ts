@@ -195,6 +195,32 @@ export const revokeAdminLevel = asyncHandler(async (req: Request, res: Response)
   res.json(result);
 });
 
+// ✅ 강사 역할 부여
+export const grantInstructorRole = asyncHandler(async (req: Request, res: Response) => {
+  const userId = parseUserIdParam(req);
+  const result = await adminService.grantInstructorRole(userId);
+
+  logger.info('[admin.grantInstructorRole]', {
+    actorId: req.user?.id,
+    targetUserId: userId,
+  });
+
+  res.json(result);
+});
+
+// ✅ 강사 역할 회수
+export const revokeInstructorRole = asyncHandler(async (req: Request, res: Response) => {
+  const userId = parseUserIdParam(req);
+  const result = await adminService.revokeInstructorRole(userId);
+
+  logger.info('[admin.revokeInstructorRole]', {
+    actorId: req.user?.id,
+    targetUserId: userId,
+  });
+
+  res.json(result);
+});
+
 // CommonJS 호환 (JS 파일에서 require() 사용 시)
 module.exports = {
   getUsers,
@@ -209,4 +235,6 @@ module.exports = {
   rejectUsersBulk,
   setAdminLevel,
   revokeAdminLevel,
+  grantInstructorRole,
+  revokeInstructorRole,
 };

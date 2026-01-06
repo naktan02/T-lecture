@@ -7,6 +7,7 @@ interface UserListSectionProps {
   users: UserListItem[];
   emptyMessage: string;
   renderActions?: (user: UserListItem) => ReactNode;
+  renderBadge?: (user: UserListItem) => ReactNode;
   onRowClick?: (user: UserListItem) => void;
   height?: string;
 }
@@ -19,6 +20,7 @@ export const UserListSection: React.FC<UserListSectionProps> = ({
   users,
   emptyMessage,
   renderActions,
+  renderBadge,
   onRowClick,
   height = 'max-h-[70vh]',
 }) => {
@@ -58,6 +60,7 @@ export const UserListSection: React.FC<UserListSectionProps> = ({
                     팀장
                   </span>
                 )}
+                {renderBadge && renderBadge(u)}
               </div>
               <div className="text-gray-500">{u.userEmail}</div>
               <div className="text-[11px] text-gray-400 mt-1">
