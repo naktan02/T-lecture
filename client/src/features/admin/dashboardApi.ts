@@ -110,3 +110,40 @@ export const fetchTeamDetail = async (
   if (!res.ok) throw new Error('팀 상세 조회 실패');
   return res.json();
 };
+
+// 부대 단위 조회 (Unit-based)
+export interface UnitListItem {
+  id: number;
+  name: string;
+  status: ScheduleStatus;
+  scheduleCount: number;
+  instructorCount: number;
+  dateRange: string;
+}
+
+export interface UnitDetail {
+  id: number;
+  name: string;
+  status: ScheduleStatus;
+  address: string | null;
+  addressDetail: string | null;
+  officerName: string | null;
+  officerPhone: string | null;
+  schedules: {
+    id: number;
+    date: string;
+    instructors: { id: number; name: string }[];
+  }[];
+}
+
+export const fetchUnitsByStatus = async (status: ScheduleStatus): Promise<UnitListItem[]> => {
+  const res = await apiClient(`/api/v1/dashboard/admin/units?status=${status}`);
+  if (!res.ok) throw new Error('부대 목록 조회 실패');
+  return res.json();
+};
+
+export const fetchUnitDetail = async (unitId: number): Promise<UnitDetail> => {
+  const res = await apiClient(`/api/v1/dashboard/admin/units/${unitId}`);
+  if (!res.ok) throw new Error('부대 상세 조회 실패');
+  return res.json();
+};
