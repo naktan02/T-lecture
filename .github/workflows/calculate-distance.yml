@@ -2,8 +2,8 @@ name: Calculate Distance Batch
 
 on:
   schedule:
-    # 매일 KST 03:00 (UTC 18:00) - 거리 배치 계산
-    - cron: '0 18 * * *'
+    # 매일 KST 01:00 (UTC 16:00) - 거리 배치 계산
+    - cron: '0 16 * * *'
   workflow_dispatch:
 
 env:
