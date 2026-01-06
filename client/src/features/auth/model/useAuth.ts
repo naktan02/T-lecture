@@ -12,6 +12,7 @@ interface User {
   isAdmin?: boolean;
   adminLevel?: string;
   isInstructor?: boolean;
+  instructorProfileCompleted?: boolean | null;
 }
 
 type UserRoleType = 'SUPER_ADMIN' | 'ADMIN' | 'USER';
@@ -35,6 +36,11 @@ export const useAuth = () => {
       const role = determineUserRole(user);
       localStorage.setItem('userRole', role);
       localStorage.setItem('isInstructor', String(!!user.isInstructor));
+      // 강사 프로필 완성 여부 저장 (null이면 true로 간주 - 강사가 아닌 경우)
+      localStorage.setItem(
+        'instructorProfileCompleted',
+        String(user.instructorProfileCompleted ?? true),
+      );
 
       handleNavigation(role, variables.loginType, navigate);
     },

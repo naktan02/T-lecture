@@ -98,6 +98,20 @@ export const useAuthGuard = (requiredRole: RequiredRole): AuthGuardResult => {
       toastShownRef.current = true;
       showWarning('접근 권한이 없습니다.');
       navigate('/user-main', { replace: true });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // 4. Instructor Profile Completion Check
+    // ----------------------------------------------------
+    if (requiredRole === 'INSTRUCTOR') {
+      const profileCompleted = localStorage.getItem('instructorProfileCompleted') === 'true';
+      if (!profileCompleted) {
+        toastShownRef.current = true;
+        showWarning('강사 프로필을 먼저 완성해주세요.');
+        navigate('/user-main/profile', { replace: true });
+        return;
+      }
     }
   }, [navigate, requiredRole]);
 

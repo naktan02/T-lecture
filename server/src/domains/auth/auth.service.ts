@@ -144,6 +144,7 @@ class AuthService {
     const isInstructor = !!user.instructor;
     const isAdmin = !!user.admin;
     const adminLevel = user.admin?.level || null;
+    const instructorProfileCompleted = user.instructor?.profileCompleted ?? null;
 
     return {
       accessToken,
@@ -156,6 +157,7 @@ class AuthService {
         isAdmin,
         adminLevel,
         isInstructor,
+        instructorProfileCompleted,
       },
     };
   }
