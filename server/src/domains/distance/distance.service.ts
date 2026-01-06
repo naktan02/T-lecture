@@ -115,11 +115,38 @@ class DistanceService {
     return saved;
   }
 
-  // 특정 부대 기준으로 거리 범위 내 강사 리스트 조회
+  // 특정 부대 기준으로 거리 범위 내 강사 리스트 조회 (유효 거리 사용)
   async getInstructorsWithinDistance(unitId: number, minDistance: number, maxDistance: number) {
-    return distanceRepository.findInstructorsByDistanceRange(unitId, minDistance, maxDistance);
+    return distanceRepository.findInstructorsByEffectiveDistance(unitId, minDistance, maxDistance);
   }
 
+  // ==================== 거리 재계산 시스템 ====================
+
+  // 강사 주소 변경 시: 해당 강사의 모든 거리 무효화
+  async invalidateDistancesForInstructor(instructorId: number) {
+    return distanceRepository.markForRecalcByInstructor(instructorId);
+  }
+
+  // 부대 주소 변경 시: 해당 부대의 모든 거리 무효화
+  async invalidateDistancesForUnit(unitId: number) {
+    return distanceRepository.markForRecalcByUnit(unitId);
+  }
+
+  // 신규 부대 추가 시: 활성 강사들에 대해 거리 행 생성
+  async createDistanceRowsForNewUnit(unitId: number) {
+    const instructors = await instructorRepository.findActiveInstructors();
+    const instructorIds = instructors.map((i) => i.userId);
+    return distanceRepository.createManyForUnit(unitId, instructorIds);
+  }
+
+  // 신규 강사 추가 시: 스케줄 있는 부대들에 대해 거리 행 생성
+  async createDistanceRowsForNewInstructor(instructorId: number) {
+    const units = await unitRepository.findUpcomingSchedules(1000);
+    const unitIds = [...new Set(units.map((u) => u.unitId))];
+    return distanceRepository.createManyForInstructor(instructorId, unitIds);
+  }
+
+  // 배치: 스케줄 우선순위로 거리 계산 (needsRecalc=true 우선)
   async calculateDistancesBySchedulePriority(limit = 200) {
     const usage = await kakaoUsageRepository.getOrCreateToday();
     const remainingRouteQuota = Math.max(0, Math.min(MAX_ROUTE_PER_DAY - usage!.routeCount, limit));
@@ -128,77 +155,39 @@ class DistanceService {
       return { processed: 0, message: 'No remaining Kakao route quota for today' };
     }
 
-    const upcomingSchedules = await unitRepository.findUpcomingSchedules(50);
-    if (!upcomingSchedules.length) return { processed: 0, message: 'No upcoming unit schedules' };
-
-    const unitIds = Array.from(new Set(upcomingSchedules.map((s) => s.unitId))) as number[];
-    const existingDistances = await distanceRepository.findManyByUnitIds(unitIds);
-
-    const existingByUnit = new Map<number, Set<number>>();
-    for (const row of existingDistances) {
-      let set = existingByUnit.get(row.unitId);
-      if (!set) {
-        set = new Set();
-        existingByUnit.set(row.unitId, set);
-      }
-      set.add(row.userId);
-    }
-
-    const instructors = await instructorRepository.findActiveInstructors();
-
-    const candidates: { instructorId: number; unitId: number; scheduleDate: Date | null }[] = [];
-    for (const schedule of upcomingSchedules) {
-      const unitId = schedule.unitId;
-
-      let set = existingByUnit.get(unitId);
-      if (!set) {
-        set = new Set();
-        existingByUnit.set(unitId, set);
-      }
-
-      for (const instructor of instructors) {
-        const instructorId = instructor.userId;
-        if (set.has(instructorId)) continue;
-
-        candidates.push({ instructorId, unitId, scheduleDate: schedule.date });
-      }
-    }
-
-    const toProcess = candidates.slice(0, remainingRouteQuota);
+    // 1. 먼저 needsRecalc=true인 쌍 우선 처리
+    const needsRecalcPairs = await distanceRepository.findNeedsRecalc(remainingRouteQuota);
 
     const CONCURRENCY = 5;
     let processed = 0;
     const results: ProcessResult[] = [];
 
-    for (let i = 0; i < toProcess.length; i += CONCURRENCY) {
-      const batch = toProcess.slice(i, i + CONCURRENCY);
+    // needsRecalc=true 쌍 처리
+    for (let i = 0; i < needsRecalcPairs.length; i += CONCURRENCY) {
+      const batch = needsRecalcPairs.slice(i, i + CONCURRENCY);
 
       const batchResults = await Promise.all(
         batch.map(async (pair): Promise<ProcessResult> => {
-          const { instructorId, unitId, scheduleDate } = pair;
+          const { userId: instructorId, unitId, earliestSchedule } = pair;
           try {
             const saved = await this.calculateAndSaveDistance(instructorId, unitId);
             return {
               instructorId,
               unitId,
-              scheduleDate,
+              scheduleDate: earliestSchedule,
               distance: Number(saved.distance),
               status: 'success',
             };
           } catch (error: unknown) {
             const err = error as { message?: string; code?: string; statusCode?: number };
-            const prismaCode =
-              typeof err?.code === 'string' && err.code.startsWith('P') ? err.code : null;
-
             return {
               instructorId,
               unitId,
-              scheduleDate,
+              scheduleDate: earliestSchedule,
               status: 'error',
               error: err.message || 'Unknown error',
               code: err.code || 'DISTANCE_CALC_FAILED',
               statusCode: err.statusCode || 500,
-              prismaCode,
             };
           }
         }),
@@ -208,8 +197,84 @@ class DistanceService {
       processed += batchResults.filter((r) => r.status === 'success').length;
     }
 
+    // 2. 할당량 남으면 신규 쌍 계산 (기존 로직)
+    const remainingAfterRecalc = remainingRouteQuota - processed;
+    if (remainingAfterRecalc > 0) {
+      const upcomingSchedules = await unitRepository.findUpcomingSchedules(50);
+      if (upcomingSchedules.length > 0) {
+        const unitIds = Array.from(new Set(upcomingSchedules.map((s) => s.unitId))) as number[];
+        const existingDistances = await distanceRepository.findManyByUnitIds(unitIds);
+
+        const existingByUnit = new Map<number, Set<number>>();
+        for (const row of existingDistances) {
+          let set = existingByUnit.get(row.unitId);
+          if (!set) {
+            set = new Set();
+            existingByUnit.set(row.unitId, set);
+          }
+          set.add(row.userId);
+        }
+
+        const instructors = await instructorRepository.findActiveInstructors();
+        const candidates: { instructorId: number; unitId: number; scheduleDate: Date | null }[] =
+          [];
+
+        for (const schedule of upcomingSchedules) {
+          const unitId = schedule.unitId;
+          let set = existingByUnit.get(unitId);
+          if (!set) {
+            set = new Set();
+            existingByUnit.set(unitId, set);
+          }
+
+          for (const instructor of instructors) {
+            const instructorId = instructor.userId;
+            if (set.has(instructorId)) continue;
+            candidates.push({ instructorId, unitId, scheduleDate: schedule.date });
+          }
+        }
+
+        const toProcess = candidates.slice(0, remainingAfterRecalc);
+
+        for (let i = 0; i < toProcess.length; i += CONCURRENCY) {
+          const batch = toProcess.slice(i, i + CONCURRENCY);
+
+          const batchResults = await Promise.all(
+            batch.map(async (pair): Promise<ProcessResult> => {
+              const { instructorId, unitId, scheduleDate } = pair;
+              try {
+                const saved = await this.calculateAndSaveDistance(instructorId, unitId);
+                return {
+                  instructorId,
+                  unitId,
+                  scheduleDate,
+                  distance: Number(saved.distance),
+                  status: 'success',
+                };
+              } catch (error: unknown) {
+                const err = error as { message?: string; code?: string; statusCode?: number };
+                return {
+                  instructorId,
+                  unitId,
+                  scheduleDate,
+                  status: 'error',
+                  error: err.message || 'Unknown error',
+                  code: err.code || 'DISTANCE_CALC_FAILED',
+                  statusCode: err.statusCode || 500,
+                };
+              }
+            }),
+          );
+
+          results.push(...batchResults);
+          processed += batchResults.filter((r) => r.status === 'success').length;
+        }
+      }
+    }
+
     return {
       processed,
+      needsRecalcCount: needsRecalcPairs.length,
       remainingQuotaAfter: remainingRouteQuota - processed,
       results,
     };
@@ -223,6 +288,11 @@ class DistanceService {
 
   async getUnitsWithinDistance(instructorId: number, minDistance: number, maxDistance: number) {
     return distanceRepository.findByDistanceRange(instructorId, minDistance, maxDistance);
+  }
+
+  // 재계산 필요 개수 조회 (모니터링용)
+  async getNeedsRecalcCount() {
+    return distanceRepository.countNeedsRecalc();
   }
 }
 

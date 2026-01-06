@@ -56,11 +56,19 @@ class UnitService {
       );
 
       // 부대 + 교육장소 + 일정 한 번에 생성
-      return await unitRepository.createUnitWithNested(
+      const unit = await unitRepository.createUnitWithNested(
         cleanData,
         rawData.trainingLocations || [],
         schedules,
       );
+
+      // 스케줄이 있으면 활성 강사들에 대해 거리 행 미리 생성
+      if (schedules.length > 0) {
+        const distanceService = require('../distance/distance.service').default;
+        await distanceService.createDistanceRowsForNewUnit(unit.id);
+      }
+
+      return unit;
     } catch (e: unknown) {
       if (e instanceof Error && e.message.includes('부대명(name)은 필수입니다.')) {
         throw new AppError(e.message, 400, 'VALIDATION_ERROR');
@@ -444,7 +452,13 @@ class UnitService {
       }
     }
 
-    return await unitRepository.updateUnitById(id, updateData);
+    const updated = await unitRepository.updateUnitById(id, updateData);
+
+    // 주소 변경 시 해당 부대의 모든 거리 무효화 (재계산 대기열에 추가)
+    const distanceService = require('../distance/distance.service').default;
+    await distanceService.invalidateDistancesForUnit(Number(id));
+
+    return updated;
   }
 
   /**
