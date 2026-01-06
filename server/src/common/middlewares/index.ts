@@ -5,5 +5,14 @@ import asyncHandler from './asyncHandler';
 import auth from './auth';
 import * as adminMiddleware from './admin.middleware';
 import requireRole from './requireRole';
+import * as rateLimiter from './rateLimiter';
 
-export { requestLogger, errorHandler, asyncHandler, auth, adminMiddleware, requireRole };
+export {
+  requestLogger,
+  errorHandler,
+  asyncHandler,
+  auth,
+  adminMiddleware,
+  requireRole,
+  rateLimiter,
+};

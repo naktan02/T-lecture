@@ -2,6 +2,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import distanceService from '../distance/distance.service';
 import AppError from '../../common/errors/AppError';
+import { rateLimiter } from '../../common/middlewares';
 
 const router = Router();
 
@@ -24,9 +25,11 @@ const verifyBatchToken = (req: Request, _res: Response, next: NextFunction) => {
 /**
  * POST /api/v1/batch/distance
  * 거리 배치 계산 실행 (GitHub Actions에서 호출)
+ * Rate Limit: 1분당 5회
  */
 router.post(
   '/distance',
+  rateLimiter.batchLimiter,
   verifyBatchToken,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -47,9 +50,11 @@ router.post(
 /**
  * GET /api/v1/batch/distance/status
  * 재계산 필요 개수 조회 (모니터링용)
+ * Rate Limit: 1분당 5회
  */
 router.get(
   '/distance/status',
+  rateLimiter.batchLimiter,
   verifyBatchToken,
   async (_req: Request, res: Response, next: NextFunction) => {
     try {
@@ -69,8 +74,9 @@ router.get(
 /**
  * GET /api/v1/batch/ping
  * 서버 상태 확인 (Render 깨우기용)
+ * Rate Limit: 1분당 30회 (관대하게)
  */
-router.get('/ping', (_req: Request, res: Response) => {
+router.get('/ping', rateLimiter.pingLimiter, (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
