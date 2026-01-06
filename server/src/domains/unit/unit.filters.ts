@@ -1,5 +1,5 @@
 // server/src/domains/unit/unit.filters.ts
-import { Prisma, MilitaryType } from '@prisma/client';
+import { Prisma, MilitaryType } from '../../generated/prisma/client.js';
 import { PagingResult } from '../../types/common.types';
 import { UnitQueryInput } from '../../types/unit.types';
 

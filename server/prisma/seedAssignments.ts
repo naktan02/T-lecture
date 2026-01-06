@@ -4,9 +4,8 @@
 
 /* eslint-disable no-console */
 
-import { PrismaClient, AssignmentState, AssignmentRole } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { AssignmentState, AssignmentRole } from '../src/generated/prisma/client.js';
+import prisma from '../src/libs/prisma.js';
 
 // 현재 날짜 (2026년 1월 6일 기준)
 const CURRENT_DATE = new Date(Date.UTC(2026, 0, 6));

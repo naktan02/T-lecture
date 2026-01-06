@@ -4,11 +4,10 @@
 
 /* eslint-disable no-console */
 
-import { PrismaClient, UserCategory } from '@prisma/client';
-import bcrypt from 'bcrypt';
 import 'dotenv/config';
-
-const prisma = new PrismaClient();
+import { UserCategory } from '../src/generated/prisma/client.js';
+import prisma from '../src/libs/prisma.js';
+import bcrypt from 'bcrypt';
 
 // 한국 이름 데이터
 const LAST_NAMES = [

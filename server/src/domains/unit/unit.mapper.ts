@@ -1,5 +1,5 @@
 // server/src/domains/unit/unit.mapper.ts
-import { Prisma, MilitaryType } from '@prisma/client';
+import { Prisma, MilitaryType } from '../../generated/prisma/client.js';
 import { TrainingLocationInput, RawUnitInput } from '../../types/unit.types';
 
 // RawUnitData는 이 파일에서 export하므로 유지 (다른 파일에서 import)

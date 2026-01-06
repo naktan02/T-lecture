@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import prisma from '../../libs/prisma';
 import AppError from '../errors/AppError';
-import type { UserStatus, AdminLevel } from '@prisma/client';
+import type { UserStatus, AdminLevel } from '../../generated/prisma/client.js';
 
 export interface AuthUser {
   id: number;

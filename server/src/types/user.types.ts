@@ -1,7 +1,7 @@
 // server/src/types/user.types.ts
 // User 도메인 중앙화된 타입 정의
 
-import { Prisma, UserStatus } from '@prisma/client';
+import { Prisma, UserStatus } from '../generated/prisma/client.js';
 
 // Prisma 자동 생성 타입
 export type UserWithRelations = Prisma.UserGetPayload<{

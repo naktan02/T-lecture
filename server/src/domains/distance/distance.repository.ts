@@ -1,6 +1,6 @@
 // server/src/domains/distance/distance.repository.ts
 import prisma from '../../libs/prisma';
-import { Decimal } from '@prisma/client/runtime/library';
+import { Decimal } from '@prisma/client/runtime/client';
 
 interface DistanceData {
   distance: Decimal | number;

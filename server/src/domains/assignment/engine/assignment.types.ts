@@ -1,7 +1,7 @@
 // server/src/domains/assignment/engine/assignment.types.ts
 // 배정 알고리즘 엔진용 타입 정의
 
-import { AssignmentState, AssignmentCategory } from '@prisma/client';
+import { AssignmentState, AssignmentCategory } from '../../../generated/prisma/client.js';
 
 // =========================================
 // Context (알고리즘 실행 컨텍스트)

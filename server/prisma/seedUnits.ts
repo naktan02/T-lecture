@@ -4,9 +4,8 @@
 
 /* eslint-disable no-console */
 
-import { PrismaClient, MilitaryType } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { MilitaryType } from '../src/generated/prisma/client.js';
+import prisma from '../src/libs/prisma.js';
 
 // 군구분 비율: 육군 60%, 해군/공군/해병/국직 각 10%
 const MILITARY_TYPES: { type: MilitaryType; weight: number }[] = [

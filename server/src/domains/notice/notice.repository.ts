@@ -8,7 +8,7 @@ interface NoticeCreateData {
   isPinned?: boolean;
 }
 
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client.js';
 
 interface NoticeFindAllParams {
   skip: number;

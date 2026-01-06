@@ -1,6 +1,6 @@
 // server/src/domains/unit/unit.repository.ts
 import prisma from '../../libs/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client.js';
 
 interface UnitFilterParams {
   skip: number;

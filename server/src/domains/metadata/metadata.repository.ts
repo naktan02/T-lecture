@@ -1,5 +1,5 @@
 // server/src/domains/metadata/metadata.repository.ts
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client.js';
 import prisma from '../../libs/prisma';
 
 interface CategoryItem {

@@ -4,7 +4,8 @@
 
 /* eslint-disable no-console */
 
-import { PrismaClient } from '@prisma/client';
+import 'dotenv/config';
+import prisma from '../src/libs/prisma.js';
 import { runSeedReset } from './seedReset';
 import { runSeedCore } from './seedCore';
 import { runSeedUsers } from './seedUsers';
@@ -13,8 +14,6 @@ import { runSeedAssignments } from './seedAssignments';
 import { runSeedDispatches } from './seedDispatches';
 import { runSeedNotices } from './seedNotices';
 import { runSeedInquiries } from './seedInquiries';
-
-const prisma = new PrismaClient();
 
 async function main() {
   console.log('');
