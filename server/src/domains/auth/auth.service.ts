@@ -139,7 +139,9 @@ class AuthService {
     const refreshToken = jwt.sign(payload, REFRESH_SECRET, { expiresIn: '7d' });
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    await authRepository.saveRefreshToken(user.id, refreshToken, expiresAt, deviceId);
+    // 해시화하여 저장
+    const tokenHash = this.hashToken(refreshToken);
+    await authRepository.saveRefreshToken(user.id, tokenHash, expiresAt, deviceId);
 
     const isInstructor = !!user.instructor;
     const isAdmin = !!user.admin;
@@ -148,7 +150,7 @@ class AuthService {
 
     return {
       accessToken,
-      refreshToken,
+      refreshToken, // 클라이언트에게는 원본 전달
       user: {
         id: user.id,
         email: user.userEmail,
@@ -162,7 +164,7 @@ class AuthService {
     };
   }
 
-  // 리프레시 토큰 발급
+  // 리프레시 토큰 발급 (Rotation 적용)
   async refreshAccessToken(incomingRefreshToken: string) {
     if (!incomingRefreshToken)
       throw new AppError('리프레시 토큰이 없습니다.', 401, 'TOKEN_MISSING');
@@ -180,8 +182,13 @@ class AuthService {
       throw new AppError('리프레시 토큰이 만료되었거나 유효하지 않습니다.', 401, 'TOKEN_INVALID');
     }
 
-    const dbToken = await authRepository.findRefreshToken(payload.userId, incomingRefreshToken);
+    // 해시값으로 DB 조회
+    const incomingTokenHash = this.hashToken(incomingRefreshToken);
+    const dbToken = await authRepository.findRefreshToken(incomingTokenHash);
+
     if (!dbToken) {
+      // DB에 없는데 JWT 검증은 통과함 -> 이미 사용된(회전된) 토큰 재사용 시도일 가능성 높음 (Reuse Detection)
+      // 보안을 위해 해당 유저의 모든 토큰을 무효화하는 것이 좋으나, 여기서는 일단 에러만 반환
       throw new AppError(
         '유효하지 않은 리프레시 토큰입니다. (재로그인 필요)',
         401,
@@ -189,8 +196,31 @@ class AuthService {
       );
     }
 
+    // 1. Rotation: 기존 토큰 삭제 (소각)
+    await authRepository.deleteByTokenHash(incomingTokenHash);
+
+    // 2. 새로운 토큰 쌍 발급
     const newAccessToken = jwt.sign({ userId: payload.userId }, JWT_SECRET, { expiresIn: '1h' });
-    return { accessToken: newAccessToken };
+    const newRefreshToken = jwt.sign({ userId: payload.userId }, REFRESH_SECRET, {
+      expiresIn: '7d',
+    });
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    // 3. 새로운 토큰 해시 저장
+    const newTokenHash = this.hashToken(newRefreshToken);
+    await authRepository.saveRefreshToken(
+      payload.userId,
+      newTokenHash,
+      expiresAt,
+      dbToken.deviceId, // 기존 기기정보 유지
+    );
+
+    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+  }
+
+  // SHA256 해시 생성 헬퍼
+  private hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
   }
 
   // 로그아웃
