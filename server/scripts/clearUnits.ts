@@ -4,9 +4,8 @@
 
 /* eslint-disable no-console */
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import 'dotenv/config';
+import prisma from '../src/libs/prisma.js';
 
 async function clearUnits() {
   console.log('🗑️ 부대 관련 데이터 삭제 시작...\n');

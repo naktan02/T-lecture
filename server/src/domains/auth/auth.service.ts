@@ -2,12 +2,13 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { UserStatus } from '@prisma/client';
+import { UserStatus } from '../../generated/prisma/client.js';
 
 import instructorRepository from '../instructor/instructor.repository';
 import authRepository from './auth.repository';
 import userRepository from '../user/repositories/user.repository';
 import emailService from '../../infra/email.service';
+import distanceService from '../distance/distance.service';
 import AppError from '../../common/errors/AppError';
 import { RegisterDto, JwtPayload } from '../../types/auth.types';
 
@@ -95,7 +96,6 @@ class AuthService {
       await instructorRepository.addVirtues(newUser.id, virtueIds);
 
       // 신규 강사에 대해 스케줄 있는 부대들과의 거리 행 생성
-      const distanceService = require('../distance/distance.service').default;
       await distanceService.createDistanceRowsForNewInstructor(newUser.id);
     } else {
       newUser = await userRepository.createUser(commonData);

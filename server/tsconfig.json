@@ -8,7 +8,7 @@
     "allowJs": true,
     "checkJs": false,
     "outDir": "./dist",
-    "rootDir": "./src", // 소스 코드의 루트는 src입니다.
+    "rootDir": "./src",
     "strict": true,
     "noImplicitAny": false,
     "esModuleInterop": true,
@@ -17,8 +17,9 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "resolveJsonModule": true
   },
-  "include": ["src/**/*"], // ✅ prisma/**/* 를 제거하세요.
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "tests"]
 }

@@ -1,7 +1,7 @@
 // server/src/types/unit.types.ts
 // Unit 도메인 중앙화된 타입 정의
 
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../generated/prisma/client.js';
 
 // Prisma 자동 생성 타입 - DB 스키마와 자동 동기화
 export type UnitWithRelations = Prisma.UnitGetPayload<{

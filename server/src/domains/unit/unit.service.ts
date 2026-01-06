@@ -2,8 +2,10 @@
 import unitRepository from './unit.repository';
 import { buildPaging, buildUnitWhere } from './unit.filters';
 import { toCreateUnitDto, groupExcelRowsByUnit, RawUnitData } from './unit.mapper';
+import kakaoService from '../../infra/kakao.service';
+import distanceService from '../distance/distance.service';
 import AppError from '../../common/errors/AppError';
-import { Prisma, MilitaryType } from '@prisma/client';
+import { Prisma, MilitaryType } from '../../generated/prisma/client.js';
 import { ScheduleInput, UnitQueryInput } from '../../types/unit.types';
 
 // 서비스 입력 타입들
@@ -64,7 +66,6 @@ class UnitService {
 
       // 스케줄이 있으면 활성 강사들에 대해 거리 행 미리 생성
       if (schedules.length > 0) {
-        const distanceService = require('../distance/distance.service').default;
         await distanceService.createDistanceRowsForNewUnit(unit.id);
       }
 
@@ -208,9 +209,6 @@ class UnitService {
 
     // 2. 순차적으로 처리 (Rate Limit 고려)
     let successCount = 0;
-
-    // kakao.service 사용
-    const kakaoService = require('../../infra/kakao.service').default;
 
     for (const unit of units) {
       if (!unit.addressDetail) continue;
@@ -385,7 +383,6 @@ class UnitService {
         unitUpdateData.lng = null;
       } else {
         // 주소가 변경되었으면 즉시 좌표 재계산
-        const kakaoService = require('../../infra/kakao.service').default;
         const coords = await kakaoService.addressToCoordsOrNull(rawData.addressDetail);
         if (coords) {
           unitUpdateData.lat = coords.lat;
@@ -468,7 +465,6 @@ class UnitService {
       updateData.lng = null;
     } else {
       // 주소가 변경되었으면 즉시 좌표 재계산
-      const kakaoService = require('../../infra/kakao.service').default;
       const coords = await kakaoService.addressToCoordsOrNull(addressDetail);
       if (coords) {
         updateData.lat = coords.lat;
@@ -482,7 +478,6 @@ class UnitService {
     const updated = await unitRepository.updateUnitById(id, updateData);
 
     // 주소 변경 시 해당 부대의 모든 거리 무효화 (재계산 대기열에 추가)
-    const distanceService = require('../distance/distance.service').default;
     await distanceService.invalidateDistancesForUnit(Number(id));
 
     return updated;

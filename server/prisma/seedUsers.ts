@@ -4,11 +4,10 @@
 
 /* eslint-disable no-console */
 
-import { PrismaClient, UserCategory } from '@prisma/client';
-import bcrypt from 'bcrypt';
 import 'dotenv/config';
-
-const prisma = new PrismaClient();
+import { UserCategory } from '../src/generated/prisma/client.js';
+import prisma from '../src/libs/prisma.js';
+import bcrypt from 'bcrypt';
 
 // 한국 이름 데이터
 const LAST_NAMES = [
@@ -199,26 +198,29 @@ export async function runSeedUsers() {
     return;
   }
 
-  // 강사 분류별 배열
+  // 강사 분류별 배열 (총 5명)
   const categories: { type: UserCategory; count: number }[] = [
-    { type: 'Main', count: 40 }, // 주강사 40명
-    { type: 'Co', count: 30 }, // 부강사 30명
-    { type: 'Assistant', count: 10 }, // 보조강사 10명
-    { type: 'Practicum', count: 10 }, // 실습강 10명
+    { type: 'Main', count: 2 }, // 주강사 2명
+    { type: 'Co', count: 2 }, // 부강사 2명
+    { type: 'Assistant', count: 1 }, // 보조강사 1명
   ];
 
   let instructorIndex = 0;
   const instructorIds: number[] = [];
 
-  // 팀 배정 계획: 70명은 팀 소속, 20명은 미소속
-  // 각 팀당 10명씩 (7팀 * 10명 = 70명)
+  // 팀 배정 계획: 있는 팀 수에 따라 배분, 나머지는 미소속
   const teamAssignments: (number | null)[] = [];
-  for (let t = 0; t < 7; t++) {
-    for (let i = 0; i < 10; i++) {
+  const totalInstructors = 90;
+  const teamCount = teams.length;
+  const instructorsPerTeam = Math.floor((totalInstructors * 0.7) / teamCount); // 70%는 팀 소속
+
+  for (let t = 0; t < teamCount; t++) {
+    for (let i = 0; i < instructorsPerTeam; i++) {
       teamAssignments.push(teams[t].id);
     }
   }
-  for (let i = 0; i < 20; i++) {
+  // 나머지는 미소속
+  while (teamAssignments.length < totalInstructors) {
     teamAssignments.push(null);
   }
   // 섞기

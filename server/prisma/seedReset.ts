@@ -4,9 +4,7 @@
 
 /* eslint-disable no-console */
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../src/libs/prisma.js';
 
 export async function runSeedReset() {
   console.log('🗑️ DB 초기화 시작...\n');

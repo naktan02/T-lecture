@@ -38,7 +38,8 @@
     "test:user.me": "mocha --require tsx tests/test/user.me.integration.spec.js --timeout 10000 --exit"
   },
   "dependencies": {
-    "@prisma/client": "^6.19.0",
+    "@prisma/adapter-pg": "^7.2.0",
+    "@prisma/client": "^7.2.0",
     "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
@@ -53,6 +54,7 @@
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.10",
+    "pg": "^8.16.3",
     "readline-sync": "^1.4.10",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0"
@@ -76,7 +78,7 @@
     "globals": "^16.5.0",
     "mocha": "^11.7.5",
     "prettier": "^3.7.4",
-    "prisma": "^6.19.0",
+    "prisma": "^7.2.0",
     "supertest": "^7.1.4",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",

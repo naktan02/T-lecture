@@ -4,9 +4,7 @@
 
 /* eslint-disable no-console */
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../src/libs/prisma.js';
 
 const CURRENT_DATE = new Date(Date.UTC(2026, 0, 6)); // 2026-01-06
 
