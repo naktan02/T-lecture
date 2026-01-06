@@ -10,6 +10,7 @@ import v1Router from './api/v1';
 import errorHandler from './common/middlewares/errorHandler';
 import logger from './config/logger';
 import './jobs/statsBatch.job';
+import prisma from './libs/prisma';
 
 const app = express();
 
@@ -87,6 +88,16 @@ app.use(errorHandler);
 // 서버 시작
 const server = app.listen(config.port, () => {
   logger.info(`Server listening at http://localhost:${config.port}`);
+});
+
+// DB 연결 미리 생성 (첫 요청 지연 방지)
+server.on('listening', async () => {
+  try {
+    await prisma.$connect();
+    logger.info('Database connection established');
+  } catch (error) {
+    logger.error('Failed to connect to database:', error);
+  }
 });
 
 module.exports = { app, server };
