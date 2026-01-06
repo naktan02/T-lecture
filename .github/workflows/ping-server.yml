@@ -1,0 +1,25 @@
+name: Ping Render Server
+
+on:
+  schedule:
+    # 17분마다 - Render 서버 깨우기 (무료 티어 슬립 방지)
+    - cron: '*/17 * * * *'
+  workflow_dispatch:
+
+env:
+  SERVER_URL: ${{ secrets.SERVER_URL }}
+
+jobs:
+  ping:
+    name: Ping Server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping server to keep awake
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS --max-time 15 -o /dev/null -w "%{http_code}" "$SERVER_URL/api/v1/batch/ping" || echo "000")
+          echo "Response: $code"
+          if [ "$code" != "200" ]; then
+            echo "Warning: Server responded with $code"
+          fi
