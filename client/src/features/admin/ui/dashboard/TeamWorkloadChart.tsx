@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
-import { TeamAnalysis, PeriodFilter } from '../../dashboardApi';
+import { TeamAnalysis } from '../../dashboardApi';
 
 interface Props {
   teams: TeamAnalysis[];

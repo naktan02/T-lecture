@@ -2,6 +2,16 @@
 import inquiryRepository from './inquiry.repository';
 import AppError from '../../common/errors/AppError';
 
+interface InquiryGetParams {
+  page?: number;
+  limit?: number;
+  authorId?: number;
+  status?: 'Waiting' | 'Answered';
+  search?: string;
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
 class InquiryService {
   // 문의사항 생성
   async create(data: { title: string; content: string }, authorId: number) {

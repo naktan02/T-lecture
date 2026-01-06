@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { InstructorAnalysis, TeamAnalysis, PeriodFilter } from '../../dashboardApi';
+import { InstructorAnalysis, TeamAnalysis } from '../../dashboardApi';
 
 interface Props {
   instructors: InstructorAnalysis[];

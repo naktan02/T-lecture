@@ -13,6 +13,7 @@ interface InquiryFindAllParams {
   authorId?: number; // 본인 문의만 조회 (강사용)
   status?: 'Waiting' | 'Answered';
   search?: string;
+  orderBy?: Record<string, unknown>;
 }
 
 class InquiryRepository {
