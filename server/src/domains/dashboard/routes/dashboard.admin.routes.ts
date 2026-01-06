@@ -18,4 +18,8 @@ router.get(
 router.get('/admin/teams', requireRole('ADMIN'), dashboardAdminController.getTeams);
 router.get('/admin/teams/:teamId', requireRole('ADMIN'), dashboardAdminController.getTeamDetail);
 
+// Unit-based endpoints (부대 단위 조회)
+router.get('/admin/units', requireRole('ADMIN'), dashboardAdminController.getUnits);
+router.get('/admin/units/:unitId', requireRole('ADMIN'), dashboardAdminController.getUnitDetail);
+
 export default router;

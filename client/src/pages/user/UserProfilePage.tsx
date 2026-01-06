@@ -25,6 +25,7 @@ declare global {
 const UserProfilePage: React.FC = () => {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
+  const [isProfileIncomplete, setIsProfileIncomplete] = useState(false);
   const { shouldRender } = useAuthGuard('USER'); // 현재 로그인 유저 정보 (role 등 확인용)
 
   // 폼 상태
@@ -71,6 +72,32 @@ const UserProfilePage: React.FC = () => {
     }
   }, [user]);
 
+  // 프로필 미완성 감지 및 자동 편집 모드 활성화 (최초 1회만)
+  const autoEditTriggered = React.useRef(false);
+  useEffect(() => {
+    if (user?.instructor && !user.instructor.profileCompleted) {
+      setIsProfileIncomplete(true);
+      // 자동으로 편집 모드 활성화 (최초 1회만)
+      if (!autoEditTriggered.current) {
+        autoEditTriggered.current = true;
+        setFormData({
+          name: user.name,
+          phoneNumber: user.userphoneNumber || '',
+          address: user.instructor?.location || '',
+          email: user.userEmail,
+          password: '',
+          restrictedArea: user.instructor?.restrictedArea || '',
+          hasCar: user.instructor?.hasCar || false,
+          virtueIds: user.instructor?.virtues?.map((v) => v.virtue.id) || [],
+        });
+        setOriginalAddress(user.instructor?.location || '');
+        setIsEditing(true);
+      }
+    } else {
+      setIsProfileIncomplete(false);
+    }
+  }, [user]);
+
   // Daum Postcode 스크립트 로드
   useEffect(() => {
     const script = document.createElement('script');
@@ -94,6 +121,12 @@ const UserProfilePage: React.FC = () => {
       setEmailCode('');
       setIsEmailVerified(false);
       setEmailVerificationMsg('');
+      // 프로필 완성 상태 업데이트 (강사인 경우)
+      if (isProfileIncomplete) {
+        localStorage.setItem('instructorProfileCompleted', 'true');
+        setIsProfileIncomplete(false);
+        showSuccess('강사 프로필이 완성되었습니다!');
+      }
     },
     onError: (err: any) => {
       showError(err.message || '프로필 수정에 실패했습니다.');
@@ -126,6 +159,11 @@ const UserProfilePage: React.FC = () => {
   };
 
   const handleCancelClick = () => {
+    // 프로필 미완성 상태에서는 취소 버튼 비활성화 (강제 입력)
+    if (isProfileIncomplete) {
+      showWarning('강사 프로필을 먼저 완성해주세요.');
+      return;
+    }
     setIsEditing(false);
     setPasswordConfirm('');
     setEmailCode('');
@@ -282,6 +320,28 @@ const UserProfilePage: React.FC = () => {
   return (
     <ContentWrapper>
       <div className="max-w-4xl mx-auto space-y-6">
+        {/* 프로필 미완성 경고 배너 */}
+        {isProfileIncomplete && (
+          <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <span className="text-2xl">⚠️</span>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-amber-800">강사 프로필 완성 필요</h3>
+                <p className="mt-1 text-sm text-amber-700">
+                  강사 기능을 이용하려면 아래 필수 정보를 입력해주세요.
+                </p>
+                <ul className="mt-2 text-xs text-amber-600 list-disc list-inside">
+                  <li>주소 (활동 지역) - 필수</li>
+                  <li>자차 여부 - 필수</li>
+                  <li>강의 가능 과목 (최소 1개) - 필수</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 상단 헤더 카드 */}
         <div className="bg-white shadow rounded-lg overflow-hidden">
           <div className="bg-indigo-600 px-4 py-8 sm:px-6 flex items-center justify-between">

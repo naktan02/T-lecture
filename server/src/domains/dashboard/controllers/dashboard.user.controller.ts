@@ -67,6 +67,47 @@ class DashboardController {
       next(error);
     }
   };
+
+  /**
+   * 유저 활동 내역 조회 (페이징)
+   * GET /api/v1/dashboard/user/activities
+   */
+  getUserActivities = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        throw new AppError('인증 정보가 없습니다.', 401, 'AUTH_ERROR');
+      }
+
+      const { startDate, endDate, period, page = '1', limit = '10' } = req.query;
+      const pageNum = parseInt(page as string, 10);
+      const limitNum = parseInt(limit as string, 10);
+
+      let startStr: string | undefined;
+      let endStr: string | undefined;
+
+      if (startDate && endDate) {
+        startStr = startDate as string;
+        endStr = endDate as string;
+      } else if (period) {
+        const selectedPeriod = period as PeriodFilter;
+        const { start, end } = getDateRangeFromPeriod(selectedPeriod);
+        startStr = start.toISOString().split('T')[0];
+        endStr = end.toISOString().split('T')[0];
+      }
+
+      const result = await dashboardService.getUserActivities(
+        Number(userId),
+        pageNum,
+        limitNum,
+        startStr,
+        endStr,
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export default new DashboardController();
