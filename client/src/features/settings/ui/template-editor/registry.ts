@@ -92,8 +92,8 @@ export const variableConfig: VariableDef[] = [
   // === 본인 정보 ===
   { key: 'self.name', label: '본인 이름', icon: '👤', category: 'self' },
   { key: 'self.phone', label: '본인 전화', icon: '📱', category: 'self' },
-  { key: 'self.category', label: '본인 분류', icon: '🏷️', category: 'self' },
-  { key: 'self.position', label: '본인 직책', icon: '👔', category: 'self' },
+  { key: 'self.category', label: '본인 직책', icon: '🏷️', category: 'self' },
+  { key: 'self.position', label: '배정 직책', icon: '👔', category: 'self' },
   { key: 'self.virtues', label: '가능과목', icon: '📚', category: 'self' },
   {
     key: 'self.mySchedules',

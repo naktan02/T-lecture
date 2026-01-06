@@ -6,6 +6,7 @@ interface UnitFilterParams {
   skip: number;
   take: number;
   where: Prisma.UnitWhereInput;
+  orderBy?: Prisma.UnitOrderByWithRelationInput;
 }
 
 interface TrainingLocationData {
@@ -83,14 +84,14 @@ class UnitRepository {
   /**
    * 필터 조건으로 부대 목록 및 개수 조회
    */
-  async findUnitsByFilterAndCount({ skip, take, where }: UnitFilterParams) {
+  async findUnitsByFilterAndCount({ skip, take, where, orderBy }: UnitFilterParams) {
     const [total, units] = await prisma.$transaction([
       prisma.unit.count({ where }),
       prisma.unit.findMany({
         where,
         skip,
         take,
-        orderBy: { id: 'desc' },
+        orderBy: orderBy || { id: 'desc' },
         include: { trainingLocations: true },
       }),
     ]);
@@ -553,7 +554,9 @@ class UnitRepository {
    */
   async findUpcomingSchedules(limit = 50) {
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const today = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0),
+    );
 
     return prisma.unitSchedule.findMany({
       where: {

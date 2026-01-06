@@ -56,11 +56,19 @@ class UnitService {
       );
 
       // 부대 + 교육장소 + 일정 한 번에 생성
-      return await unitRepository.createUnitWithNested(
+      const unit = await unitRepository.createUnitWithNested(
         cleanData,
         rawData.trainingLocations || [],
         schedules,
       );
+
+      // 스케줄이 있으면 활성 강사들에 대해 거리 행 미리 생성
+      if (schedules.length > 0) {
+        const distanceService = require('../distance/distance.service').default;
+        await distanceService.createDistanceRowsForNewUnit(unit.id);
+      }
+
+      return unit;
     } catch (e: unknown) {
       if (e instanceof Error && e.message.includes('부대명(name)은 필수입니다.')) {
         throw new AppError(e.message, 400, 'VALIDATION_ERROR');
@@ -104,7 +112,7 @@ class UnitService {
     let locationsAdded = 0;
     let locationsSkipped = 0;
 
-    const newUnitPromises: Promise<any>[] = [];
+    const newUnitsToCreate: RawUnitInput[] = [];
     const trainingLocationsToCreate: { unitId: number; location: any }[] = [];
 
     // 3. 데이터 분류 및 처리
@@ -141,18 +149,27 @@ class UnitService {
           }
         }
       } else {
-        // [신규 부대] -> 개별 등록 (병렬 처리)
-        // groupExcelRowsByUnit 덕분에 엑셀 내 부대명 중복은 없으므로 안전하게 생성 시도
-        newUnitPromises.push(this.registerSingleUnit(rawData));
-        created++;
-        locationsAdded += rawData.trainingLocations?.length || 0;
+        // [신규 부대] -> 리스트에 추가 (나중에 청크 처리)
+        newUnitsToCreate.push(rawData);
       }
     }
 
     // 4. 실행
-    // 4-1. 신규 부대 등록 (병렬)
-    if (newUnitPromises.length > 0) {
-      await Promise.all(newUnitPromises);
+    // 4-1. 신규 부대 등록 (청크 처리: 50개씩)
+    const CHUNK_SIZE = 50;
+    for (let i = 0; i < newUnitsToCreate.length; i += CHUNK_SIZE) {
+      const chunk = newUnitsToCreate.slice(i, i + CHUNK_SIZE);
+      await Promise.all(
+        chunk.map(async (data) => {
+          try {
+            await this.registerSingleUnit(data);
+            created++;
+            locationsAdded += data.trainingLocations?.length || 0;
+          } catch (e) {
+            console.error(`[UnitService] Failed to register unit ${data.name}:`, e);
+          }
+        }),
+      );
     }
 
     // 4-2. 기존 부대 장소 일괄 추가 (Bulk Insert)
@@ -244,14 +261,32 @@ class UnitService {
   /**
    * 목록 조회
    */
-  async searchUnitList(query: UnitQueryInput) {
+  /**
+   * 목록 조회
+   */
+  async searchUnitList(query: UnitQueryInput & { sortField?: string; sortOrder?: 'asc' | 'desc' }) {
     const paging = buildPaging(query);
     const where = buildUnitWhere(query);
+
+    let orderBy: Prisma.UnitOrderByWithRelationInput | undefined;
+    if (query.sortField && query.sortOrder) {
+      if (query.sortField === 'name') orderBy = { name: query.sortOrder };
+      else if (query.sortField === 'unitType') orderBy = { unitType: query.sortOrder };
+      else if (query.sortField === 'region') orderBy = { region: query.sortOrder };
+      else if (query.sortField === 'wideArea') orderBy = { wideArea: query.sortOrder };
+      else if (query.sortField === 'date')
+        orderBy = { id: query.sortOrder }; // Proxy for creation date
+      // educationStart?
+      else if (query.sortField === 'educationStart') {
+        orderBy = { educationStart: query.sortOrder };
+      }
+    }
 
     const { total, units } = await unitRepository.findUnitsByFilterAndCount({
       skip: paging.skip,
       take: paging.take,
       where,
+      orderBy,
     });
 
     return {
@@ -444,7 +479,13 @@ class UnitService {
       }
     }
 
-    return await unitRepository.updateUnitById(id, updateData);
+    const updated = await unitRepository.updateUnitById(id, updateData);
+
+    // 주소 변경 시 해당 부대의 모든 거리 무효화 (재계산 대기열에 추가)
+    const distanceService = require('../distance/distance.service').default;
+    await distanceService.invalidateDistancesForUnit(Number(id));
+
+    return updated;
   }
 
   /**

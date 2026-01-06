@@ -16,6 +16,8 @@ interface NoticeGetParams {
   page?: number;
   limit?: number;
   search?: string;
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 class NoticeService {
@@ -54,12 +56,27 @@ class NoticeService {
 
   // 공지사항 목록 조회 (관리자용 - 전체 목록)
   async getAll(params: NoticeGetParams = {}) {
-    const { page = 1, limit = 10, search } = params;
+    const { page = 1, limit = 10, search, sortField, sortOrder } = params;
     const skip = (page - 1) * limit;
+
+    let orderBy: any; // Prisma type import needed or uses any
+    // To handle Prisma types cleanly without importing everywhere, 'any' is safe here if repo handles it.
+    // Repo expects Prisma.NoticeOrderByWithRelationInput.
+    // I can construct object.
+
+    if (sortField && sortOrder) {
+      if (sortField === 'title') orderBy = { title: sortOrder };
+      else if (sortField === 'viewCount') orderBy = { viewCount: sortOrder };
+      else if (sortField === 'createdAt' || sortField === 'date')
+        orderBy = { createdAt: sortOrder };
+      else if (sortField === 'author') orderBy = { author: { name: sortOrder } };
+    }
+
     const { notices, total } = await noticeRepository.findAll({
       skip,
       take: limit,
       search,
+      orderBy,
     });
 
     // 작성자 이름 일괄 조회

@@ -8,10 +8,13 @@ interface NoticeCreateData {
   isPinned?: boolean;
 }
 
+import { Prisma } from '@prisma/client';
+
 interface NoticeFindAllParams {
   skip: number;
   take: number;
   search?: string;
+  orderBy?: Prisma.NoticeOrderByWithRelationInput;
 }
 
 class NoticeRepository {
@@ -28,19 +31,27 @@ class NoticeRepository {
   }
 
   // 공지사항 목록 조회 (content 포함)
-  async findAll({ skip, take, search }: NoticeFindAllParams) {
+  async findAll({ skip, take, search, orderBy }: NoticeFindAllParams) {
     const where = search
       ? {
           OR: [{ title: { contains: search } }, { body: { contains: search } }],
         }
       : {};
 
+    // Pinned always on top, then custom sort or default createdAt desc
+    const sortRule: Prisma.NoticeOrderByWithRelationInput[] = [{ isPinned: 'desc' }];
+    if (orderBy) {
+      sortRule.push(orderBy);
+    } else {
+      sortRule.push({ createdAt: 'desc' });
+    }
+
     const [notices, total] = await Promise.all([
       prisma.notice.findMany({
         where,
         skip,
         take,
-        orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
+        orderBy: sortRule,
         include: {
           author: {
             select: { name: true },

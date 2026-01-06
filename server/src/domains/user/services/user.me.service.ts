@@ -6,12 +6,12 @@ import { Prisma } from '@prisma/client';
 interface UpdateProfileDto {
   name?: string;
   phoneNumber?: string;
-  address?: string;
   email?: string;
   password?: string;
   restrictedArea?: string; // 강사 제한 지역
   hasCar?: boolean; // 강사 자차 여부
   virtueIds?: number[]; // 강사 가능 덕목 ID 목록
+  // 주소(address)는 updateMyAddress API로만 변경 가능 (보안을 위해 분리)
 }
 
 class UserMeService {
@@ -31,13 +31,13 @@ class UserMeService {
     return rest;
   }
 
-  // 내 프로필 수정
+  // 내 프로필 수정 (주소는 updateMyAddress로만 변경 가능)
   async updateMyProfile(userId: number | string, dto: UpdateProfileDto) {
     if (!dto || typeof dto !== 'object' || Array.isArray(dto)) {
       throw new AppError('요청 바디 형식이 올바르지 않습니다.', 400, 'INVALID_BODY');
     }
 
-    const { name, phoneNumber, address, email, password, restrictedArea, hasCar, virtueIds } = dto;
+    const { name, phoneNumber, email, password, restrictedArea, hasCar, virtueIds } = dto;
 
     if (name !== undefined && name !== null && typeof name !== 'string') {
       throw new AppError('name은 문자열이어야 합니다.', 400, 'INVALID_NAME');
@@ -45,10 +45,6 @@ class UserMeService {
 
     if (phoneNumber !== undefined && phoneNumber !== null && typeof phoneNumber !== 'string') {
       throw new AppError('phoneNumber는 문자열이어야 합니다.', 400, 'INVALID_PHONE_NUMBER');
-    }
-
-    if (address !== undefined && address !== null && typeof address !== 'string') {
-      throw new AppError('address는 문자열이어야 합니다.', 400, 'INVALID_ADDRESS');
     }
 
     if (email !== undefined && email !== null && typeof email !== 'string') {
@@ -62,7 +58,6 @@ class UserMeService {
     const hasAnyField =
       name !== undefined ||
       phoneNumber !== undefined ||
-      address !== undefined ||
       email !== undefined ||
       password !== undefined ||
       restrictedArea !== undefined ||
@@ -101,13 +96,6 @@ class UserMeService {
     const isInstructor = !!user.instructor;
 
     if (isInstructor) {
-      // 주소가 변경된 경우에만 lat/lng 초기화
-      if (address !== undefined && address !== user.instructor?.location) {
-        instructorData.location = address === '' ? null : address;
-        instructorData.lat = null;
-        instructorData.lng = null;
-      }
-
       if (restrictedArea !== undefined) {
         instructorData.restrictedArea = restrictedArea === '' ? null : restrictedArea;
       }
@@ -186,6 +174,10 @@ class UserMeService {
     }
 
     const updatedUser = await userRepository.update(userId, {}, instructorData);
+
+    // 주소 변경 시 해당 강사의 모든 거리 무효화 (재계산 대기열에 추가)
+    const distanceService = require('../../distance/distance.service').default;
+    await distanceService.invalidateDistancesForInstructor(userId);
 
     const { password: _password, ...result } = updatedUser;
     const { instructor, ...restResult } = result;

@@ -10,6 +10,7 @@ const COLUMN_MAPPING: Record<string, string> = {
   광역: 'wideArea',
   지역: 'region',
   부대주소: 'addressDetail',
+  '부대주소(상세)': 'detailAddress',
   부대상세주소: 'detailAddress',
   위도: 'lat',
   경도: 'lng',

@@ -1,155 +1,161 @@
 // server/prisma/seed.ts
+// 운영 환경 기본 시드 데이터
+// 실행: npx tsx prisma/seed.ts
+
+/* eslint-disable no-console */
+
 import { PrismaClient, Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import 'dotenv/config';
-import logger from '../src/config/logger';
 
 const prisma = new PrismaClient();
 
+// 팀 데이터 (7개)
+const TEAMS = [
+  { id: 1, name: '1팀' },
+  { id: 2, name: '2팀' },
+  { id: 3, name: '3팀' },
+  { id: 4, name: '4팀' },
+  { id: 5, name: '5팀' },
+  { id: 6, name: '6팀' },
+  { id: 7, name: '7팀' },
+];
+
+// 덕목(과목) 데이터 (15개)
+const VIRTUES = [
+  { id: 1, name: '예' },
+  { id: 2, name: '효' },
+  { id: 3, name: '정직' },
+  { id: 4, name: '책임' },
+  { id: 5, name: '존중' },
+  { id: 6, name: '배려' },
+  { id: 7, name: '소통' },
+  { id: 8, name: '협동' },
+  { id: 9, name: '성실' },
+  { id: 10, name: '용기' },
+  { id: 11, name: '지혜' },
+  { id: 12, name: '인내' },
+  { id: 13, name: '겸손' },
+  { id: 14, name: '감사' },
+  { id: 15, name: '봉사' },
+];
+
+// 시스템 설정 기본값
+const SYSTEM_CONFIGS = [
+  { key: 'ASSIGNMENT_DISTANCE_WEIGHT', value: '0.3', description: '배정 알고리즘 - 거리 가중치' },
+  {
+    key: 'ASSIGNMENT_AVAILABILITY_WEIGHT',
+    value: '0.4',
+    description: '배정 알고리즘 - 가용일 가중치',
+  },
+  { key: 'ASSIGNMENT_WORKLOAD_WEIGHT', value: '0.3', description: '배정 알고리즘 - 업무량 가중치' },
+  { key: 'PENALTY_DURATION_DAYS', value: '30', description: '패널티 기간 (일)' },
+  {
+    key: 'PRIORITY_CREDIT_EXPIRY_DAYS',
+    value: '60',
+    description: '우선배정 크레딧 만료 기간 (일)',
+  },
+  { key: 'DEFAULT_RESPONSE_DEADLINE_HOURS', value: '48', description: '배정 응답 기한 (시간)' },
+];
+
 async function main() {
-  const email = process.env.SUPER_ADMIN_EMAIL;
-  const password = process.env.SUPER_ADMIN_PASSWORD;
-  const generalEmail = process.env.GENERAL_ADMIN_EMAIL;
-  const generalPassword = process.env.GENERAL_ADMIN_PASSWORD;
+  console.log('');
+  console.log('╔════════════════════════════════════════════════════════════╗');
+  console.log('║          T-lecture 운영 환경 기본 시드 데이터              ║');
+  console.log('╚════════════════════════════════════════════════════════════╝');
+  console.log('');
 
-  // 1. 슈퍼 관리자 생성 로직
-  if (email && password) {
-    const existing = await prisma.admin.findFirst({
-      where: { level: 'SUPER' },
-      include: { user: true },
-    });
-
-    if (existing) {
-      logger.warn(`이미 슈퍼 관리자(${existing.user.userEmail})가 존재합니다.`);
-    } else {
-      const existingUser = await prisma.user.findUnique({
-        where: { userEmail: email },
-      });
-
-      let user;
-      if (existingUser) {
-        logger.warn('동일 이메일 유저가 이미 있으므로 해당 계정을 SUPER ADMIN으로 승격합니다.');
-        user = existingUser;
-      } else {
-        const hashed = await bcrypt.hash(password, 10);
-        user = await prisma.user.create({
-          data: {
-            userEmail: email,
-            password: hashed,
-            name: '슈퍼관리자',
-            userphoneNumber: '000-0000-0000',
-            status: 'APPROVED',
-          },
-        });
-      }
-
-      await prisma.admin.upsert({
-        where: { userId: user.id },
-        update: { level: 'SUPER' },
-        create: {
-          userId: user.id,
-          level: 'SUPER',
-        },
-      });
-      logger.info(`SUPER ADMIN 생성 완료: ${email}`);
-    }
-  } else {
-    logger.info('.env에 SUPER_ADMIN 정보가 없어 관리자 생성을 건너뜁니다.');
-  }
-
-  // 1-2. 일반 관리자 생성 로직
-  if (generalEmail && generalPassword) {
-    const existing = await prisma.admin.findFirst({
-      where: { level: 'GENERAL', user: { userEmail: generalEmail } },
-      include: { user: true },
-    });
-
-    if (existing) {
-      logger.warn(`이미 일반 관리자(${existing.user.userEmail})가 존재합니다.`);
-    } else {
-      const existingUser = await prisma.user.findUnique({
-        where: { userEmail: generalEmail },
-      });
-
-      let user;
-      if (existingUser) {
-        logger.warn('동일 이메일 유저가 이미 있으므로 해당 계정을 GENERAL ADMIN으로 설정합니다.');
-        user = existingUser;
-      } else {
-        const hashed = await bcrypt.hash(generalPassword, 10);
-        user = await prisma.user.create({
-          data: {
-            userEmail: generalEmail,
-            password: hashed,
-            name: '일반관리자',
-            userphoneNumber: '000-0000-0000',
-            status: 'APPROVED',
-          },
-        });
-      }
-
-      await prisma.admin.upsert({
-        where: { userId: user.id },
-        update: { level: 'GENERAL' },
-        create: {
-          userId: user.id,
-          level: 'GENERAL',
-        },
-      });
-      logger.info(`GENERAL ADMIN 생성 완료: ${generalEmail}`);
-    }
-  } else {
-    logger.info('.env에 GENERAL_ADMIN 정보가 없어 일반 관리자 생성을 건너뜁니다.');
-  }
-
-  // 2. 소속팀(Team) 시딩 - 실제 운영 구조 기반
-  logger.info('소속팀 데이터 생성 중...');
-  const teams = [
-    { id: 1, name: '서울 1팀' },
-    { id: 2, name: '서울 2팀' },
-    { id: 3, name: '경기 북부팀' },
-    { id: 4, name: '경기 남부팀' },
-    { id: 5, name: '인천팀' },
-    { id: 6, name: '강원팀' },
-    { id: 7, name: '충청팀' },
-    { id: 8, name: '전라팀' },
-    { id: 9, name: '경상팀' },
-    { id: 10, name: '제주팀' },
-  ];
-  for (const team of teams) {
+  // 1. 팀 생성
+  console.log('👥 팀 생성 중...');
+  for (const team of TEAMS) {
     await prisma.team.upsert({
       where: { id: team.id },
-      update: { name: team.name },
+      update: { name: team.name, deletedAt: null },
       create: { id: team.id, name: team.name },
     });
   }
-  logger.info(`소속팀 ${teams.length}개 생성 완료`);
+  console.log(`  ✅ 팀 ${TEAMS.length}개 생성 완료`);
 
-  // 3. 덕목(Virtue) 시딩 - 인성교육 8대 덕목
-  logger.info('덕목(강의 가능 과목) 데이터 생성 중...');
-  const virtues = [
-    { id: 1, name: '예' },
-    { id: 2, name: '효' },
-    { id: 3, name: '정직' },
-    { id: 4, name: '책임' },
-    { id: 5, name: '존중' },
-    { id: 6, name: '배려' },
-    { id: 7, name: '소통' },
-    { id: 8, name: '협동' },
-  ];
-  for (const virtue of virtues) {
+  // 2. 덕목(과목) 생성
+  console.log('📚 덕목(과목) 생성 중...');
+  for (const virtue of VIRTUES) {
     await prisma.virtue.upsert({
       where: { id: virtue.id },
       update: { name: virtue.name },
       create: { id: virtue.id, name: virtue.name },
     });
   }
-  logger.info(`덕목 ${virtues.length}개 생성 완료`);
+  console.log(`  ✅ 덕목 ${VIRTUES.length}개 생성 완료`);
 
-  // 4. 메시지 템플릿 시딩 (JSONB body + formatPresets)
-  logger.info('메시지 템플릿 생성 중...');
+  // 3. 관리자 생성
+  console.log('👤 관리자 생성 중...');
 
-  // 임시 배정 메시지 템플릿
+  const superEmail = process.env.SUPER_ADMIN_EMAIL;
+  const superPassword = process.env.SUPER_ADMIN_PASSWORD;
+  const generalEmail = process.env.GENERAL_ADMIN_EMAIL;
+  const generalPassword = process.env.GENERAL_ADMIN_PASSWORD;
+
+  if (superEmail && superPassword) {
+    const hashedPassword = await bcrypt.hash(superPassword, 10);
+    const existingUser = await prisma.user.findUnique({ where: { userEmail: superEmail } });
+
+    if (!existingUser) {
+      await prisma.user.create({
+        data: {
+          userEmail: superEmail,
+          password: hashedPassword,
+          name: '슈퍼관리자',
+          userphoneNumber: '010-0000-0001',
+          status: 'APPROVED',
+          admin: { create: { level: 'SUPER' } },
+        },
+      });
+      console.log(`  ✅ 슈퍼관리자 생성: ${superEmail}`);
+    } else {
+      console.log(`  ⚠️ 슈퍼관리자 이미 존재: ${superEmail}`);
+    }
+  } else {
+    console.log('  ⚠️ SUPER_ADMIN_EMAIL/PASSWORD가 .env에 설정되지 않았습니다.');
+  }
+
+  if (generalEmail && generalPassword) {
+    const hashedPassword = await bcrypt.hash(generalPassword, 10);
+    const existingUser = await prisma.user.findUnique({ where: { userEmail: generalEmail } });
+
+    if (!existingUser) {
+      await prisma.user.create({
+        data: {
+          userEmail: generalEmail,
+          password: hashedPassword,
+          name: '일반관리자',
+          userphoneNumber: '010-0000-0002',
+          status: 'APPROVED',
+          admin: { create: { level: 'GENERAL' } },
+        },
+      });
+      console.log(`  ✅ 일반관리자 생성: ${generalEmail}`);
+    } else {
+      console.log(`  ⚠️ 일반관리자 이미 존재: ${generalEmail}`);
+    }
+  } else {
+    console.log('  ⚠️ GENERAL_ADMIN_EMAIL/PASSWORD가 .env에 설정되지 않았습니다.');
+  }
+
+  // 4. 시스템 설정 생성
+  console.log('⚙️ 시스템 설정 생성 중...');
+  for (const config of SYSTEM_CONFIGS) {
+    await prisma.systemConfig.upsert({
+      where: { key: config.key },
+      update: { value: config.value, description: config.description },
+      create: { key: config.key, value: config.value, description: config.description },
+    });
+  }
+  console.log(`  ✅ 시스템 설정 ${SYSTEM_CONFIGS.length}개 생성 완료`);
+
+  // 5. 메시지 템플릿 생성
+  console.log('📝 메시지 템플릿 생성 중...');
+
+  // 임시 배정 템플릿
   const temporaryBody = {
     tokens: [
       {
@@ -189,7 +195,22 @@ async function main() {
     'self.mySchedules': '- {date} ({dayOfWeek}) : {name}',
   };
 
-  // 확정 배정 메시지 - 팀원용
+  await prisma.messageTemplate.upsert({
+    where: { key: 'TEMPORARY' },
+    update: {
+      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
+      body: temporaryBody as Prisma.InputJsonValue,
+      formatPresets: temporaryPresets,
+    },
+    create: {
+      key: 'TEMPORARY',
+      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
+      body: temporaryBody as Prisma.InputJsonValue,
+      formatPresets: temporaryPresets,
+    },
+  });
+
+  // 확정 배정 (팀원용) 템플릿
   const confirmedMemberBody = {
     tokens: [
       { text: '[확정 배정 알림]', type: 'text' },
@@ -227,7 +248,22 @@ async function main() {
     'self.mySchedules': '- {date} ({dayOfWeek}) : {name}',
   };
 
-  // 확정 배정 메시지 - 팀장용
+  await prisma.messageTemplate.upsert({
+    where: { key: 'CONFIRMED_MEMBER' },
+    update: {
+      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
+      body: confirmedMemberBody as Prisma.InputJsonValue,
+      formatPresets: confirmedMemberPresets,
+    },
+    create: {
+      key: 'CONFIRMED_MEMBER',
+      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
+      body: confirmedMemberBody as Prisma.InputJsonValue,
+      formatPresets: confirmedMemberPresets,
+    },
+  });
+
+  // 확정 배정 (팀장용) 템플릿
   const confirmedLeaderBody = {
     tokens: [
       { text: '[확정 배정 알림]', type: 'text' },
@@ -309,36 +345,6 @@ async function main() {
   };
 
   await prisma.messageTemplate.upsert({
-    where: { key: 'TEMPORARY' },
-    update: {
-      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
-      body: temporaryBody as Prisma.InputJsonValue,
-      formatPresets: temporaryPresets,
-    },
-    create: {
-      key: 'TEMPORARY',
-      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
-      body: temporaryBody as Prisma.InputJsonValue,
-      formatPresets: temporaryPresets,
-    },
-  });
-
-  await prisma.messageTemplate.upsert({
-    where: { key: 'CONFIRMED_MEMBER' },
-    update: {
-      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
-      body: confirmedMemberBody as Prisma.InputJsonValue,
-      formatPresets: confirmedMemberPresets,
-    },
-    create: {
-      key: 'CONFIRMED_MEMBER',
-      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
-      body: confirmedMemberBody as Prisma.InputJsonValue,
-      formatPresets: confirmedMemberPresets,
-    },
-  });
-
-  await prisma.messageTemplate.upsert({
     where: { key: 'CONFIRMED_LEADER' },
     update: {
       title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
@@ -353,19 +359,25 @@ async function main() {
     },
   });
 
-  logger.info('메시지 템플릿 생성 완료');
+  console.log('  ✅ 메시지 템플릿 3개 생성 완료');
 
-  logger.info('');
-  logger.info('기본 시드 데이터 생성 완료!');
-  logger.info('');
-  logger.info('추가 시드 스크립트:');
-  logger.info('  - 유저 테스트 데이터: npx tsx prisma/seedUsers.ts');
-  logger.info('  - 공지사항 테스트 데이터: npx tsx prisma/seedNotices.ts');
+  console.log('');
+  console.log('╔════════════════════════════════════════════════════════════╗');
+  console.log('║                  ✅ 시드 완료!                             ║');
+  console.log('╠════════════════════════════════════════════════════════════╣');
+  console.log('║  생성된 데이터:                                            ║');
+  console.log('║  - 팀 7개                                                  ║');
+  console.log('║  - 덕목(과목) 15개                                         ║');
+  console.log('║  - 관리자 계정 (from .env)                                 ║');
+  console.log('║  - 시스템 설정 6개                                         ║');
+  console.log('║  - 메시지 템플릿 3개                                       ║');
+  console.log('╚════════════════════════════════════════════════════════════╝');
+  console.log('');
 }
 
 main()
   .catch((e) => {
-    logger.error(`Seed 실행 중 에러: ${e.message}`);
+    console.error('❌ 시드 실행 중 오류 발생:', e);
     process.exit(1);
   })
   .finally(async () => {

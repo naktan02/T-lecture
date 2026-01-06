@@ -12,6 +12,7 @@ interface User {
   isAdmin?: boolean;
   adminLevel?: string;
   isInstructor?: boolean;
+  instructorProfileCompleted?: boolean | null;
 }
 
 type UserRoleType = 'SUPER_ADMIN' | 'ADMIN' | 'USER';
@@ -35,8 +36,13 @@ export const useAuth = () => {
       const role = determineUserRole(user);
       localStorage.setItem('userRole', role);
       localStorage.setItem('isInstructor', String(!!user.isInstructor));
+      // 강사 프로필 완성 여부 저장 (null이면 true로 간주 - 강사가 아닌 경우)
+      localStorage.setItem(
+        'instructorProfileCompleted',
+        String(user.instructorProfileCompleted ?? true),
+      );
 
-      handleNavigation(role, variables.loginType, navigate);
+      handleNavigation(role, variables.loginType, navigate, user);
     },
     onError: (error: Error) => {
       logger.error('로그인 실패:', error);
@@ -74,7 +80,18 @@ function determineUserRole(user: User): UserRoleType {
   return USER_ROLES.USER as UserRoleType;
 }
 
-function handleNavigation(role: UserRoleType, loginType: string, navigate: NavigateFunction): void {
+function handleNavigation(
+  role: UserRoleType,
+  loginType: string,
+  navigate: NavigateFunction,
+  user: User,
+): void {
+  // 0. 강사 프로필 미완성 시 프로필 페이지로 이동 (강사인 경우)
+  if (user.isInstructor && user.instructorProfileCompleted === false) {
+    navigate('/user-main/profile');
+    return;
+  }
+
   // 1. '일반/강사' 탭(GENERAL)으로 로그인했다면,
   //    관리자 권한이 있어도 무조건 사용자 메인 페이지로 보냄
   if (loginType === USER_ROLES.GENERAL) {

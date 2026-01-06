@@ -13,10 +13,12 @@ export const SuperAdminDashboard: React.FC = () => {
     setSearch,
     pendingUsers,
     normalUsers,
-    instructors,
-    admins,
+    instructorUsers,
+    adminUsers,
     grantAdmin,
     revokeAdmin,
+    grantInstructor,
+    revokeInstructor,
     approveUser,
     rejectUser,
   } = useSuperAdmin();
@@ -29,9 +31,9 @@ export const SuperAdminDashboard: React.FC = () => {
     <div>
       <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-6 gap-4">
         <div>
-          <h2 className="text-xl font-bold">관리자 권한 관리</h2>
+          <h2 className="text-xl font-bold">권한 관리</h2>
           <p className="text-sm text-gray-600 mt-1">
-            강사가 아닌 일반 유저, 강사, 현재 관리자 목록을 확인하고 권한을 관리합니다.
+            사용자의 강사/관리자 역할을 관리합니다. 한 사용자가 여러 역할을 가질 수 있습니다.
           </p>
         </div>
 
@@ -49,32 +51,29 @@ export const SuperAdminDashboard: React.FC = () => {
       {loading ? (
         <div className="text-center py-10 text-gray-500">데이터를 불러오는 중입니다...</div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* 1) 일반 유저 섹션 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* 1) 일반 유저 섹션 (강사 X, 관리자 X) */}
           <UserListSection
-            title="👤 일반 유저 (강사 아님)"
+            title="👤 일반 유저"
             users={normalUsers}
             emptyMessage="일반 유저가 없습니다."
             renderActions={(u) => (
-              <Button size="xsmall" onClick={() => grantAdmin(u.id, 'GENERAL')}>
-                관리자 부여
-              </Button>
+              <div className="flex gap-1 flex-col sm:flex-row">
+                <Button size="xsmall" onClick={() => grantInstructor(u.id)}>
+                  강사 부여
+                </Button>
+                <Button
+                  size="xsmall"
+                  variant="secondary"
+                  onClick={() => grantAdmin(u.id, 'GENERAL')}
+                >
+                  관리자 부여
+                </Button>
+              </div>
             )}
           />
 
-          {/* 2) 강사 섹션 */}
-          <UserListSection
-            title="📚 강사 (현 관리자 아님)"
-            users={instructors}
-            emptyMessage="강사만 있는 유저가 없습니다."
-            renderActions={(u) => (
-              <Button size="xsmall" onClick={() => grantAdmin(u.id, 'GENERAL')}>
-                관리자 부여
-              </Button>
-            )}
-          />
-
-          {/* 3) 승인 대기 섹션 */}
+          {/* 2) 승인 대기 섹션 */}
           <UserListSection
             title="📝 가입 신청 (승인 대기)"
             users={pendingUsers}
@@ -91,22 +90,81 @@ export const SuperAdminDashboard: React.FC = () => {
             )}
           />
 
-          {/* 4) 현재 관리자 섹션 */}
-          <div className="lg:col-span-3 xl:col-span-1">
-            <UserListSection
-              title="🛡 현재 관리자"
-              users={admins}
-              emptyMessage="관리자가 없습니다."
-              renderActions={(u) => {
-                if (u.admin?.level === 'SUPER') return null;
-                return (
-                  <Button size="xsmall" variant="danger" onClick={() => revokeAdmin(u.id)}>
-                    권한 회수
+          {/* 3) 강사 섹션 */}
+          <UserListSection
+            title="📚 강사 목록"
+            users={instructorUsers}
+            emptyMessage="강사가 없습니다."
+            renderBadge={(u) =>
+              u.admin ? (
+                <span className="ml-2 px-1.5 py-0.5 text-xs rounded bg-purple-100 text-purple-700">
+                  🛡️ 관리자
+                </span>
+              ) : null
+            }
+            renderActions={(u) => (
+              <div className="flex gap-1 flex-col sm:flex-row">
+                <Button size="xsmall" variant="danger" onClick={() => revokeInstructor(u.id)}>
+                  강사 회수
+                </Button>
+                {u.admin ? (
+                  u.admin.level !== 'SUPER' && (
+                    <Button size="xsmall" variant="secondary" onClick={() => revokeAdmin(u.id)}>
+                      관리자 회수
+                    </Button>
+                  )
+                ) : (
+                  <Button
+                    size="xsmall"
+                    variant="secondary"
+                    onClick={() => grantAdmin(u.id, 'GENERAL')}
+                  >
+                    관리자 부여
                   </Button>
-                );
-              }}
-            />
-          </div>
+                )}
+              </div>
+            )}
+          />
+
+          {/* 4) 관리자 섹션 */}
+          <UserListSection
+            title="🛡 관리자 목록"
+            users={adminUsers}
+            emptyMessage="관리자가 없습니다."
+            renderBadge={(u) =>
+              u.instructor ? (
+                <span className="ml-2 px-1.5 py-0.5 text-xs rounded bg-blue-100 text-blue-700">
+                  📚 강사
+                </span>
+              ) : null
+            }
+            renderActions={(u) => {
+              const isSuper = u.admin?.level === 'SUPER';
+              return (
+                <div className="flex gap-1 flex-col sm:flex-row">
+                  {u.instructor ? (
+                    <Button
+                      size="xsmall"
+                      variant="secondary"
+                      onClick={() => revokeInstructor(u.id)}
+                    >
+                      강사 회수
+                    </Button>
+                  ) : (
+                    <Button size="xsmall" onClick={() => grantInstructor(u.id)}>
+                      강사 부여
+                    </Button>
+                  )}
+                  {!isSuper && (
+                    <Button size="xsmall" variant="danger" onClick={() => revokeAdmin(u.id)}>
+                      관리자 회수
+                    </Button>
+                  )}
+                  {isSuper && <span className="text-xs text-gray-400 self-center">슈퍼관리자</span>}
+                </div>
+              );
+            }}
+          />
         </div>
       )}
     </div>

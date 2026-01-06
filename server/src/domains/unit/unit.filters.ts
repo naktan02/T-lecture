@@ -74,7 +74,6 @@ export function buildUnitWhere(query: UnitQuery = {}): Prisma.UnitWhereInput {
   if (query.hasAddressError === 'true' || query.hasAddressError === true) {
     conditions.push({
       lat: null,
-      addressDetail: { not: null },
     });
   }
 

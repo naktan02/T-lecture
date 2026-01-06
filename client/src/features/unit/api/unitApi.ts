@@ -7,6 +7,8 @@ interface UnitListParams {
   keyword?: string;
   startDate?: string;
   endDate?: string;
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
   [key: string]: unknown;
 }
 

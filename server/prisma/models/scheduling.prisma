@@ -41,9 +41,9 @@ model InstructorUnitAssignment {
   state              AssignmentState     @default(Pending) @map("배정상태")
   role               AssignmentRole?     @map("배정역할")
 
-  User             User              @relation(fields: [userId], references: [id])
-  UnitSchedule     UnitSchedule      @relation(fields: [unitScheduleId], references: [id])
-  TrainingLocation TrainingLocation? @relation(fields: [trainingLocationId], references: [id])
+  User             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  UnitSchedule     UnitSchedule      @relation(fields: [unitScheduleId], references: [id], onDelete: Cascade)
+  TrainingLocation TrainingLocation? @relation(fields: [trainingLocationId], references: [id], onDelete: Cascade)
 
   dispatchAssignments DispatchAssignment[]
 
@@ -53,15 +53,19 @@ model InstructorUnitAssignment {
 }
 
 model InstructorUnitDistance {
-  userId   Int
-  unitId   Int      @map("부대id")
-  distance Decimal? @map("거리")
-  duration Int?     @map("걸리는시간")
+  userId      Int
+  unitId      Int      @map("부대id")
+  distance    Decimal? @map("거리")
+  duration    Int?     @map("걸리는시간")
+  preDistance Decimal? @map("이전거리")
+  preDuration Int?     @map("이전걸리는시간")
+  needsRecalc Boolean  @default(false) @map("재계산필요")
 
   instructor Instructor @relation(fields: [userId], references: [userId], onDelete: Cascade)
   unit       Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
   @@id([userId, unitId])
+  @@index([needsRecalc], map: "거리_재계산필요_idx")
   @@map("강사-부대 거리")
 }
 

@@ -41,6 +41,7 @@ interface QueryFilters {
   availableFrom?: string;
   availableTo?: string;
   profileIncomplete?: string; // 'true' or 'false' from query string
+  excludeAdmins?: string; // 'true' or 'false' from query string
 }
 
 interface RepoFilters {
@@ -54,6 +55,7 @@ interface RepoFilters {
   availableFrom?: string;
   availableTo?: string;
   profileIncomplete?: boolean;
+  excludeAdmins?: boolean;
 }
 
 // querystring을 repo가 이해하는 형태로 변환
@@ -101,6 +103,11 @@ function normalizeFilters(query: QueryFilters = {}): RepoFilters {
   // 정보 입력 미완료 강사 필터
   if (query.profileIncomplete === 'true') {
     filters.profileIncomplete = true;
+  }
+
+  // 순수 관리자 제외 필터 (유저 관리에서 사용)
+  if (query.excludeAdmins === 'true') {
+    filters.excludeAdmins = true;
   }
 
   return filters;
@@ -153,6 +160,8 @@ interface UpdateUserDto {
 interface PaginationQuery extends QueryFilters {
   page?: number | string;
   limit?: number | string;
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 class AdminService {
@@ -161,8 +170,12 @@ class AdminService {
     const filters = normalizeFilters(query);
     const page = typeof query.page === 'string' ? parseInt(query.page, 10) : query.page || 1;
     const limit = typeof query.limit === 'string' ? parseInt(query.limit, 10) : query.limit || 20;
+    const sort =
+      query.sortField && query.sortOrder
+        ? { field: query.sortField, order: query.sortOrder }
+        : undefined;
 
-    const result = await adminRepository.findAll(filters, page, limit);
+    const result = await adminRepository.findAll(filters, page, limit, sort);
 
     return {
       data: result.data.map(mapUserForAdmin),
@@ -436,6 +449,66 @@ class AdminService {
     return {
       message: '관리자 권한이 해제되었습니다.',
       userId: Number(userId),
+    };
+  }
+
+  // 강사 역할 부여
+  async grantInstructorRole(userId: number | string) {
+    const id = Number(userId);
+
+    // 1. 유저 존재 확인
+    const user = await userRepository.findById(id);
+    if (!user) {
+      throw new AppError('해당 회원을 찾을 수 없습니다.', 404, 'USER_NOT_FOUND');
+    }
+
+    // 2. 이미 강사인지 확인
+    const existingInstructor = await adminRepository.findInstructor(id);
+    if (existingInstructor) {
+      throw new AppError('이미 강사 역할이 부여되어 있습니다.', 400, 'ALREADY_INSTRUCTOR');
+    }
+
+    // 3. Instructor 레코드 생성
+    await adminRepository.createInstructor(id);
+
+    return {
+      message: '강사 역할이 부여되었습니다.',
+      userId: id,
+    };
+  }
+
+  // 강사 역할 회수
+  async revokeInstructorRole(userId: number | string) {
+    const id = Number(userId);
+
+    // 1. 유저 존재 확인
+    const user = await userRepository.findById(id);
+    if (!user) {
+      throw new AppError('해당 회원을 찾을 수 없습니다.', 404, 'USER_NOT_FOUND');
+    }
+
+    // 2. 강사 레코드 존재 확인
+    const existingInstructor = await adminRepository.findInstructor(id);
+    if (!existingInstructor) {
+      throw new AppError('강사 역할이 없는 회원입니다.', 400, 'NOT_INSTRUCTOR');
+    }
+
+    // 3. 활성 배정 확인 (Pending/Accepted 상태)
+    const hasActive = await adminRepository.hasActiveAssignments(id);
+    if (hasActive) {
+      throw new AppError(
+        '활성 배정이 있어 강사 역할을 회수할 수 없습니다. 배정을 먼저 정리해주세요.',
+        400,
+        'HAS_ACTIVE_ASSIGNMENTS',
+      );
+    }
+
+    // 4. Instructor 레코드 및 관련 데이터 삭제
+    await adminRepository.removeInstructor(id);
+
+    return {
+      message: '강사 역할이 회수되었습니다.',
+      userId: id,
     };
   }
 }

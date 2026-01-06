@@ -1,14 +1,14 @@
 // server/prisma/seedInquiries.ts
-// 문의사항 테스트 데이터 시딩 스크립트
+// 문의사항 100개 생성
 // 실행: npx tsx prisma/seedInquiries.ts
 
 /* eslint-disable no-console */
+
 import { PrismaClient } from '@prisma/client';
-import 'dotenv/config';
 
 const prisma = new PrismaClient();
 
-// 문의사항 제목 예시
+// 문의사항 제목 템플릿
 const INQUIRY_TITLES = [
   '배정 일정 변경 문의드립니다',
   '교통비 정산 관련 문의',
@@ -25,28 +25,28 @@ const INQUIRY_TITLES = [
   '배정 취소 요청',
   '일정 겹침 문제 문의',
   '교육 장소 문의',
+  '급여 관련 문의',
+  '보수교육 일정 문의',
+  '강사 등급 변경 문의',
+  '팀 변경 요청',
+  '개인정보 수정 요청',
 ];
 
-// 문의 내용 예시
+// 문의 내용 템플릿
 const INQUIRY_CONTENTS = [
   '안녕하세요. 다음 주 배정된 일정에 개인 사정이 생겨서 변경이 가능한지 문의드립니다. 가능하다면 다다음 주로 조정 부탁드려요.',
   '지난달 출장 교통비 정산이 아직 안 됐는데 확인 부탁드립니다. 영수증은 이미 제출했습니다.',
   '이번 교육에 사용할 자료가 업데이트 되었다고 들었는데, 어디서 받을 수 있나요?',
-  '8월 15일부터 17일까지 개인 일정이 있어서 해당 기간 배정을 피해주실 수 있을까요?',
+  '특정 기간에 개인 일정이 있어서 해당 기간 배정을 피해주실 수 있을까요?',
   '오전 교육으로 배정되어 있는데, 오후로 변경 가능한지 문의드립니다.',
   '연차 휴가를 사용하려면 어떻게 신청해야 하나요?',
   '다음 주 배정된 부대 주소가 정확한지 확인 부탁드려요. 네비게이션에 나오지 않네요.',
   '같이 배정된 동료 강사분의 연락처를 알 수 있을까요? 사전에 미팅이 필요할 것 같습니다.',
   '앱에서 일정 확인이 안 되는 오류가 있습니다. 확인 부탁드려요.',
   '비밀번호를 잊어버렸는데 재설정 방법을 알려주세요.',
-  '다음 달 전체 일정을 미리 확인할 수 있나요?',
-  '강의 완료 증빙서류 발급은 어떻게 요청하나요?',
-  '개인 사정으로 이번 배정을 취소하고 싶습니다.',
-  '같은 날짜에 두 개의 부대가 배정되어 있는데 확인 부탁드려요.',
-  '교육 장소가 본관인지 별관인지 알 수 있을까요?',
 ];
 
-// 답변 예시
+// 답변 템플릿
 const ANSWERS = [
   '안녕하세요. 요청하신 일정 변경 처리 완료했습니다. 시스템에서 확인해주세요.',
   '정산 처리 완료되었습니다. 익월 말일에 입금될 예정입니다.',
@@ -60,98 +60,103 @@ const ANSWERS = [
   '비밀번호 재설정 링크를 이메일로 발송했습니다.',
 ];
 
-async function main() {
-  console.log('🚀 문의사항 테스트 데이터 시딩 시작...\n');
+function randomChoice<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
 
-  // 관리자 계정 확인
+function randomInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+export async function runSeedInquiries() {
+  console.log('❓ 문의사항 100개 생성 시작...\n');
+
+  // 관리자 조회
   const admin = await prisma.admin.findFirst({
     include: { user: true },
   });
 
   if (!admin) {
-    console.log('❌ 관리자 계정이 없습니다. 기본 시드를 먼저 실행해주세요.');
-    console.log('npm run seed');
+    console.error('❌ 관리자 계정이 없습니다. seedCore.ts를 먼저 실행하세요.');
     return;
   }
-  console.log(`📋 관리자 확인됨: ${admin.user.name} (${admin.user.userEmail})`);
+  console.log(`📋 답변자: ${admin.user.name} (${admin.user.userEmail})`);
 
-  // 강사 계정 확인 (프로필 완료된 강사)
+  // 강사 조회
   const instructors = await prisma.user.findMany({
     where: {
-      userEmail: { startsWith: 'instructor' },
-      instructor: { profileCompleted: true },
+      instructor: { isNot: null },
+      status: 'APPROVED',
     },
-    take: 10,
-    orderBy: { id: 'asc' },
+    take: 90,
   });
 
   if (instructors.length === 0) {
-    console.log('❌ 강사 계정이 없습니다. seedUsers.ts를 먼저 실행해주세요.');
-    console.log('npx tsx prisma/seedUsers.ts');
+    console.error('❌ 강사 데이터가 없습니다. seedUsers.ts를 먼저 실행하세요.');
     return;
   }
-  console.log(`📋 강사 ${instructors.length}명 확인됨\n`);
+  console.log(`📋 강사 ${instructors.length}명 로드됨\n`);
 
-  // 기존 문의사항 삭제 (새 Inquiry 테이블)
-  console.log('🗑️ 기존 문의사항 삭제 중...');
-  const deleted = await prisma.inquiry.deleteMany({});
-  console.log(`✅ 기존 문의사항 ${deleted.count}개 삭제 완료\n`);
-
-  // 문의사항 생성
-  console.log('📝 문의사항 생성 중...\n');
-
-  let createdCount = 0;
+  const now = new Date();
   let answeredCount = 0;
+  let waitingCount = 0;
 
-  for (let i = 0; i < 15; i++) {
-    const instructor = instructors[i % instructors.length];
-    const title = INQUIRY_TITLES[i];
-    const content = INQUIRY_CONTENTS[i];
+  // 80개 답변 완료, 20개 대기
+  for (let i = 0; i < 100; i++) {
+    const isAnswered = i < 80;
+    const author = randomChoice(instructors);
+    const title = randomChoice(INQUIRY_TITLES);
+    const content = randomChoice(INQUIRY_CONTENTS);
 
-    // 60%는 답변 완료, 40%는 대기 중
-    const isAnswered = Math.random() > 0.4;
+    // 작성일 (최근 30일)
+    const daysAgo = randomInt(0, 30);
+    const createdAt = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
 
     try {
       await prisma.inquiry.create({
         data: {
-          title: title,
+          title: `${title} #${i + 1}`,
           body: content,
-          authorId: instructor.id,
+          authorId: author.id,
           status: isAnswered ? 'Answered' : 'Waiting',
           ...(isAnswered && {
-            answer: ANSWERS[i % ANSWERS.length],
+            answer: randomChoice(ANSWERS),
             answeredBy: admin.userId,
-            answeredAt: new Date(),
+            answeredAt: new Date(createdAt.getTime() + randomInt(1, 48) * 60 * 60 * 1000),
           }),
+          createdAt: createdAt,
         },
       });
 
-      createdCount++;
-      if (isAnswered) answeredCount++;
+      if (isAnswered) {
+        answeredCount++;
+      } else {
+        waitingCount++;
+      }
 
       const statusLabel = isAnswered ? '✅답변완료' : '⏳대기중';
-      console.log(`  ${statusLabel} [${instructor.name}] ${title.substring(0, 20)}...`);
-    } catch (error) {
-      console.error(`  ❌ 실패: ${title}`, error);
+      if ((i + 1) % 20 === 0) {
+        console.log(`  📊 ${i + 1}/100 문의사항 생성... (마지막: ${statusLabel})`);
+      }
+    } catch (error: any) {
+      console.error(`  ❌ 생성 실패: ${title}`, error.message);
     }
   }
 
-  // 요약
-  console.log('\n' + '='.repeat(50));
-  console.log('📊 시딩 결과 요약');
+  console.log(`\n✅ 문의사항 생성 완료!`);
   console.log('='.repeat(50));
-  console.log(`문의사항 총 ${createdCount}개 생성`);
+  console.log(`📊 생성 결과:`);
   console.log(`  - 답변 완료: ${answeredCount}개`);
-  console.log(`  - 대기 중: ${createdCount - answeredCount}개`);
+  console.log(`  - 대기 중: ${waitingCount}개`);
   console.log('='.repeat(50));
 }
 
-main()
-  .catch((e) => {
-    console.error('❌ 시딩 중 에러:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
-/* eslint-enable no-console */
+// 직접 실행 시
+if (require.main === module) {
+  runSeedInquiries()
+    .catch((e) => {
+      console.error('❌ 생성 실패:', e);
+      process.exit(1);
+    })
+    .finally(() => prisma.$disconnect());
+}

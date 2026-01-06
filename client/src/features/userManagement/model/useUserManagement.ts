@@ -30,12 +30,26 @@ interface UseUserManagementReturn {
   approveUsersBulk: (ids: number[]) => Promise<void>;
   rejectUsersBulk: (ids: number[]) => Promise<void>;
   pendingCount: number;
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
+  onSort: (field: string) => void;
 }
 
 export const useUserManagement = (searchParams: SearchParams = {}): UseUserManagementReturn => {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
+  const [sortField, setSortField] = useState<string | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | undefined>(undefined);
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
 
   // 유저 목록 조회
   const {
@@ -43,12 +57,14 @@ export const useUserManagement = (searchParams: SearchParams = {}): UseUserManag
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['adminUsers', page, limit, searchParams],
+    queryKey: ['adminUsers', page, limit, searchParams, sortField, sortOrder],
     queryFn: () =>
       userManagementApi.getUsers({
         page,
         limit,
         ...searchParams,
+        sortField,
+        sortOrder,
       }),
   });
 
@@ -172,5 +188,8 @@ export const useUserManagement = (searchParams: SearchParams = {}): UseUserManag
     rejectUsersBulk: async (ids: number[]) => {
       await rejectBulkMutation.mutateAsync(ids);
     },
+    sortField,
+    sortOrder,
+    onSort: handleSort,
   };
 };

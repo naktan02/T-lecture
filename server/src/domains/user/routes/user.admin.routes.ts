@@ -42,6 +42,22 @@ router.patch('/users/:userId/admin', auth, requireSuperAdmin, adminController.se
 // [슈퍼 관리자 전용] 관리자 권한 회수
 router.delete('/users/:userId/admin', auth, requireSuperAdmin, adminController.revokeAdminLevel);
 
+// [슈퍼 관리자 전용] 강사 역할 부여
+router.patch(
+  '/users/:userId/instructor',
+  auth,
+  requireSuperAdmin,
+  adminController.grantInstructorRole,
+);
+
+// [슈퍼 관리자 전용] 강사 역할 회수
+router.delete(
+  '/users/:userId/instructor',
+  auth,
+  requireSuperAdmin,
+  adminController.revokeInstructorRole,
+);
+
 export default router;
 
 // CommonJS 호환 (JS 파일에서 require() 사용 시)

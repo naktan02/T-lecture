@@ -7,6 +7,12 @@ import assignmentDTO from './assignment.dto';
 import { DEFAULT_ASSIGNMENT_CONFIG } from './engine/config-loader';
 import prisma from '../../libs/prisma';
 
+// Helper: 오늘 UTC 자정 생성
+function getTodayUTC(): Date {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+}
+
 /**
  * 강사 배정 비즈니스 로직 전담 Service
  */
@@ -544,8 +550,7 @@ class AssignmentService {
    * 근무 이력 조회 (Confirmed + Past)
    */
   async getWorkHistory(instructorId: number) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTodayUTC();
 
     return await assignmentRepository.findAllByInstructorId(instructorId, {
       state: 'Accepted',
@@ -557,8 +562,7 @@ class AssignmentService {
    * 배정 목록 조회 (Active + Future)
    */
   async getUpcomingAssignments(instructorId: number) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTodayUTC();
 
     return await assignmentRepository.findAllByInstructorId(instructorId, {
       state: { in: ['Pending', 'Accepted'] },

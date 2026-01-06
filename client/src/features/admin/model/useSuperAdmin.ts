@@ -7,6 +7,8 @@ import {
   rejectUserApi,
   grantAdminApi,
   revokeAdminApi,
+  grantInstructorApi,
+  revokeInstructorApi,
   User,
   UserActionResponse,
 } from '../adminApi';
@@ -18,9 +20,13 @@ interface AdminInfo {
   level: AdminLevel;
 }
 
+interface InstructorInfo {
+  userId: number;
+}
+
 interface UserWithAdmin extends User {
   admin?: AdminInfo | null;
-  instructor?: unknown;
+  instructor?: InstructorInfo | null;
   userEmail?: string;
 }
 
@@ -31,12 +37,14 @@ interface UseSuperAdminReturn {
   setSearch: React.Dispatch<React.SetStateAction<string>>;
   pendingUsers: User[];
   normalUsers: UserWithAdmin[];
-  instructors: UserWithAdmin[];
-  admins: UserWithAdmin[];
+  instructorUsers: UserWithAdmin[];
+  adminUsers: UserWithAdmin[];
   approveUser: (userId: number) => Promise<void>;
   rejectUser: (userId: number) => Promise<void>;
   grantAdmin: (userId: number, level?: AdminLevel) => Promise<void>;
   revokeAdmin: (userId: number) => Promise<void>;
+  grantInstructor: (userId: number) => Promise<void>;
+  revokeInstructor: (userId: number) => Promise<void>;
 }
 
 export const useSuperAdmin = (): UseSuperAdminReturn => {
@@ -53,7 +61,7 @@ export const useSuperAdmin = (): UseSuperAdminReturn => {
 
         const [approvedData, pendingData] = await Promise.all([fetchUsers(), fetchPendingUsers()]);
 
-        setUsers(approvedData as unknown as UserWithAdmin[]);
+        setUsers(approvedData.data as unknown as UserWithAdmin[]);
         setPendingUsers(pendingData as unknown as User[]);
       } catch (e) {
         setError((e as Error).message);
@@ -94,6 +102,7 @@ export const useSuperAdmin = (): UseSuperAdminReturn => {
       setUsers((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, admin: { userId, level } } : u)),
       );
+      showSuccess('관리자 권한이 부여되었습니다.');
     } catch (e) {
       showError((e as Error).message);
     }
@@ -103,6 +112,27 @@ export const useSuperAdmin = (): UseSuperAdminReturn => {
     try {
       await revokeAdminApi(userId);
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, admin: null } : u)));
+      showSuccess('관리자 권한이 회수되었습니다.');
+    } catch (e) {
+      showError((e as Error).message);
+    }
+  };
+
+  const grantInstructor = async (userId: number): Promise<void> => {
+    try {
+      await grantInstructorApi(userId);
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, instructor: { userId } } : u)));
+      showSuccess('강사 역할이 부여되었습니다.');
+    } catch (e) {
+      showError((e as Error).message);
+    }
+  };
+
+  const revokeInstructor = async (userId: number): Promise<void> => {
+    try {
+      await revokeInstructorApi(userId);
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, instructor: null } : u)));
+      showSuccess('강사 역할이 회수되었습니다.');
     } catch (e) {
       showError((e as Error).message);
     }
@@ -117,9 +147,10 @@ export const useSuperAdmin = (): UseSuperAdminReturn => {
   });
 
   const approvedUsers = filtered.filter((u) => u.status === 'APPROVED');
+  // 듀얼 역할 지원: 각 역할별로 독립적 필터링
   const normalUsers = approvedUsers.filter((u) => !u.instructor && !u.admin);
-  const instructors = approvedUsers.filter((u) => !!u.instructor && !u.admin);
-  const admins = approvedUsers.filter((u) => !!u.admin);
+  const instructorUsers = approvedUsers.filter((u) => !!u.instructor); // 관리자 여부 무관
+  const adminUsers = approvedUsers.filter((u) => !!u.admin); // 강사 여부 무관
 
   return {
     loading,
@@ -128,11 +159,13 @@ export const useSuperAdmin = (): UseSuperAdminReturn => {
     setSearch,
     pendingUsers,
     normalUsers,
-    instructors,
-    admins,
+    instructorUsers,
+    adminUsers,
     approveUser,
     rejectUser,
     grantAdmin,
     revokeAdmin,
+    grantInstructor,
+    revokeInstructor,
   };
 };

@@ -6,7 +6,7 @@ import { NoticeDrawer } from './NoticeDrawer';
 import { Pagination } from '../../../shared/ui';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 30;
 
 /**
  * 공지사항 관리 워크스페이스
@@ -29,6 +29,9 @@ export const NoticeWorkspace = (): ReactElement => {
     handleSave,
     handleDelete,
     setPage,
+    sortField,
+    sortOrder,
+    onSort,
   } = useNotice();
 
   return (
@@ -70,6 +73,9 @@ export const NoticeWorkspace = (): ReactElement => {
               currentPage={page}
               totalCount={totalCount}
               pageSize={PAGE_SIZE}
+              sortField={sortField}
+              sortOrder={sortOrder}
+              onSort={onSort}
             />
           </div>
           {/* 페이지네이션 */}
