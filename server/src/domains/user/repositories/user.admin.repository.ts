@@ -48,6 +48,19 @@ class AdminRepository {
       where.OR = [{ name: { contains: name } }, { userEmail: { contains: name } }];
     }
 
+    // ✅ 관리자 전용 필터가 아닌 경우, 순수 관리자(강사 아닌)는 제외
+    // 강사+관리자인 경우는 강사로 표시되므로 포함
+    if (!onlyAdmins) {
+      // 순수 관리자 제외: admin이 있으면서 instructor가 없는 유저 제외
+      // 조건: admin이 null 이거나 instructor가 있어야 함
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+        {
+          OR: [{ admin: null }, { instructor: { isNot: null } }],
+        },
+      ];
+    }
+
     if (onlyAdmins) {
       where.admin = { isNot: null };
     }
