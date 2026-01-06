@@ -14,6 +14,11 @@ const app = express();
 
 const isProd = process.env.NODE_ENV === 'production';
 
+// Render 같은 리버스 프록시 뒤에서 실행될 때 필요 (rate-limit이 IP를 올바르게 인식하도록)
+if (isProd) {
+  app.set('trust proxy', 1);
+}
+
 const parseOrigins = (value: string | undefined): string[] =>
   (value || '')
     .split(',')
