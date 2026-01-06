@@ -1,0 +1,27 @@
+name: Keep Alive
+
+# 50일마다 실행하여 60일 비활성화 방지
+on:
+  schedule:
+    - cron: '0 0 1,15 * *' # 매월 1일, 15일 자정 (UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  keep-alive:
+    name: Keep Repository Active
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update keep-alive timestamp
+        run: |
+          echo "Last keep-alive: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" > .github/.keep-alive
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/.keep-alive
+          git diff --staged --quiet || git commit -m "chore: keep repository active [skip ci]"
+          git push

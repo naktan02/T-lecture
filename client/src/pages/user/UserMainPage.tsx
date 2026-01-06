@@ -12,7 +12,7 @@ const UserMainPage: React.FC = () => {
     <>
       <UserHeader />
       <Routes>
-        <Route path="/" element={<Navigate to="profile" replace />} />
+        <Route path="/" element={<Navigate to="/user-main/dispatches" replace />} />
         <Route path="profile" element={<UserProfilePage />} />
       </Routes>
     </>

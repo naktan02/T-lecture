@@ -4,11 +4,10 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import config from './config';
-import { requestLogger } from './common/middlewares';
+import { requestLogger, rateLimiter } from './common/middlewares';
 import v1Router from './api/v1';
 import errorHandler from './common/middlewares/errorHandler';
 import logger from './config/logger';
-import './jobs/distanceBatch.job';
 import './jobs/statsBatch.job';
 
 const app = express();
@@ -62,6 +61,9 @@ app.options('*', (_req: Request, res: Response) => {
 app.use(express.json());
 app.use(requestLogger);
 app.use(cookieParser());
+
+// 전역 Rate Limit 적용 (15분당 IP당 100회)
+app.use('/api', rateLimiter.apiLimiter);
 
 // 모든 v1 API는 /api/v1 아래로
 app.use('/api/v1', v1Router);

@@ -15,6 +15,7 @@ import unitRoutes from '../../domains/unit/unit.routes';
 import metadataRoutes from '../../domains/metadata/metadata.routes';
 import dashboardUserRoutes from '../../domains/dashboard/routes/dashboard.user.routes';
 import dashboardAdminRoutes from '../../domains/dashboard/routes/dashboard.admin.routes';
+import batchRoutes from '../../domains/batch/batch.routes';
 
 const router = Router();
 
@@ -31,5 +32,6 @@ router.use('/units', unitRoutes);
 router.use('/metadata', metadataRoutes);
 router.use('/dashboard', dashboardUserRoutes);
 router.use('/dashboard', dashboardAdminRoutes);
+router.use('/batch', batchRoutes);
 
 export default router;

@@ -93,6 +93,10 @@ class AuthService {
       });
 
       await instructorRepository.addVirtues(newUser.id, virtueIds);
+
+      // 신규 강사에 대해 스케줄 있는 부대들과의 거리 행 생성
+      const distanceService = require('../distance/distance.service').default;
+      await distanceService.createDistanceRowsForNewInstructor(newUser.id);
     } else {
       newUser = await userRepository.createUser(commonData);
     }
