@@ -41,6 +41,7 @@ interface QueryFilters {
   availableFrom?: string;
   availableTo?: string;
   profileIncomplete?: string; // 'true' or 'false' from query string
+  excludeAdmins?: string; // 'true' or 'false' from query string
 }
 
 interface RepoFilters {
@@ -54,6 +55,7 @@ interface RepoFilters {
   availableFrom?: string;
   availableTo?: string;
   profileIncomplete?: boolean;
+  excludeAdmins?: boolean;
 }
 
 // querystring을 repo가 이해하는 형태로 변환
@@ -101,6 +103,11 @@ function normalizeFilters(query: QueryFilters = {}): RepoFilters {
   // 정보 입력 미완료 강사 필터
   if (query.profileIncomplete === 'true') {
     filters.profileIncomplete = true;
+  }
+
+  // 순수 관리자 제외 필터 (유저 관리에서 사용)
+  if (query.excludeAdmins === 'true') {
+    filters.excludeAdmins = true;
   }
 
   return filters;

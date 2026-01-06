@@ -123,6 +123,8 @@ export const userManagementApi = {
     if (filters.limit) params.append('limit', String(filters.limit));
     if (filters.sortField) params.append('sortField', filters.sortField);
     if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
+    // 순수 관리자(강사 아닌)는 유저 관리 목록에서 제외
+    params.append('excludeAdmins', 'true');
 
     const queryString = params.toString();
     const url = `/api/v1/admin/users${queryString ? `?${queryString}` : ''}`;
