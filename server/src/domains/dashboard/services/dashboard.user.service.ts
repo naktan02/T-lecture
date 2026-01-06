@@ -269,6 +269,7 @@ class DashboardService {
     }
 
     // 최근 배정 리스트 (기간 설정이 있으면 그 기간 내, 없으면 전체)
+    // 대시보드 요약에서는 최근 5건만 표시
     const recentAssignmentsQuery: any = {
       where: {
         userId,
@@ -290,8 +291,7 @@ class DashboardService {
           date: 'desc',
         },
       },
-      // 기본 모드: 전체 조회 (개인 강사는 데이터가 많지 않으므로)
-      // take 제한 없음
+      take: 5, // 요약용 5건만
     };
 
     if (isCustomRange) {
@@ -303,7 +303,6 @@ class DashboardService {
         gte: rangeStart,
         lt: today, // 완료된 것만
       };
-      recentAssignmentsQuery.take = 50;
     }
 
     const recentAssignmentsRaw =
@@ -379,6 +378,116 @@ class DashboardService {
       },
       monthlyTrend,
       recentAssignments,
+    };
+  }
+
+  /**
+   * 유저(강사) 활동 내역 조회 (페이징)
+   */
+  async getUserActivities(
+    userId: number,
+    page: number,
+    limit: number,
+    startDate?: string,
+    endDate?: string,
+  ) {
+    const skip = (page - 1) * limit;
+
+    // 조건 설정 (getUserDashboardStats와 동일한 로직)
+    const today = getTodayUTC();
+    const whereClause: any = {
+      userId,
+      state: 'Accepted',
+      UnitSchedule: {
+        date: { lt: today }, // 완료된 교육만
+      },
+    };
+
+    if (startDate && endDate) {
+      const rangeStart = new Date(`${startDate}T00:00:00.000Z`);
+      const rangeEnd = new Date(`${endDate}T23:59:59.999Z`);
+
+      // 종료일이 오늘보다 미래면 오늘 직전까지만
+      const effectiveEnd = rangeEnd < today ? rangeEnd : new Date(today.getTime() - 1);
+
+      whereClause.UnitSchedule.date = {
+        gte: rangeStart,
+        lte: effectiveEnd,
+      };
+    }
+
+    const [total, activities] = await Promise.all([
+      prisma.instructorUnitAssignment.count({ where: whereClause }),
+      prisma.instructorUnitAssignment.findMany({
+        where: whereClause,
+        include: {
+          UnitSchedule: {
+            include: {
+              unit: true,
+            },
+          },
+        },
+        orderBy: {
+          UnitSchedule: {
+            date: 'desc',
+          },
+        },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    // 거리 맵
+    const distances = await prisma.instructorUnitDistance.findMany({ where: { userId } });
+    const distanceMap = new Map(
+      distances.map((d) => [
+        d.unitId,
+        d.distance
+          ? typeof d.distance === 'object' && 'toNumber' in d.distance
+            ? d.distance.toNumber()
+            : Number(d.distance)
+          : 0,
+      ]),
+    );
+
+    const formattedActivities = activities
+      .map((assignment: any) => {
+        const u = assignment.UnitSchedule?.unit;
+        if (!u) return null;
+        const dist = distanceMap.get(u.id) || 0;
+
+        let wh = 0;
+        if (u.workStartTime && u.workEndTime) {
+          const s = new Date(u.workStartTime);
+          const e = new Date(u.workEndTime);
+          let diff = e.getHours() * 60 + e.getMinutes() - (s.getHours() * 60 + s.getMinutes());
+          if (diff < 0) diff += 24 * 60;
+          wh = diff / 60;
+        }
+
+        return {
+          id: assignment.unitScheduleId,
+          date: assignment.UnitSchedule?.date
+            ? new Date(assignment.UnitSchedule.date).toISOString().split('T')[0]
+            : '',
+          unitName: u.name || '',
+          unitType: u.unitType,
+          region: u.region,
+          status: assignment.state,
+          distance: Math.round(dist * 2),
+          workHours: Math.round(wh * 10) / 10,
+        };
+      })
+      .filter(Boolean);
+
+    return {
+      activities: formattedActivities,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 }

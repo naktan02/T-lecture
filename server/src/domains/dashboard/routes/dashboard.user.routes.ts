@@ -14,4 +14,12 @@ router.get(
   dashboardController.getUserDashboardStats,
 );
 
+// 유저 활동 내역 조회 (페이징)
+router.get(
+  '/user/activities',
+  auth,
+  requireRole('INSTRUCTOR'),
+  dashboardController.getUserActivities,
+);
+
 export default router;
