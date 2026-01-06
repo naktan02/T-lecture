@@ -59,15 +59,63 @@ export const InstructorDashboardModal: React.FC<Props> = ({
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Filter states
+  const [rangeType, setRangeType] = useState<string>('12m'); // Default 12m
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+
+  // Date calculation effect
+  useEffect(() => {
+    const today = new Date();
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+
+    if (rangeType === '1m') {
+      const start = new Date(today);
+      start.setMonth(today.getMonth() - 1);
+      setStartDate(formatDate(start));
+      setEndDate(formatDate(today));
+    } else if (rangeType === '3m') {
+      const start = new Date(today);
+      start.setMonth(today.getMonth() - 3);
+      setStartDate(formatDate(start));
+      setEndDate(formatDate(today));
+    } else if (rangeType === '6m') {
+      const start = new Date(today);
+      start.setMonth(today.getMonth() - 6);
+      setStartDate(formatDate(start));
+      setEndDate(formatDate(today));
+    } else if (rangeType === '12m') {
+      const start = new Date(today);
+      start.setMonth(today.getMonth() - 12);
+      setStartDate(formatDate(start));
+      setEndDate(formatDate(today));
+    }
+    // custom: keep existing values
+  }, [rangeType]);
+
   useEffect(() => {
     if (!isOpen || !instructorId) return;
+
+    // If custom and dates are missing, don't fetch yet
+    if (rangeType === 'custom' && (!startDate || !endDate)) {
+      return;
+    }
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
       try {
+        const query = new URLSearchParams();
+        if (rangeType === 'custom') {
+          query.append('startDate', startDate);
+          query.append('endDate', endDate);
+        } else {
+          query.append('period', rangeType);
+          // For standard periods, rely on backend calculation to avoid stale state issues
+        }
+
         const res = await apiClient(
-          `/api/v1/dashboard/admin/instructors/${instructorId}/dashboard`,
+          `/api/v1/dashboard/admin/instructors/${instructorId}/dashboard?${query.toString()}`,
         );
         const data = await res.json();
         setStats(data);
@@ -79,24 +127,61 @@ export const InstructorDashboardModal: React.FC<Props> = ({
     };
 
     fetchData();
-  }, [isOpen, instructorId]);
+  }, [isOpen, instructorId, rangeType, startDate, endDate]);
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden">
-        <div className="flex justify-between items-center p-5 border-b">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onBack || onClose}
-              className="text-gray-400 hover:text-gray-600 text-xl"
-              title="뒤로가기"
-            >
-              ←
-            </button>
-            <h3 className="text-xl font-bold text-gray-900">{instructorName} 대시보드</h3>
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex justify-between items-center p-5 border-b shrink-0">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  className="text-gray-400 hover:text-gray-600 text-xl"
+                  title="뒤로가기"
+                >
+                  ←
+                </button>
+              )}
+              <h3 className="text-xl font-bold text-gray-900">{instructorName} 대시보드</h3>
+            </div>
+
+            {/* Filter */}
+            <div className="flex items-center gap-2">
+              <select
+                value={rangeType}
+                onChange={(e) => setRangeType(e.target.value)}
+                className="rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none"
+              >
+                <option value="1m">최근 1개월</option>
+                <option value="3m">최근 3개월</option>
+                <option value="6m">최근 6개월</option>
+                <option value="12m">최근 12개월</option>
+                <option value="custom">직접 설정</option>
+              </select>
+
+              {rangeType === 'custom' && (
+                <div className="flex items-center gap-2 text-sm">
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="rounded border border-gray-300 px-2 py-1 focus:border-indigo-500 focus:outline-none"
+                  />
+                  <span className="text-gray-400">~</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="rounded border border-gray-300 px-2 py-1 focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+              )}
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -159,7 +244,12 @@ export const InstructorDashboardModal: React.FC<Props> = ({
                     <div>
                       <p className="text-sm font-medium opacity-80">근무 일수</p>
                       <p className="mt-1 text-2xl font-bold">{stats.summary.totalWorkDays}일</p>
-                      <p className="text-xs opacity-70">올해 {stats.summary.yearCount}건</p>
+                      <p className="text-xs opacity-70">
+                        {rangeType === 'custom' || rangeType === '1m'
+                          ? '선택 기간'
+                          : `최근 ${rangeType.replace('m', '')}개월`}{' '}
+                        {stats.summary.yearCount}건
+                      </p>
                     </div>
                     <div className="rounded-full bg-white/60 p-3">
                       <CheckCircleIcon className="h-6 w-6" />

@@ -8,6 +8,9 @@ interface NoticeListProps {
   currentPage?: number;
   totalCount?: number;
   pageSize?: number;
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
+  onSort?: (field: string) => void;
 }
 
 export const NoticeList = ({
@@ -16,11 +19,23 @@ export const NoticeList = ({
   currentPage = 1,
   totalCount = 0,
   pageSize = 10,
+  sortField,
+  sortOrder,
+  onSort,
 }: NoticeListProps): ReactElement => {
   // NO 번호 계산: 최신 글이 가장 높은 번호
   const getNoticeNumber = (index: number): number => {
     // 전체 개수에서 (현재 페이지-1) * 페이지크기 + index를 뺀 값
     return totalCount - ((currentPage - 1) * pageSize + index);
+  };
+
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) return <span className="text-gray-300 ml-1 text-xs">⇅</span>;
+    return sortOrder === 'asc' ? (
+      <span className="text-blue-600 ml-1">↑</span>
+    ) : (
+      <span className="text-blue-600 ml-1">↓</span>
+    );
   };
 
   return (
@@ -37,27 +52,31 @@ export const NoticeList = ({
             </th>
             <th
               scope="col"
-              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+              onClick={() => onSort?.('title')}
             >
-              제목
+              제목 {getSortIcon('title')}
             </th>
             <th
               scope="col"
-              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28"
+              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28 cursor-pointer hover:bg-gray-100"
+              onClick={() => onSort?.('author')}
             >
-              작성자
+              작성자 {getSortIcon('author')}
             </th>
             <th
               scope="col"
-              className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-28"
+              className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-28 cursor-pointer hover:bg-gray-100"
+              onClick={() => onSort?.('createdAt')}
             >
-              작성일
+              작성일 {getSortIcon('createdAt')}
             </th>
             <th
               scope="col"
-              className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20"
+              className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20 cursor-pointer hover:bg-gray-100"
+              onClick={() => onSort?.('viewCount')}
             >
-              조회수
+              조회수 {getSortIcon('viewCount')}
             </th>
           </tr>
         </thead>

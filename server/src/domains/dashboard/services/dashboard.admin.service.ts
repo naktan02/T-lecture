@@ -1,7 +1,7 @@
 import prisma from '../../../libs/prisma';
 
 // Types
-type PeriodFilter = '1m' | '3m' | '6m' | '12m';
+
 type ScheduleStatus = 'completed' | 'inProgress' | 'scheduled' | 'unassigned';
 
 // Helper: 오늘 UTC 자정 생성
@@ -52,47 +52,25 @@ interface ScheduleListItem {
   date: string;
   instructorNames: string[];
 }
-
-// Helper function to get date range from period (UTC 자정 기준)
-function getDateRangeFromPeriod(period: PeriodFilter): { start: Date; end: Date } {
-  const now = new Date();
-  const currentYear = now.getUTCFullYear();
-  const currentMonth = now.getUTCMonth();
-
-  // End: 현재 월 말일 23:59:59 UTC
-  const endDay = new Date(Date.UTC(currentYear, currentMonth + 1, 0)).getUTCDate();
-  const end = new Date(Date.UTC(currentYear, currentMonth, endDay, 23, 59, 59, 999));
-
-  let start: Date;
-
-  switch (period) {
-    case '3m':
-      start = new Date(Date.UTC(currentYear, currentMonth - 2, 1, 0, 0, 0, 0));
-      break;
-    case '6m':
-      start = new Date(Date.UTC(currentYear, currentMonth - 5, 1, 0, 0, 0, 0));
-      break;
-    case '12m':
-      start = new Date(Date.UTC(currentYear, currentMonth - 11, 1, 0, 0, 0, 0));
-      break;
-    case '1m':
-    default:
-      start = new Date(Date.UTC(currentYear, currentMonth, 1, 0, 0, 0, 0));
-      break;
-  }
-
-  return { start, end };
-}
-
 class DashboardAdminService {
   /**
    * 교육 진행 현황 (도넛 차트)
+   * - 부대 수 기준 (일정 수 X)
+   * - 기간 필터 없음 (전체 데이터)
+   * - 상태 판단: 오늘이 일정 기간에 포함되면 진행중
    */
   async getDashboardStats(): Promise<DashboardStats> {
-    const assignedSchedules = await prisma.unitSchedule.findMany({
-      where: {
-        assignments: {
-          some: { state: 'Accepted' },
+    const today = getTodayUTC();
+
+    // 모든 부대 조회 (일정 포함)
+    const units = await prisma.unit.findMany({
+      include: {
+        schedules: {
+          include: {
+            assignments: {
+              where: { state: 'Accepted' },
+            },
+          },
         },
       },
     });
@@ -100,30 +78,42 @@ class DashboardAdminService {
     let completed = 0;
     let inProgress = 0;
     let scheduled = 0;
+    let unassigned = 0;
 
-    const today = getTodayUTC();
+    for (const unit of units) {
+      // 배정이 있는 일정만 필터링
+      const assignedScheduleDates = unit.schedules
+        .filter((s) => s.date && s.assignments.length > 0)
+        .map((s) => toUTCMidnight(new Date(s.date!)));
 
-    for (const schedule of assignedSchedules) {
-      if (!schedule.date) continue;
+      if (assignedScheduleDates.length === 0) {
+        // 배정 없음
+        unassigned++;
+        continue;
+      }
 
-      const scheduleDate = toUTCMidnight(new Date(schedule.date));
+      // 날짜 정렬
+      assignedScheduleDates.sort((a, b) => a.getTime() - b.getTime());
+      const firstDate = assignedScheduleDates[0];
+      const lastDate = assignedScheduleDates[assignedScheduleDates.length - 1];
 
-      if (scheduleDate < today) {
+      // 오늘이 일정에 포함되는지 확인
+      const todayIsScheduled = assignedScheduleDates.some((d) => d.getTime() === today.getTime());
+
+      if (todayIsScheduled) {
+        // 오늘이 일정 중 하나에 해당
+        inProgress++;
+      } else if (lastDate < today) {
+        // 모든 일정이 과거
         completed++;
-      } else if (scheduleDate > today) {
+      } else if (firstDate > today) {
+        // 모든 일정이 미래
         scheduled++;
       } else {
+        // 일정이 과거~미래에 걸쳐있지만 오늘은 아님 → 진행중으로 처리
         inProgress++;
       }
     }
-
-    const unassigned = await prisma.unitSchedule.count({
-      where: {
-        assignments: {
-          none: { state: 'Accepted' },
-        },
-      },
-    });
 
     return {
       educationStatus: {
@@ -141,9 +131,12 @@ class DashboardAdminService {
    */
   async getSchedulesByStatus(status: ScheduleStatus): Promise<ScheduleListItem[]> {
     const today = getTodayUTC();
+    const tomorrow = new Date(today);
+    tomorrow.setUTCDate(today.getUTCDate() + 1);
 
     let whereClause: any = {};
 
+    // 1. Assignment status filter
     if (status === 'unassigned') {
       whereClause = {
         assignments: { none: { state: 'Accepted' } },
@@ -153,6 +146,24 @@ class DashboardAdminService {
         assignments: { some: { state: 'Accepted' } },
       };
     }
+
+    // 2. Date filter (moved from in-memory to DB)
+    if (status === 'completed') {
+      whereClause.date = { lt: today };
+    } else if (status === 'inProgress') {
+      whereClause.date = { gte: today, lt: tomorrow };
+    } else if (status === 'scheduled') {
+      whereClause.date = { gte: tomorrow };
+    }
+    // unassigned logic regarding dates?
+    // Original code: if (!s.date) return status === 'unassigned';
+    // If we want to include null dates only for unassigned?
+    // The previous in-memory filter allowed any date for unassigned ("return true").
+    // But it had `if (!s.date) return status === 'unassigned';` check at start of loop.
+    // If status IS unassigned and date is null, it returns true (kept).
+    // If status is NOT unassigned and date is null, it returns false (dropped).
+    // So for 'completed'/'inProgress'/'scheduled', we implicitly require non-null date.
+    // My date filters { lt: today } etc will implicitly exclude nulls.
 
     const schedules = await prisma.unitSchedule.findMany({
       where: whereClause,
@@ -167,19 +178,7 @@ class DashboardAdminService {
       take: 100,
     });
 
-    // Filter by status
-    const filtered = schedules.filter((s) => {
-      if (!s.date) return status === 'unassigned';
-      const scheduleDate = new Date(s.date);
-      scheduleDate.setHours(0, 0, 0, 0);
-
-      if (status === 'completed') return scheduleDate < today;
-      if (status === 'inProgress') return scheduleDate.getTime() === today.getTime();
-      if (status === 'scheduled') return scheduleDate > today;
-      return true; // unassigned already filtered by query
-    });
-
-    return filtered.map((s) => ({
+    return schedules.map((s) => ({
       id: s.id,
       unitName: s.unit?.name || 'Unknown',
       date: s.date ? new Date(s.date).toISOString().split('T')[0] : '',
@@ -190,9 +189,10 @@ class DashboardAdminService {
   /**
    * 강사 분석 (기간 필터 지원)
    */
-  async getInstructorAnalysis(period: PeriodFilter = '1m'): Promise<InstructorAnalysis[]> {
-    const { start, end } = getDateRangeFromPeriod(period);
-
+  /**
+   * 강사 분석 (기간 필터 지원)
+   */
+  async getInstructorAnalysis(start: Date, end: Date): Promise<InstructorAnalysis[]> {
     const instructors = await prisma.user.findMany({
       where: {
         status: 'APPROVED',
@@ -224,8 +224,7 @@ class DashboardAdminService {
       // Completed = Accepted AND schedule date < today
       const completed = accepted.filter((a) => {
         if (!a.UnitSchedule?.date) return false;
-        const d = new Date(a.UnitSchedule.date);
-        d.setHours(0, 0, 0, 0);
+        const d = toUTCMidnight(new Date(a.UnitSchedule.date));
         return d < today;
       });
 
@@ -247,8 +246,7 @@ class DashboardAdminService {
   /**
    * 팀 분석 (기간 필터 지원)
    */
-  async getTeamAnalysis(period: PeriodFilter = '1m'): Promise<TeamAnalysis[]> {
-    const { start, end } = getDateRangeFromPeriod(period);
+  async getTeamAnalysis(start: Date, end: Date): Promise<TeamAnalysis[]> {
     const today = getTodayUTC();
 
     const teams = await prisma.team.findMany({
@@ -286,8 +284,7 @@ class DashboardAdminService {
 
         user.unitAssignments.forEach((a) => {
           if (!a.UnitSchedule?.date) return;
-          const d = new Date(a.UnitSchedule.date);
-          d.setHours(0, 0, 0, 0);
+          const d = toUTCMidnight(new Date(a.UnitSchedule.date));
           if (d < today) {
             // Add schedule ID to set (automatically deduplicates)
             uniqueScheduleIds.add(a.UnitSchedule.id);
@@ -317,8 +314,7 @@ class DashboardAdminService {
   /**
    * 팀 상세 정보 (모달용)
    */
-  async getTeamDetail(teamId: number, period: PeriodFilter = '1m') {
-    const { start, end } = getDateRangeFromPeriod(period);
+  async getTeamDetail(teamId: number, start: Date, end: Date) {
     const today = getTodayUTC();
 
     const team = await prisma.team.findUnique({
@@ -352,8 +348,7 @@ class DashboardAdminService {
     const members = team.instructors.map((i) => {
       const completed = i.user.unitAssignments.filter((a) => {
         if (!a.UnitSchedule?.date) return false;
-        const d = new Date(a.UnitSchedule.date);
-        d.setHours(0, 0, 0, 0);
+        const d = toUTCMidnight(new Date(a.UnitSchedule.date));
         if (d < today) {
           // Also add to team-level unique set
           uniqueScheduleIds.add(a.UnitSchedule.id);

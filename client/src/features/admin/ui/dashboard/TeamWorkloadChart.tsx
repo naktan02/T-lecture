@@ -9,21 +9,12 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
-import { TeamAnalysis, PeriodFilter } from '../../dashboardApi';
+import { TeamAnalysis } from '../../dashboardApi';
 
 interface Props {
   teams: TeamAnalysis[];
-  period: PeriodFilter;
-  onPeriodChange: (period: PeriodFilter) => void;
   onBarClick: (team: TeamAnalysis) => void;
 }
-
-const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
-  { value: '1m', label: '이번달' },
-  { value: '3m', label: '3개월' },
-  { value: '6m', label: '6개월' },
-  { value: '12m', label: '12개월' },
-];
 
 const COLORS = [
   '#6366F1',
@@ -36,12 +27,7 @@ const COLORS = [
   '#F59E0B',
 ];
 
-export const TeamWorkloadChart: React.FC<Props> = ({
-  teams,
-  period,
-  onPeriodChange,
-  onBarClick,
-}) => {
+export const TeamWorkloadChart: React.FC<Props> = ({ teams, onBarClick }) => {
   const data = teams
     .map((team) => ({
       ...team,
@@ -59,17 +45,6 @@ export const TeamWorkloadChart: React.FC<Props> = ({
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-bold text-gray-800">팀 업무량 분포</h3>
-        <select
-          value={period}
-          onChange={(e) => onPeriodChange(e.target.value as PeriodFilter)}
-          className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-        >
-          {PERIOD_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
       </div>
       <div className="w-full h-64">
         <ResponsiveContainer width="100%" height="100%">

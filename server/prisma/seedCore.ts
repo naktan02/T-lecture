@@ -1,6 +1,6 @@
-// server/prisma/seed.ts
-// 운영 환경 기본 시드 데이터
-// 실행: npx tsx prisma/seed.ts
+// server/prisma/seedCore.ts
+// 핵심 메타데이터 생성 - 팀, 덕목, 관리자, 메시지 템플릿
+// 실행: npx tsx prisma/seedCore.ts
 
 /* eslint-disable no-console */
 
@@ -21,7 +21,7 @@ const TEAMS = [
   { id: 7, name: '7팀' },
 ];
 
-// 덕목(과목) 데이터 (15개)
+// 덕목 데이터 (15개)
 const VIRTUES = [
   { id: 1, name: '예' },
   { id: 2, name: '효' },
@@ -40,30 +40,8 @@ const VIRTUES = [
   { id: 15, name: '봉사' },
 ];
 
-// 시스템 설정 기본값
-const SYSTEM_CONFIGS = [
-  { key: 'ASSIGNMENT_DISTANCE_WEIGHT', value: '0.3', description: '배정 알고리즘 - 거리 가중치' },
-  {
-    key: 'ASSIGNMENT_AVAILABILITY_WEIGHT',
-    value: '0.4',
-    description: '배정 알고리즘 - 가용일 가중치',
-  },
-  { key: 'ASSIGNMENT_WORKLOAD_WEIGHT', value: '0.3', description: '배정 알고리즘 - 업무량 가중치' },
-  { key: 'PENALTY_DURATION_DAYS', value: '30', description: '패널티 기간 (일)' },
-  {
-    key: 'PRIORITY_CREDIT_EXPIRY_DAYS',
-    value: '60',
-    description: '우선배정 크레딧 만료 기간 (일)',
-  },
-  { key: 'DEFAULT_RESPONSE_DEADLINE_HOURS', value: '48', description: '배정 응답 기한 (시간)' },
-];
-
-async function main() {
-  console.log('');
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║          T-lecture 운영 환경 기본 시드 데이터              ║');
-  console.log('╚════════════════════════════════════════════════════════════╝');
-  console.log('');
+export async function runSeedCore() {
+  console.log('🌱 핵심 메타데이터 생성 시작...\n');
 
   // 1. 팀 생성
   console.log('👥 팀 생성 중...');
@@ -76,8 +54,8 @@ async function main() {
   }
   console.log(`  ✅ 팀 ${TEAMS.length}개 생성 완료`);
 
-  // 2. 덕목(과목) 생성
-  console.log('📚 덕목(과목) 생성 중...');
+  // 2. 덕목 생성
+  console.log('📚 덕목 생성 중...');
   for (const virtue of VIRTUES) {
     await prisma.virtue.upsert({
       where: { id: virtue.id },
@@ -114,8 +92,6 @@ async function main() {
     } else {
       console.log(`  ⚠️ 슈퍼관리자 이미 존재: ${superEmail}`);
     }
-  } else {
-    console.log('  ⚠️ SUPER_ADMIN_EMAIL/PASSWORD가 .env에 설정되지 않았습니다.');
   }
 
   if (generalEmail && generalPassword) {
@@ -137,12 +113,30 @@ async function main() {
     } else {
       console.log(`  ⚠️ 일반관리자 이미 존재: ${generalEmail}`);
     }
-  } else {
-    console.log('  ⚠️ GENERAL_ADMIN_EMAIL/PASSWORD가 .env에 설정되지 않았습니다.');
   }
 
   // 4. 시스템 설정 생성
   console.log('⚙️ 시스템 설정 생성 중...');
+  const SYSTEM_CONFIGS = [
+    { key: 'ASSIGNMENT_DISTANCE_WEIGHT', value: '0.3', description: '배정 알고리즘 - 거리 가중치' },
+    {
+      key: 'ASSIGNMENT_AVAILABILITY_WEIGHT',
+      value: '0.4',
+      description: '배정 알고리즘 - 가용일 가중치',
+    },
+    {
+      key: 'ASSIGNMENT_WORKLOAD_WEIGHT',
+      value: '0.3',
+      description: '배정 알고리즘 - 업무량 가중치',
+    },
+    { key: 'PENALTY_DURATION_DAYS', value: '30', description: '패널티 기간 (일)' },
+    {
+      key: 'PRIORITY_CREDIT_EXPIRY_DAYS',
+      value: '60',
+      description: '우선배정 크레딧 만료 기간 (일)',
+    },
+    { key: 'DEFAULT_RESPONSE_DEADLINE_HOURS', value: '48', description: '배정 응답 기한 (시간)' },
+  ];
   for (const config of SYSTEM_CONFIGS) {
     await prisma.systemConfig.upsert({
       where: { key: config.key },
@@ -361,25 +355,15 @@ async function main() {
 
   console.log('  ✅ 메시지 템플릿 3개 생성 완료');
 
-  console.log('');
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║                  ✅ 시드 완료!                             ║');
-  console.log('╠════════════════════════════════════════════════════════════╣');
-  console.log('║  생성된 데이터:                                            ║');
-  console.log('║  - 팀 7개                                                  ║');
-  console.log('║  - 덕목(과목) 15개                                         ║');
-  console.log('║  - 관리자 계정 (from .env)                                 ║');
-  console.log('║  - 시스템 설정 6개                                         ║');
-  console.log('║  - 메시지 템플릿 3개                                       ║');
-  console.log('╚════════════════════════════════════════════════════════════╝');
-  console.log('');
+  console.log('\n✅ 핵심 메타데이터 생성 완료!\n');
 }
 
-main()
-  .catch((e) => {
-    console.error('❌ 시드 실행 중 오류 발생:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// 직접 실행 시
+if (require.main === module) {
+  runSeedCore()
+    .catch((e) => {
+      console.error('❌ 생성 실패:', e);
+      process.exit(1);
+    })
+    .finally(() => prisma.$disconnect());
+}

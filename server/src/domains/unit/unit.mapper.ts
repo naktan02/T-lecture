@@ -51,8 +51,8 @@ export function toCreateUnitDto(rawData: RawUnitData = {}): Prisma.UnitCreateInp
     region: rawData.region,
     addressDetail: rawData.addressDetail,
     detailAddress: rawData.detailAddress,
-    lat: rawData.lat,
-    lng: rawData.lng,
+    // lat/lng는 의도적으로 무시 - 주소 기반 좌표 변환 로직을 통해 자동 계산됨
+    // 엑셀에 좌표가 포함되어 있어도 무시하고 주소로부터 새로 계산
 
     // 시간/날짜 필드 변환
     educationStart: toDateOrUndef(rawData.educationStart),

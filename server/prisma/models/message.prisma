@@ -41,8 +41,8 @@ model DispatchAssignment {
   unitScheduleId Int
   userId         Int
 
-  dispatch   Dispatch                 @relation(fields: [dispatchId], references: [id])
-  assignment InstructorUnitAssignment @relation(fields: [unitScheduleId, userId], references: [unitScheduleId, userId])
+  dispatch   Dispatch                 @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
+  assignment InstructorUnitAssignment @relation(fields: [unitScheduleId, userId], references: [unitScheduleId, userId], onDelete: Cascade)
 
   @@id([dispatchId, unitScheduleId, userId])
   @@map("메시지_배정")

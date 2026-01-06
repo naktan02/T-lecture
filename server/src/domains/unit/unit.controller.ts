@@ -7,7 +7,13 @@ import AppError from '../../common/errors/AppError';
 
 // 부대 목록 조회
 export const getUnitList = asyncHandler(async (req: Request, res: Response) => {
-  const data = await unitService.searchUnitList(req.query);
+  const { sortField, sortOrder } = req.query;
+  const data = await unitService.searchUnitList({
+    ...req.query,
+    sortField: typeof sortField === 'string' ? sortField : undefined,
+    sortOrder:
+      sortOrder === 'asc' || sortOrder === 'desc' ? (sortOrder as 'asc' | 'desc') : undefined,
+  });
 
   res.status(200).json({
     result: 'Success',

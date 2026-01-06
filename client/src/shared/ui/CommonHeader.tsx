@@ -17,6 +17,7 @@ interface CommonHeaderProps {
   title: string;
   userLabel?: string;
   links?: NavLink[];
+  logoPath?: string;
 }
 
 // 드롭다운 메뉴 컴포넌트
@@ -159,7 +160,12 @@ const MobileAccordionItem = ({ item, onClose }: { item: NavLink; onClose: () => 
  * @param userLabel - 오른쪽 유저 이름/직책 (선택적, 없으면 로그인된 사용자 이름 사용)
  * @param links - 네비게이션 메뉴 목록 [{ label: '메뉴명', path: '/이동경로', children: [...] }]
  */
-export const CommonHeader = ({ title, userLabel, links = [] }: CommonHeaderProps) => {
+export const CommonHeader = ({
+  title,
+  userLabel,
+  links = [],
+  logoPath = '#',
+}: CommonHeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, isAdmin, isSuperAdmin } = useAuth();
@@ -215,7 +221,9 @@ export const CommonHeader = ({ title, userLabel, links = [] }: CommonHeaderProps
       <header className="flex justify-between items-center bg-[#2c3e50] px-4 md:px-6 py-4 shadow-md text-white relative z-50">
         {/* 1. 왼쪽: 타이틀 및 메뉴 */}
         <div className="flex items-center gap-4 md:gap-8">
-          <h1 className="text-lg md:text-xl font-bold text-green-400">{title}</h1>
+          <Link to={logoPath} className="hover:opacity-80 transition-opacity">
+            <h1 className="text-lg md:text-xl font-bold text-green-400">{title}</h1>
+          </Link>
 
           {/* 데스크톱 네비게이션 */}
           <nav className="hidden md:flex gap-6 text-sm">

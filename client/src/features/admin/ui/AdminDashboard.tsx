@@ -10,7 +10,6 @@ import {
   TeamAnalysis,
   ScheduleListItem,
   TeamDetail,
-  PeriodFilter,
   ScheduleStatus,
 } from '../dashboardApi';
 import { EducationStatusChart } from './dashboard/EducationStatusChart';
@@ -37,9 +36,13 @@ export const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [instructors, setInstructors] = useState<InstructorAnalysis[]>([]);
   const [teams, setTeams] = useState<TeamAnalysis[]>([]);
-  const [period, setPeriod] = useState<PeriodFilter>('1m');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Filter states
+  const [rangeType, setRangeType] = useState<string>('1m'); // '1m', '3m', '6m', '12m', 'custom'
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
 
   // Modal navigation stack - tracks parent modal for back navigation
   const [modalStack, setModalStack] = useState<ModalType[]>([]);
@@ -70,14 +73,85 @@ export const AdminDashboard: React.FC = () => {
     name: string;
   }>({ open: false, id: 0, name: '' });
 
+  // Helper function to get date range based on rangeType (월 단위)
+  // 1m = 이번 달 (1월 1일 ~ 1월 31일)
+  // 3m = 최근 3개월 (11월 1일 ~ 1월 31일)
+  const getDateRange = useCallback(() => {
+    const today = new Date();
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth(); // 0-indexed
+
+    if (rangeType === 'custom') {
+      return { startDate, endDate };
+    }
+
+    let startMonth: number;
+    let startYear: number;
+
+    switch (rangeType) {
+      case '1m':
+        // 이번 달만
+        startMonth = currentMonth;
+        startYear = currentYear;
+        break;
+      case '3m':
+        // 최근 3개월 (이번 달 포함)
+        startMonth = currentMonth - 2;
+        startYear = currentYear;
+        break;
+      case '6m':
+        // 최근 6개월
+        startMonth = currentMonth - 5;
+        startYear = currentYear;
+        break;
+      case '12m':
+        // 최근 12개월
+        startMonth = currentMonth - 11;
+        startYear = currentYear;
+        break;
+      default:
+        startMonth = currentMonth;
+        startYear = currentYear;
+    }
+
+    // 음수 월 처리 (연도 조정)
+    while (startMonth < 0) {
+      startMonth += 12;
+      startYear -= 1;
+    }
+
+    // 시작일: 해당 월의 1일
+    const start = new Date(startYear, startMonth, 1);
+
+    // 종료일: 이번 달의 마지막 날
+    const end = new Date(currentYear, currentMonth + 1, 0);
+
+    return { startDate: formatDate(start), endDate: formatDate(end) };
+  }, [rangeType, startDate, endDate]);
+
   // Load data
   const loadData = useCallback(async () => {
+    const { startDate: start, endDate: end } = getDateRange();
+
+    // If custom and dates are missing, don't fetch yet
+    if (rangeType === 'custom' && (!start || !end)) {
+      return;
+    }
+
     try {
       setLoading(true);
+
+      const queryParams = {
+        startDate: start,
+        endDate: end,
+      };
+
       const [statsData, instructorsData, teamsData] = await Promise.all([
         fetchDashboardStats(),
-        fetchInstructorAnalysis(period),
-        fetchTeamAnalysis(period),
+        fetchInstructorAnalysis(queryParams),
+        fetchTeamAnalysis(queryParams),
       ]);
 
       setStats(statsData);
@@ -88,7 +162,7 @@ export const AdminDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, [getDateRange, rangeType]);
 
   useEffect(() => {
     loadData();
@@ -122,10 +196,6 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // Handlers
-  const handlePeriodChange = (newPeriod: PeriodFilter) => {
-    setPeriod(newPeriod);
-  };
-
   const handleScheduleClick = async (status: ScheduleStatus) => {
     setModalStack(['schedule']);
     setScheduleModal({ open: true, status, data: [], loading: true });
@@ -137,8 +207,8 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleWorkloadBarClick = (count: number, instructorList: InstructorAnalysis[]) => {
-    const title = count === 13 ? '12회 이상 강사' : `${count}회 강사`;
+  const handleWorkloadBarClick = (label: string, instructorList: InstructorAnalysis[]) => {
+    const title = `${label} 완료 강사`;
     setModalStack(['instructorList']);
     setInstructorListModal({ open: true, title, data: instructorList });
   };
@@ -147,7 +217,8 @@ export const AdminDashboard: React.FC = () => {
     setModalStack(['teamDetail']);
     setTeamDetailModal({ open: true, data: null, loading: true });
     try {
-      const data = await fetchTeamDetail(team.id, period);
+      const queryParams = { startDate, endDate };
+      const data = await fetchTeamDetail(team.id, queryParams);
       setTeamDetailModal({ open: true, data, loading: false });
     } catch {
       setTeamDetailModal((prev) => ({ ...prev, loading: false }));
@@ -226,8 +297,41 @@ export const AdminDashboard: React.FC = () => {
   return (
     <div className="p-8 bg-gray-50 min-h-screen overflow-auto">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h2 className="text-2xl font-bold text-gray-900">관리자 대시보드</h2>
+
+        {/* Global Filter */}
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={rangeType}
+            onChange={(e) => setRangeType(e.target.value)}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+          >
+            <option value="1m">최근 1개월</option>
+            <option value="3m">최근 3개월</option>
+            <option value="6m">최근 6개월</option>
+            <option value="12m">최근 12개월</option>
+            <option value="custom">직접 설정</option>
+          </select>
+
+          {rangeType === 'custom' && (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              />
+              <span className="text-gray-400">~</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Charts Row - 3 columns */}
@@ -235,16 +339,10 @@ export const AdminDashboard: React.FC = () => {
         <EducationStatusChart stats={stats} onSegmentClick={handleScheduleClick} />
         <WorkloadHistogram
           instructors={instructors}
-          period={period}
-          onPeriodChange={handlePeriodChange}
           onBarClick={handleWorkloadBarClick}
+          rangeType={rangeType}
         />
-        <TeamWorkloadChart
-          teams={teams}
-          period={period}
-          onPeriodChange={handlePeriodChange}
-          onBarClick={handleTeamChartClick}
-        />
+        <TeamWorkloadChart teams={teams} onBarClick={handleTeamChartClick} />
       </div>
 
       {/* Analysis Table */}
@@ -253,8 +351,6 @@ export const AdminDashboard: React.FC = () => {
         <AnalysisTable
           instructors={instructors}
           teams={teams}
-          period={period}
-          onPeriodChange={handlePeriodChange}
           onInstructorClick={handleInstructorRowClick}
           onTeamClick={handleTeamRowClick}
         />

@@ -13,6 +13,7 @@ interface InquiryFindAllParams {
   authorId?: number; // 본인 문의만 조회 (강사용)
   status?: 'Waiting' | 'Answered';
   search?: string;
+  orderBy?: Record<string, unknown>;
 }
 
 class InquiryRepository {
@@ -29,7 +30,7 @@ class InquiryRepository {
   }
 
   // 문의사항 목록 조회 (content 포함)
-  async findAll({ skip, take, authorId, status, search }: InquiryFindAllParams) {
+  async findAll({ skip, take, authorId, status, search, orderBy }: InquiryFindAllParams) {
     const where = {
       ...(authorId && { authorId }),
       ...(status && { status }),
@@ -49,7 +50,7 @@ class InquiryRepository {
         where,
         skip,
         take,
-        orderBy: [{ createdAt: 'desc' }],
+        orderBy: orderBy || { createdAt: 'desc' },
         include: {
           author: {
             select: { name: true },
