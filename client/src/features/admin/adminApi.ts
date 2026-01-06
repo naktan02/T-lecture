@@ -94,3 +94,21 @@ export const revokeAdminApi = async (userId: number): Promise<UserActionResponse
   if (!res.ok) throw new Error('관리자 권한 회수 실패');
   return res.json();
 };
+
+// 7. 강사 역할 부여
+export const grantInstructorApi = async (userId: number): Promise<UserActionResponse> => {
+  const res = await apiClient(`/api/v1/admin/users/${userId}/instructor`, {
+    method: 'PATCH',
+  });
+  if (!res.ok) throw new Error('강사 역할 부여 실패');
+  return res.json();
+};
+
+// 8. 강사 역할 회수
+export const revokeInstructorApi = async (userId: number): Promise<UserActionResponse> => {
+  const res = await apiClient(`/api/v1/admin/users/${userId}/instructor`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error('강사 역할 회수 실패');
+  return res.json();
+};

@@ -160,6 +160,42 @@ class DashboardAdminController {
       next(error);
     }
   };
+
+  // 상태별 부대 목록 (부대 단위 그룹화)
+  getUnits = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const status = req.query.status as ScheduleStatus;
+      if (!status || !['completed', 'inProgress', 'scheduled', 'unassigned'].includes(status)) {
+        res.status(400).json({ message: 'Invalid status parameter' });
+        return;
+      }
+      const data = await dashboardAdminService.getUnitsByStatus(status);
+      res.status(200).json(data);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // 부대 상세 정보
+  getUnitDetail = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const unitId = parseInt(req.params.unitId, 10);
+      if (isNaN(unitId)) {
+        res.status(400).json({ message: 'Invalid unit ID' });
+        return;
+      }
+
+      const data = await dashboardAdminService.getUnitDetail(unitId);
+
+      if (!data) {
+        res.status(404).json({ message: 'Unit not found' });
+        return;
+      }
+      res.status(200).json(data);
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export default new DashboardAdminController();

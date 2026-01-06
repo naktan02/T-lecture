@@ -451,6 +451,66 @@ class AdminService {
       userId: Number(userId),
     };
   }
+
+  // 강사 역할 부여
+  async grantInstructorRole(userId: number | string) {
+    const id = Number(userId);
+
+    // 1. 유저 존재 확인
+    const user = await userRepository.findById(id);
+    if (!user) {
+      throw new AppError('해당 회원을 찾을 수 없습니다.', 404, 'USER_NOT_FOUND');
+    }
+
+    // 2. 이미 강사인지 확인
+    const existingInstructor = await adminRepository.findInstructor(id);
+    if (existingInstructor) {
+      throw new AppError('이미 강사 역할이 부여되어 있습니다.', 400, 'ALREADY_INSTRUCTOR');
+    }
+
+    // 3. Instructor 레코드 생성
+    await adminRepository.createInstructor(id);
+
+    return {
+      message: '강사 역할이 부여되었습니다.',
+      userId: id,
+    };
+  }
+
+  // 강사 역할 회수
+  async revokeInstructorRole(userId: number | string) {
+    const id = Number(userId);
+
+    // 1. 유저 존재 확인
+    const user = await userRepository.findById(id);
+    if (!user) {
+      throw new AppError('해당 회원을 찾을 수 없습니다.', 404, 'USER_NOT_FOUND');
+    }
+
+    // 2. 강사 레코드 존재 확인
+    const existingInstructor = await adminRepository.findInstructor(id);
+    if (!existingInstructor) {
+      throw new AppError('강사 역할이 없는 회원입니다.', 400, 'NOT_INSTRUCTOR');
+    }
+
+    // 3. 활성 배정 확인 (Pending/Accepted 상태)
+    const hasActive = await adminRepository.hasActiveAssignments(id);
+    if (hasActive) {
+      throw new AppError(
+        '활성 배정이 있어 강사 역할을 회수할 수 없습니다. 배정을 먼저 정리해주세요.',
+        400,
+        'HAS_ACTIVE_ASSIGNMENTS',
+      );
+    }
+
+    // 4. Instructor 레코드 및 관련 데이터 삭제
+    await adminRepository.removeInstructor(id);
+
+    return {
+      message: '강사 역할이 회수되었습니다.',
+      userId: id,
+    };
+  }
 }
 
 export default new AdminService();

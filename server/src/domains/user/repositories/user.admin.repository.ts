@@ -307,6 +307,49 @@ class AdminRepository {
       });
     });
   }
+
+  // 강사 역할 부여 (Instructor 레코드 생성)
+  async createInstructor(userId: number | string) {
+    return await prisma.instructor.create({
+      data: {
+        userId: Number(userId),
+        profileCompleted: false,
+      },
+    });
+  }
+
+  // 강사 역할 회수 (Instructor 레코드 및 관련 데이터 삭제)
+  async removeInstructor(userId: number | string) {
+    const id = Number(userId);
+    return await prisma.$transaction(async (tx) => {
+      // 강사 관련 데이터 삭제
+      await tx.instructorVirtue.deleteMany({ where: { instructorId: id } });
+      await tx.instructorAvailability.deleteMany({ where: { instructorId: id } });
+      await tx.instructorUnitDistance.deleteMany({ where: { userId: id } }).catch(() => {});
+      await tx.instructorStats.deleteMany({ where: { instructorId: id } }).catch(() => {});
+      await tx.instructorPriorityCredit.deleteMany({ where: { instructorId: id } }).catch(() => {});
+      // Instructor 레코드 삭제
+      return await tx.instructor.delete({ where: { userId: id } });
+    });
+  }
+
+  // 강사 존재 여부 확인
+  async findInstructor(userId: number | string) {
+    return await prisma.instructor.findUnique({
+      where: { userId: Number(userId) },
+    });
+  }
+
+  // 활성 배정(Pending/Accepted) 존재 여부 확인
+  async hasActiveAssignments(userId: number | string) {
+    const count = await prisma.instructorUnitAssignment.count({
+      where: {
+        userId: Number(userId),
+        state: { in: ['Pending', 'Accepted'] },
+      },
+    });
+    return count > 0;
+  }
 }
 
 export default new AdminRepository();

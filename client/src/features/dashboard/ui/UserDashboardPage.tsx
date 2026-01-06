@@ -1,6 +1,6 @@
 // client/src/features/dashboard/ui/UserDashboardPage.tsx
 import React, { useEffect, useState } from 'react';
-import { dashboardApi, DashboardStats } from '../api/dashboardApi';
+import { dashboardApi, DashboardStats, PaginatedActivities } from '../api/dashboardApi';
 import {
   ClockIcon,
   MapPinIcon,
@@ -8,6 +8,8 @@ import {
   CheckCircleIcon,
   ChartBarIcon,
   ArrowTrendingUpIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { LoadingSpinner, EmptyState } from '@/shared/ui';
 
@@ -79,28 +81,26 @@ const MonthlyChart: React.FC<MonthlyChartProps> = ({ data }) => {
   );
 };
 
-// 활동 내역 리스트 (기간별 조회 가능)
+// 활동 내역 리스트 (기간별 조회 가능, 페이징 포함)
 interface ActivityHistoryProps {
   assignments: DashboardStats['recentAssignments'];
   rangeLabel: string;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  isLoading: boolean;
+  totalCount: number;
 }
 
-const ActivityHistory: React.FC<ActivityHistoryProps> = ({ assignments, rangeLabel }) => {
-  if (assignments.length === 0) {
-    return (
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CalendarDaysIcon className="h-5 w-5 text-gray-600" />
-            <h3 className="font-semibold text-gray-800">활동 내역</h3>
-          </div>
-          <span className="text-xs text-gray-400">{rangeLabel}</span>
-        </div>
-        <EmptyState title="해당 기간의 활동 내역이 없습니다." />
-      </div>
-    );
-  }
-
+const ActivityHistory: React.FC<ActivityHistoryProps> = ({
+  assignments,
+  rangeLabel,
+  currentPage,
+  totalPages,
+  onPageChange,
+  isLoading,
+  totalCount,
+}) => {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5">
       <div className="mb-4 flex items-center justify-between">
@@ -109,32 +109,93 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ assignments, rangeLab
           <h3 className="font-semibold text-gray-800">활동 내역</h3>
         </div>
         <span className="text-xs text-gray-400">
-          {rangeLabel} ({assignments.length}건)
+          {rangeLabel} ({totalCount}건)
         </span>
       </div>
-      <div className="max-h-96 space-y-3 overflow-y-auto">
-        {assignments.map((assignment) => (
-          <div
-            key={assignment.id}
-            className="flex items-center justify-between rounded-lg bg-gray-50 p-3 transition-colors hover:bg-gray-100"
-          >
-            <div className="flex-1">
-              <p className="font-medium text-gray-800">{assignment.unitName}</p>
-              <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
-                <span>{assignment.date}</span>
-                {assignment.region && <span>• {assignment.region}</span>}
-                {assignment.unitType && (
-                  <span className="rounded bg-gray-200 px-1.5 py-0.5">{assignment.unitType}</span>
-                )}
+
+      {isLoading ? (
+        <div className="flex h-60 items-center justify-center">
+          <LoadingSpinner />
+        </div>
+      ) : assignments.length === 0 ? (
+        <EmptyState title="해당 기간의 활동 내역이 없습니다." />
+      ) : (
+        <>
+          <div className="max-h-[500px] space-y-3 overflow-y-auto">
+            {assignments.map((assignment) => (
+              <div
+                key={assignment.id}
+                className="flex items-center justify-between rounded-lg bg-gray-50 p-3 transition-colors hover:bg-gray-100"
+              >
+                <div className="flex-1">
+                  <p className="font-medium text-gray-800">{assignment.unitName}</p>
+                  <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
+                    <span>{assignment.date}</span>
+                    {assignment.region && <span>• {assignment.region}</span>}
+                    {assignment.unitType && (
+                      <span className="rounded bg-gray-200 px-1.5 py-0.5">
+                        {assignment.unitType}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right text-sm">
+                  <p className="text-gray-600">{assignment.workHours}시간</p>
+                  <p className="text-xs text-gray-400">{assignment.distance}km</p>
+                </div>
               </div>
-            </div>
-            <div className="text-right text-sm">
-              <p className="text-gray-600">{assignment.workHours}시간</p>
-              <p className="text-xs text-gray-400">{assignment.distance}km</p>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <button
+                onClick={() => onPageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="rounded-lg p-2 hover:bg-gray-100 disabled:text-gray-300 disabled:hover:bg-transparent"
+              >
+                <ChevronLeftIcon className="h-4 w-4" />
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum = i + 1;
+                  if (totalPages > 5) {
+                    // Current page centered if possible
+                    if (currentPage > 3) {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    if (pageNum > totalPages) {
+                      pageNum = totalPages - 4 + i;
+                    }
+                  }
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => onPageChange(pageNum)}
+                      className={`h-8 w-8 rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === pageNum
+                          ? 'bg-blue-50 text-blue-600'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => onPageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="rounded-lg p-2 hover:bg-gray-100 disabled:text-gray-300 disabled:hover:bg-transparent"
+              >
+                <ChevronRightIcon className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };
@@ -142,13 +203,20 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({ assignments, rangeLab
 // 메인 대시보드 페이지
 export const UserDashboardPage: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [activitiesData, setActivitiesData] = useState<PaginatedActivities | null>(null);
+
   const [isLoading, setIsLoading] = useState(true);
+  const [isActivitiesLoading, setIsActivitiesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // 날짜 필터 상태
   const [rangeType, setRangeType] = useState<string>('12m'); // '1m', '3m', '6m', '12m', 'custom'
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+
+  // 페이지네이션 상태
+  const [page, setPage] = useState(1);
+  const LIMIT = 10;
 
   useEffect(() => {
     // 필터 변경 시 날짜 자동 설정 (월 단위 - UI 표시용)
@@ -209,38 +277,72 @@ export const UserDashboardPage: React.FC = () => {
   }, [rangeType]);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    // 1. 기간 변경 시 페이지 초기화
+    setPage(1);
+  }, [rangeType, startDate, endDate]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      // custom이고 날짜가 없으면 요청 안함
+      if (rangeType === 'custom' && (!startDate || !endDate)) {
+        setIsLoading(false);
+        return;
+      }
+
+      const params: any = {};
+      if (rangeType === 'custom') {
+        params.startDate = startDate;
+        params.endDate = endDate;
+      } else {
+        params.period = rangeType;
+      }
+
       try {
         setIsLoading(true);
-        // custom이고 날짜가 없으면 요청 안함
-        if (rangeType === 'custom' && (!startDate || !endDate)) {
-          setIsLoading(false);
-          return;
-        }
+        // 통계와 첫 페이지 활동 내역 동시 요청
+        const [statsRes, activitiesRes] = await Promise.all([
+          dashboardApi.getUserStats(params),
+          dashboardApi.getUserActivities({ ...params, page: 1, limit: LIMIT }),
+        ]);
 
-        const params: any = {};
-        if (rangeType === 'custom') {
-          params.startDate = startDate;
-          params.endDate = endDate;
-        } else {
-          params.period = rangeType;
-        }
-
-        const data = await dashboardApi.getUserStats(params);
-        setStats(data);
+        setStats(statsRes);
+        setActivitiesData(activitiesRes);
       } catch (err) {
         console.error(err);
-        setError('통계 정보를 불러오는데 실패했습니다.');
+        setError('데이터를 불러오는데 실패했습니다.');
       } finally {
         setIsLoading(false);
       }
     };
 
-    // custom일 때는 날짜가 둘 다 있을 때만 요청, 그 외에는 rangeType 변경 시 자동 요청
     if (rangeType !== 'custom' || (startDate && endDate)) {
-      fetchStats();
+      fetchData();
     }
   }, [rangeType, startDate, endDate]);
+
+  // 페이지 변경 시 활동 내역만 별도 로드
+  const fetchActivitiesPage = async (newPage: number) => {
+    if (rangeType === 'custom' && (!startDate || !endDate)) return;
+
+    const params: any = { page: newPage, limit: LIMIT };
+    if (rangeType === 'custom') {
+      params.startDate = startDate;
+      params.endDate = endDate;
+    } else {
+      params.period = rangeType;
+    }
+
+    try {
+      setIsActivitiesLoading(true);
+      const data = await dashboardApi.getUserActivities(params);
+      setActivitiesData(data);
+      setPage(newPage);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsActivitiesLoading(false);
+    }
+  };
 
   if (isLoading && !stats) {
     // stats가 있으면(갱신 중이면) 로딩 안보여줌 (스켈레톤 대신 기존 데이터 유지)
@@ -346,8 +448,23 @@ export const UserDashboardPage: React.FC = () => {
           <div className="grid gap-6">
             <MonthlyChart data={stats.monthlyTrend} />
             <ActivityHistory
-              assignments={stats.recentAssignments}
-              rangeLabel={`${startDate} ~ ${endDate}`}
+              assignments={activitiesData?.activities || []}
+              rangeLabel={
+                rangeType === 'custom'
+                  ? `${startDate} ~ ${endDate}`
+                  : rangeType === '1m'
+                    ? '최근 1개월'
+                    : rangeType === '3m'
+                      ? '최근 3개월'
+                      : rangeType === '6m'
+                        ? '최근 6개월'
+                        : '최근 12개월'
+              }
+              currentPage={page}
+              totalPages={activitiesData?.pagination.totalPages || 1}
+              onPageChange={fetchActivitiesPage}
+              isLoading={isActivitiesLoading}
+              totalCount={activitiesData?.pagination.total || 0}
             />
           </div>
         </>

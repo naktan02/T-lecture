@@ -52,6 +52,30 @@ interface ScheduleListItem {
   date: string;
   instructorNames: string[];
 }
+
+interface UnitListItem {
+  id: number;
+  name: string;
+  status: ScheduleStatus;
+  scheduleCount: number;
+  instructorCount: number;
+  dateRange: string;
+}
+
+interface UnitDetail {
+  id: number;
+  name: string;
+  status: ScheduleStatus;
+  address: string | null;
+  addressDetail: string | null;
+  officerName: string | null;
+  officerPhone: string | null;
+  schedules: {
+    id: number;
+    date: string;
+    instructors: { id: number; name: string }[];
+  }[];
+}
 class DashboardAdminService {
   /**
    * 교육 진행 현황 (도넛 차트)
@@ -375,6 +399,166 @@ class DashboardAdminService {
       averageCompleted:
         members.length > 0 ? Math.round((totalCompleted / members.length) * 10) / 10 : 0,
       members,
+    };
+  }
+
+  /**
+   * 상태별 부대 목록 (모달용) - 일정별이 아닌 부대별 그룹화
+   */
+  async getUnitsByStatus(status: ScheduleStatus): Promise<UnitListItem[]> {
+    const today = getTodayUTC();
+
+    // 모든 부대 조회 (일정 및 배정 포함)
+    const units = await prisma.unit.findMany({
+      include: {
+        schedules: {
+          include: {
+            assignments: {
+              where: { state: 'Accepted' },
+              include: { User: true },
+            },
+          },
+        },
+      },
+    });
+
+    const result: UnitListItem[] = [];
+
+    for (const unit of units) {
+      // 배정이 있는 일정만 필터링
+      const assignedSchedules = unit.schedules.filter((s) => s.date && s.assignments.length > 0);
+      const assignedScheduleDates = assignedSchedules.map((s) => toUTCMidnight(new Date(s.date!)));
+
+      let unitStatus: ScheduleStatus;
+
+      if (assignedScheduleDates.length === 0) {
+        unitStatus = 'unassigned';
+      } else {
+        // 날짜 정렬
+        assignedScheduleDates.sort((a, b) => a.getTime() - b.getTime());
+        const firstDate = assignedScheduleDates[0];
+        const lastDate = assignedScheduleDates[assignedScheduleDates.length - 1];
+
+        // 오늘이 일정에 포함되는지 확인
+        const todayIsScheduled = assignedScheduleDates.some((d) => d.getTime() === today.getTime());
+
+        if (todayIsScheduled) {
+          unitStatus = 'inProgress';
+        } else if (lastDate < today) {
+          unitStatus = 'completed';
+        } else if (firstDate > today) {
+          unitStatus = 'scheduled';
+        } else {
+          unitStatus = 'inProgress';
+        }
+      }
+
+      // 요청한 상태와 일치하는 부대만 추가
+      if (unitStatus !== status) continue;
+
+      // 배정된 고유 강사 수 계산
+      const instructorIds = new Set<number>();
+      for (const schedule of assignedSchedules) {
+        for (const assignment of schedule.assignments) {
+          if (assignment.User?.id) {
+            instructorIds.add(assignment.User.id);
+          }
+        }
+      }
+
+      // 날짜 범위 계산
+      let dateRange = '-';
+      if (assignedScheduleDates.length > 0) {
+        const sortedDates = [...assignedScheduleDates].sort((a, b) => a.getTime() - b.getTime());
+        const first = sortedDates[0].toISOString().split('T')[0];
+        const last = sortedDates[sortedDates.length - 1].toISOString().split('T')[0];
+        dateRange = first === last ? first : `${first} ~ ${last}`;
+      }
+
+      result.push({
+        id: unit.id,
+        name: unit.name || 'Unknown',
+        status: unitStatus,
+        scheduleCount: assignedSchedules.length,
+        instructorCount: instructorIds.size,
+        dateRange,
+      });
+    }
+
+    // 이름순 정렬
+    return result.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+  }
+
+  /**
+   * 부대 상세 정보 (모달용)
+   */
+  async getUnitDetail(unitId: number): Promise<UnitDetail | null> {
+    const today = getTodayUTC();
+
+    const unit = await prisma.unit.findUnique({
+      where: { id: unitId },
+      include: {
+        schedules: {
+          include: {
+            assignments: {
+              where: { state: 'Accepted' },
+              include: { User: true },
+            },
+          },
+          orderBy: { date: 'asc' },
+        },
+      },
+    });
+
+    if (!unit) return null;
+
+    // 상태 판단 로직
+    const assignedScheduleDates = unit.schedules
+      .filter((s) => s.date && s.assignments.length > 0)
+      .map((s) => toUTCMidnight(new Date(s.date!)));
+
+    let unitStatus: ScheduleStatus;
+
+    if (assignedScheduleDates.length === 0) {
+      unitStatus = 'unassigned';
+    } else {
+      assignedScheduleDates.sort((a, b) => a.getTime() - b.getTime());
+      const firstDate = assignedScheduleDates[0];
+      const lastDate = assignedScheduleDates[assignedScheduleDates.length - 1];
+      const todayIsScheduled = assignedScheduleDates.some((d) => d.getTime() === today.getTime());
+
+      if (todayIsScheduled) {
+        unitStatus = 'inProgress';
+      } else if (lastDate < today) {
+        unitStatus = 'completed';
+      } else if (firstDate > today) {
+        unitStatus = 'scheduled';
+      } else {
+        unitStatus = 'inProgress';
+      }
+    }
+
+    // 일정 정보 구성
+    const schedules = unit.schedules
+      .filter((s) => s.date)
+      .map((s) => ({
+        id: s.id,
+        date: new Date(s.date!).toISOString().split('T')[0],
+        instructors: s.assignments.map((a) => ({
+          id: a.User?.id || 0,
+          name: a.User?.name || 'Unknown',
+        })),
+      }));
+
+    return {
+      id: unit.id,
+      name: unit.name || 'Unknown',
+      status: unitStatus,
+      address: unit.addressDetail,
+      addressDetail: unit.detailAddress,
+      officerName: unit.officerName,
+      officerPhone: unit.officerPhone,
+      schedules,
     };
   }
 }

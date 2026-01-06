@@ -3,20 +3,23 @@ import {
   fetchDashboardStats,
   fetchInstructorAnalysis,
   fetchTeamAnalysis,
-  fetchSchedulesByStatus,
   fetchTeamDetail,
+  fetchUnitsByStatus,
+  fetchUnitDetail,
   DashboardStats,
   InstructorAnalysis,
   TeamAnalysis,
-  ScheduleListItem,
   TeamDetail,
   ScheduleStatus,
+  UnitListItem,
+  UnitDetail,
 } from '../dashboardApi';
 import { EducationStatusChart } from './dashboard/EducationStatusChart';
 import { WorkloadHistogram } from './dashboard/WorkloadHistogram';
 import { TeamWorkloadChart } from './dashboard/TeamWorkloadChart';
 import { AnalysisTable } from './dashboard/AnalysisTable';
-import { ScheduleListModal } from './dashboard/ScheduleListModal';
+import { UnitListModal } from './dashboard/UnitListModal';
+import { UnitDetailModal } from './dashboard/UnitDetailModal';
 import { InstructorListModal } from './dashboard/InstructorListModal';
 import { TeamDetailModal } from './dashboard/TeamDetailModal';
 import { InstructorDashboardModal } from './dashboard/InstructorDashboardModal';
@@ -29,7 +32,13 @@ const STATUS_LABELS: Record<ScheduleStatus, string> = {
 };
 
 // Modal type for tracking navigation history
-type ModalType = 'schedule' | 'instructorList' | 'teamDetail' | 'instructorDashboard' | null;
+type ModalType =
+  | 'unitList'
+  | 'unitDetail'
+  | 'instructorList'
+  | 'teamDetail'
+  | 'instructorDashboard'
+  | null;
 
 export const AdminDashboard: React.FC = () => {
   // Data states
@@ -47,13 +56,20 @@ export const AdminDashboard: React.FC = () => {
   // Modal navigation stack - tracks parent modal for back navigation
   const [modalStack, setModalStack] = useState<ModalType[]>([]);
 
-  // Modal states
-  const [scheduleModal, setScheduleModal] = useState<{
+  // Modal states - Unit List (부대 목록)
+  const [unitListModal, setUnitListModal] = useState<{
     open: boolean;
     status: ScheduleStatus | null;
-    data: ScheduleListItem[];
+    data: UnitListItem[];
     loading: boolean;
   }>({ open: false, status: null, data: [], loading: false });
+
+  // Modal states - Unit Detail (부대 상세)
+  const [unitDetailModal, setUnitDetailModal] = useState<{
+    open: boolean;
+    data: UnitDetail | null;
+    loading: boolean;
+  }>({ open: false, data: null, loading: false });
 
   const [instructorListModal, setInstructorListModal] = useState<{
     open: boolean;
@@ -170,7 +186,8 @@ export const AdminDashboard: React.FC = () => {
 
   // Close all modals helper
   const closeAllModals = () => {
-    setScheduleModal((prev) => ({ ...prev, open: false }));
+    setUnitListModal((prev) => ({ ...prev, open: false }));
+    setUnitDetailModal((prev) => ({ ...prev, open: false }));
     setInstructorListModal((prev) => ({ ...prev, open: false }));
     setTeamDetailModal((prev) => ({ ...prev, open: false }));
     setInstructorDashboardModal((prev) => ({ ...prev, open: false }));
@@ -179,31 +196,44 @@ export const AdminDashboard: React.FC = () => {
 
   // Navigate back to previous modal
   const handleBack = () => {
-    if (modalStack.length > 0) {
+    if (modalStack.length > 1) {
       const newStack = [...modalStack];
-      newStack.pop(); // Remove current modal
+      const currentModal = newStack.pop(); // Remove current modal
       setModalStack(newStack);
 
-      // Close current instructor dashboard modal
-      setInstructorDashboardModal((prev) => ({ ...prev, open: false }));
-
-      // The parent modal is still open if it was in the stack
-      // Since we didn't close parent modals when navigating forward, they're still open
+      // Close the current modal based on type
+      if (currentModal === 'unitDetail') {
+        setUnitDetailModal((prev) => ({ ...prev, open: false }));
+      } else if (currentModal === 'instructorDashboard') {
+        setInstructorDashboardModal((prev) => ({ ...prev, open: false }));
+      }
     } else {
       // No parent, close everything
       closeAllModals();
     }
   };
 
-  // Handlers
-  const handleScheduleClick = async (status: ScheduleStatus) => {
-    setModalStack(['schedule']);
-    setScheduleModal({ open: true, status, data: [], loading: true });
+  // Handlers - Pie chart segment click (Unit-based)
+  const handleStatusClick = async (status: ScheduleStatus) => {
+    setModalStack(['unitList']);
+    setUnitListModal({ open: true, status, data: [], loading: true });
     try {
-      const data = await fetchSchedulesByStatus(status);
-      setScheduleModal((prev) => ({ ...prev, data, loading: false }));
+      const data = await fetchUnitsByStatus(status);
+      setUnitListModal((prev) => ({ ...prev, data, loading: false }));
     } catch {
-      setScheduleModal((prev) => ({ ...prev, data: [], loading: false }));
+      setUnitListModal((prev) => ({ ...prev, data: [], loading: false }));
+    }
+  };
+
+  // Navigate from UnitList to UnitDetail
+  const handleUnitClick = async (unit: UnitListItem) => {
+    setModalStack((prev) => [...prev, 'unitDetail']);
+    setUnitDetailModal({ open: true, data: null, loading: true });
+    try {
+      const data = await fetchUnitDetail(unit.id);
+      setUnitDetailModal({ open: true, data, loading: false });
+    } catch {
+      setUnitDetailModal((prev) => ({ ...prev, loading: false }));
     }
   };
 
@@ -247,9 +277,19 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // Close handlers with back navigation support
-  const handleScheduleModalClose = () => {
-    setScheduleModal((prev) => ({ ...prev, open: false }));
+  const handleUnitListModalClose = () => {
+    setUnitListModal((prev) => ({ ...prev, open: false }));
+    setUnitDetailModal((prev) => ({ ...prev, open: false }));
     setModalStack([]);
+  };
+
+  const handleUnitDetailModalClose = () => {
+    // Check if we should go back to parent (unit list)
+    if (modalStack.length > 1) {
+      handleBack();
+    } else {
+      closeAllModals();
+    }
   };
 
   const handleInstructorListModalClose = () => {
@@ -336,7 +376,7 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Charts Row - 3 columns */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <EducationStatusChart stats={stats} onSegmentClick={handleScheduleClick} />
+        <EducationStatusChart stats={stats} onSegmentClick={handleStatusClick} />
         <WorkloadHistogram
           instructors={instructors}
           onBarClick={handleWorkloadBarClick}
@@ -357,12 +397,21 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Modals */}
-      <ScheduleListModal
-        isOpen={scheduleModal.open}
-        onClose={handleScheduleModalClose}
-        title={scheduleModal.status ? STATUS_LABELS[scheduleModal.status] : ''}
-        schedules={scheduleModal.data}
-        loading={scheduleModal.loading}
+      <UnitListModal
+        isOpen={unitListModal.open}
+        onClose={handleUnitListModalClose}
+        title={unitListModal.status ? STATUS_LABELS[unitListModal.status] : ''}
+        units={unitListModal.data}
+        loading={unitListModal.loading}
+        onUnitClick={handleUnitClick}
+      />
+
+      <UnitDetailModal
+        isOpen={unitDetailModal.open}
+        onClose={handleUnitDetailModalClose}
+        onBack={modalStack.length > 1 ? handleBack : undefined}
+        unitDetail={unitDetailModal.data}
+        loading={unitDetailModal.loading}
       />
 
       <InstructorListModal
