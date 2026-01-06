@@ -10,6 +10,7 @@ import v1Router from './api/v1';
 import errorHandler from './common/middlewares/errorHandler';
 import logger from './config/logger';
 import './jobs/statsBatch.job';
+import prisma from './libs/prisma';
 
 const app = express();
 
@@ -41,25 +42,9 @@ if (!isProd && allowedOrigins.length === 0) {
   allowedOrigins.push('http://localhost:5173');
 }
 
-// 🛡️ 보안 헤더 설정 (Helmet)
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        // 필요 시 외부 이미지/스크립트 허용 추가 (예: Google Fonts, Analytics 등)
-        scriptSrc: ["'self'", "'unsafe-inline'"], // React Inline Script 허용 필요 시
-        imgSrc: ["'self'", 'data:', 'https:'],
-        connectSrc: ["'self'"],
-      },
-    },
-    // Cross-Origin-Resource-Policy 등 다른 헤더들도 기본값 적용됨
-  }),
-);
-
-// 🛡️ 프록시 신뢰 설정 (Rate Limit 정확도 향상)
-// AWS ALB, Nginx 등 로드밸런서 뒤에 있다면 필수
-app.set('trust proxy', 1);
+// 🛡️ 보안 헤더 설정 (Helmet) - API 서버용 간소화
+// CSP는 HTML을 직접 제공하는 서버에만 필요하므로 비활성화
+app.use(helmet({ contentSecurityPolicy: false }));
 
 app.use(
   cors({
@@ -103,6 +88,16 @@ app.use(errorHandler);
 // 서버 시작
 const server = app.listen(config.port, () => {
   logger.info(`Server listening at http://localhost:${config.port}`);
+});
+
+// DB 연결 미리 생성 (첫 요청 지연 방지)
+server.on('listening', async () => {
+  try {
+    await prisma.$connect();
+    logger.info('Database connection established');
+  } catch (error) {
+    logger.error('Failed to connect to database:', error);
+  }
 });
 
 module.exports = { app, server };
