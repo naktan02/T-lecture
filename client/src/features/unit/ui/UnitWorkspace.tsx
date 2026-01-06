@@ -54,6 +54,9 @@ export const UnitWorkspace = (): ReactElement => {
     deleteUnit,
     deleteUnits,
     uploadExcel,
+    sortField,
+    sortOrder,
+    onSort,
   } = useUnit(searchParams);
 
   // 검색 핸들러
@@ -188,6 +191,9 @@ export const UnitWorkspace = (): ReactElement => {
               onToggleSelect={handleToggleSelect}
               onToggleAll={handleToggleAll}
               onUnitClick={openEditDrawer}
+              sortField={sortField}
+              sortOrder={sortOrder}
+              onSort={onSort}
             />
           )}
         </div>

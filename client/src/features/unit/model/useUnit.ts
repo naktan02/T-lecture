@@ -47,20 +47,34 @@ interface UseUnitReturn {
   updateUnit: (params: { id: number | string; data: unknown }) => void;
   deleteUnit: (id: number | string) => void;
   uploadExcel: (file: File) => Promise<unknown>;
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
+  onSort: (field: string) => void;
 }
 
 export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
+  const [sortField, setSortField] = useState<string | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | undefined>(undefined);
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
 
   const {
     data: response,
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['units', page, limit, searchParams],
-    queryFn: () => unitApi.getUnitList({ page, limit, ...searchParams }),
+    queryKey: ['units', page, limit, searchParams, sortField, sortOrder],
+    queryFn: () => unitApi.getUnitList({ page, limit, ...searchParams, sortField, sortOrder }),
     // keepPreviousData is deprecated in v5, using placeholderData instead
   });
 
@@ -140,5 +154,8 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
     updateUnit: updateMutation.mutate,
     deleteUnit: deleteMutation.mutate,
     uploadExcel: uploadExcelMutation.mutateAsync,
+    sortField,
+    sortOrder,
+    onSort: handleSort,
   };
 };

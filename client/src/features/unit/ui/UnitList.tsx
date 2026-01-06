@@ -24,6 +24,9 @@ interface UnitListProps {
   onToggleSelect?: (id: number) => void;
   onToggleAll?: (isChecked: boolean) => void;
   onUnitClick?: (unit: Unit) => void;
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
+  onSort?: (field: string) => void;
 }
 
 // 날짜 포맷팅 헬퍼
@@ -59,6 +62,9 @@ export const UnitList = ({
   onToggleSelect,
   onToggleAll,
   onUnitClick,
+  sortField,
+  sortOrder,
+  onSort,
 }: UnitListProps): ReactElement => {
   // 1. 데이터가 없을 경우
   if (!units || !Array.isArray(units) || units.length === 0) {
@@ -78,6 +84,15 @@ export const UnitList = ({
     onToggleAll?.(e.target.checked);
   };
 
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) return <span className="text-gray-300 ml-1 text-xs">⇅</span>;
+    return sortOrder === 'asc' ? (
+      <span className="text-blue-600 ml-1">↑</span>
+    ) : (
+      <span className="text-blue-600 ml-1">↓</span>
+    );
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* 데스크톱: 테이블 뷰 */}
@@ -93,9 +108,24 @@ export const UnitList = ({
                   className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
                 />
               </th>
-              <th className="px-4 py-3">부대명</th>
-              <th className="px-4 py-3">위치</th>
-              <th className="px-4 py-3">교육기간</th>
+              <th
+                className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                onClick={() => onSort?.('name')}
+              >
+                부대명 {getSortIcon('name')}
+              </th>
+              <th
+                className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                onClick={() => onSort?.('region')}
+              >
+                위치 {getSortIcon('region')}
+              </th>
+              <th
+                className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                onClick={() => onSort?.('educationStart')}
+              >
+                교육기간 {getSortIcon('educationStart')}
+              </th>
               <th className="px-4 py-3">담당자</th>
               <th className="px-4 py-3 w-16"></th>
             </tr>

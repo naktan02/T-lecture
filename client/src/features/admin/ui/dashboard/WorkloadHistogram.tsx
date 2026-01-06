@@ -9,60 +9,100 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
-import { InstructorAnalysis, PeriodFilter } from '../../dashboardApi';
+import { InstructorAnalysis } from '../../dashboardApi';
 
 interface Props {
   instructors: InstructorAnalysis[];
-  period: PeriodFilter;
-  onPeriodChange: (period: PeriodFilter) => void;
-  onBarClick: (count: number, instructors: InstructorAnalysis[]) => void;
+  onBarClick: (label: string, instructors: InstructorAnalysis[]) => void;
+  // added rangeType for dynamic scaling
+  rangeType: string;
 }
-
-const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
-  { value: '1m', label: '이번달' },
-  { value: '3m', label: '3개월' },
-  { value: '6m', label: '6개월' },
-  { value: '12m', label: '12개월' },
-];
 
 interface DistributionItem {
   name: string;
   count: number;
-  value: number;
+  value: number; // Represents the start of range or exact value
   instructorList: InstructorAnalysis[];
+  isRange?: boolean;
 }
 
-export const WorkloadHistogram: React.FC<Props> = ({
-  instructors,
-  period,
-  onPeriodChange,
-  onBarClick,
-}) => {
-  // Build distribution 0-12+
+// Determines the max scale based on range type
+const getMaxCount = (rangeType: string): number => {
+  switch (rangeType) {
+    case '1m':
+      return 12; // 0-12+
+    case '3m':
+      return 36; // 0-36+
+    case '6m':
+      return 72;
+    case '12m':
+      return 144;
+    case 'custom':
+      return 100; // heuristic
+    default:
+      return 12;
+  }
+};
+
+export const WorkloadHistogram: React.FC<Props> = ({ instructors, onBarClick, rangeType }) => {
+  const maxCount = getMaxCount(rangeType);
   const distribution: DistributionItem[] = [];
 
-  for (let i = 0; i <= 12; i++) {
-    const matching = instructors.filter((inst) => inst.completedCount === i);
+  // Decide bin size to keep total bars around 12-15
+  // If maxCount <= 15, binSize = 1
+  // If maxCount > 15, binSize = ceil(maxCount / 12)
+  const binCount = 12;
+  const binSize = maxCount <= 15 ? 1 : Math.ceil(maxCount / binCount);
+
+  // Generate bins
+  // If binSize=1: 0, 1, 2 ... maxCount, (maxCount+1)+
+  // If binSize=3: 0-2, 3-5 ...
+  for (let i = 0; i < binCount; i++) {
+    const start = i * binSize;
+    const end = start + binSize - 1;
+
+    // Filter logic
+    const matching = instructors.filter((inst) => {
+      if (binSize === 1) return inst.completedCount === start;
+      return inst.completedCount >= start && inst.completedCount <= end;
+    });
+
+    let label = '';
+    if (binSize === 1) {
+      label = start.toString();
+    } else {
+      label = `~${end}`;
+    }
+
     distribution.push({
-      name: i.toString(),
+      name: label,
       count: matching.length,
-      value: i,
+      value: start, // Pass the start value for callback logic?
+      // Wait, callback usually filters EXACT value if binSize=1.
+      // If binSize > 1, we pass the whole list.
       instructorList: matching,
+      isRange: binSize > 1,
     });
   }
-  // 12+
-  const above12 = instructors.filter((inst) => inst.completedCount > 12);
+
+  // Last bucket: "Above Max"
+  // The loop goes up to binCount * binSize - 1.
+  // Next value starts at binCount * binSize.
+  const threshold = binCount * binSize;
+  const aboveThreshold = instructors.filter((inst) => inst.completedCount >= threshold);
+
   distribution.push({
-    name: '12+',
-    count: above12.length,
-    value: 13,
-    instructorList: above12,
+    name: `${threshold}+`,
+    count: aboveThreshold.length,
+    value: threshold,
+    instructorList: aboveThreshold,
+    isRange: true,
   });
 
   const handleBarClick = (_: unknown, index: number) => {
     const item = distribution[index];
     if (item) {
-      onBarClick(item.value, item.instructorList);
+      onBarClick(item.name, item.instructorList);
     }
   };
 
@@ -70,23 +110,15 @@ export const WorkloadHistogram: React.FC<Props> = ({
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-bold text-gray-800">강사 업무량 분포</h3>
-        <select
-          value={period}
-          onChange={(e) => onPeriodChange(e.target.value as PeriodFilter)}
-          className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-        >
-          {PERIOD_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+          {rangeType === 'custom' ? '선택 기간' : `최근 ${rangeType}`} 기준
+        </span>
       </div>
       <div className="w-full h-72">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={distribution} margin={{ top: 10, right: 10, left: -10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={12} />
+            <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={12} interval={0} />
             <YAxis axisLine={false} tickLine={false} fontSize={12} />
             <Tooltip
               cursor={{ fill: '#F3F4F6' }}
@@ -104,7 +136,7 @@ export const WorkloadHistogram: React.FC<Props> = ({
               radius={[4, 4, 0, 0]}
               cursor="pointer"
               onClick={handleBarClick}
-              barSize={10}
+              barSize={20} // Slightly wider for ranges
             >
               {distribution.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.count > 0 ? '#6366F1' : '#E5E7EB'} />

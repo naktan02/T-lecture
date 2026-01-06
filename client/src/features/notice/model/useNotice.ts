@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { noticeApi, Notice } from '../api/noticeApi';
 import { showError, showSuccess } from '../../../shared/utils/toast';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 30;
 
 interface UseNoticeReturn {
   // 데이터
@@ -31,7 +31,13 @@ interface UseNoticeReturn {
   handleDelete: (id: number) => Promise<void>;
 
   // 페이지네이션
+  // 페이지네이션
   setPage: (page: number) => void;
+
+  // 정렬
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
+  onSort: (field: string) => void;
 }
 
 export const useNotice = (): UseNoticeReturn => {
@@ -44,18 +50,34 @@ export const useNotice = (): UseNoticeReturn => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
 
+  // 정렬 상태
+  const [sortField, setSortField] = useState<string | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | undefined>(undefined);
+
   // Drawer 상태
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
 
+  // 정렬 핸들러
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
+
   // React Query로 데이터 조회
   const { data, isLoading } = useQuery({
-    queryKey: ['notices', page, searchQuery],
+    queryKey: ['notices', page, searchQuery, sortField, sortOrder],
     queryFn: () =>
       noticeApi.getNotices({
         page,
         limit: PAGE_SIZE,
         search: searchQuery || undefined,
+        sortField,
+        sortOrder,
       }),
   });
 
@@ -159,5 +181,8 @@ export const useNotice = (): UseNoticeReturn => {
     handleSave,
     handleDelete,
     setPage,
+    sortField,
+    sortOrder,
+    onSort: handleSort,
   };
 };

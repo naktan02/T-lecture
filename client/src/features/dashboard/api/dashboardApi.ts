@@ -35,10 +35,12 @@ export const dashboardApi = {
   getUserStats: async (params?: {
     startDate?: string;
     endDate?: string;
+    period?: string;
   }): Promise<DashboardStats> => {
     const queryParams = new URLSearchParams();
     if (params?.startDate) queryParams.append('startDate', params.startDate);
     if (params?.endDate) queryParams.append('endDate', params.endDate);
+    if (params?.period) queryParams.append('period', params.period);
 
     const queryString = queryParams.toString();
     const url = `/api/v1/dashboard/user/stats${queryString ? `?${queryString}` : ''}`;

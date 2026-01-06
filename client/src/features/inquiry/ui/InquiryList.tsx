@@ -9,6 +9,9 @@ interface InquiryListProps {
   currentPage?: number;
   totalCount?: number;
   pageSize?: number;
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
+  onSort?: (field: string) => void;
 }
 
 export const InquiryList = ({
@@ -18,6 +21,9 @@ export const InquiryList = ({
   currentPage = 1,
   totalCount = 0,
   pageSize = 10,
+  sortField,
+  sortOrder,
+  onSort,
 }: InquiryListProps): ReactElement => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ko-KR', {
@@ -31,6 +37,15 @@ export const InquiryList = ({
   const getNo = (index: number) => {
     const startNo = totalCount - (currentPage - 1) * pageSize;
     return startNo - index;
+  };
+
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) return <span className="text-gray-300 ml-1 text-xs">⇅</span>;
+    return sortOrder === 'asc' ? (
+      <span className="text-blue-600 ml-1">↑</span>
+    ) : (
+      <span className="text-blue-600 ml-1">↓</span>
+    );
   };
 
   if (inquiries.length === 0) {
@@ -51,19 +66,31 @@ export const InquiryList = ({
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-16">
               No
             </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-              제목
+            <th
+              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+              onClick={() => onSort?.('title')}
+            >
+              제목 {getSortIcon('title')}
             </th>
             {isAdmin && (
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-24">
-                작성자
+              <th
+                className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-24 cursor-pointer hover:bg-gray-100"
+                onClick={() => onSort?.('author')}
+              >
+                작성자 {getSortIcon('author')}
               </th>
             )}
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-24">
-              상태
+            <th
+              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-24 cursor-pointer hover:bg-gray-100"
+              onClick={() => onSort?.('status')}
+            >
+              상태 {getSortIcon('status')}
             </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-28">
-              작성일
+            <th
+              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-28 cursor-pointer hover:bg-gray-100"
+              onClick={() => onSort?.('createdAt')}
+            >
+              작성일 {getSortIcon('createdAt')}
             </th>
           </tr>
         </thead>

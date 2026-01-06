@@ -32,5 +32,7 @@ export const AdminHeader: React.FC = () => {
     { label: '설정', path: '/admin/settings' },
   ];
 
-  return <CommonHeader title="관리자 페이지" userLabel={userLabel} links={links} />;
+  return (
+    <CommonHeader title="관리자 페이지" userLabel={userLabel} links={links} logoPath="/admin" />
+  );
 };

@@ -64,6 +64,9 @@ export const UserWorkspace = (): ReactElement => {
     approveUsersBulk,
     rejectUsersBulk,
     pendingCount,
+    sortField,
+    sortOrder,
+    onSort,
   } = useUserManagement({
     ...searchParams,
     status: searchParams.status === 'ALL' ? undefined : searchParams.status,
@@ -221,6 +224,9 @@ export const UserWorkspace = (): ReactElement => {
               onReject={async (id) => {
                 await rejectUser(id);
               }}
+              sortField={sortField}
+              sortOrder={sortOrder}
+              onSort={onSort}
             />
           )}
         </div>
