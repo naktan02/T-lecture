@@ -9,6 +9,7 @@ import authRepository from './auth.repository';
 import userRepository from '../user/repositories/user.repository';
 import { sendAuthCode } from '../../infra/email';
 import distanceService from '../distance/distance.service';
+import kakaoService from '../../infra/kakao.service';
 import AppError from '../../common/errors/AppError';
 import { RegisterDto, JwtPayload } from '../../types/auth.types';
 
@@ -85,12 +86,23 @@ class AuthService {
         );
       }
 
+      // 주소를 좌표로 변환
+      let lat: number | null = null;
+      let lng: number | null = null;
+      try {
+        const coords = await kakaoService.addressToCoordinates(address);
+        lat = coords.lat;
+        lng = coords.lng;
+      } catch {
+        // 변환 실패해도 회원가입은 진행 (나중에 관리자가 수동 입력 가능)
+      }
+
       newUser = await userRepository.createInstructor(commonData, {
         location: address,
         ...(teamId ? { team: { connect: { id: teamId } } } : {}),
         category: category || null,
-        lat: null,
-        lng: null,
+        lat,
+        lng,
       });
 
       await instructorRepository.addVirtues(newUser.id, virtueIds);
