@@ -365,6 +365,19 @@ class AdminService {
 
   // 유저 승인
   async approveUser(userId: number | string) {
+    const user = await userRepository.findById(userId);
+    if (!user) throw new AppError('사용자를 찾을 수 없습니다.', 404, 'USER_NOT_FOUND');
+
+    // 강사인 경우 주소 → 좌표 변환
+    if (user.instructor?.location && !user.instructor.lat) {
+      try {
+        const coords = await kakaoService.addressToCoordinates(user.instructor.location);
+        await adminRepository.updateInstructorCoords(user.id, coords.lat, coords.lng);
+      } catch {
+        // 변환 실패해도 승인은 진행
+      }
+    }
+
     const updatedUser = await adminRepository.updateUserStatus(userId, UserStatus.APPROVED);
 
     return {

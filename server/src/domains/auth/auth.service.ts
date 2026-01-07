@@ -9,7 +9,6 @@ import authRepository from './auth.repository';
 import userRepository from '../user/repositories/user.repository';
 import { sendAuthCode } from '../../infra/email';
 import distanceService from '../distance/distance.service';
-import kakaoService from '../../infra/kakao.service';
 import AppError from '../../common/errors/AppError';
 import { RegisterDto, JwtPayload } from '../../types/auth.types';
 
@@ -78,31 +77,24 @@ class AuthService {
     if (type === 'INSTRUCTOR') {
       if (!address)
         throw new AppError('강사는 거주지 주소를 입력해야 합니다.', 400, 'VALIDATION_ERROR');
-      if (!teamId || !category || !virtueIds || virtueIds.length === 0) {
+      if (!category || !virtueIds || virtueIds.length === 0) {
         throw new AppError(
-          '강사 과목(덕목), 팀, 직책 정보를 모두 입력해야 합니다.',
+          '강사 과목(덕목), 직책 정보를 입력해야 합니다.',
           400,
           'VALIDATION_ERROR',
         );
       }
 
-      // 주소를 좌표로 변환
-      let lat: number | null = null;
-      let lng: number | null = null;
-      try {
-        const coords = await kakaoService.addressToCoordinates(address);
-        lat = coords.lat;
-        lng = coords.lng;
-      } catch {
-        // 변환 실패해도 회원가입은 진행 (나중에 관리자가 수동 입력 가능)
-      }
+      // 프로필 완성 조건: 주소, 분류, 덕목 있으면 완성 (팀은 선택)
+      const isProfileComplete = !!(address && category && virtueIds.length > 0);
 
       newUser = await userRepository.createInstructor(commonData, {
         location: address,
         ...(teamId ? { team: { connect: { id: teamId } } } : {}),
         category: category || null,
-        lat,
-        lng,
+        lat: null, // 승인 시점에 변환
+        lng: null,
+        profileCompleted: isProfileComplete,
       });
 
       await instructorRepository.addVirtues(newUser.id, virtueIds);
@@ -158,7 +150,8 @@ class AuthService {
     const isInstructor = !!user.instructor;
     const isAdmin = !!user.admin;
     const adminLevel = user.admin?.level || null;
-    const instructorProfileCompleted = user.instructor?.profileCompleted ?? null;
+    // 강사 프로필 완성 = 주소가 있으면 완성 (덕목은 프론트에서 추가 체크)
+    const instructorProfileCompleted = isInstructor ? !!user.instructor?.location : null;
 
     return {
       accessToken,
