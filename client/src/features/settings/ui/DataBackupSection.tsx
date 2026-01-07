@@ -1,5 +1,5 @@
 // client/src/features/settings/ui/DataBackupSection.tsx
-import { useState, ReactElement } from 'react';
+import { useState, useEffect, ReactElement } from 'react';
 import { Button } from '../../../shared/ui';
 import { showConfirm, showSuccess, showError, showWarning } from '../../../shared/utils';
 import { apiClient, apiClientJson } from '../../../shared/apiClient';
@@ -13,36 +13,53 @@ interface DeletePreview {
   availabilities: number;
 }
 
+interface DatabaseSize {
+  usedMB: number;
+  limitMB: number;
+  percentage: number;
+}
+
 export const DataBackupSection = (): ReactElement => {
   const currentYear = new Date().getFullYear();
-  const [selectedYear, setSelectedYear] = useState(currentYear - 1);
+  const targetYear = currentYear - 1; // 항상 작년 데이터 대상
+
   const [isExporting, setIsExporting] = useState(false);
   const [preview, setPreview] = useState<DeletePreview | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [backupConfirmed, setBackupConfirmed] = useState(false);
+  const [dbSize, setDbSize] = useState<DatabaseSize | null>(null);
 
-  // 사용 가능한 연도 목록 (현재 연도 제외)
-  const availableYears = Array.from({ length: currentYear - 2020 }, (_, i) => currentYear - 1 - i);
+  // 데이터베이스 용량 조회
+  useEffect(() => {
+    const fetchDbSize = async () => {
+      try {
+        const size = await apiClientJson<DatabaseSize>('/api/v1/data-backup/db-size');
+        setDbSize(size);
+      } catch {
+        // 용량 조회 실패는 무시
+      }
+    };
+    fetchDbSize();
+  }, []);
 
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      const response = await apiClient(`/api/v1/data-backup/export?year=${selectedYear}`);
+      const response = await apiClient(`/api/v1/data-backup/export?year=${targetYear}`);
 
-      // Blob으로 변환하여 다운로드
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `T-Lecture_${selectedYear}_Archive.xlsx`;
+      a.download = `T-Lecture_${targetYear}_Archive.xlsx`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      showSuccess(`${selectedYear}년 데이터를 성공적으로 다운로드했습니다.`);
-      setBackupConfirmed(false); // 새로 다운받았으므로 확인 리셋
+      showSuccess(`${targetYear}년 데이터를 성공적으로 다운로드했습니다.`);
+      setBackupConfirmed(false);
     } catch {
       showError('데이터 다운로드에 실패했습니다.');
     } finally {
@@ -54,7 +71,7 @@ export const DataBackupSection = (): ReactElement => {
     setIsLoadingPreview(true);
     try {
       const data = await apiClientJson<DeletePreview>(
-        `/api/v1/data-backup/preview?year=${selectedYear}`,
+        `/api/v1/data-backup/preview?year=${targetYear}`,
       );
       setPreview(data);
     } catch {
@@ -71,16 +88,23 @@ export const DataBackupSection = (): ReactElement => {
     }
 
     showConfirm(
-      `정말로 ${selectedYear}년 데이터를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`,
+      `정말로 ${targetYear}년 데이터를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`,
       async () => {
         setIsDeleting(true);
         try {
-          await apiClient(`/api/v1/data-backup/cleanup?year=${selectedYear}`, {
+          await apiClient(`/api/v1/data-backup/cleanup?year=${targetYear}`, {
             method: 'DELETE',
           });
-          showSuccess(`${selectedYear}년 데이터가 삭제되었습니다.`);
+          showSuccess(`${targetYear}년 데이터가 삭제되었습니다.`);
           setPreview(null);
           setBackupConfirmed(false);
+          // 용량 새로고침
+          try {
+            const size = await apiClientJson<DatabaseSize>('/api/v1/data-backup/db-size');
+            setDbSize(size);
+          } catch {
+            // ignore
+          }
         } catch {
           showError('데이터 삭제에 실패했습니다.');
         } finally {
@@ -90,48 +114,30 @@ export const DataBackupSection = (): ReactElement => {
     );
   };
 
+  // 용량 바 색상 결정
+  const getProgressColor = (percentage: number) => {
+    if (percentage >= 90) return 'bg-red-500';
+    if (percentage >= 70) return 'bg-yellow-500';
+    return 'bg-green-500';
+  };
+
   return (
     <div className="max-w-2xl">
       <div className="mb-6">
         <h2 className="text-xl font-bold text-gray-800">데이터 백업</h2>
         <p className="text-sm text-gray-500 mt-1">
-          과거 연도의 데이터를 엑셀로 백업하고, 저장 공간 확보를 위해 삭제할 수 있습니다.
+          매년 {targetYear}년 데이터를 엑셀로 백업하고, 저장 공간 확보를 위해 삭제합니다.
         </p>
-      </div>
-
-      {/* 연도 선택 */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-4">
-        <h3 className="text-sm font-medium text-gray-700 mb-4">연도 선택</h3>
-        <div className="flex items-center gap-4">
-          <select
-            value={selectedYear}
-            onChange={(e) => {
-              setSelectedYear(Number(e.target.value));
-              setPreview(null);
-              setBackupConfirmed(false);
-            }}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-          >
-            {availableYears.map((year) => (
-              <option key={year} value={year}>
-                {year}년
-              </option>
-            ))}
-          </select>
-          <span className="text-sm text-gray-500">
-            * 현재 연도({currentYear}년) 데이터는 삭제할 수 없습니다.
-          </span>
-        </div>
       </div>
 
       {/* 엑셀 다운로드 */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-4">
         <h3 className="text-sm font-medium text-gray-700 mb-2">1단계: 엑셀 백업 다운로드</h3>
         <p className="text-xs text-gray-500 mb-4">
-          선택한 연도의 모든 데이터(부대, 일정, 배정, 메시지 등)를 엑셀 파일로 다운로드합니다.
+          {targetYear}년의 모든 데이터(부대, 일정, 배정, 메시지 등)를 엑셀 파일로 다운로드합니다.
         </p>
         <Button variant="primary" onClick={handleExport} disabled={isExporting}>
-          {isExporting ? '다운로드 중...' : `📥 ${selectedYear}년 데이터 다운로드`}
+          {isExporting ? '다운로드 중...' : `📥 ${targetYear}년 데이터 다운로드`}
         </Button>
       </div>
 
@@ -175,6 +181,26 @@ export const DataBackupSection = (): ReactElement => {
       {/* 삭제 실행 */}
       <div className="bg-red-50 rounded-lg border border-red-200 p-6">
         <h3 className="text-sm font-medium text-red-700 mb-2">3단계: 데이터 삭제</h3>
+
+        {/* 데이터베이스 용량 표시 */}
+        {dbSize && (
+          <div className="bg-white rounded-lg p-4 mb-4 border border-red-100">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-gray-700">데이터베이스 용량</span>
+              <span className="text-sm text-gray-600">
+                {dbSize.usedMB.toFixed(1)} MB / {dbSize.limitMB} MB ({dbSize.percentage}%)
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div
+                className={`h-3 rounded-full ${getProgressColor(dbSize.percentage)}`}
+                style={{ width: `${Math.min(dbSize.percentage, 100)}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Supabase 무료 티어 제한: 500MB</p>
+          </div>
+        )}
+
         <p className="text-xs text-red-600 mb-4">
           ⚠️ 삭제된 데이터는 복구할 수 없습니다. 반드시 엑셀 백업을 먼저 받으세요.
         </p>
@@ -197,7 +223,7 @@ export const DataBackupSection = (): ReactElement => {
           onClick={handleDelete}
           disabled={isDeleting || !backupConfirmed || !preview}
         >
-          {isDeleting ? '삭제 중...' : `🗑️ ${selectedYear}년 데이터 삭제`}
+          {isDeleting ? '삭제 중...' : `🗑️ ${targetYear}년 데이터 삭제`}
         </Button>
       </div>
     </div>

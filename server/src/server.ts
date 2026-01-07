@@ -15,7 +15,6 @@ import { requestLogger, rateLimiter } from './common/middlewares';
 import v1Router from './api/v1';
 import errorHandler from './common/middlewares/errorHandler';
 import logger from './config/logger';
-import './jobs/statsBatch.job';
 import prisma from './libs/prisma';
 import { initSentry } from './config/sentry';
 

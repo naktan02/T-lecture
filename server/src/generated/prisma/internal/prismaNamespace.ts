@@ -2611,13 +2611,7 @@ export type InstructorVirtueScalarFieldEnum = (typeof InstructorVirtueScalarFiel
 export const InstructorStatsScalarFieldEnum = {
   instructorId: 'instructorId',
   legacyPracticumCount: 'legacyPracticumCount',
-  autoPromotionEnabled: 'autoPromotionEnabled',
-  totalWorkHours: 'totalWorkHours',
-  totalDistance: 'totalDistance',
-  totalWorkDays: 'totalWorkDays',
-  acceptedCount: 'acceptedCount',
-  totalAssignmentsCount: 'totalAssignmentsCount',
-  lastCalculatedAt: 'lastCalculatedAt'
+  autoPromotionEnabled: 'autoPromotionEnabled'
 } as const
 
 export type InstructorStatsScalarFieldEnum = (typeof InstructorStatsScalarFieldEnum)[keyof typeof InstructorStatsScalarFieldEnum]

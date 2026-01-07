@@ -32,6 +32,19 @@ export class DataBackupController {
   }
 
   /**
+   * GET /api/v1/data-backup/db-size
+   * 데이터베이스 용량 조회
+   */
+  async getDatabaseSize(req: Request, res: Response, next: NextFunction) {
+    try {
+      const size = await dataBackupService.getDatabaseSize();
+      res.json(size);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * GET /api/v1/data-backup/preview?year=2025
    * 삭제 미리보기 (삭제될 데이터 개수)
    */
