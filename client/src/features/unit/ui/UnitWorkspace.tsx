@@ -5,17 +5,12 @@ import { UnitToolbar } from './UnitToolbar';
 import { UnitList } from './UnitList';
 import { UnitDetailDrawerV2 } from './UnitDetailDrawerV2';
 import { ConfirmModal, Pagination } from '../../../shared/ui';
+import { Unit } from '../../../shared/types';
 
 interface SearchParams {
   keyword: string;
   startDate: string;
   endDate: string;
-  [key: string]: unknown;
-}
-
-interface Unit {
-  id: number;
-  name: string;
   [key: string]: unknown;
 }
 
@@ -50,7 +45,6 @@ export const UnitWorkspace = (): ReactElement => {
     setPage,
     isLoading,
     registerUnit,
-    updateUnit,
     deleteUnit,
     deleteUnits,
     uploadExcel,
@@ -209,7 +203,6 @@ export const UnitWorkspace = (): ReactElement => {
         onClose={() => setIsDrawerOpen(false)}
         unit={selectedUnit}
         onRegister={registerUnit}
-        onUpdate={updateUnit}
         onDelete={deleteUnit}
       />
 

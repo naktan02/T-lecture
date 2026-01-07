@@ -2,6 +2,7 @@
 // 교육장소 아코디언 컴포넌트 - 접기/펼치기 기능
 
 import { useState, ChangeEvent } from 'react';
+import { showConfirm } from '../../../shared/utils/toast';
 
 export interface LocationData {
   id?: number;
@@ -82,7 +83,8 @@ export const LocationAccordion = ({
         <div className="space-y-2">
           {locations.map((loc, index) => {
             const isExpanded = expandedIndices.has(index);
-            const displayName = loc.originalPlace || `장소 ${index + 1}`;
+            // 변경장소가 있으면 변경장소, 없으면 원래장소 표시
+            const displayName = loc.changedPlace || loc.originalPlace || `장소 ${index + 1}`;
 
             return (
               <div
@@ -105,7 +107,7 @@ export const LocationAccordion = ({
                       )}
                       {loc.hasWomenRestroom && (
                         <span className="px-1.5 py-0.5 bg-pink-100 text-pink-700 rounded">
-                          여화장실
+                          여자 화장실
                         </span>
                       )}
                     </div>
@@ -113,9 +115,14 @@ export const LocationAccordion = ({
                   {!readOnly && (
                     <button
                       type="button"
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation();
-                        onRemove(index);
+                        const confirmed = await showConfirm(
+                          `"${loc.originalPlace || '장소 ' + (index + 1)}" 교육장소를 삭제하시겠습니까?`,
+                        );
+                        if (confirmed) {
+                          onRemove(index);
+                        }
                       }}
                       className="text-red-500 hover:text-red-700 text-sm"
                     >
@@ -173,7 +180,7 @@ export const LocationAccordion = ({
                           disabled={readOnly}
                           className="w-4 h-4 text-pink-600 rounded"
                         />
-                        <span>여화장실</span>
+                        <span>여자 화장실</span>
                       </label>
                     </div>
 

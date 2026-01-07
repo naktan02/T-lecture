@@ -249,32 +249,94 @@ export const TrainingPeriodTab = ({
           <h4 className="text-sm font-semibold text-gray-700 mb-3">
             일정별 장소 매칭 ({data.schedules.length}개)
           </h4>
-          <div className="space-y-4 max-h-96 overflow-y-auto">
+
+          {/* 헤더 - 한 번만 표시 */}
+          <div className="grid grid-cols-[100px_1fr_70px_70px_30px] gap-2 text-xs text-gray-500 mb-2 px-2 pb-2 border-b border-gray-300">
+            <span>날짜</span>
+            <span>장소</span>
+            <span className="text-center">계획</span>
+            <span className="text-center">참여</span>
+            <span></span>
+          </div>
+
+          <div className="max-h-96 overflow-y-auto">
             {data.schedules.map((schedule, scheduleIndex) => {
               const scheduleKey = schedule.id ?? `new-${scheduleIndex}`;
               const rows = data.scheduleLocationMap[scheduleKey] || [];
+              const isLastSchedule = scheduleIndex === data.schedules.length - 1;
 
               return (
-                <div key={scheduleKey} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                  <div className="grid grid-cols-[140px_1fr_110px_110px_48px] gap-2 text-xs text-gray-500 mb-2">
-                    <span>날짜</span>
-                    <span>장소</span>
-                    <span>계획인원</span>
-                    <span>참여인원</span>
-                    <span></span>
-                  </div>
-
+                <div
+                  key={scheduleKey}
+                  className={`py-2 ${!isLastSchedule ? 'border-b border-dashed border-gray-200' : ''}`}
+                >
+                  {/* 장소 매칭이 없는 경우 빈 행 표시 */}
                   {rows.length === 0 ? (
-                    <div className="text-xs text-gray-400">장소가 매칭되지 않았습니다.</div>
+                    <div className="grid grid-cols-[100px_1fr_70px_70px_30px] gap-2 items-center px-2 py-1">
+                      <div className="text-sm text-gray-700">{formatDate(schedule.date)}</div>
+                      <select
+                        value=""
+                        onChange={(e) =>
+                          onScheduleLocationRowChange(
+                            scheduleIndex,
+                            0,
+                            'trainingLocationId',
+                            e.target.value,
+                          )
+                        }
+                        disabled={readOnly}
+                        className="px-2 py-1.5 border border-gray-300 rounded text-sm disabled:bg-gray-100"
+                      >
+                        <option value="">장소 선택</option>
+                        {data.locations.map((loc, locIdx) => (
+                          <option key={loc.id ?? `loc-${locIdx}`} value={loc.id ?? `loc-${locIdx}`}>
+                            {loc.changedPlace || loc.originalPlace || `장소 ${locIdx + 1}`}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        min={0}
+                        value=""
+                        onChange={(e) =>
+                          onScheduleLocationRowChange(
+                            scheduleIndex,
+                            0,
+                            'plannedCount',
+                            e.target.value === '' ? null : Number(e.target.value),
+                          )
+                        }
+                        disabled={readOnly}
+                        className="px-2 py-1.5 border border-gray-300 rounded text-sm text-center disabled:bg-gray-100 w-full"
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        value=""
+                        onChange={(e) =>
+                          onScheduleLocationRowChange(
+                            scheduleIndex,
+                            0,
+                            'actualCount',
+                            e.target.value === '' ? null : Number(e.target.value),
+                          )
+                        }
+                        disabled={readOnly}
+                        className="px-2 py-1.5 border border-gray-300 rounded text-sm text-center disabled:bg-gray-100 w-full"
+                      />
+                      <div></div>
+                    </div>
                   ) : (
                     rows.map((row, rowIndex) => (
                       <div
                         key={`${scheduleKey}-row-${rowIndex}`}
-                        className="grid grid-cols-[140px_1fr_110px_110px_48px] gap-2 items-center py-1"
+                        className="grid grid-cols-[100px_1fr_70px_70px_30px] gap-2 items-center px-2 py-1"
                       >
+                        {/* 날짜 - 첫 번째 행에만 표시 */}
                         <div className="text-sm text-gray-700">
-                          {formatDate(schedule.date) || `일정 ${scheduleIndex + 1}`}
+                          {rowIndex === 0 ? formatDate(schedule.date) : ''}
                         </div>
+
                         <select
                           value={row.trainingLocationId}
                           onChange={(e) =>
@@ -286,7 +348,7 @@ export const TrainingPeriodTab = ({
                             )
                           }
                           disabled={readOnly}
-                          className="px-3 py-2 border border-gray-300 rounded text-sm disabled:bg-gray-100"
+                          className="px-2 py-1.5 border border-gray-300 rounded text-sm disabled:bg-gray-100"
                         >
                           <option value="">장소 선택</option>
                           {data.locations.map((loc, locIdx) => (
@@ -294,10 +356,11 @@ export const TrainingPeriodTab = ({
                               key={loc.id ?? `loc-${locIdx}`}
                               value={loc.id ?? `loc-${locIdx}`}
                             >
-                              {loc.originalPlace || `장소 ${locIdx + 1}`}
+                              {loc.changedPlace || loc.originalPlace || `장소 ${locIdx + 1}`}
                             </option>
                           ))}
                         </select>
+
                         <input
                           type="number"
                           min={0}
@@ -311,9 +374,9 @@ export const TrainingPeriodTab = ({
                             )
                           }
                           disabled={readOnly}
-                          className="px-2 py-2 border border-gray-300 rounded text-xs disabled:bg-gray-100"
-                          placeholder="계획"
+                          className="px-2 py-1.5 border border-gray-300 rounded text-sm text-center disabled:bg-gray-100 w-full"
                         />
+
                         <input
                           type="number"
                           min={0}
@@ -327,33 +390,36 @@ export const TrainingPeriodTab = ({
                             )
                           }
                           disabled={readOnly}
-                          className="px-2 py-2 border border-gray-300 rounded text-xs disabled:bg-gray-100"
-                          placeholder="참여"
+                          className="px-2 py-1.5 border border-gray-300 rounded text-sm text-center disabled:bg-gray-100 w-full"
                         />
-                        {!readOnly && (
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              const confirmed =
-                                await showConfirm('이 장소 매칭을 삭제하시겠습니까?');
-                              if (confirmed) {
-                                onScheduleLocationRowRemove(scheduleIndex, rowIndex);
-                              }
-                            }}
-                            className="text-xs text-red-500 hover:text-red-700"
-                          >
-                            삭제
-                          </button>
-                        )}
+
+                        <div className="flex justify-center">
+                          {!readOnly && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const confirmed =
+                                  await showConfirm('이 장소 매칭을 삭제하시겠습니까?');
+                                if (confirmed) {
+                                  onScheduleLocationRowRemove(scheduleIndex, rowIndex);
+                                }
+                              }}
+                              className="text-xs text-red-400 hover:text-red-600"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))
                   )}
 
+                  {/* 장소 추가 버튼 */}
                   {!readOnly && (
                     <button
                       type="button"
                       onClick={() => onScheduleLocationRowAdd(scheduleIndex)}
-                      className="w-full text-center mt-2 px-2 py-2 text-xs text-gray-400 hover:text-gray-600 border-t border-dashed"
+                      className="w-full text-center text-xs text-gray-400 hover:text-gray-600 py-1"
                     >
                       + 장소 추가
                     </button>
@@ -362,8 +428,9 @@ export const TrainingPeriodTab = ({
               );
             })}
           </div>
+
           {!readOnly && (
-            <div className="flex justify-end mt-3">
+            <div className="flex justify-end mt-3 pt-3 border-t border-gray-200">
               <button
                 type="button"
                 onClick={onScheduleLocationsSave}

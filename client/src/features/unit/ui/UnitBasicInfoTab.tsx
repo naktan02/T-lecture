@@ -497,14 +497,15 @@ export const UnitBasicInfoTab = ({
                       </button>
                       <button
                         type="button"
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation();
-                          showConfirm(`"${period.name}" 교육기간을 삭제하시겠습니까?`, () => {
+                          const confirmed = await showConfirm(`"${period.name}" 교육기간을 삭제하시겠습니까?`);
+                          if (confirmed) {
                             onPeriodRemove(index);
                             if (expandedPeriodIndex === index) {
                               setExpandedPeriodIndex(null);
                             }
-                          });
+                          }
                         }}
                         className="text-red-500 hover:text-red-700 text-sm px-2"
                       >
