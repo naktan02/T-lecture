@@ -45,7 +45,17 @@ export function toCreateUnitDto(rawData: RawUnitData = {}): Prisma.UnitCreateInp
     throw new Error('부대명(name)은 필수입니다.');
   }
 
+  // lectureYear 계산: educationStart에서 년도 추출, 없으면 현재 년도
+  let lectureYear = new Date().getFullYear();
+  if (rawData.educationStart) {
+    const d = new Date(rawData.educationStart as string | Date);
+    if (!isNaN(d.getTime())) {
+      lectureYear = d.getFullYear();
+    }
+  }
+
   return {
+    lectureYear,
     name: rawData.name,
     unitType: toMilitaryType(rawData.unitType),
     wideArea: rawData.wideArea,

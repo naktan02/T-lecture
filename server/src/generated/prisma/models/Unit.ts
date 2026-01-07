@@ -28,18 +28,21 @@ export type AggregateUnit = {
 
 export type UnitAvgAggregateOutputType = {
   id: number | null
+  lectureYear: number | null
   lat: number | null
   lng: number | null
 }
 
 export type UnitSumAggregateOutputType = {
   id: number | null
+  lectureYear: number | null
   lat: number | null
   lng: number | null
 }
 
 export type UnitMinAggregateOutputType = {
   id: number | null
+  lectureYear: number | null
   name: string | null
   unitType: $Enums.MilitaryType | null
   wideArea: string | null
@@ -52,6 +55,7 @@ export type UnitMinAggregateOutputType = {
 
 export type UnitMaxAggregateOutputType = {
   id: number | null
+  lectureYear: number | null
   name: string | null
   unitType: $Enums.MilitaryType | null
   wideArea: string | null
@@ -64,6 +68,7 @@ export type UnitMaxAggregateOutputType = {
 
 export type UnitCountAggregateOutputType = {
   id: number
+  lectureYear: number
   name: number
   unitType: number
   wideArea: number
@@ -78,18 +83,21 @@ export type UnitCountAggregateOutputType = {
 
 export type UnitAvgAggregateInputType = {
   id?: true
+  lectureYear?: true
   lat?: true
   lng?: true
 }
 
 export type UnitSumAggregateInputType = {
   id?: true
+  lectureYear?: true
   lat?: true
   lng?: true
 }
 
 export type UnitMinAggregateInputType = {
   id?: true
+  lectureYear?: true
   name?: true
   unitType?: true
   wideArea?: true
@@ -102,6 +110,7 @@ export type UnitMinAggregateInputType = {
 
 export type UnitMaxAggregateInputType = {
   id?: true
+  lectureYear?: true
   name?: true
   unitType?: true
   wideArea?: true
@@ -114,6 +123,7 @@ export type UnitMaxAggregateInputType = {
 
 export type UnitCountAggregateInputType = {
   id?: true
+  lectureYear?: true
   name?: true
   unitType?: true
   wideArea?: true
@@ -213,6 +223,7 @@ export type UnitGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
 
 export type UnitGroupByOutputType = {
   id: number
+  lectureYear: number
   name: string
   unitType: $Enums.MilitaryType | null
   wideArea: string | null
@@ -248,6 +259,7 @@ export type UnitWhereInput = {
   OR?: Prisma.UnitWhereInput[]
   NOT?: Prisma.UnitWhereInput | Prisma.UnitWhereInput[]
   id?: Prisma.IntFilter<"Unit"> | number
+  lectureYear?: Prisma.IntFilter<"Unit"> | number
   name?: Prisma.StringFilter<"Unit"> | string
   unitType?: Prisma.EnumMilitaryTypeNullableFilter<"Unit"> | $Enums.MilitaryType | null
   wideArea?: Prisma.StringNullableFilter<"Unit"> | string | null
@@ -262,6 +274,7 @@ export type UnitWhereInput = {
 
 export type UnitOrderByWithRelationInput = {
   id?: Prisma.SortOrder
+  lectureYear?: Prisma.SortOrder
   name?: Prisma.SortOrder
   unitType?: Prisma.SortOrderInput | Prisma.SortOrder
   wideArea?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -280,6 +293,7 @@ export type UnitWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.UnitWhereInput | Prisma.UnitWhereInput[]
   OR?: Prisma.UnitWhereInput[]
   NOT?: Prisma.UnitWhereInput | Prisma.UnitWhereInput[]
+  lectureYear?: Prisma.IntFilter<"Unit"> | number
   unitType?: Prisma.EnumMilitaryTypeNullableFilter<"Unit"> | $Enums.MilitaryType | null
   wideArea?: Prisma.StringNullableFilter<"Unit"> | string | null
   region?: Prisma.StringNullableFilter<"Unit"> | string | null
@@ -293,6 +307,7 @@ export type UnitWhereUniqueInput = Prisma.AtLeast<{
 
 export type UnitOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
+  lectureYear?: Prisma.SortOrder
   name?: Prisma.SortOrder
   unitType?: Prisma.SortOrderInput | Prisma.SortOrder
   wideArea?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -313,6 +328,7 @@ export type UnitScalarWhereWithAggregatesInput = {
   OR?: Prisma.UnitScalarWhereWithAggregatesInput[]
   NOT?: Prisma.UnitScalarWhereWithAggregatesInput | Prisma.UnitScalarWhereWithAggregatesInput[]
   id?: Prisma.IntWithAggregatesFilter<"Unit"> | number
+  lectureYear?: Prisma.IntWithAggregatesFilter<"Unit"> | number
   name?: Prisma.StringWithAggregatesFilter<"Unit"> | string
   unitType?: Prisma.EnumMilitaryTypeNullableWithAggregatesFilter<"Unit"> | $Enums.MilitaryType | null
   wideArea?: Prisma.StringNullableWithAggregatesFilter<"Unit"> | string | null
@@ -324,6 +340,7 @@ export type UnitScalarWhereWithAggregatesInput = {
 }
 
 export type UnitCreateInput = {
+  lectureYear: number
   name: string
   unitType?: $Enums.MilitaryType | null
   wideArea?: string | null
@@ -338,6 +355,7 @@ export type UnitCreateInput = {
 
 export type UnitUncheckedCreateInput = {
   id?: number
+  lectureYear: number
   name: string
   unitType?: $Enums.MilitaryType | null
   wideArea?: string | null
@@ -351,6 +369,7 @@ export type UnitUncheckedCreateInput = {
 }
 
 export type UnitUpdateInput = {
+  lectureYear?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
   unitType?: Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput | $Enums.MilitaryType | null
   wideArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -365,6 +384,7 @@ export type UnitUpdateInput = {
 
 export type UnitUncheckedUpdateInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  lectureYear?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
   unitType?: Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput | $Enums.MilitaryType | null
   wideArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -379,6 +399,7 @@ export type UnitUncheckedUpdateInput = {
 
 export type UnitCreateManyInput = {
   id?: number
+  lectureYear: number
   name: string
   unitType?: $Enums.MilitaryType | null
   wideArea?: string | null
@@ -390,6 +411,7 @@ export type UnitCreateManyInput = {
 }
 
 export type UnitUpdateManyMutationInput = {
+  lectureYear?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
   unitType?: Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput | $Enums.MilitaryType | null
   wideArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -402,6 +424,7 @@ export type UnitUpdateManyMutationInput = {
 
 export type UnitUncheckedUpdateManyInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  lectureYear?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
   unitType?: Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput | $Enums.MilitaryType | null
   wideArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -419,6 +442,7 @@ export type UnitScalarRelationFilter = {
 
 export type UnitCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  lectureYear?: Prisma.SortOrder
   name?: Prisma.SortOrder
   unitType?: Prisma.SortOrder
   wideArea?: Prisma.SortOrder
@@ -431,12 +455,14 @@ export type UnitCountOrderByAggregateInput = {
 
 export type UnitAvgOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  lectureYear?: Prisma.SortOrder
   lat?: Prisma.SortOrder
   lng?: Prisma.SortOrder
 }
 
 export type UnitMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  lectureYear?: Prisma.SortOrder
   name?: Prisma.SortOrder
   unitType?: Prisma.SortOrder
   wideArea?: Prisma.SortOrder
@@ -449,6 +475,7 @@ export type UnitMaxOrderByAggregateInput = {
 
 export type UnitMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  lectureYear?: Prisma.SortOrder
   name?: Prisma.SortOrder
   unitType?: Prisma.SortOrder
   wideArea?: Prisma.SortOrder
@@ -461,6 +488,7 @@ export type UnitMinOrderByAggregateInput = {
 
 export type UnitSumOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  lectureYear?: Prisma.SortOrder
   lat?: Prisma.SortOrder
   lng?: Prisma.SortOrder
 }
@@ -506,6 +534,7 @@ export type UnitUpdateOneRequiredWithoutTrainingPeriodsNestedInput = {
 }
 
 export type UnitCreateWithoutDistancesInput = {
+  lectureYear: number
   name: string
   unitType?: $Enums.MilitaryType | null
   wideArea?: string | null
@@ -519,6 +548,7 @@ export type UnitCreateWithoutDistancesInput = {
 
 export type UnitUncheckedCreateWithoutDistancesInput = {
   id?: number
+  lectureYear: number
   name: string
   unitType?: $Enums.MilitaryType | null
   wideArea?: string | null
@@ -547,6 +577,7 @@ export type UnitUpdateToOneWithWhereWithoutDistancesInput = {
 }
 
 export type UnitUpdateWithoutDistancesInput = {
+  lectureYear?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
   unitType?: Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput | $Enums.MilitaryType | null
   wideArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -560,6 +591,7 @@ export type UnitUpdateWithoutDistancesInput = {
 
 export type UnitUncheckedUpdateWithoutDistancesInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  lectureYear?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
   unitType?: Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput | $Enums.MilitaryType | null
   wideArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -572,6 +604,7 @@ export type UnitUncheckedUpdateWithoutDistancesInput = {
 }
 
 export type UnitCreateWithoutTrainingPeriodsInput = {
+  lectureYear: number
   name: string
   unitType?: $Enums.MilitaryType | null
   wideArea?: string | null
@@ -585,6 +618,7 @@ export type UnitCreateWithoutTrainingPeriodsInput = {
 
 export type UnitUncheckedCreateWithoutTrainingPeriodsInput = {
   id?: number
+  lectureYear: number
   name: string
   unitType?: $Enums.MilitaryType | null
   wideArea?: string | null
@@ -613,6 +647,7 @@ export type UnitUpdateToOneWithWhereWithoutTrainingPeriodsInput = {
 }
 
 export type UnitUpdateWithoutTrainingPeriodsInput = {
+  lectureYear?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
   unitType?: Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput | $Enums.MilitaryType | null
   wideArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -626,6 +661,7 @@ export type UnitUpdateWithoutTrainingPeriodsInput = {
 
 export type UnitUncheckedUpdateWithoutTrainingPeriodsInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  lectureYear?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
   unitType?: Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput | $Enums.MilitaryType | null
   wideArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -679,6 +715,7 @@ export type UnitCountOutputTypeCountDistancesArgs<ExtArgs extends runtime.Types.
 
 export type UnitSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  lectureYear?: boolean
   name?: boolean
   unitType?: boolean
   wideArea?: boolean
@@ -694,6 +731,7 @@ export type UnitSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
 
 export type UnitSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  lectureYear?: boolean
   name?: boolean
   unitType?: boolean
   wideArea?: boolean
@@ -706,6 +744,7 @@ export type UnitSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
 
 export type UnitSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  lectureYear?: boolean
   name?: boolean
   unitType?: boolean
   wideArea?: boolean
@@ -718,6 +757,7 @@ export type UnitSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
 
 export type UnitSelectScalar = {
   id?: boolean
+  lectureYear?: boolean
   name?: boolean
   unitType?: boolean
   wideArea?: boolean
@@ -728,7 +768,7 @@ export type UnitSelectScalar = {
   lng?: boolean
 }
 
-export type UnitOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "unitType" | "wideArea" | "region" | "addressDetail" | "detailAddress" | "lat" | "lng", ExtArgs["result"]["unit"]>
+export type UnitOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "lectureYear" | "name" | "unitType" | "wideArea" | "region" | "addressDetail" | "detailAddress" | "lat" | "lng", ExtArgs["result"]["unit"]>
 export type UnitInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   trainingPeriods?: boolean | Prisma.Unit$trainingPeriodsArgs<ExtArgs>
   distances?: boolean | Prisma.Unit$distancesArgs<ExtArgs>
@@ -745,6 +785,7 @@ export type $UnitPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
+    lectureYear: number
     name: string
     unitType: $Enums.MilitaryType | null
     wideArea: string | null
@@ -1179,6 +1220,7 @@ export interface Prisma__UnitClient<T, Null = never, ExtArgs extends runtime.Typ
  */
 export interface UnitFieldRefs {
   readonly id: Prisma.FieldRef<"Unit", 'Int'>
+  readonly lectureYear: Prisma.FieldRef<"Unit", 'Int'>
   readonly name: Prisma.FieldRef<"Unit", 'String'>
   readonly unitType: Prisma.FieldRef<"Unit", 'MilitaryType'>
   readonly wideArea: Prisma.FieldRef<"Unit", 'String'>

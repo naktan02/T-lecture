@@ -2644,6 +2644,7 @@ export type InstructorPenaltyScalarFieldEnum = (typeof InstructorPenaltyScalarFi
 
 export const UnitScalarFieldEnum = {
   id: 'id',
+  lectureYear: 'lectureYear',
   name: 'name',
   unitType: 'unitType',
   wideArea: 'wideArea',

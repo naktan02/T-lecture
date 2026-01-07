@@ -313,6 +313,7 @@ export async function runSeedUnits() {
       // 부대 생성 (기본 정보만)
       const unit = await prisma.unit.create({
         data: {
+          lectureYear: year, // 교육년도
           name: unitName,
           unitType: militaryType,
           wideArea: regionData.wideArea,
