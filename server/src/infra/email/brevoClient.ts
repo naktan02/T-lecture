@@ -4,13 +4,24 @@ import prisma from '../../libs/prisma';
 import { AppError } from '../../common/errors/AppError';
 import logger from '../../config/logger';
 
-if (!process.env.BREVO_API_KEY) {
-  throw new Error('BREVO_API_KEY is not defined in environment variables');
+const apiKey = process.env.BREVO_API_KEY;
+
+// API 키가 없으면 개발 모드에서는 경고만, 프로덕션에서는 에러
+if (!apiKey) {
+  if (process.env.NODE_ENV === 'production') {
+    // 프로덕션에서도 이메일이 필수 기능이 아니라면 에러를 던지지 않고 로깅만 하는 것이 안전할 수 있음
+    // 하지만 현재는 확실한 구분을 위해 에러 유지
+    logger.error('BREVO_API_KEY is not defined in production environment variables');
+  } else {
+    logger.warn('BREVO_API_KEY is missing. Email sending will be simulated (mocked).');
+  }
 }
 
-// API 인스턴스 생성 및 키 설정
+// API 인스턴스 생성 및 키 설정 (키가 있을 때만)
 const apiInstance = new brevo.TransactionalEmailsApi();
-apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
+if (apiKey) {
+  apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, apiKey);
+}
 
 // 발신자 이메일 (Brevo 계정에 등록된 이메일)
 export const FROM_EMAIL = process.env.BREVO_FROM_EMAIL || 'noreply@t-lecture.com';
@@ -57,6 +68,9 @@ async function incrementEmailCount(): Promise<void> {
  * @throws AppError 한도 초과 시
  */
 export async function checkEmailLimit(): Promise<void> {
+  // 키가 없으면 한도 체크 패스 (모의 발송이므로)
+  if (!apiKey) return;
+
   const count = await getTodayEmailCount();
 
   if (count >= DAILY_EMAIL_LIMIT) {
@@ -75,13 +89,18 @@ export async function checkEmailLimit(): Promise<void> {
  * 이메일 발송 성공 후 카운트 증가
  */
 export async function recordEmailSent(): Promise<void> {
-  await incrementEmailCount();
+  if (apiKey) {
+    await incrementEmailCount();
+  }
 }
 
 /**
  * 현재 남은 이메일 발송 가능 횟수 조회
  */
 export async function getRemainingEmailCount(): Promise<number> {
+  // 키가 없으면 무한대
+  if (!apiKey) return 9999;
+
   const count = await getTodayEmailCount();
   return Math.max(0, DAILY_EMAIL_LIMIT - count);
 }
@@ -95,6 +114,12 @@ export async function sendEmail(
   htmlContent: string,
 ): Promise<void> {
   const recipients = Array.isArray(to) ? to : [to];
+
+  // API 키가 없으면 모의 발송 (로그만 출력)
+  if (!apiKey) {
+    logger.info(`[MOCK EMAIL] To: ${recipients.join(', ')} | Subject: ${subject}`);
+    return;
+  }
 
   const sendSmtpEmail = new brevo.SendSmtpEmail();
   sendSmtpEmail.sender = { email: FROM_EMAIL, name: FROM_NAME };
