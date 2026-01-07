@@ -40,69 +40,38 @@ export type UnitSumAggregateOutputType = {
 
 export type UnitMinAggregateOutputType = {
   id: number | null
-  unitType: $Enums.MilitaryType | null
   name: string | null
+  unitType: $Enums.MilitaryType | null
   wideArea: string | null
   region: string | null
   addressDetail: string | null
   detailAddress: string | null
   lat: number | null
   lng: number | null
-  educationStart: Date | null
-  educationEnd: Date | null
-  workStartTime: Date | null
-  workEndTime: Date | null
-  lunchStartTime: Date | null
-  lunchEndTime: Date | null
-  officerName: string | null
-  officerPhone: string | null
-  officerEmail: string | null
-  isStaffLocked: boolean | null
 }
 
 export type UnitMaxAggregateOutputType = {
   id: number | null
-  unitType: $Enums.MilitaryType | null
   name: string | null
+  unitType: $Enums.MilitaryType | null
   wideArea: string | null
   region: string | null
   addressDetail: string | null
   detailAddress: string | null
   lat: number | null
   lng: number | null
-  educationStart: Date | null
-  educationEnd: Date | null
-  workStartTime: Date | null
-  workEndTime: Date | null
-  lunchStartTime: Date | null
-  lunchEndTime: Date | null
-  officerName: string | null
-  officerPhone: string | null
-  officerEmail: string | null
-  isStaffLocked: boolean | null
 }
 
 export type UnitCountAggregateOutputType = {
   id: number
-  unitType: number
   name: number
+  unitType: number
   wideArea: number
   region: number
   addressDetail: number
   detailAddress: number
   lat: number
   lng: number
-  educationStart: number
-  educationEnd: number
-  workStartTime: number
-  workEndTime: number
-  lunchStartTime: number
-  lunchEndTime: number
-  officerName: number
-  officerPhone: number
-  officerEmail: number
-  isStaffLocked: number
-  excludedDates: number
   _all: number
 }
 
@@ -121,69 +90,38 @@ export type UnitSumAggregateInputType = {
 
 export type UnitMinAggregateInputType = {
   id?: true
-  unitType?: true
   name?: true
+  unitType?: true
   wideArea?: true
   region?: true
   addressDetail?: true
   detailAddress?: true
   lat?: true
   lng?: true
-  educationStart?: true
-  educationEnd?: true
-  workStartTime?: true
-  workEndTime?: true
-  lunchStartTime?: true
-  lunchEndTime?: true
-  officerName?: true
-  officerPhone?: true
-  officerEmail?: true
-  isStaffLocked?: true
 }
 
 export type UnitMaxAggregateInputType = {
   id?: true
-  unitType?: true
   name?: true
+  unitType?: true
   wideArea?: true
   region?: true
   addressDetail?: true
   detailAddress?: true
   lat?: true
   lng?: true
-  educationStart?: true
-  educationEnd?: true
-  workStartTime?: true
-  workEndTime?: true
-  lunchStartTime?: true
-  lunchEndTime?: true
-  officerName?: true
-  officerPhone?: true
-  officerEmail?: true
-  isStaffLocked?: true
 }
 
 export type UnitCountAggregateInputType = {
   id?: true
-  unitType?: true
   name?: true
+  unitType?: true
   wideArea?: true
   region?: true
   addressDetail?: true
   detailAddress?: true
   lat?: true
   lng?: true
-  educationStart?: true
-  educationEnd?: true
-  workStartTime?: true
-  workEndTime?: true
-  lunchStartTime?: true
-  lunchEndTime?: true
-  officerName?: true
-  officerPhone?: true
-  officerEmail?: true
-  isStaffLocked?: true
-  excludedDates?: true
   _all?: true
 }
 
@@ -275,25 +213,14 @@ export type UnitGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
 
 export type UnitGroupByOutputType = {
   id: number
+  name: string
   unitType: $Enums.MilitaryType | null
-  name: string | null
   wideArea: string | null
   region: string | null
   addressDetail: string | null
   detailAddress: string | null
   lat: number | null
   lng: number | null
-  educationStart: Date | null
-  educationEnd: Date | null
-  workStartTime: Date | null
-  workEndTime: Date | null
-  lunchStartTime: Date | null
-  lunchEndTime: Date | null
-  officerName: string | null
-  officerPhone: string | null
-  officerEmail: string | null
-  isStaffLocked: boolean
-  excludedDates: string[]
   _count: UnitCountAggregateOutputType | null
   _avg: UnitAvgAggregateOutputType | null
   _sum: UnitSumAggregateOutputType | null
@@ -321,106 +248,59 @@ export type UnitWhereInput = {
   OR?: Prisma.UnitWhereInput[]
   NOT?: Prisma.UnitWhereInput | Prisma.UnitWhereInput[]
   id?: Prisma.IntFilter<"Unit"> | number
+  name?: Prisma.StringFilter<"Unit"> | string
   unitType?: Prisma.EnumMilitaryTypeNullableFilter<"Unit"> | $Enums.MilitaryType | null
-  name?: Prisma.StringNullableFilter<"Unit"> | string | null
   wideArea?: Prisma.StringNullableFilter<"Unit"> | string | null
   region?: Prisma.StringNullableFilter<"Unit"> | string | null
   addressDetail?: Prisma.StringNullableFilter<"Unit"> | string | null
   detailAddress?: Prisma.StringNullableFilter<"Unit"> | string | null
   lat?: Prisma.FloatNullableFilter<"Unit"> | number | null
   lng?: Prisma.FloatNullableFilter<"Unit"> | number | null
-  educationStart?: Prisma.DateTimeNullableFilter<"Unit"> | Date | string | null
-  educationEnd?: Prisma.DateTimeNullableFilter<"Unit"> | Date | string | null
-  workStartTime?: Prisma.DateTimeNullableFilter<"Unit"> | Date | string | null
-  workEndTime?: Prisma.DateTimeNullableFilter<"Unit"> | Date | string | null
-  lunchStartTime?: Prisma.DateTimeNullableFilter<"Unit"> | Date | string | null
-  lunchEndTime?: Prisma.DateTimeNullableFilter<"Unit"> | Date | string | null
-  officerName?: Prisma.StringNullableFilter<"Unit"> | string | null
-  officerPhone?: Prisma.StringNullableFilter<"Unit"> | string | null
-  officerEmail?: Prisma.StringNullableFilter<"Unit"> | string | null
-  isStaffLocked?: Prisma.BoolFilter<"Unit"> | boolean
-  excludedDates?: Prisma.StringNullableListFilter<"Unit">
-  trainingLocations?: Prisma.TrainingLocationListRelationFilter
-  schedules?: Prisma.UnitScheduleListRelationFilter
+  trainingPeriods?: Prisma.TrainingPeriodListRelationFilter
   distances?: Prisma.InstructorUnitDistanceListRelationFilter
 }
 
 export type UnitOrderByWithRelationInput = {
   id?: Prisma.SortOrder
+  name?: Prisma.SortOrder
   unitType?: Prisma.SortOrderInput | Prisma.SortOrder
-  name?: Prisma.SortOrderInput | Prisma.SortOrder
   wideArea?: Prisma.SortOrderInput | Prisma.SortOrder
   region?: Prisma.SortOrderInput | Prisma.SortOrder
   addressDetail?: Prisma.SortOrderInput | Prisma.SortOrder
   detailAddress?: Prisma.SortOrderInput | Prisma.SortOrder
   lat?: Prisma.SortOrderInput | Prisma.SortOrder
   lng?: Prisma.SortOrderInput | Prisma.SortOrder
-  educationStart?: Prisma.SortOrderInput | Prisma.SortOrder
-  educationEnd?: Prisma.SortOrderInput | Prisma.SortOrder
-  workStartTime?: Prisma.SortOrderInput | Prisma.SortOrder
-  workEndTime?: Prisma.SortOrderInput | Prisma.SortOrder
-  lunchStartTime?: Prisma.SortOrderInput | Prisma.SortOrder
-  lunchEndTime?: Prisma.SortOrderInput | Prisma.SortOrder
-  officerName?: Prisma.SortOrderInput | Prisma.SortOrder
-  officerPhone?: Prisma.SortOrderInput | Prisma.SortOrder
-  officerEmail?: Prisma.SortOrderInput | Prisma.SortOrder
-  isStaffLocked?: Prisma.SortOrder
-  excludedDates?: Prisma.SortOrder
-  trainingLocations?: Prisma.TrainingLocationOrderByRelationAggregateInput
-  schedules?: Prisma.UnitScheduleOrderByRelationAggregateInput
+  trainingPeriods?: Prisma.TrainingPeriodOrderByRelationAggregateInput
   distances?: Prisma.InstructorUnitDistanceOrderByRelationAggregateInput
 }
 
 export type UnitWhereUniqueInput = Prisma.AtLeast<{
   id?: number
+  name?: string
   AND?: Prisma.UnitWhereInput | Prisma.UnitWhereInput[]
   OR?: Prisma.UnitWhereInput[]
   NOT?: Prisma.UnitWhereInput | Prisma.UnitWhereInput[]
   unitType?: Prisma.EnumMilitaryTypeNullableFilter<"Unit"> | $Enums.MilitaryType | null
-  name?: Prisma.StringNullableFilter<"Unit"> | string | null
   wideArea?: Prisma.StringNullableFilter<"Unit"> | string | null
   region?: Prisma.StringNullableFilter<"Unit"> | string | null
   addressDetail?: Prisma.StringNullableFilter<"Unit"> | string | null
   detailAddress?: Prisma.StringNullableFilter<"Unit"> | string | null
   lat?: Prisma.FloatNullableFilter<"Unit"> | number | null
   lng?: Prisma.FloatNullableFilter<"Unit"> | number | null
-  educationStart?: Prisma.DateTimeNullableFilter<"Unit"> | Date | string | null
-  educationEnd?: Prisma.DateTimeNullableFilter<"Unit"> | Date | string | null
-  workStartTime?: Prisma.DateTimeNullableFilter<"Unit"> | Date | string | null
-  workEndTime?: Prisma.DateTimeNullableFilter<"Unit"> | Date | string | null
-  lunchStartTime?: Prisma.DateTimeNullableFilter<"Unit"> | Date | string | null
-  lunchEndTime?: Prisma.DateTimeNullableFilter<"Unit"> | Date | string | null
-  officerName?: Prisma.StringNullableFilter<"Unit"> | string | null
-  officerPhone?: Prisma.StringNullableFilter<"Unit"> | string | null
-  officerEmail?: Prisma.StringNullableFilter<"Unit"> | string | null
-  isStaffLocked?: Prisma.BoolFilter<"Unit"> | boolean
-  excludedDates?: Prisma.StringNullableListFilter<"Unit">
-  trainingLocations?: Prisma.TrainingLocationListRelationFilter
-  schedules?: Prisma.UnitScheduleListRelationFilter
+  trainingPeriods?: Prisma.TrainingPeriodListRelationFilter
   distances?: Prisma.InstructorUnitDistanceListRelationFilter
-}, "id">
+}, "id" | "name">
 
 export type UnitOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
+  name?: Prisma.SortOrder
   unitType?: Prisma.SortOrderInput | Prisma.SortOrder
-  name?: Prisma.SortOrderInput | Prisma.SortOrder
   wideArea?: Prisma.SortOrderInput | Prisma.SortOrder
   region?: Prisma.SortOrderInput | Prisma.SortOrder
   addressDetail?: Prisma.SortOrderInput | Prisma.SortOrder
   detailAddress?: Prisma.SortOrderInput | Prisma.SortOrder
   lat?: Prisma.SortOrderInput | Prisma.SortOrder
   lng?: Prisma.SortOrderInput | Prisma.SortOrder
-  educationStart?: Prisma.SortOrderInput | Prisma.SortOrder
-  educationEnd?: Prisma.SortOrderInput | Prisma.SortOrder
-  workStartTime?: Prisma.SortOrderInput | Prisma.SortOrder
-  workEndTime?: Prisma.SortOrderInput | Prisma.SortOrder
-  lunchStartTime?: Prisma.SortOrderInput | Prisma.SortOrder
-  lunchEndTime?: Prisma.SortOrderInput | Prisma.SortOrder
-  officerName?: Prisma.SortOrderInput | Prisma.SortOrder
-  officerPhone?: Prisma.SortOrderInput | Prisma.SortOrder
-  officerEmail?: Prisma.SortOrderInput | Prisma.SortOrder
-  isStaffLocked?: Prisma.SortOrder
-  excludedDates?: Prisma.SortOrder
   _count?: Prisma.UnitCountOrderByAggregateInput
   _avg?: Prisma.UnitAvgOrderByAggregateInput
   _max?: Prisma.UnitMaxOrderByAggregateInput
@@ -433,195 +313,103 @@ export type UnitScalarWhereWithAggregatesInput = {
   OR?: Prisma.UnitScalarWhereWithAggregatesInput[]
   NOT?: Prisma.UnitScalarWhereWithAggregatesInput | Prisma.UnitScalarWhereWithAggregatesInput[]
   id?: Prisma.IntWithAggregatesFilter<"Unit"> | number
+  name?: Prisma.StringWithAggregatesFilter<"Unit"> | string
   unitType?: Prisma.EnumMilitaryTypeNullableWithAggregatesFilter<"Unit"> | $Enums.MilitaryType | null
-  name?: Prisma.StringNullableWithAggregatesFilter<"Unit"> | string | null
   wideArea?: Prisma.StringNullableWithAggregatesFilter<"Unit"> | string | null
   region?: Prisma.StringNullableWithAggregatesFilter<"Unit"> | string | null
   addressDetail?: Prisma.StringNullableWithAggregatesFilter<"Unit"> | string | null
   detailAddress?: Prisma.StringNullableWithAggregatesFilter<"Unit"> | string | null
   lat?: Prisma.FloatNullableWithAggregatesFilter<"Unit"> | number | null
   lng?: Prisma.FloatNullableWithAggregatesFilter<"Unit"> | number | null
-  educationStart?: Prisma.DateTimeNullableWithAggregatesFilter<"Unit"> | Date | string | null
-  educationEnd?: Prisma.DateTimeNullableWithAggregatesFilter<"Unit"> | Date | string | null
-  workStartTime?: Prisma.DateTimeNullableWithAggregatesFilter<"Unit"> | Date | string | null
-  workEndTime?: Prisma.DateTimeNullableWithAggregatesFilter<"Unit"> | Date | string | null
-  lunchStartTime?: Prisma.DateTimeNullableWithAggregatesFilter<"Unit"> | Date | string | null
-  lunchEndTime?: Prisma.DateTimeNullableWithAggregatesFilter<"Unit"> | Date | string | null
-  officerName?: Prisma.StringNullableWithAggregatesFilter<"Unit"> | string | null
-  officerPhone?: Prisma.StringNullableWithAggregatesFilter<"Unit"> | string | null
-  officerEmail?: Prisma.StringNullableWithAggregatesFilter<"Unit"> | string | null
-  isStaffLocked?: Prisma.BoolWithAggregatesFilter<"Unit"> | boolean
-  excludedDates?: Prisma.StringNullableListFilter<"Unit">
 }
 
 export type UnitCreateInput = {
+  name: string
   unitType?: $Enums.MilitaryType | null
-  name?: string | null
   wideArea?: string | null
   region?: string | null
   addressDetail?: string | null
   detailAddress?: string | null
   lat?: number | null
   lng?: number | null
-  educationStart?: Date | string | null
-  educationEnd?: Date | string | null
-  workStartTime?: Date | string | null
-  workEndTime?: Date | string | null
-  lunchStartTime?: Date | string | null
-  lunchEndTime?: Date | string | null
-  officerName?: string | null
-  officerPhone?: string | null
-  officerEmail?: string | null
-  isStaffLocked?: boolean
-  excludedDates?: Prisma.UnitCreateexcludedDatesInput | string[]
-  trainingLocations?: Prisma.TrainingLocationCreateNestedManyWithoutUnitInput
-  schedules?: Prisma.UnitScheduleCreateNestedManyWithoutUnitInput
+  trainingPeriods?: Prisma.TrainingPeriodCreateNestedManyWithoutUnitInput
   distances?: Prisma.InstructorUnitDistanceCreateNestedManyWithoutUnitInput
 }
 
 export type UnitUncheckedCreateInput = {
   id?: number
+  name: string
   unitType?: $Enums.MilitaryType | null
-  name?: string | null
   wideArea?: string | null
   region?: string | null
   addressDetail?: string | null
   detailAddress?: string | null
   lat?: number | null
   lng?: number | null
-  educationStart?: Date | string | null
-  educationEnd?: Date | string | null
-  workStartTime?: Date | string | null
-  workEndTime?: Date | string | null
-  lunchStartTime?: Date | string | null
-  lunchEndTime?: Date | string | null
-  officerName?: string | null
-  officerPhone?: string | null
-  officerEmail?: string | null
-  isStaffLocked?: boolean
-  excludedDates?: Prisma.UnitCreateexcludedDatesInput | string[]
-  trainingLocations?: Prisma.TrainingLocationUncheckedCreateNestedManyWithoutUnitInput
-  schedules?: Prisma.UnitScheduleUncheckedCreateNestedManyWithoutUnitInput
+  trainingPeriods?: Prisma.TrainingPeriodUncheckedCreateNestedManyWithoutUnitInput
   distances?: Prisma.InstructorUnitDistanceUncheckedCreateNestedManyWithoutUnitInput
 }
 
 export type UnitUpdateInput = {
+  name?: Prisma.StringFieldUpdateOperationsInput | string
   unitType?: Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput | $Enums.MilitaryType | null
-  name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   wideArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   addressDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   detailAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   lng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  educationStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  educationEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  officerName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isStaffLocked?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  excludedDates?: Prisma.UnitUpdateexcludedDatesInput | string[]
-  trainingLocations?: Prisma.TrainingLocationUpdateManyWithoutUnitNestedInput
-  schedules?: Prisma.UnitScheduleUpdateManyWithoutUnitNestedInput
+  trainingPeriods?: Prisma.TrainingPeriodUpdateManyWithoutUnitNestedInput
   distances?: Prisma.InstructorUnitDistanceUpdateManyWithoutUnitNestedInput
 }
 
 export type UnitUncheckedUpdateInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  name?: Prisma.StringFieldUpdateOperationsInput | string
   unitType?: Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput | $Enums.MilitaryType | null
-  name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   wideArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   addressDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   detailAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   lng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  educationStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  educationEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  officerName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isStaffLocked?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  excludedDates?: Prisma.UnitUpdateexcludedDatesInput | string[]
-  trainingLocations?: Prisma.TrainingLocationUncheckedUpdateManyWithoutUnitNestedInput
-  schedules?: Prisma.UnitScheduleUncheckedUpdateManyWithoutUnitNestedInput
+  trainingPeriods?: Prisma.TrainingPeriodUncheckedUpdateManyWithoutUnitNestedInput
   distances?: Prisma.InstructorUnitDistanceUncheckedUpdateManyWithoutUnitNestedInput
 }
 
 export type UnitCreateManyInput = {
   id?: number
+  name: string
   unitType?: $Enums.MilitaryType | null
-  name?: string | null
   wideArea?: string | null
   region?: string | null
   addressDetail?: string | null
   detailAddress?: string | null
   lat?: number | null
   lng?: number | null
-  educationStart?: Date | string | null
-  educationEnd?: Date | string | null
-  workStartTime?: Date | string | null
-  workEndTime?: Date | string | null
-  lunchStartTime?: Date | string | null
-  lunchEndTime?: Date | string | null
-  officerName?: string | null
-  officerPhone?: string | null
-  officerEmail?: string | null
-  isStaffLocked?: boolean
-  excludedDates?: Prisma.UnitCreateexcludedDatesInput | string[]
 }
 
 export type UnitUpdateManyMutationInput = {
+  name?: Prisma.StringFieldUpdateOperationsInput | string
   unitType?: Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput | $Enums.MilitaryType | null
-  name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   wideArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   addressDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   detailAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   lng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  educationStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  educationEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  officerName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isStaffLocked?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  excludedDates?: Prisma.UnitUpdateexcludedDatesInput | string[]
 }
 
 export type UnitUncheckedUpdateManyInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  name?: Prisma.StringFieldUpdateOperationsInput | string
   unitType?: Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput | $Enums.MilitaryType | null
-  name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   wideArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   addressDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   detailAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   lng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  educationStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  educationEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  officerName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isStaffLocked?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  excludedDates?: Prisma.UnitUpdateexcludedDatesInput | string[]
 }
 
 export type UnitScalarRelationFilter = {
@@ -629,35 +417,16 @@ export type UnitScalarRelationFilter = {
   isNot?: Prisma.UnitWhereInput
 }
 
-export type StringNullableListFilter<$PrismaModel = never> = {
-  equals?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel> | null
-  has?: string | Prisma.StringFieldRefInput<$PrismaModel> | null
-  hasEvery?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
-  hasSome?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
-  isEmpty?: boolean
-}
-
 export type UnitCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  unitType?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  unitType?: Prisma.SortOrder
   wideArea?: Prisma.SortOrder
   region?: Prisma.SortOrder
   addressDetail?: Prisma.SortOrder
   detailAddress?: Prisma.SortOrder
   lat?: Prisma.SortOrder
   lng?: Prisma.SortOrder
-  educationStart?: Prisma.SortOrder
-  educationEnd?: Prisma.SortOrder
-  workStartTime?: Prisma.SortOrder
-  workEndTime?: Prisma.SortOrder
-  lunchStartTime?: Prisma.SortOrder
-  lunchEndTime?: Prisma.SortOrder
-  officerName?: Prisma.SortOrder
-  officerPhone?: Prisma.SortOrder
-  officerEmail?: Prisma.SortOrder
-  isStaffLocked?: Prisma.SortOrder
-  excludedDates?: Prisma.SortOrder
 }
 
 export type UnitAvgOrderByAggregateInput = {
@@ -668,46 +437,26 @@ export type UnitAvgOrderByAggregateInput = {
 
 export type UnitMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  unitType?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  unitType?: Prisma.SortOrder
   wideArea?: Prisma.SortOrder
   region?: Prisma.SortOrder
   addressDetail?: Prisma.SortOrder
   detailAddress?: Prisma.SortOrder
   lat?: Prisma.SortOrder
   lng?: Prisma.SortOrder
-  educationStart?: Prisma.SortOrder
-  educationEnd?: Prisma.SortOrder
-  workStartTime?: Prisma.SortOrder
-  workEndTime?: Prisma.SortOrder
-  lunchStartTime?: Prisma.SortOrder
-  lunchEndTime?: Prisma.SortOrder
-  officerName?: Prisma.SortOrder
-  officerPhone?: Prisma.SortOrder
-  officerEmail?: Prisma.SortOrder
-  isStaffLocked?: Prisma.SortOrder
 }
 
 export type UnitMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  unitType?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  unitType?: Prisma.SortOrder
   wideArea?: Prisma.SortOrder
   region?: Prisma.SortOrder
   addressDetail?: Prisma.SortOrder
   detailAddress?: Prisma.SortOrder
   lat?: Prisma.SortOrder
   lng?: Prisma.SortOrder
-  educationStart?: Prisma.SortOrder
-  educationEnd?: Prisma.SortOrder
-  workStartTime?: Prisma.SortOrder
-  workEndTime?: Prisma.SortOrder
-  lunchStartTime?: Prisma.SortOrder
-  lunchEndTime?: Prisma.SortOrder
-  officerName?: Prisma.SortOrder
-  officerPhone?: Prisma.SortOrder
-  officerEmail?: Prisma.SortOrder
-  isStaffLocked?: Prisma.SortOrder
 }
 
 export type UnitSumOrderByAggregateInput = {
@@ -730,10 +479,6 @@ export type UnitUpdateOneRequiredWithoutDistancesNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UnitUpdateToOneWithWhereWithoutDistancesInput, Prisma.UnitUpdateWithoutDistancesInput>, Prisma.UnitUncheckedUpdateWithoutDistancesInput>
 }
 
-export type UnitCreateexcludedDatesInput = {
-  set: string[]
-}
-
 export type NullableEnumMilitaryTypeFieldUpdateOperationsInput = {
   set?: $Enums.MilitaryType | null
 }
@@ -746,86 +491,43 @@ export type NullableFloatFieldUpdateOperationsInput = {
   divide?: number
 }
 
-export type UnitUpdateexcludedDatesInput = {
-  set?: string[]
-  push?: string | string[]
-}
-
-export type UnitCreateNestedOneWithoutTrainingLocationsInput = {
-  create?: Prisma.XOR<Prisma.UnitCreateWithoutTrainingLocationsInput, Prisma.UnitUncheckedCreateWithoutTrainingLocationsInput>
-  connectOrCreate?: Prisma.UnitCreateOrConnectWithoutTrainingLocationsInput
+export type UnitCreateNestedOneWithoutTrainingPeriodsInput = {
+  create?: Prisma.XOR<Prisma.UnitCreateWithoutTrainingPeriodsInput, Prisma.UnitUncheckedCreateWithoutTrainingPeriodsInput>
+  connectOrCreate?: Prisma.UnitCreateOrConnectWithoutTrainingPeriodsInput
   connect?: Prisma.UnitWhereUniqueInput
 }
 
-export type UnitUpdateOneRequiredWithoutTrainingLocationsNestedInput = {
-  create?: Prisma.XOR<Prisma.UnitCreateWithoutTrainingLocationsInput, Prisma.UnitUncheckedCreateWithoutTrainingLocationsInput>
-  connectOrCreate?: Prisma.UnitCreateOrConnectWithoutTrainingLocationsInput
-  upsert?: Prisma.UnitUpsertWithoutTrainingLocationsInput
+export type UnitUpdateOneRequiredWithoutTrainingPeriodsNestedInput = {
+  create?: Prisma.XOR<Prisma.UnitCreateWithoutTrainingPeriodsInput, Prisma.UnitUncheckedCreateWithoutTrainingPeriodsInput>
+  connectOrCreate?: Prisma.UnitCreateOrConnectWithoutTrainingPeriodsInput
+  upsert?: Prisma.UnitUpsertWithoutTrainingPeriodsInput
   connect?: Prisma.UnitWhereUniqueInput
-  update?: Prisma.XOR<Prisma.XOR<Prisma.UnitUpdateToOneWithWhereWithoutTrainingLocationsInput, Prisma.UnitUpdateWithoutTrainingLocationsInput>, Prisma.UnitUncheckedUpdateWithoutTrainingLocationsInput>
-}
-
-export type UnitCreateNestedOneWithoutSchedulesInput = {
-  create?: Prisma.XOR<Prisma.UnitCreateWithoutSchedulesInput, Prisma.UnitUncheckedCreateWithoutSchedulesInput>
-  connectOrCreate?: Prisma.UnitCreateOrConnectWithoutSchedulesInput
-  connect?: Prisma.UnitWhereUniqueInput
-}
-
-export type UnitUpdateOneRequiredWithoutSchedulesNestedInput = {
-  create?: Prisma.XOR<Prisma.UnitCreateWithoutSchedulesInput, Prisma.UnitUncheckedCreateWithoutSchedulesInput>
-  connectOrCreate?: Prisma.UnitCreateOrConnectWithoutSchedulesInput
-  upsert?: Prisma.UnitUpsertWithoutSchedulesInput
-  connect?: Prisma.UnitWhereUniqueInput
-  update?: Prisma.XOR<Prisma.XOR<Prisma.UnitUpdateToOneWithWhereWithoutSchedulesInput, Prisma.UnitUpdateWithoutSchedulesInput>, Prisma.UnitUncheckedUpdateWithoutSchedulesInput>
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UnitUpdateToOneWithWhereWithoutTrainingPeriodsInput, Prisma.UnitUpdateWithoutTrainingPeriodsInput>, Prisma.UnitUncheckedUpdateWithoutTrainingPeriodsInput>
 }
 
 export type UnitCreateWithoutDistancesInput = {
+  name: string
   unitType?: $Enums.MilitaryType | null
-  name?: string | null
   wideArea?: string | null
   region?: string | null
   addressDetail?: string | null
   detailAddress?: string | null
   lat?: number | null
   lng?: number | null
-  educationStart?: Date | string | null
-  educationEnd?: Date | string | null
-  workStartTime?: Date | string | null
-  workEndTime?: Date | string | null
-  lunchStartTime?: Date | string | null
-  lunchEndTime?: Date | string | null
-  officerName?: string | null
-  officerPhone?: string | null
-  officerEmail?: string | null
-  isStaffLocked?: boolean
-  excludedDates?: Prisma.UnitCreateexcludedDatesInput | string[]
-  trainingLocations?: Prisma.TrainingLocationCreateNestedManyWithoutUnitInput
-  schedules?: Prisma.UnitScheduleCreateNestedManyWithoutUnitInput
+  trainingPeriods?: Prisma.TrainingPeriodCreateNestedManyWithoutUnitInput
 }
 
 export type UnitUncheckedCreateWithoutDistancesInput = {
   id?: number
+  name: string
   unitType?: $Enums.MilitaryType | null
-  name?: string | null
   wideArea?: string | null
   region?: string | null
   addressDetail?: string | null
   detailAddress?: string | null
   lat?: number | null
   lng?: number | null
-  educationStart?: Date | string | null
-  educationEnd?: Date | string | null
-  workStartTime?: Date | string | null
-  workEndTime?: Date | string | null
-  lunchStartTime?: Date | string | null
-  lunchEndTime?: Date | string | null
-  officerName?: string | null
-  officerPhone?: string | null
-  officerEmail?: string | null
-  isStaffLocked?: boolean
-  excludedDates?: Prisma.UnitCreateexcludedDatesInput | string[]
-  trainingLocations?: Prisma.TrainingLocationUncheckedCreateNestedManyWithoutUnitInput
-  schedules?: Prisma.UnitScheduleUncheckedCreateNestedManyWithoutUnitInput
+  trainingPeriods?: Prisma.TrainingPeriodUncheckedCreateNestedManyWithoutUnitInput
 }
 
 export type UnitCreateOrConnectWithoutDistancesInput = {
@@ -845,279 +547,93 @@ export type UnitUpdateToOneWithWhereWithoutDistancesInput = {
 }
 
 export type UnitUpdateWithoutDistancesInput = {
+  name?: Prisma.StringFieldUpdateOperationsInput | string
   unitType?: Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput | $Enums.MilitaryType | null
-  name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   wideArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   addressDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   detailAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   lng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  educationStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  educationEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  officerName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isStaffLocked?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  excludedDates?: Prisma.UnitUpdateexcludedDatesInput | string[]
-  trainingLocations?: Prisma.TrainingLocationUpdateManyWithoutUnitNestedInput
-  schedules?: Prisma.UnitScheduleUpdateManyWithoutUnitNestedInput
+  trainingPeriods?: Prisma.TrainingPeriodUpdateManyWithoutUnitNestedInput
 }
 
 export type UnitUncheckedUpdateWithoutDistancesInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  name?: Prisma.StringFieldUpdateOperationsInput | string
   unitType?: Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput | $Enums.MilitaryType | null
-  name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   wideArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   addressDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   detailAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   lng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  educationStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  educationEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  officerName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isStaffLocked?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  excludedDates?: Prisma.UnitUpdateexcludedDatesInput | string[]
-  trainingLocations?: Prisma.TrainingLocationUncheckedUpdateManyWithoutUnitNestedInput
-  schedules?: Prisma.UnitScheduleUncheckedUpdateManyWithoutUnitNestedInput
+  trainingPeriods?: Prisma.TrainingPeriodUncheckedUpdateManyWithoutUnitNestedInput
 }
 
-export type UnitCreateWithoutTrainingLocationsInput = {
+export type UnitCreateWithoutTrainingPeriodsInput = {
+  name: string
   unitType?: $Enums.MilitaryType | null
-  name?: string | null
   wideArea?: string | null
   region?: string | null
   addressDetail?: string | null
   detailAddress?: string | null
   lat?: number | null
   lng?: number | null
-  educationStart?: Date | string | null
-  educationEnd?: Date | string | null
-  workStartTime?: Date | string | null
-  workEndTime?: Date | string | null
-  lunchStartTime?: Date | string | null
-  lunchEndTime?: Date | string | null
-  officerName?: string | null
-  officerPhone?: string | null
-  officerEmail?: string | null
-  isStaffLocked?: boolean
-  excludedDates?: Prisma.UnitCreateexcludedDatesInput | string[]
-  schedules?: Prisma.UnitScheduleCreateNestedManyWithoutUnitInput
   distances?: Prisma.InstructorUnitDistanceCreateNestedManyWithoutUnitInput
 }
 
-export type UnitUncheckedCreateWithoutTrainingLocationsInput = {
+export type UnitUncheckedCreateWithoutTrainingPeriodsInput = {
   id?: number
+  name: string
   unitType?: $Enums.MilitaryType | null
-  name?: string | null
   wideArea?: string | null
   region?: string | null
   addressDetail?: string | null
   detailAddress?: string | null
   lat?: number | null
   lng?: number | null
-  educationStart?: Date | string | null
-  educationEnd?: Date | string | null
-  workStartTime?: Date | string | null
-  workEndTime?: Date | string | null
-  lunchStartTime?: Date | string | null
-  lunchEndTime?: Date | string | null
-  officerName?: string | null
-  officerPhone?: string | null
-  officerEmail?: string | null
-  isStaffLocked?: boolean
-  excludedDates?: Prisma.UnitCreateexcludedDatesInput | string[]
-  schedules?: Prisma.UnitScheduleUncheckedCreateNestedManyWithoutUnitInput
   distances?: Prisma.InstructorUnitDistanceUncheckedCreateNestedManyWithoutUnitInput
 }
 
-export type UnitCreateOrConnectWithoutTrainingLocationsInput = {
+export type UnitCreateOrConnectWithoutTrainingPeriodsInput = {
   where: Prisma.UnitWhereUniqueInput
-  create: Prisma.XOR<Prisma.UnitCreateWithoutTrainingLocationsInput, Prisma.UnitUncheckedCreateWithoutTrainingLocationsInput>
+  create: Prisma.XOR<Prisma.UnitCreateWithoutTrainingPeriodsInput, Prisma.UnitUncheckedCreateWithoutTrainingPeriodsInput>
 }
 
-export type UnitUpsertWithoutTrainingLocationsInput = {
-  update: Prisma.XOR<Prisma.UnitUpdateWithoutTrainingLocationsInput, Prisma.UnitUncheckedUpdateWithoutTrainingLocationsInput>
-  create: Prisma.XOR<Prisma.UnitCreateWithoutTrainingLocationsInput, Prisma.UnitUncheckedCreateWithoutTrainingLocationsInput>
+export type UnitUpsertWithoutTrainingPeriodsInput = {
+  update: Prisma.XOR<Prisma.UnitUpdateWithoutTrainingPeriodsInput, Prisma.UnitUncheckedUpdateWithoutTrainingPeriodsInput>
+  create: Prisma.XOR<Prisma.UnitCreateWithoutTrainingPeriodsInput, Prisma.UnitUncheckedCreateWithoutTrainingPeriodsInput>
   where?: Prisma.UnitWhereInput
 }
 
-export type UnitUpdateToOneWithWhereWithoutTrainingLocationsInput = {
+export type UnitUpdateToOneWithWhereWithoutTrainingPeriodsInput = {
   where?: Prisma.UnitWhereInput
-  data: Prisma.XOR<Prisma.UnitUpdateWithoutTrainingLocationsInput, Prisma.UnitUncheckedUpdateWithoutTrainingLocationsInput>
+  data: Prisma.XOR<Prisma.UnitUpdateWithoutTrainingPeriodsInput, Prisma.UnitUncheckedUpdateWithoutTrainingPeriodsInput>
 }
 
-export type UnitUpdateWithoutTrainingLocationsInput = {
+export type UnitUpdateWithoutTrainingPeriodsInput = {
+  name?: Prisma.StringFieldUpdateOperationsInput | string
   unitType?: Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput | $Enums.MilitaryType | null
-  name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   wideArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   addressDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   detailAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   lng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  educationStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  educationEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  officerName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isStaffLocked?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  excludedDates?: Prisma.UnitUpdateexcludedDatesInput | string[]
-  schedules?: Prisma.UnitScheduleUpdateManyWithoutUnitNestedInput
   distances?: Prisma.InstructorUnitDistanceUpdateManyWithoutUnitNestedInput
 }
 
-export type UnitUncheckedUpdateWithoutTrainingLocationsInput = {
+export type UnitUncheckedUpdateWithoutTrainingPeriodsInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  name?: Prisma.StringFieldUpdateOperationsInput | string
   unitType?: Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput | $Enums.MilitaryType | null
-  name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   wideArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   addressDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   detailAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   lng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  educationStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  educationEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  officerName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isStaffLocked?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  excludedDates?: Prisma.UnitUpdateexcludedDatesInput | string[]
-  schedules?: Prisma.UnitScheduleUncheckedUpdateManyWithoutUnitNestedInput
-  distances?: Prisma.InstructorUnitDistanceUncheckedUpdateManyWithoutUnitNestedInput
-}
-
-export type UnitCreateWithoutSchedulesInput = {
-  unitType?: $Enums.MilitaryType | null
-  name?: string | null
-  wideArea?: string | null
-  region?: string | null
-  addressDetail?: string | null
-  detailAddress?: string | null
-  lat?: number | null
-  lng?: number | null
-  educationStart?: Date | string | null
-  educationEnd?: Date | string | null
-  workStartTime?: Date | string | null
-  workEndTime?: Date | string | null
-  lunchStartTime?: Date | string | null
-  lunchEndTime?: Date | string | null
-  officerName?: string | null
-  officerPhone?: string | null
-  officerEmail?: string | null
-  isStaffLocked?: boolean
-  excludedDates?: Prisma.UnitCreateexcludedDatesInput | string[]
-  trainingLocations?: Prisma.TrainingLocationCreateNestedManyWithoutUnitInput
-  distances?: Prisma.InstructorUnitDistanceCreateNestedManyWithoutUnitInput
-}
-
-export type UnitUncheckedCreateWithoutSchedulesInput = {
-  id?: number
-  unitType?: $Enums.MilitaryType | null
-  name?: string | null
-  wideArea?: string | null
-  region?: string | null
-  addressDetail?: string | null
-  detailAddress?: string | null
-  lat?: number | null
-  lng?: number | null
-  educationStart?: Date | string | null
-  educationEnd?: Date | string | null
-  workStartTime?: Date | string | null
-  workEndTime?: Date | string | null
-  lunchStartTime?: Date | string | null
-  lunchEndTime?: Date | string | null
-  officerName?: string | null
-  officerPhone?: string | null
-  officerEmail?: string | null
-  isStaffLocked?: boolean
-  excludedDates?: Prisma.UnitCreateexcludedDatesInput | string[]
-  trainingLocations?: Prisma.TrainingLocationUncheckedCreateNestedManyWithoutUnitInput
-  distances?: Prisma.InstructorUnitDistanceUncheckedCreateNestedManyWithoutUnitInput
-}
-
-export type UnitCreateOrConnectWithoutSchedulesInput = {
-  where: Prisma.UnitWhereUniqueInput
-  create: Prisma.XOR<Prisma.UnitCreateWithoutSchedulesInput, Prisma.UnitUncheckedCreateWithoutSchedulesInput>
-}
-
-export type UnitUpsertWithoutSchedulesInput = {
-  update: Prisma.XOR<Prisma.UnitUpdateWithoutSchedulesInput, Prisma.UnitUncheckedUpdateWithoutSchedulesInput>
-  create: Prisma.XOR<Prisma.UnitCreateWithoutSchedulesInput, Prisma.UnitUncheckedCreateWithoutSchedulesInput>
-  where?: Prisma.UnitWhereInput
-}
-
-export type UnitUpdateToOneWithWhereWithoutSchedulesInput = {
-  where?: Prisma.UnitWhereInput
-  data: Prisma.XOR<Prisma.UnitUpdateWithoutSchedulesInput, Prisma.UnitUncheckedUpdateWithoutSchedulesInput>
-}
-
-export type UnitUpdateWithoutSchedulesInput = {
-  unitType?: Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput | $Enums.MilitaryType | null
-  name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  wideArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  addressDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  detailAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  lng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  educationStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  educationEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  officerName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isStaffLocked?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  excludedDates?: Prisma.UnitUpdateexcludedDatesInput | string[]
-  trainingLocations?: Prisma.TrainingLocationUpdateManyWithoutUnitNestedInput
-  distances?: Prisma.InstructorUnitDistanceUpdateManyWithoutUnitNestedInput
-}
-
-export type UnitUncheckedUpdateWithoutSchedulesInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
-  unitType?: Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput | $Enums.MilitaryType | null
-  name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  wideArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  addressDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  detailAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  lng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
-  educationStart?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  educationEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  lunchEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  officerName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerPhone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  officerEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isStaffLocked?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  excludedDates?: Prisma.UnitUpdateexcludedDatesInput | string[]
-  trainingLocations?: Prisma.TrainingLocationUncheckedUpdateManyWithoutUnitNestedInput
   distances?: Prisma.InstructorUnitDistanceUncheckedUpdateManyWithoutUnitNestedInput
 }
 
@@ -1127,14 +643,12 @@ export type UnitUncheckedUpdateWithoutSchedulesInput = {
  */
 
 export type UnitCountOutputType = {
-  trainingLocations: number
-  schedules: number
+  trainingPeriods: number
   distances: number
 }
 
 export type UnitCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  trainingLocations?: boolean | UnitCountOutputTypeCountTrainingLocationsArgs
-  schedules?: boolean | UnitCountOutputTypeCountSchedulesArgs
+  trainingPeriods?: boolean | UnitCountOutputTypeCountTrainingPeriodsArgs
   distances?: boolean | UnitCountOutputTypeCountDistancesArgs
 }
 
@@ -1151,15 +665,8 @@ export type UnitCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensi
 /**
  * UnitCountOutputType without action
  */
-export type UnitCountOutputTypeCountTrainingLocationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  where?: Prisma.TrainingLocationWhereInput
-}
-
-/**
- * UnitCountOutputType without action
- */
-export type UnitCountOutputTypeCountSchedulesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  where?: Prisma.UnitScheduleWhereInput
+export type UnitCountOutputTypeCountTrainingPeriodsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.TrainingPeriodWhereInput
 }
 
 /**
@@ -1172,104 +679,58 @@ export type UnitCountOutputTypeCountDistancesArgs<ExtArgs extends runtime.Types.
 
 export type UnitSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  unitType?: boolean
   name?: boolean
+  unitType?: boolean
   wideArea?: boolean
   region?: boolean
   addressDetail?: boolean
   detailAddress?: boolean
   lat?: boolean
   lng?: boolean
-  educationStart?: boolean
-  educationEnd?: boolean
-  workStartTime?: boolean
-  workEndTime?: boolean
-  lunchStartTime?: boolean
-  lunchEndTime?: boolean
-  officerName?: boolean
-  officerPhone?: boolean
-  officerEmail?: boolean
-  isStaffLocked?: boolean
-  excludedDates?: boolean
-  trainingLocations?: boolean | Prisma.Unit$trainingLocationsArgs<ExtArgs>
-  schedules?: boolean | Prisma.Unit$schedulesArgs<ExtArgs>
+  trainingPeriods?: boolean | Prisma.Unit$trainingPeriodsArgs<ExtArgs>
   distances?: boolean | Prisma.Unit$distancesArgs<ExtArgs>
   _count?: boolean | Prisma.UnitCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["unit"]>
 
 export type UnitSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  unitType?: boolean
   name?: boolean
+  unitType?: boolean
   wideArea?: boolean
   region?: boolean
   addressDetail?: boolean
   detailAddress?: boolean
   lat?: boolean
   lng?: boolean
-  educationStart?: boolean
-  educationEnd?: boolean
-  workStartTime?: boolean
-  workEndTime?: boolean
-  lunchStartTime?: boolean
-  lunchEndTime?: boolean
-  officerName?: boolean
-  officerPhone?: boolean
-  officerEmail?: boolean
-  isStaffLocked?: boolean
-  excludedDates?: boolean
 }, ExtArgs["result"]["unit"]>
 
 export type UnitSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  unitType?: boolean
   name?: boolean
+  unitType?: boolean
   wideArea?: boolean
   region?: boolean
   addressDetail?: boolean
   detailAddress?: boolean
   lat?: boolean
   lng?: boolean
-  educationStart?: boolean
-  educationEnd?: boolean
-  workStartTime?: boolean
-  workEndTime?: boolean
-  lunchStartTime?: boolean
-  lunchEndTime?: boolean
-  officerName?: boolean
-  officerPhone?: boolean
-  officerEmail?: boolean
-  isStaffLocked?: boolean
-  excludedDates?: boolean
 }, ExtArgs["result"]["unit"]>
 
 export type UnitSelectScalar = {
   id?: boolean
-  unitType?: boolean
   name?: boolean
+  unitType?: boolean
   wideArea?: boolean
   region?: boolean
   addressDetail?: boolean
   detailAddress?: boolean
   lat?: boolean
   lng?: boolean
-  educationStart?: boolean
-  educationEnd?: boolean
-  workStartTime?: boolean
-  workEndTime?: boolean
-  lunchStartTime?: boolean
-  lunchEndTime?: boolean
-  officerName?: boolean
-  officerPhone?: boolean
-  officerEmail?: boolean
-  isStaffLocked?: boolean
-  excludedDates?: boolean
 }
 
-export type UnitOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "unitType" | "name" | "wideArea" | "region" | "addressDetail" | "detailAddress" | "lat" | "lng" | "educationStart" | "educationEnd" | "workStartTime" | "workEndTime" | "lunchStartTime" | "lunchEndTime" | "officerName" | "officerPhone" | "officerEmail" | "isStaffLocked" | "excludedDates", ExtArgs["result"]["unit"]>
+export type UnitOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "unitType" | "wideArea" | "region" | "addressDetail" | "detailAddress" | "lat" | "lng", ExtArgs["result"]["unit"]>
 export type UnitInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  trainingLocations?: boolean | Prisma.Unit$trainingLocationsArgs<ExtArgs>
-  schedules?: boolean | Prisma.Unit$schedulesArgs<ExtArgs>
+  trainingPeriods?: boolean | Prisma.Unit$trainingPeriodsArgs<ExtArgs>
   distances?: boolean | Prisma.Unit$distancesArgs<ExtArgs>
   _count?: boolean | Prisma.UnitCountOutputTypeDefaultArgs<ExtArgs>
 }
@@ -1279,31 +740,19 @@ export type UnitIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
 export type $UnitPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Unit"
   objects: {
-    trainingLocations: Prisma.$TrainingLocationPayload<ExtArgs>[]
-    schedules: Prisma.$UnitSchedulePayload<ExtArgs>[]
+    trainingPeriods: Prisma.$TrainingPeriodPayload<ExtArgs>[]
     distances: Prisma.$InstructorUnitDistancePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
+    name: string
     unitType: $Enums.MilitaryType | null
-    name: string | null
     wideArea: string | null
     region: string | null
     addressDetail: string | null
     detailAddress: string | null
     lat: number | null
     lng: number | null
-    educationStart: Date | null
-    educationEnd: Date | null
-    workStartTime: Date | null
-    workEndTime: Date | null
-    lunchStartTime: Date | null
-    lunchEndTime: Date | null
-    officerName: string | null
-    officerPhone: string | null
-    officerEmail: string | null
-    isStaffLocked: boolean
-    excludedDates: string[]
   }, ExtArgs["result"]["unit"]>
   composites: {}
 }
@@ -1698,8 +1147,7 @@ readonly fields: UnitFieldRefs;
  */
 export interface Prisma__UnitClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
-  trainingLocations<T extends Prisma.Unit$trainingLocationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Unit$trainingLocationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TrainingLocationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-  schedules<T extends Prisma.Unit$schedulesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Unit$schedulesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$UnitSchedulePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  trainingPeriods<T extends Prisma.Unit$trainingPeriodsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Unit$trainingPeriodsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TrainingPeriodPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   distances<T extends Prisma.Unit$distancesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Unit$distancesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$InstructorUnitDistancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -1731,25 +1179,14 @@ export interface Prisma__UnitClient<T, Null = never, ExtArgs extends runtime.Typ
  */
 export interface UnitFieldRefs {
   readonly id: Prisma.FieldRef<"Unit", 'Int'>
-  readonly unitType: Prisma.FieldRef<"Unit", 'MilitaryType'>
   readonly name: Prisma.FieldRef<"Unit", 'String'>
+  readonly unitType: Prisma.FieldRef<"Unit", 'MilitaryType'>
   readonly wideArea: Prisma.FieldRef<"Unit", 'String'>
   readonly region: Prisma.FieldRef<"Unit", 'String'>
   readonly addressDetail: Prisma.FieldRef<"Unit", 'String'>
   readonly detailAddress: Prisma.FieldRef<"Unit", 'String'>
   readonly lat: Prisma.FieldRef<"Unit", 'Float'>
   readonly lng: Prisma.FieldRef<"Unit", 'Float'>
-  readonly educationStart: Prisma.FieldRef<"Unit", 'DateTime'>
-  readonly educationEnd: Prisma.FieldRef<"Unit", 'DateTime'>
-  readonly workStartTime: Prisma.FieldRef<"Unit", 'DateTime'>
-  readonly workEndTime: Prisma.FieldRef<"Unit", 'DateTime'>
-  readonly lunchStartTime: Prisma.FieldRef<"Unit", 'DateTime'>
-  readonly lunchEndTime: Prisma.FieldRef<"Unit", 'DateTime'>
-  readonly officerName: Prisma.FieldRef<"Unit", 'String'>
-  readonly officerPhone: Prisma.FieldRef<"Unit", 'String'>
-  readonly officerEmail: Prisma.FieldRef<"Unit", 'String'>
-  readonly isStaffLocked: Prisma.FieldRef<"Unit", 'Boolean'>
-  readonly excludedDates: Prisma.FieldRef<"Unit", 'String[]'>
 }
     
 
@@ -1968,7 +1405,7 @@ export type UnitCreateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs
   /**
    * The data needed to create a Unit.
    */
-  data?: Prisma.XOR<Prisma.UnitCreateInput, Prisma.UnitUncheckedCreateInput>
+  data: Prisma.XOR<Prisma.UnitCreateInput, Prisma.UnitUncheckedCreateInput>
 }
 
 /**
@@ -2138,51 +1575,27 @@ export type UnitDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Internal
 }
 
 /**
- * Unit.trainingLocations
+ * Unit.trainingPeriods
  */
-export type Unit$trainingLocationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+export type Unit$trainingPeriodsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   /**
-   * Select specific fields to fetch from the TrainingLocation
+   * Select specific fields to fetch from the TrainingPeriod
    */
-  select?: Prisma.TrainingLocationSelect<ExtArgs> | null
+  select?: Prisma.TrainingPeriodSelect<ExtArgs> | null
   /**
-   * Omit specific fields from the TrainingLocation
+   * Omit specific fields from the TrainingPeriod
    */
-  omit?: Prisma.TrainingLocationOmit<ExtArgs> | null
+  omit?: Prisma.TrainingPeriodOmit<ExtArgs> | null
   /**
    * Choose, which related nodes to fetch as well
    */
-  include?: Prisma.TrainingLocationInclude<ExtArgs> | null
-  where?: Prisma.TrainingLocationWhereInput
-  orderBy?: Prisma.TrainingLocationOrderByWithRelationInput | Prisma.TrainingLocationOrderByWithRelationInput[]
-  cursor?: Prisma.TrainingLocationWhereUniqueInput
+  include?: Prisma.TrainingPeriodInclude<ExtArgs> | null
+  where?: Prisma.TrainingPeriodWhereInput
+  orderBy?: Prisma.TrainingPeriodOrderByWithRelationInput | Prisma.TrainingPeriodOrderByWithRelationInput[]
+  cursor?: Prisma.TrainingPeriodWhereUniqueInput
   take?: number
   skip?: number
-  distinct?: Prisma.TrainingLocationScalarFieldEnum | Prisma.TrainingLocationScalarFieldEnum[]
-}
-
-/**
- * Unit.schedules
- */
-export type Unit$schedulesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the UnitSchedule
-   */
-  select?: Prisma.UnitScheduleSelect<ExtArgs> | null
-  /**
-   * Omit specific fields from the UnitSchedule
-   */
-  omit?: Prisma.UnitScheduleOmit<ExtArgs> | null
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.UnitScheduleInclude<ExtArgs> | null
-  where?: Prisma.UnitScheduleWhereInput
-  orderBy?: Prisma.UnitScheduleOrderByWithRelationInput | Prisma.UnitScheduleOrderByWithRelationInput[]
-  cursor?: Prisma.UnitScheduleWhereUniqueInput
-  take?: number
-  skip?: number
-  distinct?: Prisma.UnitScheduleScalarFieldEnum | Prisma.UnitScheduleScalarFieldEnum[]
+  distinct?: Prisma.TrainingPeriodScalarFieldEnum | Prisma.TrainingPeriodScalarFieldEnum[]
 }
 
 /**

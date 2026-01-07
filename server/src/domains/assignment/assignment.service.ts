@@ -63,7 +63,8 @@ class AssignmentService {
     let minScheduleDate = start;
     let maxScheduleDate = end;
     for (const unit of unitsRaw) {
-      for (const schedule of unit.schedules || []) {
+      const schedules = unit.trainingPeriods?.[0]?.schedules || [];
+      for (const schedule of schedules) {
         if (!schedule.date) continue;
         const scheduleDate = new Date(schedule.date);
         if (scheduleDate < minScheduleDate) minScheduleDate = scheduleDate;
@@ -108,7 +109,8 @@ class AssignmentService {
     let minScheduleDate = start;
     let maxScheduleDate = end;
     for (const unit of units) {
-      for (const schedule of unit.schedules || []) {
+      const schedules = unit.trainingPeriods?.flatMap((p) => p.schedules) || [];
+      for (const schedule of schedules) {
         if (!schedule.date) continue;
         const scheduleDate = new Date(schedule.date);
         if (scheduleDate < minScheduleDate) minScheduleDate = scheduleDate;
@@ -129,7 +131,11 @@ class AssignmentService {
     const traineesPerInstructor = await this.getSystemConfigNumber('TRAINEES_PER_INSTRUCTOR', 36);
 
     const scheduleIds = Array.from(
-      new Set(units.flatMap((u) => (u.schedules || []).map((s) => s.id))),
+      new Set(
+        units.flatMap((u) =>
+          (u.trainingPeriods?.flatMap((p) => p.schedules) || []).map((s) => s.id),
+        ),
+      ),
     );
     const blockedInstructorIdsBySchedule =
       await assignmentRepository.findCanceledInstructorIdsByScheduleIds(scheduleIds);
@@ -217,7 +223,8 @@ class AssignmentService {
     let minScheduleDate = start;
     let maxScheduleDate = end;
     for (const unit of units) {
-      for (const schedule of unit.schedules || []) {
+      const schedules = unit.trainingPeriods?.flatMap((p) => p.schedules) || [];
+      for (const schedule of schedules) {
         if (!schedule.date) continue;
         const scheduleDate = new Date(schedule.date);
         if (scheduleDate < minScheduleDate) minScheduleDate = scheduleDate;
@@ -237,7 +244,11 @@ class AssignmentService {
 
     const traineesPerInstructor = await this.getSystemConfigNumber('TRAINEES_PER_INSTRUCTOR', 36);
     const scheduleIds = Array.from(
-      new Set(units.flatMap((u) => (u.schedules || []).map((s) => s.id))),
+      new Set(
+        units.flatMap((u) =>
+          (u.trainingPeriods?.flatMap((p) => p.schedules) || []).map((s) => s.id),
+        ),
+      ),
     );
     const blockedInstructorIdsBySchedule =
       await assignmentRepository.findCanceledInstructorIdsByScheduleIds(scheduleIds);
@@ -349,9 +360,9 @@ class AssignmentService {
       // 배정 정보에서 부대/날짜 가져오기
       const schedule = await prisma.unitSchedule.findUnique({
         where: { id: Number(unitScheduleId) },
-        include: { unit: { select: { name: true } } },
+        include: { trainingPeriod: { include: { unit: { select: { name: true } } } } },
       });
-      const unitName = schedule?.unit?.name || 'unknown';
+      const unitName = schedule?.trainingPeriod?.unit?.name || 'unknown';
       const dateStr = schedule?.date
         ? new Date(schedule.date).toISOString().split('T')[0]
         : 'unknown';
@@ -444,25 +455,32 @@ class AssignmentService {
     const unit = await assignmentRepository.getUnitWithAssignments(unitId);
     if (!unit) return;
 
+    // 첫 번째 TrainingPeriod에서 정보 추출 (TrainingPeriod 기반 구조)
+    const firstPeriod = unit.trainingPeriods[0];
+    if (!firstPeriod) return;
+
+    const allSchedules = firstPeriod.schedules;
+    const allLocations = firstPeriod.locations;
+
     // 3. 배정이 하나라도 있는지 확인
-    const hasAnyAssignment = unit.schedules.some((s) => s.assignments.length > 0);
+    const hasAnyAssignment = allSchedules.some((s) => s.assignments.length > 0);
     if (!hasAnyAssignment) return;
 
     // 4. 부대의 인원고정 여부
-    const isStaffLocked = (unit as { isStaffLocked?: boolean }).isStaffLocked ?? false;
+    const isStaffLocked = firstPeriod.isStaffLocked ?? false;
 
     // 5. 장소별 필요 인원 합계 (동적 계산)
     const traineesPerInstructor = await this.getTraineesPerInstructor();
-    const totalRequiredPerSchedule = unit.trainingLocations.reduce(
-      (sum, loc) =>
-        sum + (Math.floor((loc.actualCount || 0) / Math.max(1, traineesPerInstructor)) || 1),
-      0,
-    );
+    const totalRequiredPerSchedule = allLocations.reduce((sum, loc) => {
+      // scheduleLocations에서 actualCount 가져오기
+      const actualCount = loc.scheduleLocations?.[0]?.actualCount || 0;
+      return sum + (Math.floor(actualCount / Math.max(1, traineesPerInstructor)) || 1);
+    }, 0);
 
     // 6. 모든 스케줄 충족 여부 확인
     let allSchedulesFilled = true;
 
-    for (const schedule of unit.schedules) {
+    for (const schedule of allSchedules) {
       const acceptedCount = schedule.assignments.filter((a) => a.state === 'Accepted').length;
       const pendingCount = schedule.assignments.filter((a) => a.state === 'Pending').length;
 
@@ -480,7 +498,7 @@ class AssignmentService {
     }
 
     // 7. 모든 조건 충족 시 부대 전체 확정
-    if (allSchedulesFilled && unit.schedules.length > 0) {
+    if (allSchedulesFilled && allSchedules.length > 0) {
       await assignmentRepository.updateClassificationByUnit(unitId, 'Confirmed');
     }
   }
@@ -577,7 +595,7 @@ class AssignmentService {
     const result = await assignmentRepository.toggleStaffLock(unitId, isStaffLocked);
     // 인원고정 후 자동 확정 체크
     const firstSchedule = await prisma.unitSchedule.findFirst({
-      where: { unitId },
+      where: { trainingPeriod: { unitId } },
       select: { id: true },
     });
     if (firstSchedule) {

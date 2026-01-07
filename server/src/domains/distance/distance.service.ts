@@ -141,8 +141,9 @@ class DistanceService {
 
   // 신규 강사 추가 시: 스케줄 있는 부대들에 대해 거리 행 생성
   async createDistanceRowsForNewInstructor(instructorId: number) {
-    const units = await unitRepository.findUpcomingSchedules(1000);
-    const unitIds = [...new Set(units.map((u) => u.unitId))];
+    const schedules = await unitRepository.findUpcomingSchedules(1000);
+    // NOTE: unitId는 이제 trainingPeriod를 통해 접근
+    const unitIds = [...new Set(schedules.map((s) => s.trainingPeriod.unitId))];
     return distanceRepository.createManyForInstructor(instructorId, unitIds);
   }
 
@@ -202,7 +203,10 @@ class DistanceService {
     if (remainingAfterRecalc > 0) {
       const upcomingSchedules = await unitRepository.findUpcomingSchedules(50);
       if (upcomingSchedules.length > 0) {
-        const unitIds = Array.from(new Set(upcomingSchedules.map((s) => s.unitId))) as number[];
+        // NOTE: unitId는 이제 trainingPeriod를 통해 접근
+        const unitIds = Array.from(
+          new Set(upcomingSchedules.map((s) => s.trainingPeriod.unitId)),
+        ) as number[];
         const existingDistances = await distanceRepository.findManyByUnitIds(unitIds);
 
         const existingByUnit = new Map<number, Set<number>>();
@@ -220,7 +224,8 @@ class DistanceService {
           [];
 
         for (const schedule of upcomingSchedules) {
-          const unitId = schedule.unitId;
+          // NOTE: unitId는 이제 trainingPeriod를 통해 접근
+          const unitId = schedule.trainingPeriod.unitId;
           let set = existingByUnit.get(unitId);
           if (!set) {
             set = new Set();

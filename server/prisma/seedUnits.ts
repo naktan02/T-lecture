@@ -310,6 +310,7 @@ export async function runSeedUnits() {
     const plannedPerLocation = level === 'battalion' ? 100 : randomInt(40, 150);
 
     try {
+      // 부대 생성 (기본 정보만)
       const unit = await prisma.unit.create({
         data: {
           name: unitName,
@@ -320,8 +321,15 @@ export async function runSeedUnits() {
           detailAddress: `본관 ${randomInt(1, 5)}층`,
           lat: parseFloat(lat.toFixed(6)),
           lng: parseFloat(lng.toFixed(6)),
-          educationStart: startDate,
-          educationEnd: endDate,
+          // NOTE: educationStart, workStartTime 등은 이제 TrainingPeriod에 있음
+        },
+      });
+
+      // TrainingPeriod 생성 (교육기간 정보)
+      const trainingPeriod = await prisma.trainingPeriod.create({
+        data: {
+          unitId: unit.id,
+          name: '정규교육',
           workStartTime: new Date('1970-01-01T09:00:00Z'),
           workEndTime: new Date('1970-01-01T18:00:00Z'),
           lunchStartTime: new Date('1970-01-01T12:00:00Z'),
@@ -331,29 +339,30 @@ export async function runSeedUnits() {
           officerEmail: `${officerName.toLowerCase()}${randomInt(1, 99)}@army.mil.kr`,
           isStaffLocked: false,
           excludedDates: excludedDates,
+          // 이동된 3개 필드 (TrainingLocation에서 이동)
+          hasCateredMeals: Math.random() > 0.3,
+          hasHallLodging: Math.random() > 0.4,
+          allowsPhoneBeforeAfter: true,
         },
       });
 
-      // 교육장소 생성
+      // 교육장소 생성 (TrainingPeriod 하위)
       for (let loc = 0; loc < locationCount; loc++) {
         await prisma.trainingLocation.create({
           data: {
-            unitId: unit.id,
+            trainingPeriodId: trainingPeriod.id,
             originalPlace: loc === 0 ? randomChoice(PLACES) : `추가장소${loc + 1}`,
             changedPlace: null,
             hasInstructorLounge: true,
             hasWomenRestroom: true,
-            hasCateredMeals: Math.random() > 0.3,
-            hasHallLodging: Math.random() > 0.4,
-            allowsPhoneBeforeAfter: true,
-            plannedCount: plannedPerLocation,
-            actualCount: randomInt(Math.floor(plannedPerLocation * 0.7), plannedPerLocation),
+            // NOTE: hasCateredMeals, hasHallLodging, allowsPhoneBeforeAfter는 TrainingPeriod로 이동
+            // NOTE: plannedCount, actualCount는 ScheduleLocation으로 이동
             note: null,
           },
         });
       }
 
-      // 일정 생성 (불가일자 제외)
+      // 일정 생성 (TrainingPeriod 하위, 불가일자 제외)
       const excludedSet = new Set(excludedDates);
       const currentDate = new Date(startDate);
       let scheduleCount = 0;
@@ -362,7 +371,7 @@ export async function runSeedUnits() {
         const dateStr = formatDate(currentDate);
         if (!excludedSet.has(dateStr)) {
           await prisma.unitSchedule.create({
-            data: { unitId: unit.id, date: new Date(currentDate) },
+            data: { trainingPeriodId: trainingPeriod.id, date: new Date(currentDate) },
           });
           scheduleCount++;
         }

@@ -86,13 +86,17 @@ class DashboardAdminService {
   async getDashboardStats(): Promise<DashboardStats> {
     const today = getTodayUTC();
 
-    // 모든 부대 조회 (일정 포함)
+    // 모든 부대 조회 (교육기간 포함) - 이제 trainingPeriods.schedules로 접근
     const units = await prisma.unit.findMany({
       include: {
-        schedules: {
+        trainingPeriods: {
           include: {
-            assignments: {
-              where: { state: 'Accepted' },
+            schedules: {
+              include: {
+                assignments: {
+                  where: { state: 'Accepted' },
+                },
+              },
             },
           },
         },
@@ -105,8 +109,11 @@ class DashboardAdminService {
     let unassigned = 0;
 
     for (const unit of units) {
+      // 모든 trainingPeriods의 schedules를 평탄화
+      const allSchedules = unit.trainingPeriods.flatMap((p) => p.schedules);
+
       // 배정이 있는 일정만 필터링
-      const assignedScheduleDates = unit.schedules
+      const assignedScheduleDates = allSchedules
         .filter((s) => s.date && s.assignments.length > 0)
         .map((s) => toUTCMidnight(new Date(s.date!)));
 
@@ -192,7 +199,8 @@ class DashboardAdminService {
     const schedules = await prisma.unitSchedule.findMany({
       where: whereClause,
       include: {
-        unit: true,
+        // NOTE: unit은 이제 trainingPeriod를 통해 접근
+        trainingPeriod: { include: { unit: true } },
         assignments: {
           where: { state: 'Accepted' },
           include: { User: true },
@@ -204,7 +212,7 @@ class DashboardAdminService {
 
     return schedules.map((s) => ({
       id: s.id,
-      unitName: s.unit?.name || 'Unknown',
+      unitName: s.trainingPeriod?.unit?.name || 'Unknown',
       date: s.date ? new Date(s.date).toISOString().split('T')[0] : '',
       instructorNames: s.assignments.map((a) => a.User?.name || 'Unknown'),
     }));
@@ -408,14 +416,18 @@ class DashboardAdminService {
   async getUnitsByStatus(status: ScheduleStatus): Promise<UnitListItem[]> {
     const today = getTodayUTC();
 
-    // 모든 부대 조회 (일정 및 배정 포함)
+    // 모든 부대 조회 (교육기간 포함) - 이제 trainingPeriods.schedules로 접근
     const units = await prisma.unit.findMany({
       include: {
-        schedules: {
+        trainingPeriods: {
           include: {
-            assignments: {
-              where: { state: 'Accepted' },
-              include: { User: true },
+            schedules: {
+              include: {
+                assignments: {
+                  where: { state: 'Accepted' },
+                  include: { User: true },
+                },
+              },
             },
           },
         },
@@ -425,8 +437,10 @@ class DashboardAdminService {
     const result: UnitListItem[] = [];
 
     for (const unit of units) {
+      // 모든 trainingPeriods의 schedules를 평탄화
+      const allSchedules = unit.trainingPeriods.flatMap((p) => p.schedules);
       // 배정이 있는 일정만 필터링
-      const assignedSchedules = unit.schedules.filter((s) => s.date && s.assignments.length > 0);
+      const assignedSchedules = allSchedules.filter((s) => s.date && s.assignments.length > 0);
       const assignedScheduleDates = assignedSchedules.map((s) => toUTCMidnight(new Date(s.date!)));
 
       let unitStatus: ScheduleStatus;
@@ -495,25 +509,33 @@ class DashboardAdminService {
   async getUnitDetail(unitId: number): Promise<UnitDetail | null> {
     const today = getTodayUTC();
 
+    // 이제 trainingPeriods.schedules로 접근
     const unit = await prisma.unit.findUnique({
       where: { id: unitId },
       include: {
-        schedules: {
+        trainingPeriods: {
           include: {
-            assignments: {
-              where: { state: 'Accepted' },
-              include: { User: true },
+            schedules: {
+              include: {
+                assignments: {
+                  where: { state: 'Accepted' },
+                  include: { User: true },
+                },
+              },
+              orderBy: { date: 'asc' },
             },
           },
-          orderBy: { date: 'asc' },
         },
       },
     });
 
     if (!unit) return null;
 
+    // 모든 trainingPeriods의 schedules를 평탄화
+    const allSchedules = unit.trainingPeriods.flatMap((p) => p.schedules);
+
     // 상태 판단 로직
-    const assignedScheduleDates = unit.schedules
+    const assignedScheduleDates = allSchedules
       .filter((s) => s.date && s.assignments.length > 0)
       .map((s) => toUTCMidnight(new Date(s.date!)));
 
@@ -539,7 +561,7 @@ class DashboardAdminService {
     }
 
     // 일정 정보 구성
-    const schedules = unit.schedules
+    const schedules = allSchedules
       .filter((s) => s.date)
       .map((s) => ({
         id: s.id,
@@ -550,14 +572,17 @@ class DashboardAdminService {
         })),
       }));
 
+    // 첫 번째 trainingPeriod에서 officerName/Phone 가져오기
+    const firstPeriod = unit.trainingPeriods[0];
+
     return {
       id: unit.id,
       name: unit.name || 'Unknown',
       status: unitStatus,
       address: unit.addressDetail,
       addressDetail: unit.detailAddress,
-      officerName: unit.officerName,
-      officerPhone: unit.officerPhone,
+      officerName: firstPeriod?.officerName || null,
+      officerPhone: firstPeriod?.officerPhone || null,
       schedules,
     };
   }

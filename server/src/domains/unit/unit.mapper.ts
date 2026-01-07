@@ -37,7 +37,8 @@ function toMilitaryType(value: unknown): MilitaryType | undefined {
 }
 
 // 부대 생성용 데이터 변환 (CreateUnitDto 역할)
-// 주의: trainingLocations와 schedules는 createUnitWithNested에서 별도로 처리하므로 여기서는 제외
+// 주의: trainingPeriods는 createUnitWithNested에서 별도로 처리하므로 여기서는 제외
+// Unit은 기본 정보만 저장. 시간/날짜 필드들은 TrainingPeriod에 있음
 export function toCreateUnitDto(rawData: RawUnitData = {}): Prisma.UnitCreateInput {
   // 필수값 검증 (Service 로직 단순화)
   if (!isNonEmptyString(rawData.name)) {
@@ -52,40 +53,23 @@ export function toCreateUnitDto(rawData: RawUnitData = {}): Prisma.UnitCreateInp
     addressDetail: rawData.addressDetail,
     detailAddress: rawData.detailAddress,
     // lat/lng는 의도적으로 무시 - 주소 기반 좌표 변환 로직을 통해 자동 계산됨
-    // 엑셀에 좌표가 포함되어 있어도 무시하고 주소로부터 새로 계산
-
-    // 시간/날짜 필드 변환
-    educationStart: toDateOrUndef(rawData.educationStart),
-    educationEnd: toDateOrUndef(rawData.educationEnd),
-    workStartTime: toDateOrUndef(rawData.workStartTime),
-    workEndTime: toDateOrUndef(rawData.workEndTime),
-    lunchStartTime: toDateOrUndef(rawData.lunchStartTime),
-    lunchEndTime: toDateOrUndef(rawData.lunchEndTime),
-
-    officerName: rawData.officerName,
-    officerPhone: rawData.officerPhone,
-    officerEmail: rawData.officerEmail,
-    excludedDates: rawData.excludedDates || [],
-    // trainingLocations와 schedules는 createUnitWithNested에서 처리
+    // 엘셀에 좌표가 포함되어 있어도 무시하고 주소로부터 새로 계산
+    // NOTE: educationStart, educationEnd, workStartTime 등은 이제 TrainingPeriod에 있음
+    // trainingPeriods는 createUnitWithNested에서 처리
   };
 }
 
 // 엑셀 Row -> 교육장소 데이터 추출
+// NOTE: plannedCount, actualCount는 이제 ScheduleLocation에 있음
 function extractTrainingLocation(row: Record<string, unknown>): TrainingLocationInput | null {
-  const hasLocationData =
-    row.originalPlace || row.changedPlace || row.plannedCount || row.actualCount;
+  const hasLocationData = row.originalPlace || row.changedPlace;
   if (!hasLocationData) return null;
 
   return {
     originalPlace: row.originalPlace as string | undefined,
     changedPlace: row.changedPlace as string | undefined,
-    plannedCount: row.plannedCount as number | undefined,
-    actualCount: row.actualCount as number | undefined,
     hasInstructorLounge: row.hasInstructorLounge as boolean | undefined,
     hasWomenRestroom: row.hasWomenRestroom as boolean | undefined,
-    hasCateredMeals: row.hasCateredMeals as boolean | undefined,
-    hasHallLodging: row.hasHallLodging as boolean | undefined,
-    allowsPhoneBeforeAfter: row.allowsPhoneBeforeAfter as boolean | undefined,
     note: row.note as string | undefined,
   };
 }

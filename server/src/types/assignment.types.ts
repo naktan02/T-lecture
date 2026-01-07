@@ -32,20 +32,25 @@ export interface TrainingLocationRaw {
   id: number | string;
   originalPlace: string | null;
   changedPlace?: string | null;
-  plannedCount?: number | null;
-  actualCount?: number | null;
   note?: string | null;
   hasInstructorLounge?: boolean | null;
   hasWomenRestroom?: boolean | null;
-  hasCateredMeals?: boolean | null;
-  hasHallLodging?: boolean | null;
-  allowsPhoneBeforeAfter?: boolean | null;
+  scheduleLocations?: ScheduleLocationRaw[];
+}
+
+export interface ScheduleLocationRaw {
+  id: number;
+  unitScheduleId: number;
+  trainingLocationId: number;
+  plannedCount?: number | null;
+  actualCount?: number | null;
 }
 
 export interface ScheduleRaw {
   id: number;
   date: Date | null;
   isBlocked?: boolean;
+  scheduleLocations?: ScheduleLocationRaw[];
   assignments?: AssignmentRaw[];
 }
 
@@ -54,8 +59,8 @@ export interface AssignmentRaw {
   userId: number;
   trainingLocationId?: number | null;
   state: string;
-  classification?: string | null; // Temporary, Confirmed
-  role?: string | null; // Head, Supervisor, or null
+  classification?: string | null;
+  role?: string | null;
   User: {
     name: string | null;
     instructor?: {
@@ -63,10 +68,30 @@ export interface AssignmentRaw {
       category?: string | null;
     } | null;
   };
-  // 발송 확인용
   dispatchAssignments?: Array<{
     dispatch: { type: string | null } | null;
   }>;
+}
+
+export interface TrainingPeriodRaw {
+  id: number;
+  unitId: number;
+  name: string;
+  isStaffLocked: boolean;
+  workStartTime?: Date | null;
+  workEndTime?: Date | null;
+  lunchStartTime?: Date | null;
+  lunchEndTime?: Date | null;
+  officerName?: string | null;
+  officerPhone?: string | null;
+  officerEmail?: string | null;
+  excludedDates?: string[];
+  // 시설 정보 (TrainingLocation에서 이동됨)
+  hasCateredMeals?: boolean | null;
+  hasHallLodging?: boolean | null;
+  allowsPhoneBeforeAfter?: boolean | null;
+  locations: TrainingLocationRaw[];
+  schedules: ScheduleRaw[];
 }
 
 export interface UnitRaw {
@@ -76,17 +101,9 @@ export interface UnitRaw {
   wideArea: string | null;
   addressDetail: string | null;
   detailAddress?: string | null;
-  officerName: string | null;
-  officerPhone: string | null;
-  officerEmail: string | null;
-  workStartTime: Date | null;
-  workEndTime?: Date | null;
-  educationStart?: Date | null;
-  educationEnd?: Date | null;
-  lunchStartTime?: Date | null;
-  lunchEndTime?: Date | null;
-  trainingLocations: TrainingLocationRaw[];
-  schedules: ScheduleRaw[];
+  lat?: number | null;
+  lng?: number | null;
+  trainingPeriods: TrainingPeriodRaw[];
 }
 
 export interface AvailabilityRaw {

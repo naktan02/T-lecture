@@ -34,7 +34,7 @@ export const runStatsAggregation = async () => {
         },
         include: {
           UnitSchedule: {
-            include: { unit: true },
+            include: { trainingPeriod: { include: { unit: true } } },
           },
         },
       });
@@ -70,15 +70,16 @@ export const runStatsAggregation = async () => {
       const workedDates = new Set<string>();
 
       for (const assignment of acceptedAssignments) {
-        if (!assignment.UnitSchedule?.unit || !assignment.UnitSchedule.date) continue;
+        const trainingPeriod = assignment.UnitSchedule?.trainingPeriod;
+        const unit = trainingPeriod?.unit;
+        if (!unit || !assignment.UnitSchedule?.date) continue;
 
-        const unit = assignment.UnitSchedule.unit;
         const date = new Date(assignment.UnitSchedule.date);
 
-        // 근무 시간 계산
-        if (unit.workStartTime && unit.workEndTime) {
-          const start = new Date(unit.workStartTime);
-          const end = new Date(unit.workEndTime);
+        // 근무 시간 계산 (TrainingPeriod에서 가져옴)
+        if (trainingPeriod?.workStartTime && trainingPeriod?.workEndTime) {
+          const start = new Date(trainingPeriod.workStartTime);
+          const end = new Date(trainingPeriod.workEndTime);
           const startMinutes = start.getHours() * 60 + start.getMinutes();
           const endMinutes = end.getHours() * 60 + end.getMinutes();
           let diffMinutes = endMinutes - startMinutes;

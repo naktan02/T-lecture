@@ -67,8 +67,10 @@ export const ModelName = {
   SystemConfig: 'SystemConfig',
   InstructorPenalty: 'InstructorPenalty',
   Unit: 'Unit',
+  TrainingPeriod: 'TrainingPeriod',
   TrainingLocation: 'TrainingLocation',
   UnitSchedule: 'UnitSchedule',
+  ScheduleLocation: 'ScheduleLocation',
   User: 'User',
   Admin: 'Admin',
   Instructor: 'Instructor',
@@ -271,16 +273,23 @@ export type InstructorPenaltyScalarFieldEnum = (typeof InstructorPenaltyScalarFi
 
 export const UnitScalarFieldEnum = {
   id: 'id',
-  unitType: 'unitType',
   name: 'name',
+  unitType: 'unitType',
   wideArea: 'wideArea',
   region: 'region',
   addressDetail: 'addressDetail',
   detailAddress: 'detailAddress',
   lat: 'lat',
-  lng: 'lng',
-  educationStart: 'educationStart',
-  educationEnd: 'educationEnd',
+  lng: 'lng'
+} as const
+
+export type UnitScalarFieldEnum = (typeof UnitScalarFieldEnum)[keyof typeof UnitScalarFieldEnum]
+
+
+export const TrainingPeriodScalarFieldEnum = {
+  id: 'id',
+  unitId: 'unitId',
+  name: 'name',
   workStartTime: 'workStartTime',
   workEndTime: 'workEndTime',
   lunchStartTime: 'lunchStartTime',
@@ -289,24 +298,22 @@ export const UnitScalarFieldEnum = {
   officerPhone: 'officerPhone',
   officerEmail: 'officerEmail',
   isStaffLocked: 'isStaffLocked',
-  excludedDates: 'excludedDates'
+  excludedDates: 'excludedDates',
+  hasCateredMeals: 'hasCateredMeals',
+  hasHallLodging: 'hasHallLodging',
+  allowsPhoneBeforeAfter: 'allowsPhoneBeforeAfter'
 } as const
 
-export type UnitScalarFieldEnum = (typeof UnitScalarFieldEnum)[keyof typeof UnitScalarFieldEnum]
+export type TrainingPeriodScalarFieldEnum = (typeof TrainingPeriodScalarFieldEnum)[keyof typeof TrainingPeriodScalarFieldEnum]
 
 
 export const TrainingLocationScalarFieldEnum = {
   id: 'id',
-  unitId: 'unitId',
+  trainingPeriodId: 'trainingPeriodId',
   originalPlace: 'originalPlace',
   changedPlace: 'changedPlace',
   hasInstructorLounge: 'hasInstructorLounge',
   hasWomenRestroom: 'hasWomenRestroom',
-  hasCateredMeals: 'hasCateredMeals',
-  hasHallLodging: 'hasHallLodging',
-  allowsPhoneBeforeAfter: 'allowsPhoneBeforeAfter',
-  plannedCount: 'plannedCount',
-  actualCount: 'actualCount',
   note: 'note'
 } as const
 
@@ -315,11 +322,22 @@ export type TrainingLocationScalarFieldEnum = (typeof TrainingLocationScalarFiel
 
 export const UnitScheduleScalarFieldEnum = {
   id: 'id',
-  unitId: 'unitId',
+  trainingPeriodId: 'trainingPeriodId',
   date: 'date'
 } as const
 
 export type UnitScheduleScalarFieldEnum = (typeof UnitScheduleScalarFieldEnum)[keyof typeof UnitScheduleScalarFieldEnum]
+
+
+export const ScheduleLocationScalarFieldEnum = {
+  id: 'id',
+  unitScheduleId: 'unitScheduleId',
+  trainingLocationId: 'trainingLocationId',
+  plannedCount: 'plannedCount',
+  actualCount: 'actualCount'
+} as const
+
+export type ScheduleLocationScalarFieldEnum = (typeof ScheduleLocationScalarFieldEnum)[keyof typeof ScheduleLocationScalarFieldEnum]
 
 
 export const UserScalarFieldEnum = {

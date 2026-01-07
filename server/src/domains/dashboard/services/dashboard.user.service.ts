@@ -126,7 +126,8 @@ class DashboardService {
             date: { gte: start, lt: today }, // 완료된 교육만
           },
         },
-        include: { UnitSchedule: { include: { unit: true } } },
+        // NOTE: unit과 workStartTime은 이제 trainingPeriod에
+        include: { UnitSchedule: { include: { trainingPeriod: { include: { unit: true } } } } },
       });
 
       // 전체 제안 건수도 완료된 교육만 집계
@@ -159,14 +160,15 @@ class DashboardService {
       const countedUnitsForDistance = new Set<number>(); // 거리 계산한 부대 추적
 
       for (const assignment of assignments) {
-        if (!assignment.UnitSchedule?.unit || !assignment.UnitSchedule.date) continue;
-        const unit = assignment.UnitSchedule.unit;
+        const trainingPeriod = assignment.UnitSchedule?.trainingPeriod;
+        if (!trainingPeriod?.unit || !assignment.UnitSchedule?.date) continue;
+        const unit = trainingPeriod.unit;
 
-        // 시간 (일정마다 계산)
+        // 시간 (일정마다 계산) - workStartTime은 이제 trainingPeriod에
         let workHours = 0;
-        if (unit.workStartTime && unit.workEndTime) {
-          const s = new Date(unit.workStartTime);
-          const e = new Date(unit.workEndTime);
+        if (trainingPeriod.workStartTime && trainingPeriod.workEndTime) {
+          const s = new Date(trainingPeriod.workStartTime);
+          const e = new Date(trainingPeriod.workEndTime);
           let diff = e.getHours() * 60 + e.getMinutes() - (s.getHours() * 60 + s.getMinutes());
           if (diff < 0) diff += 24 * 60;
           workHours = diff / 60;
@@ -244,7 +246,8 @@ class DashboardService {
           },
         },
       },
-      include: { UnitSchedule: { include: { unit: true } } },
+      // NOTE: unit과 workStartTime은 이제 trainingPeriod에
+      include: { UnitSchedule: { include: { trainingPeriod: { include: { unit: true } } } } },
     });
 
     for (const act of recentActivity) {
@@ -255,11 +258,11 @@ class DashboardService {
       if (monthlyMap.has(key)) {
         const current = monthlyMap.get(key)!;
         let hours = 0;
-        // 시간 계산 로직 중복... (함수로 분리하면 좋음)
-        // 약식 계산
-        if (act.UnitSchedule.unit?.workStartTime && act.UnitSchedule.unit?.workEndTime) {
-          const s = new Date(act.UnitSchedule.unit.workStartTime);
-          const e = new Date(act.UnitSchedule.unit.workEndTime);
+        // 시간 계산 - workStartTime은 이제 trainingPeriod에
+        const tp = act.UnitSchedule.trainingPeriod;
+        if (tp?.workStartTime && tp?.workEndTime) {
+          const s = new Date(tp.workStartTime);
+          const e = new Date(tp.workEndTime);
           let diff = e.getHours() * 60 + e.getMinutes() - (s.getHours() * 60 + s.getMinutes());
           if (diff < 0) diff += 24 * 60;
           hours = diff / 60;
@@ -282,7 +285,8 @@ class DashboardService {
       include: {
         UnitSchedule: {
           include: {
-            unit: true,
+            // NOTE: unit과 workStartTime은 이제 trainingPeriod에
+            trainingPeriod: { include: { unit: true } },
           },
         },
       },
@@ -323,14 +327,16 @@ class DashboardService {
 
     const recentAssignments = recentAssignmentsRaw
       .map((assignment: any) => {
-        const u = assignment.UnitSchedule?.unit;
+        const tp = assignment.UnitSchedule?.trainingPeriod;
+        const u = tp?.unit;
         if (!u) return null;
         const dist = distanceMap.get(u.id) || 0;
 
+        // workStartTime은 이제 trainingPeriod에
         let wh = 0;
-        if (u.workStartTime && u.workEndTime) {
-          const s = new Date(u.workStartTime);
-          const e = new Date(u.workEndTime);
+        if (tp?.workStartTime && tp?.workEndTime) {
+          const s = new Date(tp.workStartTime);
+          const e = new Date(tp.workEndTime);
           let diff = e.getHours() * 60 + e.getMinutes() - (s.getHours() * 60 + s.getMinutes());
           if (diff < 0) diff += 24 * 60;
           wh = diff / 60;
@@ -423,7 +429,8 @@ class DashboardService {
         include: {
           UnitSchedule: {
             include: {
-              unit: true,
+              // NOTE: unit과 workStartTime은 이제 trainingPeriod에
+              trainingPeriod: { include: { unit: true } },
             },
           },
         },
@@ -452,14 +459,16 @@ class DashboardService {
 
     const formattedActivities = activities
       .map((assignment: any) => {
-        const u = assignment.UnitSchedule?.unit;
+        const tp = assignment.UnitSchedule?.trainingPeriod;
+        const u = tp?.unit;
         if (!u) return null;
         const dist = distanceMap.get(u.id) || 0;
 
+        // workStartTime은 이제 trainingPeriod에
         let wh = 0;
-        if (u.workStartTime && u.workEndTime) {
-          const s = new Date(u.workStartTime);
-          const e = new Date(u.workEndTime);
+        if (tp?.workStartTime && tp?.workEndTime) {
+          const s = new Date(tp.workStartTime);
+          const e = new Date(tp.workEndTime);
           let diff = e.getHours() * 60 + e.getMinutes() - (s.getHours() * 60 + s.getMinutes());
           if (diff < 0) diff += 24 * 60;
           wh = diff / 60;
