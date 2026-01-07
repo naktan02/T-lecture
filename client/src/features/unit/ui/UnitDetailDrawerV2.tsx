@@ -505,32 +505,32 @@ export const UnitDetailDrawerV2 = ({
           wideArea: basicForm.wideArea,
           region: basicForm.region,
 
-          // TrainingPeriods 배열
-          trainingPeriods: trainingPeriods.map((p) => ({
-            id: p.id, // 기존 period면 id 있음, 신규면 undefined
-            name: p.name,
-            workStartTime: p.workStartTime || null,
-            workEndTime: p.workEndTime || null,
-            lunchStartTime: p.lunchStartTime || null,
-            lunchEndTime: p.lunchEndTime || null,
-            officerName: p.officerName || null,
-            officerPhone: p.officerPhone || null,
-            officerEmail: p.officerEmail || null,
-            hasCateredMeals: p.hasCateredMeals,
-            hasHallLodging: p.hasHallLodging,
-            allowsPhoneBeforeAfter: p.allowsPhoneBeforeAfter,
-            // Locations
-            locations: p.locations.map((loc) => ({
-              id: loc.id, // 기존 location면 id 있음
-              originalPlace: loc.originalPlace,
-              changedPlace: loc.changedPlace || null,
-              hasInstructorLounge: loc.hasInstructorLounge,
-              hasWomenRestroom: loc.hasWomenRestroom,
-              note: loc.note || null,
+          // TrainingPeriods 배열 (기존 기간만 - 신규는 별도 API로 생성)
+          trainingPeriods: trainingPeriods
+            .filter((p) => p.id) // id가 있는 기존 기간만
+            .map((p) => ({
+              id: p.id,
+              name: p.name,
+              workStartTime: p.workStartTime || null,
+              workEndTime: p.workEndTime || null,
+              lunchStartTime: p.lunchStartTime || null,
+              lunchEndTime: p.lunchEndTime || null,
+              officerName: p.officerName || null,
+              officerPhone: p.officerPhone || null,
+              officerEmail: p.officerEmail || null,
+              hasCateredMeals: p.hasCateredMeals,
+              hasHallLodging: p.hasHallLodging,
+              allowsPhoneBeforeAfter: p.allowsPhoneBeforeAfter,
+              // Locations
+              locations: p.locations.map((loc) => ({
+                id: loc.id,
+                originalPlace: loc.originalPlace,
+                changedPlace: loc.changedPlace || null,
+                hasInstructorLounge: loc.hasInstructorLounge,
+                hasWomenRestroom: loc.hasWomenRestroom,
+                note: loc.note || null,
+              })),
             })),
-            // Schedules (신규 period일 때만 - 기존 period는 별도 API로 수정)
-            schedules: p.id ? undefined : p.schedules.map((s) => ({ date: s.date })),
-          })),
         };
 
         // PUT API 직접 호출

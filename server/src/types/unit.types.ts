@@ -246,7 +246,8 @@ export interface TrainingLocationUpdateInput {
 }
 
 /**
- * 부대 + 교육기간 + 장소 전체 업데이트 입력
+ * 부대 기본정보 업데이트 입력
+ * - 일정/교육기간/주소는 별도 API로 처리
  */
 export interface UpdateUnitWithPeriodsInput {
   // Unit 기본정보
@@ -255,8 +256,8 @@ export interface UpdateUnitWithPeriodsInput {
   wideArea?: string;
   region?: string;
   detailAddress?: string;
-  // TrainingPeriods 배열
-  trainingPeriods: TrainingPeriodUpdateInput[];
+  // TrainingPeriods 배열 (선택적 - 기존 호환용)
+  trainingPeriods?: TrainingPeriodUpdateInput[];
 }
 
 export interface UpdateTrainingPeriodScheduleLocationsInput {

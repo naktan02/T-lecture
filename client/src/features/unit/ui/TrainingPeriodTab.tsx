@@ -333,10 +333,12 @@ export const TrainingPeriodTab = ({
                         {!readOnly && (
                           <button
                             type="button"
-                            onClick={() => {
-                              showConfirm('이 장소 매칭을 삭제하시겠습니까?', () =>
-                                onScheduleLocationRowRemove(scheduleIndex, rowIndex),
-                              );
+                            onClick={async () => {
+                              const confirmed =
+                                await showConfirm('이 장소 매칭을 삭제하시겠습니까?');
+                              if (confirmed) {
+                                onScheduleLocationRowRemove(scheduleIndex, rowIndex);
+                              }
                             }}
                             className="text-xs text-red-500 hover:text-red-700"
                           >

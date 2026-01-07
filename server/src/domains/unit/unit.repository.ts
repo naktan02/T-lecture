@@ -483,9 +483,7 @@ class UnitRepository {
     });
   }
 
-  /**
-   * ??-?? ?? ???
-   */
+  // 일정별 장소 인원 동기화
   async syncScheduleLocations(
     unitScheduleId: number,
     inputs: { trainingLocationId: number; plannedCount?: number | null; actualCount?: number | null }[],

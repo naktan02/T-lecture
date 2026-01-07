@@ -5,6 +5,7 @@ import { toCreateUnitDto, groupExcelRowsByUnit, RawUnitData } from './unit.mappe
 import kakaoService from '../../infra/kakao.service';
 import distanceService from '../distance/distance.service';
 import AppError from '../../common/errors/AppError';
+import logger from '../../config/logger';
 import { Prisma, MilitaryType } from '../../generated/prisma/client.js';
 import {
   ScheduleInput,
@@ -188,7 +189,7 @@ class UnitService {
             created++;
             locationsAdded += data.trainingLocations?.length || 0;
           } catch (e) {
-            console.error(`[UnitService] Failed to register unit ${data.name}:`, e);
+            logger.error(`[UnitService] Failed to register unit ${data.name}: ${e}`);
           }
         }),
       );
@@ -201,7 +202,7 @@ class UnitService {
 
     // 5. 비동기 좌표 변환 (백그라운드)
     this.updateUnitCoordsInBackground().catch((err) => {
-      console.error('Background Geocoding Error:', err);
+      logger.error(`Background Geocoding Error: ${err}`);
     });
 
     return {
@@ -217,16 +218,16 @@ class UnitService {
    * - lat이 null이고 addressDetail이 있는 부대 대상
    */
   async updateUnitCoordsInBackground() {
-    console.log('[UnitService] Starting background geocoding...');
+    logger.info('[UnitService] Starting background geocoding...');
 
     // 1. 좌표가 없는 부대 조회 (최대 100개씩 처리)
     const units = await unitRepository.findUnitsWithoutCoords(100);
     if (units.length === 0) {
-      console.log('[UnitService] No units needing geocoding.');
+      logger.info('[UnitService] No units needing geocoding.');
       return;
     }
 
-    console.log(`[UnitService] Found ${units.length} units to geocode.`);
+    logger.info(`[UnitService] Found ${units.length} units to geocode.`);
 
     // 2. 순차적으로 처리 (Rate Limit 고려)
     let successCount = 0;
@@ -243,7 +244,7 @@ class UnitService {
       }
     }
 
-    console.log(`[UnitService] Finished geocoding. Updated ${successCount}/${units.length} units.`);
+    logger.info(`[UnitService] Finished geocoding. Updated ${successCount}/${units.length} units.`);
   }
 
   /**
@@ -335,11 +336,10 @@ class UnitService {
   }
 
   /**
-   * 부대 + 교육기간 + 장소 전체 업데이트
-   * - 신규 교육기간/장소는 생성
-   * - 기존 교육기간/장소는 업데이트
-   * - 삭제된 교육기간/장소는 삭제
-   * - 일정은 별도 API (updateTrainingPeriodSchedule) 사용
+   * 부대 기본정보 + 교육기간별 정보 업데이트
+   * - 기본정보: name, unitType, wideArea, region, detailAddress
+   * - 교육기간: 근무시간, 담당관, 시설정보, 장소
+   * - 일정/주소/교육기간 생성·삭제는 별도 API로 처리
    */
   async updateUnitWithPeriods(unitId: number, data: UpdateUnitWithPeriodsInput) {
     // 1. 기존 Unit 조회
@@ -362,88 +362,39 @@ class UnitService {
       await unitRepository.updateUnitById(unitId, unitUpdateData);
     }
 
-    // 3. 교육기간 처리
-    const existingPeriodIds = existingUnit.trainingPeriods.map((p) => p.id);
-    const incomingPeriodIds = data.trainingPeriods.filter((p) => p.id).map((p) => p.id as number);
+    // 3. 교육기간별 정보 업데이트 (기존 기간만 - 생성/삭제는 별도 API)
+    if (data.trainingPeriods && data.trainingPeriods.length > 0) {
+      for (const periodData of data.trainingPeriods) {
+        if (periodData.id) {
+          // 기존 교육기간 정보 업데이트
+          await unitRepository.updateTrainingPeriod(periodData.id, {
+            name: periodData.name,
+            workStartTime: periodData.workStartTime
+              ? new Date(`2000-01-01T${periodData.workStartTime}:00.000Z`)
+              : null,
+            workEndTime: periodData.workEndTime
+              ? new Date(`2000-01-01T${periodData.workEndTime}:00.000Z`)
+              : null,
+            lunchStartTime: periodData.lunchStartTime
+              ? new Date(`2000-01-01T${periodData.lunchStartTime}:00.000Z`)
+              : null,
+            lunchEndTime: periodData.lunchEndTime
+              ? new Date(`2000-01-01T${periodData.lunchEndTime}:00.000Z`)
+              : null,
+            officerName: periodData.officerName || null,
+            officerPhone: periodData.officerPhone || null,
+            officerEmail: periodData.officerEmail || null,
+            hasCateredMeals: periodData.hasCateredMeals ?? false,
+            hasHallLodging: periodData.hasHallLodging ?? false,
+            allowsPhoneBeforeAfter: periodData.allowsPhoneBeforeAfter ?? false,
+          });
 
-    // 3-1. 삭제할 교육기간 (기존에 있지만 새 데이터에 없음)
-    const periodsToDelete = existingPeriodIds.filter((id) => !incomingPeriodIds.includes(id));
-    for (const periodId of periodsToDelete) {
-      // 해당 기간에 배정이 있는지 확인
-      const hasAssignments = existingUnit.trainingPeriods
-        .find((p) => p.id === periodId)
-        ?.schedules.some((s) => s.assignments && s.assignments.length > 0);
-
-      if (hasAssignments) {
-        throw new AppError(
-          '배정된 강사가 있는 교육기간은 삭제할 수 없습니다.',
-          400,
-          'PERIOD_HAS_ASSIGNMENTS',
-        );
-      }
-      await unitRepository.deleteTrainingPeriod(periodId);
-    }
-
-    // 3-2. 업데이트/생성할 교육기간
-    for (const periodData of data.trainingPeriods) {
-      if (periodData.id) {
-        // 기존 교육기간 업데이트
-        await unitRepository.updateTrainingPeriod(periodData.id, {
-          name: periodData.name,
-          workStartTime: periodData.workStartTime
-            ? new Date(`2000-01-01T${periodData.workStartTime}:00.000Z`)
-            : null,
-          workEndTime: periodData.workEndTime
-            ? new Date(`2000-01-01T${periodData.workEndTime}:00.000Z`)
-            : null,
-          lunchStartTime: periodData.lunchStartTime
-            ? new Date(`2000-01-01T${periodData.lunchStartTime}:00.000Z`)
-            : null,
-          lunchEndTime: periodData.lunchEndTime
-            ? new Date(`2000-01-01T${periodData.lunchEndTime}:00.000Z`)
-            : null,
-          officerName: periodData.officerName || null,
-          officerPhone: periodData.officerPhone || null,
-          officerEmail: periodData.officerEmail || null,
-          hasCateredMeals: periodData.hasCateredMeals ?? false,
-          hasHallLodging: periodData.hasHallLodging ?? false,
-          allowsPhoneBeforeAfter: periodData.allowsPhoneBeforeAfter ?? false,
-        });
-
-        // 해당 기간의 장소 처리
-        if (periodData.locations) {
-          await this._syncLocations(periodData.id, periodData.locations);
+          // 해당 기간의 장소 처리
+          if (periodData.locations) {
+            await this._syncLocations(periodData.id, periodData.locations);
+          }
         }
-      } else {
-        // 신규 교육기간 생성
-        const newPeriod = await unitRepository.createTrainingPeriod(unitId, {
-          name: periodData.name,
-          workStartTime: periodData.workStartTime
-            ? new Date(`2000-01-01T${periodData.workStartTime}:00.000Z`)
-            : null,
-          workEndTime: periodData.workEndTime
-            ? new Date(`2000-01-01T${periodData.workEndTime}:00.000Z`)
-            : null,
-          lunchStartTime: periodData.lunchStartTime
-            ? new Date(`2000-01-01T${periodData.lunchStartTime}:00.000Z`)
-            : null,
-          lunchEndTime: periodData.lunchEndTime
-            ? new Date(`2000-01-01T${periodData.lunchEndTime}:00.000Z`)
-            : null,
-          officerName: periodData.officerName || null,
-          officerPhone: periodData.officerPhone || null,
-          officerEmail: periodData.officerEmail || null,
-          hasCateredMeals: periodData.hasCateredMeals ?? false,
-          hasHallLodging: periodData.hasHallLodging ?? false,
-          allowsPhoneBeforeAfter: periodData.allowsPhoneBeforeAfter ?? false,
-          locations: periodData.locations,
-          schedules: periodData.schedules,
-        });
-
-        // 새 스케줄이 있으면 거리 테이블 업데이트
-        if (periodData.schedules && periodData.schedules.length > 0) {
-          await distanceService.createDistanceRowsForNewUnit(unitId);
-        }
+        // 신규 교육기간(id가 없는 경우)은 createTrainingPeriod API 사용
       }
     }
 
@@ -454,10 +405,7 @@ class UnitService {
   /**
    * 교육장소 동기화 (기존/신규/삭제 처리)
    */
-  private async _syncLocations(
-    periodId: number,
-    locations: TrainingLocationUpdateInput[],
-  ) {
+  private async _syncLocations(periodId: number, locations: TrainingLocationUpdateInput[]) {
     // 기존 장소 조회
     const existingLocations = await unitRepository.findLocationsByPeriodId(periodId);
     const existingIds = existingLocations.map((l) => l.id);
@@ -521,18 +469,13 @@ class UnitService {
   }
 
   /**
-   * 부대 기본 정보만 수정
-   * - 일정/장소/주소는 별도 API로 처리
-   * NOTE: officer 정보는 TrainingPeriod에 있으므로 별도 API 사용
-   */
-  /**
-   * ???? ?? (?? ??)
-   * - start/end/excluded? ??? ??? ?? ??
+   * 교육기간 생성 (신규 추가)
+   * - start/end/excluded를 기반으로 일정 자동 생성
    */
   async createTrainingPeriod(unitId: number, data: CreateTrainingPeriodInput) {
     const unit = await unitRepository.findUnitWithRelations(unitId);
     if (!unit) {
-      throw new AppError('?? ??? ?? ? ????.', 404, 'UNIT_NOT_FOUND');
+      throw new AppError('해당 부대를 찾을 수 없습니다.', 404, 'UNIT_NOT_FOUND');
     }
 
     let schedules: ScheduleData[] | undefined;
@@ -540,10 +483,10 @@ class UnitService {
       const normalizedStart = toDateOnlyString(data.startDate);
       const normalizedEnd = toDateOnlyString(data.endDate);
       if (!normalizedStart || !normalizedEnd) {
-        throw new AppError('???? ?? ?? ?????. (YYYY-MM-DD)', 400, 'INVALID_DATE');
+        throw new AppError('날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)', 400, 'INVALID_DATE');
       }
       if (normalizedStart > normalizedEnd) {
-        throw new AppError('???? ????? ????.', 400, 'INVALID_DATE_RANGE');
+        throw new AppError('시작일이 종료일보다 늦습니다.', 400, 'INVALID_DATE_RANGE');
       }
 
       const normalizedExcludedDates = [
@@ -785,7 +728,7 @@ class UnitService {
    * - 삭제 시 크레딧 부여 및 자동 재배정
    */
   /**
-   * ???? ??-??/?? ??
+   * 교육기간 일정-장소 매칭 수정
    */
   async updateTrainingPeriodScheduleLocations(
     trainingPeriodId: number,
@@ -793,7 +736,7 @@ class UnitService {
   ) {
     const period = await unitRepository.findTrainingPeriodById(trainingPeriodId);
     if (!period) {
-      throw new AppError('????? ?? ? ????.', 404, 'TRAINING_PERIOD_NOT_FOUND');
+      throw new AppError('교육기간을 찾을 수 없습니다.', 404, 'TRAINING_PERIOD_NOT_FOUND');
     }
 
     const schedules = await unitRepository.findSchedulesByPeriodId(trainingPeriodId);
@@ -802,7 +745,7 @@ class UnitService {
     const inputs = data.scheduleLocations || [];
     for (const item of inputs) {
       if (!scheduleIdSet.has(item.unitScheduleId)) {
-        throw new AppError('??? ????? ??? ????.', 400, 'INVALID_SCHEDULE');
+        throw new AppError('유효하지 않은 일정 ID입니다.', 400, 'INVALID_SCHEDULE');
       }
     }
 
@@ -832,16 +775,16 @@ class UnitService {
   ) {
     const period = await unitRepository.findTrainingPeriodById(trainingPeriodId);
     if (!period) {
-      throw new AppError('????? ?? ? ????.', 404, 'TRAINING_PERIOD_NOT_FOUND');
+      throw new AppError('교육기간을 찾을 수 없습니다.', 404, 'TRAINING_PERIOD_NOT_FOUND');
     }
 
     const normalizedStart = toDateOnlyString(data.startDate);
     const normalizedEnd = toDateOnlyString(data.endDate);
     if (!normalizedStart || !normalizedEnd) {
-      throw new AppError('???? ?? ?? ?????. (YYYY-MM-DD)', 400, 'INVALID_DATE');
+      throw new AppError('날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)', 400, 'INVALID_DATE');
     }
     if (normalizedStart > normalizedEnd) {
-      throw new AppError('???? ????? ????.', 400, 'INVALID_DATE_RANGE');
+      throw new AppError('시작일이 종료일보다 늦습니다.', 400, 'INVALID_DATE_RANGE');
     }
 
     const normalizedExcludedDates = [
@@ -850,13 +793,13 @@ class UnitService {
       ),
     ].sort();
 
-    // 1. ?? ?? ??
+    // 1. 기존 일정 조회
     const existingSchedules = await unitRepository.findSchedulesByPeriodId(trainingPeriodId);
     const existingDates = new Set(
       existingSchedules.map((s) => (s.date ? new Date(s.date).toISOString().split('T')[0] : '')),
     );
 
-    // 2. ?? ???? ??
+    // 2. 새 일정 범위 계산
     const newSchedules = this._calculateSchedules(
       normalizedStart,
       normalizedEnd,
