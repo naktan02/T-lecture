@@ -215,15 +215,15 @@ function generate3DaySchedule(startDate: Date): Date[] {
   return dates;
 }
 
-// 강사 교육가능일 생성 (2026년 1월 ~ 2월, 랜덤 20~40일)
+// 강사 교육가능일 생성 (2025년 1월 ~ 2월, 랜덤 20~40일)
 function generateAvailableDates(count: number): Date[] {
   const allDates: Date[] = [];
 
-  // 2026년 1월 1일 ~ 2월 28일 (59일)
+  // 2025년 1월 1일 ~ 2월 28일 (59일)
   for (let m = 0; m <= 1; m++) {
     const daysInMonth = m === 0 ? 31 : 28;
     for (let d = 1; d <= daysInMonth; d++) {
-      allDates.push(utcMidnight(2026, m, d));
+      allDates.push(utcMidnight(2025, m, d));
     }
   }
 
@@ -518,7 +518,7 @@ async function main() {
   // ========== 3. 부대 데이터 생성 (다중 교육기간 포함) ==========
   console.log('\n[3/3] 부대 데이터 생성 (2025~2026년, 연도별 30개)...');
 
-  const YEARS = [2025, 2026];
+  const YEARS = [2025];
   const unitCountPerYear = 30;
   const militaryTypes: MilitaryType[] = ['Army', 'Navy', 'AirForce', 'Marines', 'MND'];
 
