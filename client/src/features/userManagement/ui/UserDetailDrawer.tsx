@@ -599,7 +599,7 @@ export const UserDetailDrawer = ({
                         onChange={handleChange}
                         className="w-full mt-1 p-2 border rounded-lg"
                       >
-                        <option value="">미지정</option>
+                        <option value="">무소속</option>
                         {teams.map((team) => (
                           <option key={team.id} value={team.id.toString()}>
                             {team.name || `팀 ${team.id}`}

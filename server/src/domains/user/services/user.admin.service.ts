@@ -330,19 +330,12 @@ class AdminService {
       }
 
       // 프로필 완료 여부 자동 계산
-      // 필수 필드: 주소, 분류, 팀, 기수 (추후 덕목, 근무가능일 추가 고려)
-      // null 체크 주의: teamId나 generation이 0일 경우는 없다고 가정 (ID는 1부터, 기수는 1부터)
+      // 필수 필드: 주소, 분류, 팀 (기수는 관리자가 입력하므로 제외)
       const finalLocation = address !== undefined ? address : user.instructor!.location;
       const finalCategory = category !== undefined ? category : user.instructor!.category;
       const finalTeamId = teamId !== undefined ? teamId : user.instructor!.teamId;
-      const finalGeneration = generation !== undefined ? generation : user.instructor!.generation;
 
-      const isProfileComplete = !!(
-        finalLocation &&
-        finalCategory &&
-        finalTeamId &&
-        finalGeneration
-      );
+      const isProfileComplete = !!(finalLocation && finalCategory && finalTeamId);
 
       instructorData.profileCompleted = isProfileComplete;
 
@@ -372,6 +365,19 @@ class AdminService {
 
   // 유저 승인
   async approveUser(userId: number | string) {
+    const user = await userRepository.findById(userId);
+    if (!user) throw new AppError('사용자를 찾을 수 없습니다.', 404, 'USER_NOT_FOUND');
+
+    // 강사인 경우 주소 → 좌표 변환
+    if (user.instructor?.location && !user.instructor.lat) {
+      try {
+        const coords = await kakaoService.addressToCoordinates(user.instructor.location);
+        await adminRepository.updateInstructorCoords(user.id, coords.lat, coords.lng);
+      } catch {
+        // 변환 실패해도 승인은 진행
+      }
+    }
+
     const updatedUser = await adminRepository.updateUserStatus(userId, UserStatus.APPROVED);
 
     return {
@@ -384,6 +390,20 @@ class AdminService {
   async approveUsersBulk(userIds: number[]) {
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
       throw new AppError('승인할 유저 ID 목록(배열)이 필요합니다.', 400, 'INVALID_INPUT');
+    }
+
+    // 각 강사의 주소를 좌표로 변환 (병렬 처리)
+    const users = await Promise.all(userIds.map((id) => userRepository.findById(id)));
+
+    for (const user of users) {
+      if (user?.instructor?.location && !user.instructor.lat) {
+        try {
+          const coords = await kakaoService.addressToCoordinates(user.instructor.location);
+          await adminRepository.updateInstructorCoords(user.id, coords.lat, coords.lng);
+        } catch {
+          // 변환 실패해도 승인은 진행
+        }
+      }
     }
 
     const result = await adminRepository.updateUsersStatusBulk(userIds, UserStatus.APPROVED);

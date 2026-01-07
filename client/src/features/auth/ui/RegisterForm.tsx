@@ -140,8 +140,8 @@ export const RegisterForm: React.FC = () => {
         setError('강사 등록 시 거주지 주소는 필수입니다.');
         return;
       }
-      if (form.virtueIds.length === 0 || !form.teamId || !form.category) {
-        setError('과목(덕목), 팀, 직책을 모두 선택해주세요.');
+      if (form.virtueIds.length === 0 || !form.category) {
+        setError('과목(덕목)과 직책을 선택해주세요.');
         return;
       }
     }
@@ -157,7 +157,7 @@ export const RegisterForm: React.FC = () => {
         address: userType === 'INSTRUCTOR' ? form.address : undefined,
         type: userType,
         virtueIds: userType === 'INSTRUCTOR' ? form.virtueIds : undefined,
-        teamId: userType === 'INSTRUCTOR' ? Number(form.teamId) : undefined,
+        teamId: userType === 'INSTRUCTOR' && form.teamId ? Number(form.teamId) : undefined,
         category: userType === 'INSTRUCTOR' ? form.category : undefined,
       };
 

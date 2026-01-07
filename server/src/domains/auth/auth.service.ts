@@ -77,20 +77,24 @@ class AuthService {
     if (type === 'INSTRUCTOR') {
       if (!address)
         throw new AppError('강사는 거주지 주소를 입력해야 합니다.', 400, 'VALIDATION_ERROR');
-      if (!teamId || !category || !virtueIds || virtueIds.length === 0) {
+      if (!category || !virtueIds || virtueIds.length === 0) {
         throw new AppError(
-          '강사 과목(덕목), 팀, 직책 정보를 모두 입력해야 합니다.',
+          '강사 과목(덕목), 직책 정보를 입력해야 합니다.',
           400,
           'VALIDATION_ERROR',
         );
       }
 
+      // 프로필 완성 조건: 주소, 분류, 덕목 있으면 완성 (팀은 선택)
+      const isProfileComplete = !!(address && category && virtueIds.length > 0);
+
       newUser = await userRepository.createInstructor(commonData, {
         location: address,
         ...(teamId ? { team: { connect: { id: teamId } } } : {}),
         category: category || null,
-        lat: null,
+        lat: null, // 승인 시점에 변환
         lng: null,
+        profileCompleted: isProfileComplete,
       });
 
       await instructorRepository.addVirtues(newUser.id, virtueIds);
@@ -146,7 +150,8 @@ class AuthService {
     const isInstructor = !!user.instructor;
     const isAdmin = !!user.admin;
     const adminLevel = user.admin?.level || null;
-    const instructorProfileCompleted = user.instructor?.profileCompleted ?? null;
+    // 강사 프로필 완성 = 주소가 있으면 완성 (덕목은 프론트에서 추가 체크)
+    const instructorProfileCompleted = isInstructor ? !!user.instructor?.location : null;
 
     return {
       accessToken,
