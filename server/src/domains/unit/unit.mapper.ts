@@ -37,7 +37,7 @@ function toMilitaryType(value: unknown): MilitaryType | undefined {
 }
 
 // 부대 생성용 데이터 변환 (CreateUnitDto 역할)
-// 주의: trainingPeriods는 createUnitWithNested에서 별도로 처리하므로 여기서는 제외
+// 주의: trainingPeriods는 createUnitWithTrainingPeriod에서 별도로 처리하므로 여기서는 제외
 // Unit은 기본 정보만 저장. 시간/날짜 필드들은 TrainingPeriod에 있음
 export function toCreateUnitDto(rawData: RawUnitData = {}): Prisma.UnitCreateInput {
   // 필수값 검증 (Service 로직 단순화)
@@ -65,7 +65,7 @@ export function toCreateUnitDto(rawData: RawUnitData = {}): Prisma.UnitCreateInp
     // lat/lng는 의도적으로 무시 - 주소 기반 좌표 변환 로직을 통해 자동 계산됨
     // 엘셀에 좌표가 포함되어 있어도 무시하고 주소로부터 새로 계산
     // NOTE: educationStart, educationEnd, workStartTime 등은 이제 TrainingPeriod에 있음
-    // trainingPeriods는 createUnitWithNested에서 처리
+    // trainingPeriods는 createUnitWithTrainingPeriod에서 처리
   };
 }
 

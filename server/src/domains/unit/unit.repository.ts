@@ -216,7 +216,6 @@ class UnitRepository {
 
   /**
    * 부대 + TrainingPeriod 함께 생성 (새 구조)
-   * 참고: 기존 createUnitWithNested 대체
    */
   async createUnitWithTrainingPeriod(
     unitData: Prisma.UnitCreateInput,
@@ -255,37 +254,6 @@ class UnitRepository {
   }
 
   /**
-   * @deprecated 새 구조에서는 createUnitWithTrainingPeriod 사용
-   */
-  async createUnitWithNested(
-    unitData: Prisma.UnitCreateInput,
-    locations: TrainingLocationData[],
-    schedules: ScheduleData[],
-  ) {
-    // 호환성을 위해 기본 TrainingPeriod 생성
-    return this.createUnitWithTrainingPeriod(unitData, {
-      name: '정규교육',
-      locations,
-      schedules,
-    });
-  }
-
-  /**
-   * 부대 다건 일괄 삽입 (Bulk Insert with Transaction)
-   */
-  async insertManyUnits(dataArray: Prisma.UnitCreateInput[]) {
-    return prisma.$transaction(
-      dataArray.map((data) =>
-        prisma.unit.create({
-          data,
-        }),
-      ),
-    );
-  }
-
-  // --- 수정 ---
-
-  /**
    * 부대 데이터 업데이트
    */
   async updateUnitById(id: number | string, data: Prisma.UnitUpdateInput) {
@@ -295,38 +263,6 @@ class UnitRepository {
     });
   }
 
-  /**
-   * @deprecated 새 구조에서는 개별 CRUD 함수 사용 권장
-   * - updateUnitById: 부대 기본 정보
-   * - addSchedulesToPeriod: 일정 추가
-   * - removeSchedulesFromPeriod: 일정 삭제
-   * - updateTrainingLocation: 장소 수정
-   */
-  async updateUnitWithNested(
-    id: number | string,
-    unitData: Prisma.UnitUpdateInput,
-    _locations?: TrainingLocationData[],
-    _schedules?: ScheduleData[],
-  ) {
-    // 기존 호환성을 위해 부대 기본 정보만 업데이트
-    const unitId = Number(id);
-    await prisma.unit.update({ where: { id: unitId }, data: unitData });
-
-    return prisma.unit.findUnique({
-      where: { id: unitId },
-      include: {
-        trainingPeriods: {
-          include: { locations: true, schedules: true },
-        },
-      },
-    });
-  }
-
-  // ===== 새로운 개별 CRUD 함수들 =====
-
-  /**
-   * TrainingPeriod에 일정 추가
-   */
   async addSchedulesToPeriod(trainingPeriodId: number, dates: (Date | string)[]) {
     if (dates.length === 0) return { count: 0 };
 
@@ -547,6 +483,35 @@ class UnitRepository {
     });
   }
 
+  /**
+   * ??-?? ?? ???
+   */
+  async syncScheduleLocations(
+    unitScheduleId: number,
+    inputs: { trainingLocationId: number; plannedCount?: number | null; actualCount?: number | null }[],
+  ) {
+    const existing = await prisma.scheduleLocation.findMany({
+      where: { unitScheduleId },
+    });
+
+    const incomingIds = new Set(inputs.map((i) => i.trainingLocationId));
+    const toDelete = existing.filter((e) => !incomingIds.has(e.trainingLocationId));
+
+    if (toDelete.length > 0) {
+      await prisma.scheduleLocation.deleteMany({
+        where: { id: { in: toDelete.map((e) => e.id) } },
+      });
+    }
+
+    for (const item of inputs) {
+      await this.upsertScheduleLocation(unitScheduleId, item.trainingLocationId, {
+        plannedCount: item.plannedCount ?? null,
+        actualCount: item.actualCount ?? null,
+      });
+    }
+  }
+
+
   // --- 일정 관리 ---
 
   /**
@@ -636,6 +601,172 @@ class UnitRepository {
     return prisma.unit.update({
       where: { id: Number(unitId) },
       data: { lat, lng },
+    });
+  }
+
+  // ===== TrainingPeriod 일정 조회 =====
+
+  /**
+   * TrainingPeriod의 일정과 배정 정보 조회
+   */
+  async findSchedulesWithAssignments(trainingPeriodId: number) {
+    return prisma.unitSchedule.findMany({
+      where: { trainingPeriodId },
+      include: {
+        assignments: {
+          where: { state: { in: ['Pending', 'Accepted'] } },
+          include: { User: { select: { name: true } } },
+        },
+      },
+    });
+  }
+
+  /**
+   * TrainingPeriod의 일정만 조회
+   */
+  async findSchedulesByPeriodId(trainingPeriodId: number) {
+    return prisma.unitSchedule.findMany({
+      where: { trainingPeriodId },
+      orderBy: { date: 'asc' },
+    });
+  }
+
+  /**
+   * TrainingPeriod 상세 조회 (Unit 포함)
+   */
+  async findTrainingPeriodById(id: number) {
+    return prisma.trainingPeriod.findUnique({
+      where: { id },
+      include: { unit: { select: { id: true, name: true } } },
+    });
+  }
+
+  /**
+   * TrainingPeriod 삭제 (cascade로 schedules, locations도 삭제됨)
+   */
+  async deleteTrainingPeriod(id: number) {
+    return prisma.trainingPeriod.delete({
+      where: { id },
+    });
+  }
+
+  /**
+   * TrainingPeriod 생성 (schedules, locations 포함)
+   */
+  async createTrainingPeriod(
+    unitId: number,
+    data: {
+      name: string;
+      workStartTime?: Date | null;
+      workEndTime?: Date | null;
+      lunchStartTime?: Date | null;
+      lunchEndTime?: Date | null;
+      officerName?: string | null;
+      officerPhone?: string | null;
+      officerEmail?: string | null;
+      hasCateredMeals?: boolean;
+      hasHallLodging?: boolean;
+      allowsPhoneBeforeAfter?: boolean;
+      locations?: {
+        originalPlace?: string;
+        changedPlace?: string | null;
+        hasInstructorLounge?: boolean;
+        hasWomenRestroom?: boolean;
+        note?: string | null;
+      }[];
+      schedules?: { date: string }[];
+    },
+  ) {
+    return prisma.trainingPeriod.create({
+      data: {
+        unitId,
+        name: data.name,
+        workStartTime: data.workStartTime,
+        workEndTime: data.workEndTime,
+        lunchStartTime: data.lunchStartTime,
+        lunchEndTime: data.lunchEndTime,
+        officerName: data.officerName,
+        officerPhone: data.officerPhone,
+        officerEmail: data.officerEmail,
+        hasCateredMeals: data.hasCateredMeals ?? false,
+        hasHallLodging: data.hasHallLodging ?? false,
+        allowsPhoneBeforeAfter: data.allowsPhoneBeforeAfter ?? false,
+        locations: data.locations
+          ? {
+              create: data.locations.map((l) => ({
+                originalPlace: l.originalPlace || '',
+                changedPlace: l.changedPlace || null,
+                hasInstructorLounge: l.hasInstructorLounge ?? false,
+                hasWomenRestroom: l.hasWomenRestroom ?? false,
+                note: l.note || null,
+              })),
+            }
+          : undefined,
+        schedules: data.schedules
+          ? {
+              create: data.schedules.map((s) => ({
+                date: toUTCMidnight(s.date),
+              })),
+            }
+          : undefined,
+      },
+      include: {
+        locations: true,
+        schedules: true,
+      },
+    });
+  }
+
+  /**
+   * TrainingPeriod의 장소 목록 조회
+   */
+  async findLocationsByPeriodId(trainingPeriodId: number) {
+    return prisma.trainingLocation.findMany({
+      where: { trainingPeriodId },
+    });
+  }
+
+  /**
+   * 장소 삭제
+   */
+  async deleteLocation(id: number) {
+    return prisma.trainingLocation.delete({
+      where: { id },
+    });
+  }
+
+  /**
+   * 장소 업데이트
+   */
+  async updateLocation(id: number, data: Prisma.TrainingLocationUpdateInput) {
+    return prisma.trainingLocation.update({
+      where: { id },
+      data,
+    });
+  }
+
+  /**
+   * 장소 생성
+   */
+  async createLocation(
+    trainingPeriodId: number,
+    data: {
+      originalPlace: string;
+      changedPlace?: string | null;
+      hasInstructorLounge?: boolean;
+      hasWomenRestroom?: boolean;
+      note?: string | null;
+    },
+  ) {
+    return prisma.trainingLocation.create({
+      data: {
+        trainingPeriodId,
+        originalPlace: data.originalPlace,
+        changedPlace: data.changedPlace || null,
+        hasInstructorLounge: data.hasInstructorLounge ?? false,
+        hasWomenRestroom: data.hasWomenRestroom ?? false,
+        note: data.note || null,
+      },
     });
   }
 }

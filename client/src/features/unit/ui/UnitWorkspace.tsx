@@ -3,7 +3,7 @@ import { useState, ReactElement } from 'react';
 import { useUnit } from '../model/useUnit';
 import { UnitToolbar } from './UnitToolbar';
 import { UnitList } from './UnitList';
-import { UnitDetailDrawer } from './UnitDetailDrawer';
+import { UnitDetailDrawerV2 } from './UnitDetailDrawerV2';
 import { ConfirmModal, Pagination } from '../../../shared/ui';
 
 interface SearchParams {
@@ -204,7 +204,7 @@ export const UnitWorkspace = (): ReactElement => {
         </div>
       </main>
 
-      <UnitDetailDrawer
+      <UnitDetailDrawerV2
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         unit={selectedUnit}

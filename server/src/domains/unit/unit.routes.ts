@@ -31,19 +31,31 @@ router.patch('/:id/basic', unitController.updateBasicInfo);
 // 부대 책임자 정보 수정
 router.patch('/:id/officer', unitController.updateOfficerInfo);
 
-// 부대 전체 정보 수정 (기본정보 + 교육장소 + 일정)
-router.put('/:id', unitController.updateUnitFull);
+// 교육기간 추가
+router.post('/:id/training-periods', unitController.createTrainingPeriod);
+
+// 부대 + 교육기간 + 장소 전체 업데이트 (주소, 일정 제외) - 임시 비활성화
+
+router.put('/:id', unitController.updateUnitWithPeriods);
 
 // 부대 주소만 수정 (좌표 재계산)
 router.patch('/:id/address', unitController.updateUnitAddress);
 
-// 부대 일정만 수정 (교육시작, 교육종료, 교육불가일자)
-router.patch('/:id/schedule', unitController.updateUnitSchedule);
+// 부대 일정만 수정 (교육시작, 교육종료, 교육불가일자) - 레거시
+// ===== TrainingPeriod 일정 관리 =====
+// 교육기간 일정 수정 (시작일, 종료일, 불가일자)
+router.patch('/training-periods/:periodId/schedule', unitController.updateTrainingPeriodSchedule);
 
-// 부대 일정 추가
+// 교육기간 장소 수정
+router.patch('/training-periods/:periodId/schedule-locations', unitController.updateTrainingPeriodScheduleLocations);
+
+// 교육기간 일정 삭제 전 배정 확인
+router.post('/training-periods/:periodId/schedule/check', unitController.checkScheduleAssignments);
+
+// 교육일정 추가
 router.post('/:id/schedules', unitController.addSchedule);
 
-// 부대 일정 삭제
+// 교육일정 삭제
 router.delete('/:id/schedules/:scheduleId', unitController.removeSchedule);
 
 // 부대 삭제

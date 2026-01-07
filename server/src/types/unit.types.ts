@@ -102,6 +102,13 @@ export interface ScheduleLocationInput {
   actualCount?: number;
 }
 
+export interface ScheduleLocationUpdateInput {
+  unitScheduleId: number;
+  trainingLocationId: number;
+  plannedCount?: number | null;
+  actualCount?: number | null;
+}
+
 export interface TrainingPeriodInput {
   name: string; // "정규교육", "추가교육 1차" 등
   workStartTime?: string | Date;
@@ -202,4 +209,75 @@ export interface UnitFilterParams {
   take: number;
   where: Prisma.UnitWhereInput;
   orderBy?: Prisma.UnitOrderByWithRelationInput;
+}
+
+// ===== updateUnitWithPeriods API 타입 =====
+
+/**
+ * TrainingPeriod 업데이트 입력 (locations, schedules 포함)
+ */
+export interface TrainingPeriodUpdateInput {
+  id?: number; // 기존 period면 id 있음, 신규면 undefined
+  name: string;
+  workStartTime?: string | null;
+  workEndTime?: string | null;
+  lunchStartTime?: string | null;
+  lunchEndTime?: string | null;
+  officerName?: string | null;
+  officerPhone?: string | null;
+  officerEmail?: string | null;
+  hasCateredMeals?: boolean;
+  hasHallLodging?: boolean;
+  allowsPhoneBeforeAfter?: boolean;
+  locations?: TrainingLocationUpdateInput[];
+  schedules?: ScheduleInput[]; // 신규 period일 때만 사용
+}
+
+/**
+ * TrainingLocation 업데이트 입력
+ */
+export interface TrainingLocationUpdateInput {
+  id?: number;
+  originalPlace?: string;
+  changedPlace?: string | null;
+  hasInstructorLounge?: boolean;
+  hasWomenRestroom?: boolean;
+  note?: string | null;
+}
+
+/**
+ * 부대 + 교육기간 + 장소 전체 업데이트 입력
+ */
+export interface UpdateUnitWithPeriodsInput {
+  // Unit 기본정보
+  name?: string;
+  unitType?: string;
+  wideArea?: string;
+  region?: string;
+  detailAddress?: string;
+  // TrainingPeriods 배열
+  trainingPeriods: TrainingPeriodUpdateInput[];
+}
+
+export interface UpdateTrainingPeriodScheduleLocationsInput {
+  scheduleLocations: ScheduleLocationUpdateInput[];
+}
+
+// ===== TrainingPeriod 생성 =====
+
+export interface CreateTrainingPeriodInput {
+  name: string;
+  workStartTime?: string | null;
+  workEndTime?: string | null;
+  lunchStartTime?: string | null;
+  lunchEndTime?: string | null;
+  officerName?: string | null;
+  officerPhone?: string | null;
+  officerEmail?: string | null;
+  hasCateredMeals?: boolean;
+  hasHallLodging?: boolean;
+  allowsPhoneBeforeAfter?: boolean;
+  startDate?: string;
+  endDate?: string;
+  excludedDates?: string[];
 }

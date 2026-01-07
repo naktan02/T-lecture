@@ -196,43 +196,51 @@ function generatePhoneNumber(): string {
   return `010-${randomInt(1000, 9999)}-${randomInt(1000, 9999)}`;
 }
 
-// 2박3일 일정 날짜 생성 (시작일부터 3일)
+// UTC 자정 날짜 생성 (년, 월(0-indexed), 일)
+function utcMidnight(year: number, month: number, day: number): Date {
+  return new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+}
+
+// 2박3일 일정 날짜 생성 (시작일부터 3일, UTC 자정)
 function generate3DaySchedule(startDate: Date): Date[] {
   const dates: Date[] = [];
   for (let i = 0; i < 3; i++) {
-    const d = new Date(startDate);
-    d.setUTCDate(d.getUTCDate() + i);
+    const d = utcMidnight(
+      startDate.getUTCFullYear(),
+      startDate.getUTCMonth(),
+      startDate.getUTCDate() + i,
+    );
     dates.push(d);
   }
   return dates;
 }
 
-// 강사 교육가능일 생성 (2025년 6월 ~ 2026년 2월, 랜덤 50~80일)
+// 강사 교육가능일 생성 (2026년 1월 ~ 2월, 랜덤 20~40일)
 function generateAvailableDates(count: number): Date[] {
-  const startDate = new Date(Date.UTC(2025, 5, 1)); // 2025-06-01
-  const endDate = new Date(Date.UTC(2026, 1, 28)); // 2026-02-28
-
   const allDates: Date[] = [];
-  const current = new Date(startDate);
-  while (current <= endDate) {
-    allDates.push(new Date(current));
-    current.setUTCDate(current.getUTCDate() + 1);
+
+  // 2026년 1월 1일 ~ 2월 28일 (59일)
+  for (let m = 0; m <= 1; m++) {
+    const daysInMonth = m === 0 ? 31 : 28;
+    for (let d = 1; d <= daysInMonth; d++) {
+      allDates.push(utcMidnight(2026, m, d));
+    }
   }
 
   const shuffled = allDates.sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
+  return shuffled.slice(0, Math.min(count, allDates.length));
 }
 
-// 부대 일정 시작일 생성 (2025년 6월 ~ 2026년 1월)
+// 부대 일정 시작일 생성 (2026년 1월 ~ 2월 골고루 분배)
 function generateUnitStartDates(count: number): Date[] {
   const dates: Date[] = [];
-  const startDate = new Date(Date.UTC(2025, 5, 1)); // 2025-06-01
-  const endDate = new Date(Date.UTC(2026, 0, 25)); // 2026-01-25
 
+  // 1월과 2월에 골고루 분배
   for (let i = 0; i < count; i++) {
-    const randomTime =
-      startDate.getTime() + Math.random() * (endDate.getTime() - startDate.getTime());
-    dates.push(new Date(randomTime));
+    const month = i % 2; // 0=1월, 1=2월 번갈아
+    const maxDay = month === 0 ? 28 : 25; // 2박3일 고려
+    const day = randomInt(1, maxDay);
+    dates.push(utcMidnight(2026, month, day));
   }
 
   return dates.sort((a, b) => a.getTime() - b.getTime());
@@ -261,6 +269,7 @@ async function main() {
   console.log('');
   console.log('╔════════════════════════════════════════════════════════════╗');
   console.log('║     T-lecture 기본 데이터 시드 (강사 + 부대)               ║');
+  console.log('║     📅 일정: 2026년 1월~2월 (2박3일) / UTC 자정 저장       ║');
   console.log('╚════════════════════════════════════════════════════════════╝');
   console.log('');
 
@@ -321,10 +330,10 @@ async function main() {
 
   // 강사 카테고리별 배분
   const categories: { type: UserCategory; count: number }[] = [
-    { type: 'Main', count: 8 }, // 주강사 8명
-    { type: 'Co', count: 6 }, // 부강사 6명
-    { type: 'Assistant', count: 4 }, // 보조강사 4명
-    { type: 'Practicum', count: 2 }, // 실습강 2명
+    { type: 'Main', count: 8 },
+    { type: 'Co', count: 6 },
+    { type: 'Assistant', count: 4 },
+    { type: 'Practicum', count: 2 },
   ];
 
   let instructorIndex = 0;
@@ -396,8 +405,9 @@ async function main() {
             .catch(() => {});
         }
 
-        // 교육가능일 생성 (50~80일)
-        const availableDates = generateAvailableDates(randomInt(50, 80));
+        // 교육가능일 생성 (20~40일, 다양하게)
+        const availCount = randomInt(20, 40);
+        const availableDates = generateAvailableDates(availCount);
         for (const date of availableDates) {
           await prisma.instructorAvailability
             .create({
@@ -461,14 +471,15 @@ async function main() {
     }
   }
 
-  // ========== 3. 부대 데이터 생성 (2박3일 일정) ==========
-  console.log('\n[3/3] 부대 데이터 생성 (50개, 2박3일 일정)...');
+  // ========== 3. 부대 데이터 생성 (다중 교육기간 포함) ==========
+  console.log('\n[3/3] 부대 데이터 생성 (30개, 다중 교육기간 포함)...');
 
-  const unitCount = 50;
+  const unitCount = 30;
   const unitStartDates = generateUnitStartDates(unitCount);
   const militaryTypes: MilitaryType[] = ['Army', 'Navy', 'AirForce', 'Marines', 'MND'];
 
   let createdUnits = 0;
+  let totalPeriods = 0;
   let totalSchedules = 0;
   let totalLocations = 0;
 
@@ -476,13 +487,12 @@ async function main() {
     const unitType = randomChoice(militaryTypes);
     const unitName = generateUnitName(unitType, i + 1);
     const location = randomChoice(LOCATIONS);
-    const startDate = unitStartDates[i];
 
     try {
       // 1. Unit 생성
       const unit = await prisma.unit.create({
         data: {
-          lectureYear: startDate.getUTCFullYear(), // 일정 시작년도 기준
+          lectureYear: 2026,
           name: unitName,
           unitType: unitType,
           wideArea: location.wideArea,
@@ -493,66 +503,78 @@ async function main() {
         },
       });
 
-      // 2. TrainingPeriod 생성 (2박3일 일정)
-      const workStart = new Date(2000, 0, 1, 9, 0, 0);
-      const workEnd = new Date(2000, 0, 1, 18, 0, 0);
-      const lunchStart = new Date(2000, 0, 1, 12, 0, 0);
-      const lunchEnd = new Date(2000, 0, 1, 13, 0, 0);
+      // 2. 교육기간 수 결정: 40%는 2개, 10%는 3개, 나머지는 1개
+      const periodCount = Math.random() < 0.1 ? 3 : Math.random() < 0.5 ? 2 : 1;
+      const periodNames = ['정규교육', '추가교육 1차', '추가교육 2차'];
 
-      const trainingPeriod = await prisma.trainingPeriod.create({
-        data: {
-          unitId: unit.id,
-          name: '정규교육',
-          workStartTime: workStart,
-          workEndTime: workEnd,
-          lunchStartTime: lunchStart,
-          lunchEndTime: lunchEnd,
-          officerName: generateKoreanName(),
-          officerPhone: generatePhoneNumber(),
-          officerEmail: `officer${i + 1}@unit.mil.kr`,
-          isStaffLocked: false,
-          excludedDates: [],
-          hasCateredMeals: Math.random() > 0.5,
-          hasHallLodging: Math.random() > 0.7,
-          allowsPhoneBeforeAfter: Math.random() > 0.3,
-        },
-      });
+      for (let p = 0; p < periodCount; p++) {
+        // 교육기간별 시작일 (첫 번째는 배정된 날짜, 나머지는 +7~14일)
+        const baseDate = unitStartDates[i];
+        const periodStartDate =
+          p === 0
+            ? baseDate
+            : utcMidnight(
+                baseDate.getUTCFullYear(),
+                baseDate.getUTCMonth(),
+                baseDate.getUTCDate() + 7 + p * 7,
+              );
 
-      // 3. UnitSchedule 생성 (3일)
-      const scheduleDates = generate3DaySchedule(startDate);
-      const createdSchedules = await prisma.unitSchedule.createManyAndReturn({
-        data: scheduleDates.map((date) => ({
-          trainingPeriodId: trainingPeriod.id,
-          date: date,
-        })),
-      });
-      totalSchedules += createdSchedules.length;
-
-      // 4. TrainingLocation 생성 (1~2개)
-      const locationCount = Math.random() > 0.7 ? 2 : 1;
-      for (let loc = 0; loc < locationCount; loc++) {
-        const trainingLocation = await prisma.trainingLocation.create({
+        const trainingPeriod = await prisma.trainingPeriod.create({
           data: {
-            trainingPeriodId: trainingPeriod.id,
-            originalPlace: `${unit.name} 교육장${loc > 0 ? ` ${loc + 1}` : ''}`,
-            changedPlace: null,
-            hasInstructorLounge: Math.random() > 0.5,
-            hasWomenRestroom: Math.random() > 0.3,
-            note: null,
+            unitId: unit.id,
+            name: periodNames[p],
+            workStartTime: utcMidnight(2000, 0, 1), // 09:00 대신 자정 (시간은 별도 처리)
+            workEndTime: utcMidnight(2000, 0, 1),
+            lunchStartTime: utcMidnight(2000, 0, 1),
+            lunchEndTime: utcMidnight(2000, 0, 1),
+            officerName: generateKoreanName(),
+            officerPhone: generatePhoneNumber(),
+            officerEmail: `officer${i + 1}_${p + 1}@unit.mil.kr`,
+            isStaffLocked: false,
+            excludedDates: [],
+            hasCateredMeals: Math.random() > 0.5,
+            hasHallLodging: Math.random() > 0.7,
+            allowsPhoneBeforeAfter: Math.random() > 0.3,
           },
         });
-        totalLocations++;
+        totalPeriods++;
 
-        // 5. ScheduleLocation 생성 (각 일정-장소 연결)
-        for (const schedule of createdSchedules) {
-          await prisma.scheduleLocation.create({
+        // 3. UnitSchedule 생성 (2박3일)
+        const scheduleDates = generate3DaySchedule(periodStartDate);
+        const createdSchedules = await prisma.unitSchedule.createManyAndReturn({
+          data: scheduleDates.map((date) => ({
+            trainingPeriodId: trainingPeriod.id,
+            date: date,
+          })),
+        });
+        totalSchedules += createdSchedules.length;
+
+        // 4. TrainingLocation 생성 (1~2개)
+        const locationCount = Math.random() > 0.7 ? 2 : 1;
+        for (let loc = 0; loc < locationCount; loc++) {
+          const trainingLocation = await prisma.trainingLocation.create({
             data: {
-              unitScheduleId: schedule.id,
-              trainingLocationId: trainingLocation.id,
-              plannedCount: randomInt(30, 50),
-              actualCount: null,
+              trainingPeriodId: trainingPeriod.id,
+              originalPlace: `${unit.name} ${periodNames[p]} 교육장${loc > 0 ? ` ${loc + 1}` : ''}`,
+              changedPlace: null,
+              hasInstructorLounge: Math.random() > 0.5,
+              hasWomenRestroom: Math.random() > 0.3,
+              note: null,
             },
           });
+          totalLocations++;
+
+          // 5. ScheduleLocation 생성 (각 일정-장소 연결)
+          for (const schedule of createdSchedules) {
+            await prisma.scheduleLocation.create({
+              data: {
+                unitScheduleId: schedule.id,
+                trainingLocationId: trainingLocation.id,
+                plannedCount: randomInt(30, 50),
+                actualCount: null,
+              },
+            });
+          }
         }
       }
 
@@ -577,9 +599,10 @@ async function main() {
   console.log('║  생성 결과:                                                ║');
   console.log(`║  - 팀: ${TEAMS.length}개                                    `.padEnd(61) + '║');
   console.log(`║  - 덕목: ${VIRTUES.length}개                                `.padEnd(61) + '║');
-  console.log(`║  - 강사: ${instructorIndex}명 (가용일 포함)                 `.padEnd(61) + '║');
+  console.log(`║  - 강사: ${instructorIndex}명 (가용일 20~40일)              `.padEnd(61) + '║');
   console.log(`║  - 일반 유저: 5명                                          `.padEnd(61) + '║');
   console.log(`║  - 부대: ${createdUnits}개                                  `.padEnd(61) + '║');
+  console.log(`║  - 교육기간: ${totalPeriods}개 (1~3개/부대)                 `.padEnd(61) + '║');
   console.log(`║  - 부대 일정: ${totalSchedules}개 (2박3일)                  `.padEnd(61) + '║');
   console.log(`║  - 교육 장소: ${totalLocations}개                           `.padEnd(61) + '║');
   console.log('╚════════════════════════════════════════════════════════════╝');

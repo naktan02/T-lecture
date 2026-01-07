@@ -1,6 +1,7 @@
 // client/src/features/unit/model/useUnit.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { unitApi, UnitData } from '../api/unitApi';
+import { UpdateUnitWithPeriodsPayload } from '../../../shared/types/unit.types';
 import { useState, Dispatch, SetStateAction } from 'react';
 import { showSuccess, showError } from '../../../shared/utils';
 
@@ -44,7 +45,7 @@ interface UseUnitReturn {
     filters?: SearchParams,
   ) => Promise<unknown>;
   registerUnit: (data: UnitData) => Promise<unknown>;
-  updateUnit: (params: { id: number | string; data: unknown }) => void;
+  updateUnit: (params: { id: number | string; data: UpdateUnitWithPeriodsPayload }) => void;
   deleteUnit: (id: number | string) => void;
   uploadExcel: (file: File) => Promise<unknown>;
   sortField?: string;
@@ -83,8 +84,8 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
   const meta: UnitMeta = response?.data?.meta || { total: 0, lastPage: 1 };
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number | string; data: unknown }) => {
-      return unitApi.updateUnit(id, data as Record<string, unknown>);
+    mutationFn: async ({ id, data }: { id: number | string; data: UpdateUnitWithPeriodsPayload }) => {
+      return unitApi.updateUnit(id, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['units'] });
