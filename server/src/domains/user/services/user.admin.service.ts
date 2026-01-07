@@ -392,6 +392,20 @@ class AdminService {
       throw new AppError('승인할 유저 ID 목록(배열)이 필요합니다.', 400, 'INVALID_INPUT');
     }
 
+    // 각 강사의 주소를 좌표로 변환 (병렬 처리)
+    const users = await Promise.all(userIds.map((id) => userRepository.findById(id)));
+
+    for (const user of users) {
+      if (user?.instructor?.location && !user.instructor.lat) {
+        try {
+          const coords = await kakaoService.addressToCoordinates(user.instructor.location);
+          await adminRepository.updateInstructorCoords(user.id, coords.lat, coords.lng);
+        } catch {
+          // 변환 실패해도 승인은 진행
+        }
+      }
+    }
+
     const result = await adminRepository.updateUsersStatusBulk(userIds, UserStatus.APPROVED);
 
     return {
