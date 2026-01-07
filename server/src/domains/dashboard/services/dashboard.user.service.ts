@@ -162,7 +162,6 @@ class DashboardService {
       // 1-B. 커스텀 기간: UTC 자정 기준 필터링 (완료된 교육만)
       const start = new Date(`${startDate!}T00:00:00.000Z`);
       const end = new Date(`${endDate!}T23:59:59.999Z`);
-      const today = getTodayUTC();
 
       // 종료일이 오늘 이후면 오늘 직전까지만 (완료된 교육만)
       const effectiveEnd = end < today ? end : new Date(today.getTime() - 1);
@@ -172,7 +171,7 @@ class DashboardService {
           userId,
           state: 'Accepted',
           UnitSchedule: {
-            date: { gte: start, lt: today }, // 완료된 교육만
+            date: { gte: start, lte: effectiveEnd }, // 완료된 교육만
           },
         },
         // NOTE: unit과 workStartTime은 이제 trainingPeriod에
@@ -184,7 +183,7 @@ class DashboardService {
         where: {
           userId,
           UnitSchedule: {
-            date: { gte: start, lt: today }, // 완료된 교육만
+            date: { gte: start, lte: effectiveEnd }, // 완료된 교육만
           },
         },
       });
@@ -265,7 +264,7 @@ class DashboardService {
     }
 
     // 월별 데이터 조회 (완료된 교육만)
-    const today = getTodayUTC();
+
     const recentActivity = await prisma.instructorUnitAssignment.findMany({
       where: {
         userId,
@@ -303,7 +302,7 @@ class DashboardService {
     }
 
     // 7. 최근 배정 리스트 (5건)
-    const recentAssignmentsRaw = await prisma.instructorUnitAssignment.findMany({
+    const recentAssignmentsQuery: any = {
       where: {
         userId,
         state: 'Accepted',
@@ -327,7 +326,6 @@ class DashboardService {
 
     if (isCustomRange) {
       // 커스텀 기간: UTC 자정 기준, 완료된 건만 (오늘 이전)
-      const today = getTodayUTC();
       const rangeStart = new Date(`${startDate!}T00:00:00.000Z`);
 
       recentAssignmentsQuery.where.UnitSchedule.date = {
@@ -339,18 +337,7 @@ class DashboardService {
     const recentAssignmentsRaw =
       await prisma.instructorUnitAssignment.findMany(recentAssignmentsQuery);
 
-    // 거리 맵 (이미 로드 안했으면 로드)
-    const distances = await prisma.instructorUnitDistance.findMany({ where: { userId } });
-    const distanceMap = new Map(
-      distances.map((d) => [
-        d.unitId,
-        d.distance
-          ? typeof d.distance === 'object' && 'toNumber' in d.distance
-            ? d.distance.toNumber()
-            : Number(d.distance)
-          : 0,
-      ]),
-    );
+    // 거리 맵 (이미 로드됨)
 
     const recentAssignments = recentAssignmentsRaw
       .map((assignment: any) => {
