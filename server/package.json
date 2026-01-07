@@ -38,6 +38,7 @@
     "test:user.me": "mocha --require tsx tests/test/user.me.integration.spec.js --timeout 10000 --exit"
   },
   "dependencies": {
+    "@getbrevo/brevo": "^3.0.1",
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
     "axios": "^1.13.2",
@@ -53,7 +54,6 @@
     "morgan": "^1.10.0",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
-    "nodemailer": "^7.0.10",
     "pg": "^8.16.3",
     "readline-sync": "^1.4.10",
     "winston": "^3.19.0",
@@ -70,7 +70,6 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^25.0.3",
     "@types/node-cron": "^3.0.11",
-    "@types/nodemailer": "^7.0.4",
     "@types/supertest": "^6.0.3",
     "chai": "^6.2.1",
     "eslint": "^9.39.2",
