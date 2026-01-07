@@ -172,7 +172,7 @@ class DashboardService {
           userId,
           state: 'Accepted',
           UnitSchedule: {
-            date: { gte: start, lt: today }, // 완료된 교육만
+            date: { gte: start, lte: effectiveEnd }, // 완료된 교육만 (오늘 이전 + 기간 내)
           },
         },
         // NOTE: unit과 workStartTime은 이제 trainingPeriod에
@@ -184,7 +184,7 @@ class DashboardService {
         where: {
           userId,
           UnitSchedule: {
-            date: { gte: start, lt: today }, // 완료된 교육만
+            date: { gte: start, lte: effectiveEnd }, // 완료된 교육만
           },
         },
       });
@@ -303,7 +303,7 @@ class DashboardService {
     }
 
     // 7. 최근 배정 리스트 (5건)
-    const recentAssignmentsRaw = await prisma.instructorUnitAssignment.findMany({
+    const recentAssignmentsQuery: any = {
       where: {
         userId,
         state: 'Accepted',
@@ -327,7 +327,6 @@ class DashboardService {
 
     if (isCustomRange) {
       // 커스텀 기간: UTC 자정 기준, 완료된 건만 (오늘 이전)
-      const today = getTodayUTC();
       const rangeStart = new Date(`${startDate!}T00:00:00.000Z`);
 
       recentAssignmentsQuery.where.UnitSchedule.date = {
