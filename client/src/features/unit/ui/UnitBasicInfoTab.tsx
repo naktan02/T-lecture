@@ -482,16 +482,16 @@ export const UnitBasicInfoTab = ({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                        if (isExpanded) {
-                          setExpandedPeriodIndex(null);
-                        } else {
-                          if (periodData) {
-                            hydrateEditStateFromSchedules(periodData.schedules);
+                          if (isExpanded) {
+                            setExpandedPeriodIndex(null);
+                          } else {
+                            if (periodData) {
+                              hydrateEditStateFromSchedules(periodData.schedules);
+                            }
+                            setExpandedPeriodIndex(index);
                           }
-                          setExpandedPeriodIndex(index);
-                        }
-                      }}
-                      className="text-blue-500 hover:text-blue-700 text-sm px-2"
+                        }}
+                        className="text-blue-500 hover:text-blue-700 text-sm px-2"
                       >
                         {isExpanded ? '접기' : '수정'}
                       </button>
@@ -499,7 +499,9 @@ export const UnitBasicInfoTab = ({
                         type="button"
                         onClick={async (e) => {
                           e.stopPropagation();
-                          const confirmed = await showConfirm(`"${period.name}" 교육기간을 삭제하시겠습니까?`);
+                          const confirmed = await showConfirm(
+                            `"${period.name}" 교육기간을 삭제하시겠습니까?`,
+                          );
                           if (confirmed) {
                             onPeriodRemove(index);
                             if (expandedPeriodIndex === index) {
@@ -534,7 +536,7 @@ export const UnitBasicInfoTab = ({
                           <label className="block text-xs text-gray-600 mb-1">시작일</label>
                           <input
                             type="date"
-                            value={editStartDate || toDateInputValue(periodData.schedules[0]?.date)}
+                            value={editStartDate}
                             onChange={(e) => setEditStartDate(e.target.value)}
                             max="2035-12-31"
                             className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm"
@@ -545,12 +547,7 @@ export const UnitBasicInfoTab = ({
                           <label className="block text-xs text-gray-600 mb-1">종료일</label>
                           <input
                             type="date"
-                            value={
-                              editEndDate ||
-                              toDateInputValue(
-                                periodData.schedules[periodData.schedules.length - 1]?.date,
-                              )
-                            }
+                            value={editEndDate}
                             onChange={(e) => setEditEndDate(e.target.value)}
                             max="2035-12-31"
                             className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm"
