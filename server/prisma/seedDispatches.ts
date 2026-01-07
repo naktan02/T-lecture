@@ -25,9 +25,11 @@ export async function runSeedDispatches() {
       },
       UnitSchedule: {
         include: {
-          unit: {
+          // NOTE: unit과 trainingLocations는 이제 trainingPeriod를 통해 접근
+          trainingPeriod: {
             include: {
-              trainingLocations: true,
+              unit: true,
+              locations: true,
             },
           },
         },
@@ -42,10 +44,10 @@ export async function runSeedDispatches() {
   }
   console.log(`📊 배정 레코드 ${assignments.length}개 로드됨`);
 
-  // 부대(UnitSchedule 기준) 별로 그룹화
+  // 부대(편의상 UnitSchedule의 trainingPeriod.unitId 기준) 별로 그룹화
   const assignmentsByUnit = new Map<number, typeof assignments>();
   for (const assignment of assignments) {
-    const unitId = assignment.UnitSchedule.unitId;
+    const unitId = assignment.UnitSchedule.trainingPeriod.unitId;
     if (!assignmentsByUnit.has(unitId)) {
       assignmentsByUnit.set(unitId, []);
     }
@@ -60,9 +62,10 @@ export async function runSeedDispatches() {
 
   for (const [, unitAssignments] of assignmentsByUnit) {
     const firstAssignment = unitAssignments[0];
-    const unit = firstAssignment.UnitSchedule.unit;
-    const educationStart = unit?.educationStart;
-    const educationEnd = unit?.educationEnd;
+    const trainingPeriod = firstAssignment.UnitSchedule.trainingPeriod;
+    const unit = trainingPeriod.unit;
+    const educationStart = trainingPeriod.educationStart;
+    const educationEnd = trainingPeriod.educationEnd;
 
     if (!educationStart || !educationEnd) continue;
 
@@ -151,8 +154,8 @@ ${user.name} 강사님, 교육 일정이 임시 배정되었습니다.
           // 팀장용 vs 팀원용 메시지 구분
           let confBody: string;
           if (isTeamLeader) {
-            // 팀장용: 상세 정보 포함
-            const location = unit?.trainingLocations?.[0];
+            // 팀장용: 상세 정보 포함 - locations를 trainingPeriod에서 가져옴
+            const location = trainingPeriod.locations?.[0];
             confBody = `[확정 배정 알림]
 ${user.name} 강사님, 배정이 확정되었습니다.
 - 부대: ${unit?.name}
@@ -161,19 +164,19 @@ ${user.name} 강사님, 배정이 확정되었습니다.
 - 주소: ${unit?.addressDetail}
 - 상세주소: ${unit?.detailAddress || ''}
 - 교육일정: ${educationStart.toISOString().split('T')[0]} ~ ${educationEnd.toISOString().split('T')[0]}
-- 교육불가일: ${unit?.excludedDates?.join(', ') || '없음'}
+- 교육불가일: ${trainingPeriod.excludedDates?.join(', ') || '없음'}
 
 - 교육장소
-장소명: ${location?.originalPlace || ''} 참여인원: ${location?.actualCount || 0}
+장소명: ${location?.originalPlace || ''}
 강사휴게실: ${location?.hasInstructorLounge ? 'O' : 'X'}, 여자화장실: ${location?.hasWomenRestroom ? 'O' : 'X'}
 -------------------------------------------------------
 
 [배정 강사]
 ${allInstructorNames}
 
-부대 담당자: ${unit?.officerName || ''} / ${unit?.officerPhone || ''}
-수탁급식여부: ${location?.hasCateredMeals ? 'O' : 'X'}
-회관숙박여부: ${location?.hasHallLodging ? 'O' : 'X'}`;
+부대 담당자: ${trainingPeriod.officerName || ''} / ${trainingPeriod.officerPhone || ''}
+수탁급식여부: ${trainingPeriod.hasCateredMeals ? 'O' : 'X'}
+회관숙박여부: ${trainingPeriod.hasHallLodging ? 'O' : 'X'}`;
             confirmedLeaderCount++;
           } else {
             // 팀원용: 간단한 정보

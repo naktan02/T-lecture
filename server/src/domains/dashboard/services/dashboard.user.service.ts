@@ -158,6 +158,82 @@ class DashboardService {
           UnitSchedule: { date: { gte: startOfMonth } },
         },
       });
+    } else {
+      // 1-B. 커스텀 기간: UTC 자정 기준 필터링 (완료된 교육만)
+      const start = new Date(`${startDate!}T00:00:00.000Z`);
+      const end = new Date(`${endDate!}T23:59:59.999Z`);
+      const today = getTodayUTC();
+
+      // 종료일이 오늘 이후면 오늘 직전까지만 (완료된 교육만)
+      const effectiveEnd = end < today ? end : new Date(today.getTime() - 1);
+
+      const assignments = await prisma.instructorUnitAssignment.findMany({
+        where: {
+          userId,
+          state: 'Accepted',
+          UnitSchedule: {
+            date: { gte: start, lt: today }, // 완료된 교육만
+          },
+        },
+        // NOTE: unit과 workStartTime은 이제 trainingPeriod에
+        include: { UnitSchedule: { include: { trainingPeriod: { include: { unit: true } } } } },
+      });
+
+      // 전체 제안 건수도 완료된 교육만 집계
+      const periodTotalProposals = await prisma.instructorUnitAssignment.count({
+        where: {
+          userId,
+          UnitSchedule: {
+            date: { gte: start, lt: today }, // 완료된 교육만
+          },
+        },
+      });
+
+      summaryStats.totalAssignmentsCount = periodTotalProposals;
+      summaryStats.acceptedCount = assignments.length;
+
+      // 거리 정보 로드
+      const distances = await prisma.instructorUnitDistance.findMany({ where: { userId } });
+      const distanceMap = new Map(
+        distances.map((d) => [
+          d.unitId,
+          d.distance
+            ? typeof d.distance === 'object' && 'toNumber' in d.distance
+              ? d.distance.toNumber()
+              : Number(d.distance)
+            : 0,
+        ]),
+      );
+
+      const workedDates = new Set<string>();
+      const countedUnitsForDistance = new Set<number>(); // 거리 계산한 부대 추적
+
+      for (const assignment of assignments) {
+        const trainingPeriod = assignment.UnitSchedule?.trainingPeriod;
+        if (!trainingPeriod?.unit || !assignment.UnitSchedule?.date) continue;
+        const unit = trainingPeriod.unit;
+
+        // 시간 (일정마다 계산) - workStartTime은 이제 trainingPeriod에
+        let workHours = 0;
+        if (trainingPeriod.workStartTime && trainingPeriod.workEndTime) {
+          const s = new Date(trainingPeriod.workStartTime);
+          const e = new Date(trainingPeriod.workEndTime);
+          let diff = e.getHours() * 60 + e.getMinutes() - (s.getHours() * 60 + s.getMinutes());
+          if (diff < 0) diff += 24 * 60;
+          workHours = diff / 60;
+        }
+        summaryStats.totalWorkHours += workHours;
+
+        // 거리 (부대별 한 번만 - 파견 형태이므로 왕복 1회만)
+        if (!countedUnitsForDistance.has(unit.id)) {
+          const dist = distanceMap.get(unit.id) || 0;
+          summaryStats.totalDistance += dist * 2; // 왕복
+          countedUnitsForDistance.add(unit.id);
+        }
+
+        workedDates.add(new Date(assignment.UnitSchedule.date).toDateString());
+      }
+      summaryStats.totalWorkDays = workedDates.size;
     }
 
     // 6. 월별 추이 계산
@@ -188,17 +264,40 @@ class DashboardService {
       }
     }
 
-    // 월별 데이터 집계
-    for (const assignment of assignments) {
-      if (!assignment.UnitSchedule?.date) continue;
-      const d = new Date(assignment.UnitSchedule.date);
+    // 월별 데이터 조회 (완료된 교육만)
+    const today = getTodayUTC();
+    const recentActivity = await prisma.instructorUnitAssignment.findMany({
+      where: {
+        userId,
+        state: 'Accepted',
+        UnitSchedule: {
+          date: {
+            gte: monthlyQueryStart,
+            lt: today, // 완료된 교육만 (오늘 이전)
+          },
+        },
+      },
+      // NOTE: unit과 workStartTime은 이제 trainingPeriod에
+      include: { UnitSchedule: { include: { trainingPeriod: { include: { unit: true } } } } },
+    });
+
+    for (const act of recentActivity) {
+      if (!act.UnitSchedule?.date) continue;
+      const d = new Date(act.UnitSchedule.date);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
       if (monthlyMap.has(key)) {
         const current = monthlyMap.get(key)!;
-        const hours = assignment.UnitSchedule.unit
-          ? calculateWorkHours(assignment.UnitSchedule.unit)
-          : 0;
+        let hours = 0;
+        // 시간 계산 - workStartTime은 이제 trainingPeriod에
+        const tp = act.UnitSchedule.trainingPeriod;
+        if (tp?.workStartTime && tp?.workEndTime) {
+          const s = new Date(tp.workStartTime);
+          const e = new Date(tp.workEndTime);
+          let diff = e.getHours() * 60 + e.getMinutes() - (s.getHours() * 60 + s.getMinutes());
+          if (diff < 0) diff += 24 * 60;
+          hours = diff / 60;
+        }
         monthlyMap.set(key, { count: current.count + 1, hours: current.hours + hours });
       }
     }
@@ -210,17 +309,65 @@ class DashboardService {
         state: 'Accepted',
         UnitSchedule: { date: { lt: today } },
       },
-      include: { UnitSchedule: { include: { unit: true } } },
-      orderBy: { UnitSchedule: { date: 'desc' } },
-      take: 5,
-    });
+      include: {
+        UnitSchedule: {
+          include: {
+            // NOTE: unit과 workStartTime은 이제 trainingPeriod에
+            trainingPeriod: { include: { unit: true } },
+          },
+        },
+      },
+      orderBy: {
+        UnitSchedule: {
+          date: 'desc',
+        },
+      },
+      take: 5, // 요약용 5건만
+    };
+
+    if (isCustomRange) {
+      // 커스텀 기간: UTC 자정 기준, 완료된 건만 (오늘 이전)
+      const today = getTodayUTC();
+      const rangeStart = new Date(`${startDate!}T00:00:00.000Z`);
+
+      recentAssignmentsQuery.where.UnitSchedule.date = {
+        gte: rangeStart,
+        lt: today, // 완료된 것만
+      };
+    }
+
+    const recentAssignmentsRaw =
+      await prisma.instructorUnitAssignment.findMany(recentAssignmentsQuery);
+
+    // 거리 맵 (이미 로드 안했으면 로드)
+    const distances = await prisma.instructorUnitDistance.findMany({ where: { userId } });
+    const distanceMap = new Map(
+      distances.map((d) => [
+        d.unitId,
+        d.distance
+          ? typeof d.distance === 'object' && 'toNumber' in d.distance
+            ? d.distance.toNumber()
+            : Number(d.distance)
+          : 0,
+      ]),
+    );
 
     const recentAssignments = recentAssignmentsRaw
-      .map((assignment) => {
-        const u = assignment.UnitSchedule?.unit;
+      .map((assignment: any) => {
+        const tp = assignment.UnitSchedule?.trainingPeriod;
+        const u = tp?.unit;
         if (!u) return null;
         const dist = distanceMap.get(u.id) || 0;
-        const wh = calculateWorkHours(u);
+
+        // workStartTime은 이제 trainingPeriod에
+        let wh = 0;
+        if (tp?.workStartTime && tp?.workEndTime) {
+          const s = new Date(tp.workStartTime);
+          const e = new Date(tp.workEndTime);
+          let diff = e.getHours() * 60 + e.getMinutes() - (s.getHours() * 60 + s.getMinutes());
+          if (diff < 0) diff += 24 * 60;
+          wh = diff / 60;
+        }
 
         return {
           id: assignment.unitScheduleId,
@@ -298,8 +445,19 @@ class DashboardService {
       prisma.instructorUnitAssignment.count({ where: whereClause }),
       prisma.instructorUnitAssignment.findMany({
         where: whereClause,
-        include: { UnitSchedule: { include: { unit: true } } },
-        orderBy: { UnitSchedule: { date: 'desc' } },
+        include: {
+          UnitSchedule: {
+            include: {
+              // NOTE: unit과 workStartTime은 이제 trainingPeriod에
+              trainingPeriod: { include: { unit: true } },
+            },
+          },
+        },
+        orderBy: {
+          UnitSchedule: {
+            date: 'desc',
+          },
+        },
         skip,
         take: limit,
       }),
@@ -308,11 +466,21 @@ class DashboardService {
     const distanceMap = await getDistanceMap(userId);
 
     const formattedActivities = activities
-      .map((assignment) => {
-        const u = assignment.UnitSchedule?.unit;
+      .map((assignment: any) => {
+        const tp = assignment.UnitSchedule?.trainingPeriod;
+        const u = tp?.unit;
         if (!u) return null;
         const dist = distanceMap.get(u.id) || 0;
-        const wh = calculateWorkHours(u);
+
+        // workStartTime은 이제 trainingPeriod에
+        let wh = 0;
+        if (tp?.workStartTime && tp?.workEndTime) {
+          const s = new Date(tp.workStartTime);
+          const e = new Date(tp.workEndTime);
+          let diff = e.getHours() * 60 + e.getMinutes() - (s.getHours() * 60 + s.getMinutes());
+          if (diff < 0) diff += 24 * 60;
+          wh = diff / 60;
+        }
 
         return {
           id: assignment.unitScheduleId,

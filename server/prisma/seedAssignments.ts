@@ -51,13 +51,18 @@ export async function runSeedAssignments() {
   }
   console.log(`📊 강사 ${instructors.length}명 로드됨`);
 
-  // 부대 데이터 조회 (일정 포함)
+  // 부대 데이터 조회 (일정 포함) - TrainingPeriod 기반 구조
   const allUnits = await prisma.unit.findMany({
     include: {
-      schedules: true,
-      trainingLocations: true,
+      trainingPeriods: {
+        include: {
+          schedules: true,
+          locations: true,
+        },
+        // NOTE: educationStart/End는 trainingPeriod 모델에 직접 있는 필드라 자동 포함됨
+      },
     },
-    orderBy: { educationStart: 'asc' },
+    orderBy: { id: 'asc' },
   });
 
   if (allUnits.length === 0) {
@@ -66,37 +71,43 @@ export async function runSeedAssignments() {
   }
   console.log(`📊 전체 부대 ${allUnits.length}개 로드됨`);
 
-  // 6월~1월 부대만 선택 (2월 부대 제외)
+  // 첫 번째 TrainingPeriod의 첫 스케줄 날짜로 분류
   const targetUnits = allUnits.filter((u) => {
-    if (!u.educationStart) return false;
-    const startDate = new Date(u.educationStart);
+    const firstPeriod = u.trainingPeriods[0];
+    if (!firstPeriod || firstPeriod.schedules.length === 0) return false;
+    const startDate = new Date(firstPeriod.schedules[0].date || 0);
     return startDate < FEBRUARY_START;
   });
 
   // 2월 부대
   const februaryUnits = allUnits.filter((u) => {
-    if (!u.educationStart) return false;
-    const startDate = new Date(u.educationStart);
+    const firstPeriod = u.trainingPeriods[0];
+    if (!firstPeriod || firstPeriod.schedules.length === 0) return false;
+    const startDate = new Date(firstPeriod.schedules[0].date || 0);
     return startDate >= FEBRUARY_START;
   });
 
   console.log(`📊 배정 대상 부대: ${targetUnits.length}개 (6월~1월)`);
   console.log(`📊 미배정 부대: ${februaryUnits.length}개 (2월)`);
 
-  // 과거/현재/미래로 분류
-  const pastUnits = targetUnits.filter(
-    (u) => u.educationEnd && new Date(u.educationEnd) < CURRENT_DATE,
-  );
-  const futureUnits = targetUnits.filter(
-    (u) => u.educationStart && new Date(u.educationStart) > CURRENT_DATE,
-  );
-  const currentUnits = targetUnits.filter(
-    (u) =>
-      u.educationStart &&
-      u.educationEnd &&
-      new Date(u.educationStart) <= CURRENT_DATE &&
-      new Date(u.educationEnd) >= CURRENT_DATE,
-  );
+  // 과거/현재/미래로 분류 - trainingPeriods에서 educationStart/End 가져오기
+  const pastUnits = targetUnits.filter((u) => {
+    const firstPeriod = u.trainingPeriods[0];
+    return firstPeriod?.educationEnd && new Date(firstPeriod.educationEnd) < CURRENT_DATE;
+  });
+  const futureUnits = targetUnits.filter((u) => {
+    const firstPeriod = u.trainingPeriods[0];
+    return firstPeriod?.educationStart && new Date(firstPeriod.educationStart) > CURRENT_DATE;
+  });
+  const currentUnits = targetUnits.filter((u) => {
+    const firstPeriod = u.trainingPeriods[0];
+    return (
+      firstPeriod?.educationStart &&
+      firstPeriod?.educationEnd &&
+      new Date(firstPeriod.educationStart) <= CURRENT_DATE &&
+      new Date(firstPeriod.educationEnd) >= CURRENT_DATE
+    );
+  });
 
   console.log(`  - 과거 부대 (완료): ${pastUnits.length}개`);
   console.log(`  - 진행중 부대: ${currentUnits.length}개`);
@@ -162,15 +173,16 @@ export async function runSeedAssignments() {
 
   for (let i = 0; i < targetUnits.length; i++) {
     const unit = targetUnits[i];
+    const firstPeriod = unit.trainingPeriods[0];
 
-    if (unit.schedules.length === 0) continue;
+    // trainingPeriods를 통해 schedules 접근
+    const allSchedules = unit.trainingPeriods.flatMap((p) => p.schedules);
+    if (allSchedules.length === 0) continue;
 
-    // 필요 강사 수 계산 (40명당 1명)
-    const totalPlanned = unit.trainingLocations.reduce(
-      (sum, loc) => sum + (loc.plannedCount || 0),
-      0,
-    );
-    const requiredInstructors = Math.max(1, Math.ceil(totalPlanned / 40));
+    // 필요 강사 수 계산 - locations도 trainingPeriod에
+    const allLocations = unit.trainingPeriods.flatMap((p) => p.locations);
+    // plannedCount는 ScheduleLocation에 있음 (seed에서는 기본값 사용)
+    const requiredInstructors = Math.max(1, allLocations.length);
 
     // 배정 상태 결정
     let assignmentState: AssignmentState;
@@ -200,12 +212,12 @@ export async function runSeedAssignments() {
     // 가장 적게 배정된 강사 선택
     const selectedInstructors = selectInstructors(candidateInstructors, requiredInstructors);
 
-    // 각 일정에 대해 배정 생성
-    const schedules = unit.schedules.sort(
+    // 각 일정에 대해 배정 생성 - trainingPeriods에서 가져온 schedules 사용
+    const schedules = allSchedules.sort(
       (a, b) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime(),
     );
-    const location = unit.trainingLocations[0];
-    const startDate = unit.educationStart ? new Date(unit.educationStart) : null;
+    const location = allLocations[0];
+    const startDate = firstPeriod?.educationStart ? new Date(firstPeriod.educationStart) : null;
 
     for (let instIdx = 0; instIdx < selectedInstructors.length; instIdx++) {
       const instructor = selectedInstructors[instIdx];

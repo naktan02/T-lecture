@@ -91,7 +91,7 @@ npm run dev
 npm run dev:client
 ```
 ```bash
-instructor1@test.com
+instructor001@test.com
 1234
 ```
 

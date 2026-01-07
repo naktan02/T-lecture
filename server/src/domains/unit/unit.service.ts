@@ -6,7 +6,7 @@ import kakaoService from '../../infra/kakao.service';
 import distanceService from '../distance/distance.service';
 import AppError from '../../common/errors/AppError';
 import { Prisma, MilitaryType } from '../../generated/prisma/client.js';
-import { ScheduleInput, UnitQueryInput } from '../../types/unit.types';
+import { ScheduleInput, UnitQueryInput, TrainingLocationData } from '../../types/unit.types';
 
 // 서비스 입력 타입들
 type RawUnitInput = RawUnitData;
@@ -114,7 +114,10 @@ class UnitService {
     let locationsSkipped = 0;
 
     const newUnitsToCreate: RawUnitInput[] = [];
-    const trainingLocationsToCreate: { unitId: number; location: any }[] = [];
+    const trainingLocationsToCreate: {
+      trainingPeriodId: number;
+      location: TrainingLocationData;
+    }[] = [];
 
     // 3. 데이터 분류 및 처리
     for (const rawData of dataArray) {
@@ -124,13 +127,20 @@ class UnitService {
       const existingUnit = existingUnitMap.get(unitName);
 
       if (existingUnit) {
-        // [기존 부대] -> 교육장소 중복 체크 후 추가
+        // [기존 부대] -> 첫 번째 TrainingPeriod의 교육장소에 중복 체크 후 추가
         updated++;
 
+        // 첫 번째 TrainingPeriod 가져오기
+        const firstPeriod = existingUnit.trainingPeriods[0];
+        if (!firstPeriod) {
+          // TrainingPeriod가 없으면 스킵 (나중에 별도로 생성 필요)
+          continue;
+        }
+
         if (rawData.trainingLocations && rawData.trainingLocations.length > 0) {
-          // 기존 장소 이름 Set (DB에서 가져온 것)
+          // 기존 장소 이름 Set (TrainingPeriod 내 모든 locations)
           const existingPlaceNames = new Set(
-            existingUnit.trainingLocations.map((l: any) => l.originalPlace),
+            firstPeriod.locations.map((l: { originalPlace: string | null }) => l.originalPlace),
           );
 
           for (const loc of rawData.trainingLocations) {
@@ -142,7 +152,7 @@ class UnitService {
               // 신규 장소 매핑 대기 (엑셀 내 중복 방지 위해 Set에도 추가)
               if (placeName) existingPlaceNames.add(placeName);
               trainingLocationsToCreate.push({
-                unitId: existingUnit.id,
+                trainingPeriodId: firstPeriod.id,
                 location: loc,
               });
               locationsAdded++;
@@ -272,12 +282,8 @@ class UnitService {
       else if (query.sortField === 'unitType') orderBy = { unitType: query.sortOrder };
       else if (query.sortField === 'region') orderBy = { region: query.sortOrder };
       else if (query.sortField === 'wideArea') orderBy = { wideArea: query.sortOrder };
-      else if (query.sortField === 'date')
-        orderBy = { id: query.sortOrder }; // Proxy for creation date
-      // educationStart?
-      else if (query.sortField === 'educationStart') {
-        orderBy = { educationStart: query.sortOrder };
-      }
+      else if (query.sortField === 'date') orderBy = { id: query.sortOrder };
+      // NOTE: educationStart는 이제 TrainingPeriod에 있음 - 정렬 지원 안 함 (id로 대체)
     }
 
     const { total, units } = await unitRepository.findUnitsByFilterAndCount({
@@ -317,7 +323,7 @@ class UnitService {
   async modifyUnitBasicInfo(id: number | string, rawData: UnitBasicInfoInput) {
     const updateData: Prisma.UnitUpdateInput = {};
 
-    if (rawData.name !== undefined) updateData.name = rawData.name === '' ? null : rawData.name;
+    if (rawData.name !== undefined) updateData.name = rawData.name || undefined; // name은 필수라 null 불가
     if (rawData.unitType !== undefined) updateData.unitType = rawData.unitType;
     if (rawData.wideArea !== undefined)
       updateData.wideArea = rawData.wideArea === '' ? null : rawData.wideArea;
@@ -343,21 +349,38 @@ class UnitService {
   }
 
   /**
-   * 부대 담당자 정보 수정
+   * 부대 담당자 정보 수정 (TrainingPeriod에 저장)
+   * NOTE: 이제 officer 정보는 TrainingPeriod에 있음
    */
-  async modifyUnitContactInfo(id: number | string, rawData: UnitContactInput) {
+  async modifyUnitContactInfo(
+    id: number | string,
+    rawData: UnitContactInput,
+    trainingPeriodId?: number,
+  ) {
+    // 부대 조회
+    const unit = await unitRepository.findUnitWithRelations(id);
+    if (!unit) {
+      throw new AppError('해당 부대를 찾을 수 없습니다.', 404, 'UNIT_NOT_FOUND');
+    }
+
+    // TrainingPeriod ID가 없으면 첫 번째 period 사용
+    const targetPeriodId = trainingPeriodId ?? unit.trainingPeriods[0]?.id;
+    if (!targetPeriodId) {
+      throw new AppError('교육기간이 없습니다.', 400, 'NO_TRAINING_PERIOD');
+    }
+
     const updateData = {
       officerName: rawData.officerName === '' ? null : rawData.officerName,
       officerPhone: rawData.officerPhone === '' ? null : rawData.officerPhone,
       officerEmail: rawData.officerEmail === '' ? null : rawData.officerEmail,
     };
-    return await unitRepository.updateUnitById(id, updateData);
+    return await unitRepository.updateTrainingPeriod(targetPeriodId, updateData);
   }
 
   /**
-   * 부대 전체 정보 수정 (기본정보 + 교육장소 + 일정)
-   * - 일정은 항상 전송받은 schedules 배열로 덮어쓰기
-   * - excludedStart/excludedEnd가 있으면 educationStart/End 기반으로 일정 재생성
+   * 부대 기본 정보만 수정
+   * - 일정/장소/주소는 별도 API로 처리
+   * NOTE: officer 정보는 TrainingPeriod에 있으므로 별도 API 사용
    */
   async updateUnitFull(id: number | string, rawData: RawUnitInput) {
     const unit = await unitRepository.findUnitWithRelations(id);
@@ -365,7 +388,7 @@ class UnitService {
       throw new AppError('해당 부대를 찾을 수 없습니다.', 404, 'UNIT_NOT_FOUND');
     }
 
-    // 기본 정보 업데이트 데이터 구성
+    // 기본 정보만 업데이트 (Unit 테이블 필드들만)
     const unitUpdateData: Prisma.UnitUpdateInput = {};
     if (rawData.name !== undefined) unitUpdateData.name = rawData.name;
     if (rawData.unitType !== undefined)
@@ -373,72 +396,28 @@ class UnitService {
         rawData.unitType as Prisma.NullableEnumMilitaryTypeFieldUpdateOperationsInput['set'];
     if (rawData.wideArea !== undefined) unitUpdateData.wideArea = rawData.wideArea;
     if (rawData.region !== undefined) unitUpdateData.region = rawData.region;
-    // 주소 변경 시 즉시 좌표 재계산
-    if (rawData.addressDetail !== undefined && rawData.addressDetail !== unit.addressDetail) {
-      unitUpdateData.addressDetail = rawData.addressDetail;
+    if (rawData.addressDetail !== undefined) unitUpdateData.addressDetail = rawData.addressDetail;
+    if (rawData.detailAddress !== undefined) unitUpdateData.detailAddress = rawData.detailAddress;
+    // NOTE: officerName/Phone/Email은 이제 TrainingPeriod에 있음 - modifyUnitContactInfo 사용
 
-      // 주소가 비어있으면 좌표도 null
+    // 주소 변경 시 좌표 재계산
+    if (rawData.addressDetail !== undefined && rawData.addressDetail !== unit.addressDetail) {
       if (!rawData.addressDetail || rawData.addressDetail.trim() === '') {
         unitUpdateData.lat = null;
         unitUpdateData.lng = null;
       } else {
-        // 주소가 변경되었으면 즉시 좌표 재계산
         const coords = await kakaoService.addressToCoordsOrNull(rawData.addressDetail);
         if (coords) {
           unitUpdateData.lat = coords.lat;
           unitUpdateData.lng = coords.lng;
         } else {
-          // 좌표 변환 실패 시 null로 설정 (백그라운드에서 재시도 가능)
           unitUpdateData.lat = null;
           unitUpdateData.lng = null;
         }
       }
     }
-    if (rawData.officerName !== undefined) unitUpdateData.officerName = rawData.officerName;
-    if (rawData.officerPhone !== undefined) unitUpdateData.officerPhone = rawData.officerPhone;
-    if (rawData.officerEmail !== undefined) unitUpdateData.officerEmail = rawData.officerEmail;
-    if (rawData.educationStart !== undefined)
-      unitUpdateData.educationStart = toUTCMidnight(rawData.educationStart);
-    if (rawData.educationEnd !== undefined)
-      unitUpdateData.educationEnd = toUTCMidnight(rawData.educationEnd);
-    if (rawData.workStartTime !== undefined)
-      unitUpdateData.workStartTime = rawData.workStartTime ? new Date(rawData.workStartTime) : null;
-    if (rawData.workEndTime !== undefined)
-      unitUpdateData.workEndTime = rawData.workEndTime ? new Date(rawData.workEndTime) : null;
-    if (rawData.lunchStartTime !== undefined)
-      unitUpdateData.lunchStartTime = rawData.lunchStartTime
-        ? new Date(rawData.lunchStartTime)
-        : null;
-    if (rawData.lunchEndTime !== undefined)
-      unitUpdateData.lunchEndTime = rawData.lunchEndTime ? new Date(rawData.lunchEndTime) : null;
-    if (rawData.excludedDates !== undefined) {
-      unitUpdateData.excludedDates = rawData.excludedDates;
-    }
 
-    // 일정 계산 로직:
-    // 1. excludedDates가 정의되어 있으면 (빈 배열 포함) -> 일정 재계산
-    // 2. excludedDates가 undefined이고 schedules가 있으면 -> 그 schedules 사용
-    // 3. 둘 다 없으면 -> 기존 일정 유지
-    let schedules: ScheduleData[] | undefined;
-    if (rawData.excludedDates !== undefined) {
-      // excludedDates가 정의되어 있으면 educationStart/End 기반으로 일정 재생성
-      const start = rawData.educationStart || unit.educationStart || undefined;
-      const end = rawData.educationEnd || unit.educationEnd || undefined;
-      schedules = this._calculateSchedules(start, end, rawData.excludedDates);
-    } else if (rawData.schedules && rawData.schedules.length > 0) {
-      // excludedDates가 없고 schedules 배열이 있으면 그것으로 업데이트
-      schedules = rawData.schedules.map((s) => ({
-        date: toUTCMidnight(s.date) || new Date(),
-      }));
-    }
-    // schedules가 undefined이면 updateUnitWithNested에서 기존 일정 유지
-
-    return await unitRepository.updateUnitWithNested(
-      id,
-      unitUpdateData,
-      rawData.trainingLocations,
-      schedules,
-    );
+    return await unitRepository.updateUnitById(id, unitUpdateData);
   }
 
   /**
@@ -484,46 +463,21 @@ class UnitService {
   }
 
   /**
+   * @deprecated 새 구조에서는 updateTrainingPeriod 사용
    * 부대 일정만 수정 (교육시작, 교육종료, 교육불가일자)
-   * - 일정 재계산 및 자동 재배정 로직 포함
    */
   async updateUnitSchedule(
-    id: number | string,
-    rawData: {
+    _id: number | string,
+    _rawData: {
       educationStart?: string | Date | null;
       educationEnd?: string | Date | null;
       excludedDates?: string[];
     },
   ) {
-    const unit = await unitRepository.findUnitWithRelations(id);
-    if (!unit) {
-      throw new AppError('해당 부대를 찾을 수 없습니다.', 404, 'UNIT_NOT_FOUND');
-    }
-
-    const updateData: Prisma.UnitUpdateInput = {};
-
-    if (rawData.educationStart !== undefined) {
-      updateData.educationStart = rawData.educationStart ? new Date(rawData.educationStart) : null;
-    }
-    if (rawData.educationEnd !== undefined) {
-      updateData.educationEnd = rawData.educationEnd ? new Date(rawData.educationEnd) : null;
-    }
-    if (rawData.excludedDates !== undefined) {
-      updateData.excludedDates = rawData.excludedDates;
-    }
-
-    // 일정 재계산
-    const start = rawData.educationStart || unit.educationStart || undefined;
-    const end = rawData.educationEnd || unit.educationEnd || undefined;
-    const excluded = rawData.excludedDates ?? (unit.excludedDates as string[]) ?? [];
-    const schedules = this._calculateSchedules(start, end, excluded);
-
-    // updateUnitWithNested 호출 (자동 재배정 및 크레딧 부여 로직은 repository에서 처리)
-    return await unitRepository.updateUnitWithNested(
-      id,
-      updateData,
-      undefined, // locations는 건드리지 않음
-      schedules,
+    throw new AppError(
+      '이 함수는 더 이상 사용되지 않습니다. 대신 TrainingPeriod를 수정하세요.',
+      400,
+      'DEPRECATED',
     );
   }
 
@@ -622,7 +576,7 @@ class UnitService {
     end: string | Date | undefined,
     excludedDateStrings: string[] = [],
   ): ScheduleData[] {
-    if (!start || !end) return [];
+    if (!start || !end) return []; // 수정: 둘 다 있어야 함
     const startDate = new Date(start);
     const endDate = new Date(end);
     const excludedSet = new Set(excludedDateStrings);
@@ -641,6 +595,33 @@ class UnitService {
       current.setDate(current.getDate() + 1);
     }
     return schedules;
+  }
+
+  // ===== 일정 삭제/추가 비즈니스 로직 =====
+
+  /**
+   * 일정 삭제 처리
+   * - Repository에서 크레딧 부여 및 자동 재배정 로직 수행
+   */
+  async handleScheduleDeletion(scheduleIds: number[], unitName?: string) {
+    return unitRepository.removeSchedulesFromPeriod(scheduleIds, unitName);
+  }
+
+  /**
+   * 일정 추가 처리 (비즈니스 로직 포함)
+   * - 크레딧 있는 강사 자동 배정 시도
+   * - 배정 성공 시 크레딧 차감
+   */
+  async handleScheduleAddition(trainingPeriodId: number, dates: (Date | string)[]) {
+    if (dates.length === 0) return { added: 0, autoAssigned: 0 };
+
+    // 일정 추가
+    const result = await unitRepository.addSchedulesToPeriod(trainingPeriodId, dates);
+
+    // TODO: 크레딧 있는 강사 자동 배정 로직 (필요시 추가)
+    // 현재는 일정만 추가하고, 자동배정은 별도 API로 처리
+
+    return { added: result.count, autoAssigned: 0 };
   }
 }
 

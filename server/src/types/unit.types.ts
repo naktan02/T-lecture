@@ -3,25 +3,38 @@
 
 import { Prisma } from '../generated/prisma/client.js';
 
-// Prisma 자동 생성 타입 - DB 스키마와 자동 동기화
+// Prisma 자동 생성 타입 - DB 스키마와 자동 동기화 (새 구조)
 export type UnitWithRelations = Prisma.UnitGetPayload<{
   include: {
-    trainingLocations: true;
-    schedules: true;
+    trainingPeriods: {
+      include: {
+        locations: true;
+        schedules: true;
+      };
+    };
   };
 }>;
 
 export type UnitWithFullRelations = Prisma.UnitGetPayload<{
   include: {
-    trainingLocations: true;
-    schedules: {
+    trainingPeriods: {
       include: {
-        assignments: {
+        locations: {
           include: {
-            User: {
+            scheduleLocations: true;
+          };
+        };
+        schedules: {
+          include: {
+            scheduleLocations: true;
+            assignments: {
               include: {
-                instructor: {
-                  include: { team: true };
+                User: {
+                  include: {
+                    instructor: {
+                      include: { team: true };
+                    };
+                  };
                 };
               };
             };
@@ -32,12 +45,15 @@ export type UnitWithFullRelations = Prisma.UnitGetPayload<{
   };
 }>;
 
+export type TrainingPeriod = Prisma.TrainingPeriodGetPayload<object>;
 export type TrainingLocation = Prisma.TrainingLocationGetPayload<object>;
 export type UnitSchedule = Prisma.UnitScheduleGetPayload<object>;
+export type ScheduleLocation = Prisma.ScheduleLocationGetPayload<object>;
 
 // 스케줄 및 배정 포함
 export type ScheduleWithAssignments = Prisma.UnitScheduleGetPayload<{
   include: {
+    scheduleLocations: true;
     assignments: {
       include: {
         User: {
@@ -52,18 +68,56 @@ export type ScheduleWithAssignments = Prisma.UnitScheduleGetPayload<{
   };
 }>;
 
+// TrainingPeriod 포함 전체
+export type TrainingPeriodWithFull = Prisma.TrainingPeriodGetPayload<{
+  include: {
+    unit: true;
+    locations: {
+      include: {
+        scheduleLocations: true;
+      };
+    };
+    schedules: {
+      include: {
+        scheduleLocations: true;
+        assignments: true;
+      };
+    };
+  };
+}>;
+
 // DTO/Service 입력 타입
 export interface TrainingLocationInput {
   originalPlace?: string;
   changedPlace?: string;
-  plannedCount?: number | string;
-  actualCount?: number | string;
   hasInstructorLounge?: boolean | string;
   hasWomenRestroom?: boolean | string;
+  note?: string;
+}
+
+export interface ScheduleLocationInput {
+  date: Date | string;
+  locationIndex: number; // 어느 장소에 해당하는지
+  plannedCount?: number;
+  actualCount?: number;
+}
+
+export interface TrainingPeriodInput {
+  name: string; // "정규교육", "추가교육 1차" 등
+  workStartTime?: string | Date;
+  workEndTime?: string | Date;
+  lunchStartTime?: string | Date;
+  lunchEndTime?: string | Date;
+  officerName?: string;
+  officerPhone?: string;
+  officerEmail?: string;
+  excludedDates?: string[];
+  // 시설 정보 (TrainingLocation에서 이동됨)
   hasCateredMeals?: boolean | string;
   hasHallLodging?: boolean | string;
   allowsPhoneBeforeAfter?: boolean | string;
-  note?: string;
+  locations?: TrainingLocationInput[];
+  scheduleLocations?: ScheduleLocationInput[];
 }
 
 export interface RawUnitInput {
@@ -75,9 +129,10 @@ export interface RawUnitInput {
   detailAddress?: string;
   lat?: number;
   lng?: number;
+  trainingPeriods?: TrainingPeriodInput[];
+  // 기존 호환성용 (단일 교육기간)
   educationStart?: string | Date;
   educationEnd?: string | Date;
-  // 교육불가 일자 목록 (개별 날짜 배열)
   excludedDates?: string[];
   workStartTime?: string | Date;
   workEndTime?: string | Date;
@@ -105,11 +160,46 @@ export interface UnitQueryInput {
   endDate?: string;
   minPersonnel?: string | number;
   maxPersonnel?: string | number;
-  hasAddressError?: string | boolean; // 주소 오류(좌표 미변환) 필터
+  hasAddressError?: string | boolean;
 }
 
-// Excel 파일 동적 데이터 - 다양한 속성 접근 필요
+// Excel 파일 동적 데이터
 export interface ExcelRow {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
+}
+
+// ===== Repository/Service 공통 타입 =====
+
+/**
+ * 교육장소 데이터 (Repository 입출력용)
+ * - 생성/수정 시 사용
+ * - TrainingLocationInput보다 더 많은 필드 포함
+ */
+export interface TrainingLocationData {
+  id?: number;
+  originalPlace?: string | null;
+  changedPlace?: string | null;
+  plannedCount?: number | string | null;
+  actualCount?: number | string | null;
+  hasInstructorLounge?: boolean | string;
+  hasWomenRestroom?: boolean | string;
+  note?: string | null;
+}
+
+/**
+ * 일정 데이터 (Repository 입출력용)
+ */
+export interface ScheduleData {
+  date: Date | string;
+}
+
+/**
+ * Repository 필터 파라미터
+ */
+export interface UnitFilterParams {
+  skip: number;
+  take: number;
+  where: Prisma.UnitWhereInput;
+  orderBy?: Prisma.UnitOrderByWithRelationInput;
 }

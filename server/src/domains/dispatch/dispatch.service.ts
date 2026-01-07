@@ -36,21 +36,24 @@ class DispatchService {
 
     // 그룹화 로직 (User ID + Unit ID 기준 - 부대별로 별도 발송)
     // key: "userId-unitId"
+    // NOTE: unit은 이제 trainingPeriod를 통해 접근
     const groupMap = new Map<
       string,
       {
         user: (typeof targets)[0]['User'];
-        unit: (typeof targets)[0]['UnitSchedule']['unit'];
+        trainingPeriod: (typeof targets)[0]['UnitSchedule']['trainingPeriod'];
         assignments: (typeof targets)[0][];
       }
     >();
 
     targets.forEach((assign) => {
-      const key = `${assign.userId}-${assign.UnitSchedule.unit.id}`;
+      const trainingPeriod = assign.UnitSchedule.trainingPeriod;
+      const unit = trainingPeriod.unit;
+      const key = `${assign.userId}-${unit.id}`;
       if (!groupMap.has(key)) {
         groupMap.set(key, {
           user: assign.User,
-          unit: assign.UnitSchedule.unit,
+          trainingPeriod: trainingPeriod,
           assignments: [],
         });
       }
@@ -67,7 +70,8 @@ class DispatchService {
 
     // 발송 본문 생성 (템플릿 치환)
     for (const [, data] of groupMap) {
-      const { user, unit, assignments } = data;
+      const { user, trainingPeriod, assignments } = data;
+      const unit = trainingPeriod.unit;
 
       // 본인 교육일정 목록 (self.schedules 변수용) + 날짜별 동료
       const scheduleDates = assignments.map((a) => {
@@ -122,8 +126,8 @@ class DispatchService {
       // 기본 변수들 (헬퍼 사용)
       const variables = buildVariables(user, unit);
 
-      // 장소 목록 (locations 포맷 변수)
-      const locationsList = buildLocationsFormat(unit.trainingLocations || []);
+      // 장소 목록 (locations 포맷 변수) - 이제 trainingPeriod.locations
+      const locationsList = buildLocationsFormat(trainingPeriod.locations || []);
 
       // 본인 일정 (self.mySchedules) - 해당 부대의 모든 배정 일정 (필터 기간 무관)
       const allUserAssignments = await dispatchRepository.findAllAssignmentsForUserInUnit(
@@ -217,21 +221,24 @@ class DispatchService {
     }
 
     // 그룹화 (User ID + Unit ID 기준 - 부대별로 별도 발송)
+    // NOTE: unit은 이제 trainingPeriod를 통해 접근
     const groupMap = new Map<
       string,
       {
         user: (typeof targets)[0]['User'];
-        unit: (typeof targets)[0]['UnitSchedule']['unit'];
+        trainingPeriod: (typeof targets)[0]['UnitSchedule']['trainingPeriod'];
         assignments: (typeof targets)[0][];
       }
     >();
 
     targets.forEach((assign) => {
-      const key = `${assign.userId}-${assign.UnitSchedule.unit.id}`;
+      const trainingPeriod = assign.UnitSchedule.trainingPeriod;
+      const unit = trainingPeriod.unit;
+      const key = `${assign.userId}-${unit.id}`;
       if (!groupMap.has(key)) {
         groupMap.set(key, {
           user: assign.User,
-          unit: assign.UnitSchedule.unit,
+          trainingPeriod: trainingPeriod,
           assignments: [],
         });
       }
@@ -248,7 +255,8 @@ class DispatchService {
 
     // 발송 본문 생성
     for (const [, data] of groupMap) {
-      const { user, unit, assignments } = data;
+      const { user, trainingPeriod, assignments } = data;
+      const unit = trainingPeriod.unit;
       const userId = user.id;
       // 팀장 판단: role이 Head 또는 Supervisor면 리더용 템플릿
       const isLeader = assignments.some((a) => a.role === 'Head' || a.role === 'Supervisor');
@@ -260,12 +268,12 @@ class DispatchService {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const variables = buildVariables(user, unit as any, assignments);
 
-      // 장소 목록 (locations 포맷 변수)
-      const locationsList = buildLocationsFormat(unit.trainingLocations || []);
+      // 장소 목록 (locations 포맷 변수) - 이제 trainingPeriod.locations
+      const locationsList = buildLocationsFormat(trainingPeriod.locations || []);
 
-      // 일정 목록 (self.schedules 포맷 변수) - 공통 유틸리티 사용
+      // 일정 목록 (self.schedules 포맷 변수) - 이제 trainingPeriod.schedules
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const schedulesList = ((unit.schedules || []) as any[])
+      const schedulesList = ((trainingPeriod.schedules || []) as any[])
         .filter((schedule: { assignments?: unknown[] }) => (schedule.assignments || []).length > 0)
         .map(
           (schedule: {
@@ -305,9 +313,9 @@ class DispatchService {
       );
 
       // 강사 목록 (instructors 포맷 변수)
-      // 부대 전체의 확정된 강사들을 수집 (중복 제거)
+      // TrainingPeriod 전체의 확정된 강사들을 수집 (중복 제거)
       const instructorMap = new Map<number, any>();
-      (unit.schedules || []).forEach((schedule: any) => {
+      (trainingPeriod.schedules || []).forEach((schedule: any) => {
         (schedule.assignments || []).forEach((assignment: any) => {
           if (assignment.state === 'Accepted' && assignment.User) {
             instructorMap.set(assignment.User.id, assignment.User);
