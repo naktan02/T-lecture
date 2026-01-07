@@ -7,7 +7,7 @@ import { UserStatus } from '../../generated/prisma/client.js';
 import instructorRepository from '../instructor/instructor.repository';
 import authRepository from './auth.repository';
 import userRepository from '../user/repositories/user.repository';
-import emailService from '../../infra/email.service';
+import { sendAuthCode } from '../../infra/email';
 import distanceService from '../distance/distance.service';
 import AppError from '../../common/errors/AppError';
 import { RegisterDto, JwtPayload } from '../../types/auth.types';
@@ -21,7 +21,7 @@ class AuthService {
     const expiresAt = new Date(Date.now() + 3 * 60 * 1000); // 3분 유효
 
     await authRepository.createVerificationCode(email, code, expiresAt);
-    await emailService.sendVerificationCode(email, code);
+    await sendAuthCode(email, code);
 
     return { message: '인증번호가 발송되었습니다. (유효시간 3분)' };
   }
