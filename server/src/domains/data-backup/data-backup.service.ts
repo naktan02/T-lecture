@@ -1,4 +1,5 @@
 // server/src/domains/data-backup/data-backup.service.ts
+// 새 스키마(lectureYear 기반) 데이터 백업/삭제 서비스
 import ExcelJS from 'exceljs';
 import prisma from '../../libs/prisma';
 import logger from '../../config/logger';
@@ -15,65 +16,79 @@ export class DataBackupService {
    */
   async generateExcel(options: ExportOptions): Promise<ExcelJS.Workbook> {
     const { year } = options;
-    const startDate = new Date(`${year}-01-01T00:00:00.000Z`);
-    const endDate = new Date(`${year + 1}-01-01T00:00:00.000Z`);
 
-    logger.info(`[DataBackup] Generating Excel for year ${year}`);
+    logger.info(`[DataBackup] Generating Excel for lectureYear ${year}`);
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'T-LECTURE';
     workbook.created = new Date();
 
     // ========== 백업용 시트 (전체 필드) ==========
-    // 1. 부대 시트
-    await this.addUnitsSheet(workbook, startDate, endDate);
-
-    // 2. 일정 시트
-    await this.addSchedulesSheet(workbook, startDate, endDate);
-
-    // 3. 교육장소 시트
-    await this.addTrainingLocationsSheet(workbook, startDate, endDate);
-
-    // 4. 배정 내역 시트
-    await this.addAssignmentsSheet(workbook, startDate, endDate);
-
-    // 5. 강사 가능일 시트
-    await this.addAvailabilitiesSheet(workbook, startDate, endDate);
-
-    // 6. 메시지 시트
-    await this.addDispatchesSheet(workbook, startDate, endDate);
-
-    // 7. 메시지-배정 연결 시트
-    await this.addDispatchAssignmentsSheet(workbook, startDate, endDate);
+    await this.addUnitsSheet(workbook, year);
+    await this.addTrainingPeriodsSheet(workbook, year);
+    await this.addTrainingLocationsSheet(workbook, year);
+    await this.addSchedulesSheet(workbook, year);
+    await this.addScheduleLocationsSheet(workbook, year);
+    await this.addAssignmentsSheet(workbook, year);
+    await this.addDistancesSheet(workbook, year);
+    await this.addAvailabilitiesSheet(workbook, year);
+    await this.addDispatchesSheet(workbook, year);
+    await this.addDispatchAssignmentsSheet(workbook, year);
 
     // ========== 분석용 시트 (사람이 읽기 쉬운 형태) ==========
-    // 8. 부대 요약 (분석용)
-    await this.addUnitsSummarySheet(workbook, startDate, endDate);
+    await this.addUnitsSummarySheet(workbook, year);
+    await this.addAssignmentsSummarySheet(workbook, year);
+    await this.addInstructorMonthlyStatsSheet(workbook, year);
 
-    // 9. 배정 요약 (분석용)
-    await this.addAssignmentsSummarySheet(workbook, startDate, endDate);
-
-    // 10. 강사 월별 통계 (분석용)
-    await this.addInstructorMonthlyStatsSheet(workbook, startDate, endDate);
-
-    logger.info(`[DataBackup] Excel generation completed for year ${year}`);
+    logger.info(`[DataBackup] Excel generation completed for lectureYear ${year}`);
     return workbook;
   }
 
-  private async addUnitsSheet(workbook: ExcelJS.Workbook, startDate: Date, endDate: Date) {
+  // ========== 백업용 시트 메서드 ==========
+
+  private async addUnitsSheet(workbook: ExcelJS.Workbook, year: number) {
     const sheet = workbook.addWorksheet('부대');
     sheet.columns = [
       { header: 'id', key: 'id', width: 8 },
-      { header: 'unitType', key: 'unitType', width: 10 },
+      { header: 'lectureYear', key: 'lectureYear', width: 10 },
       { header: 'name', key: 'name', width: 25 },
-      { header: 'wideArea', key: 'wideArea', width: 10 },
-      { header: 'region', key: 'region', width: 10 },
+      { header: 'unitType', key: 'unitType', width: 10 },
+      { header: 'wideArea', key: 'wideArea', width: 12 },
+      { header: 'region', key: 'region', width: 12 },
       { header: 'addressDetail', key: 'addressDetail', width: 40 },
       { header: 'detailAddress', key: 'detailAddress', width: 40 },
       { header: 'lat', key: 'lat', width: 12 },
       { header: 'lng', key: 'lng', width: 12 },
-      { header: 'educationStart', key: 'educationStart', width: 15 },
-      { header: 'educationEnd', key: 'educationEnd', width: 15 },
+    ];
+
+    const units = await prisma.unit.findMany({
+      where: { lectureYear: year },
+    });
+
+    units.forEach((u) => {
+      sheet.addRow({
+        id: u.id,
+        lectureYear: u.lectureYear,
+        name: u.name || '',
+        unitType: u.unitType || '',
+        wideArea: u.wideArea || '',
+        region: u.region || '',
+        addressDetail: u.addressDetail || '',
+        detailAddress: u.detailAddress || '',
+        lat: u.lat,
+        lng: u.lng,
+      });
+    });
+
+    this.styleHeader(sheet);
+  }
+
+  private async addTrainingPeriodsSheet(workbook: ExcelJS.Workbook, year: number) {
+    const sheet = workbook.addWorksheet('교육기간');
+    sheet.columns = [
+      { header: 'id', key: 'id', width: 8 },
+      { header: 'unitId', key: 'unitId', width: 8 },
+      { header: 'name', key: 'name', width: 20 },
       { header: 'workStartTime', key: 'workStartTime', width: 15 },
       { header: 'workEndTime', key: 'workEndTime', width: 15 },
       { header: 'lunchStartTime', key: 'lunchStartTime', width: 15 },
@@ -83,101 +98,62 @@ export class DataBackupService {
       { header: 'officerEmail', key: 'officerEmail', width: 25 },
       { header: 'isStaffLocked', key: 'isStaffLocked', width: 12 },
       { header: 'excludedDates', key: 'excludedDates', width: 30 },
-    ];
-
-    const units = await prisma.unit.findMany({
-      where: { educationEnd: { gte: startDate, lt: endDate } },
-    });
-
-    units.forEach((u) => {
-      sheet.addRow({
-        id: u.id,
-        unitType: u.unitType || '',
-        name: u.name || '',
-        wideArea: u.wideArea || '',
-        region: u.region || '',
-        addressDetail: u.addressDetail || '',
-        detailAddress: u.detailAddress || '',
-        lat: u.lat,
-        lng: u.lng,
-        educationStart: u.educationStart ? this.formatDateTime(u.educationStart) : '',
-        educationEnd: u.educationEnd ? this.formatDateTime(u.educationEnd) : '',
-        workStartTime: u.workStartTime ? this.formatTime(u.workStartTime) : '',
-        workEndTime: u.workEndTime ? this.formatTime(u.workEndTime) : '',
-        lunchStartTime: u.lunchStartTime ? this.formatTime(u.lunchStartTime) : '',
-        lunchEndTime: u.lunchEndTime ? this.formatTime(u.lunchEndTime) : '',
-        officerName: u.officerName || '',
-        officerPhone: u.officerPhone || '',
-        officerEmail: u.officerEmail || '',
-        isStaffLocked: u.isStaffLocked,
-        excludedDates: u.excludedDates ? JSON.stringify(u.excludedDates) : '',
-      });
-    });
-
-    this.styleHeader(sheet);
-  }
-
-  private async addSchedulesSheet(workbook: ExcelJS.Workbook, startDate: Date, endDate: Date) {
-    const sheet = workbook.addWorksheet('부대일정');
-    sheet.columns = [
-      { header: 'id', key: 'id', width: 8 },
-      { header: 'unitId', key: 'unitId', width: 8 },
-      { header: 'date', key: 'date', width: 12 },
-    ];
-
-    const schedules = await prisma.unitSchedule.findMany({
-      where: { date: { gte: startDate, lt: endDate } },
-    });
-
-    schedules.forEach((s) => {
-      sheet.addRow({
-        id: s.id,
-        unitId: s.unitId,
-        date: s.date ? this.formatDate(s.date) : '',
-      });
-    });
-
-    this.styleHeader(sheet);
-  }
-
-  private async addTrainingLocationsSheet(
-    workbook: ExcelJS.Workbook,
-    startDate: Date,
-    endDate: Date,
-  ) {
-    const sheet = workbook.addWorksheet('교육장소');
-    sheet.columns = [
-      { header: 'id', key: 'id', width: 8 },
-      { header: 'unitId', key: 'unitId', width: 8 },
-      { header: 'originalPlace', key: 'originalPlace', width: 20 },
-      { header: 'changedPlace', key: 'changedPlace', width: 20 },
-      { header: 'hasInstructorLounge', key: 'hasInstructorLounge', width: 15 },
-      { header: 'hasWomenRestroom', key: 'hasWomenRestroom', width: 15 },
       { header: 'hasCateredMeals', key: 'hasCateredMeals', width: 12 },
       { header: 'hasHallLodging', key: 'hasHallLodging', width: 12 },
       { header: 'allowsPhoneBeforeAfter', key: 'allowsPhoneBeforeAfter', width: 18 },
-      { header: 'plannedCount', key: 'plannedCount', width: 10 },
-      { header: 'actualCount', key: 'actualCount', width: 10 },
+    ];
+
+    const periods = await prisma.trainingPeriod.findMany({
+      where: { unit: { lectureYear: year } },
+    });
+
+    periods.forEach((p) => {
+      sheet.addRow({
+        id: p.id,
+        unitId: p.unitId,
+        name: p.name || '',
+        workStartTime: p.workStartTime ? this.formatTime(p.workStartTime) : '',
+        workEndTime: p.workEndTime ? this.formatTime(p.workEndTime) : '',
+        lunchStartTime: p.lunchStartTime ? this.formatTime(p.lunchStartTime) : '',
+        lunchEndTime: p.lunchEndTime ? this.formatTime(p.lunchEndTime) : '',
+        officerName: p.officerName || '',
+        officerPhone: p.officerPhone || '',
+        officerEmail: p.officerEmail || '',
+        isStaffLocked: p.isStaffLocked,
+        excludedDates: p.excludedDates ? JSON.stringify(p.excludedDates) : '',
+        hasCateredMeals: p.hasCateredMeals,
+        hasHallLodging: p.hasHallLodging,
+        allowsPhoneBeforeAfter: p.allowsPhoneBeforeAfter,
+      });
+    });
+
+    this.styleHeader(sheet);
+  }
+
+  private async addTrainingLocationsSheet(workbook: ExcelJS.Workbook, year: number) {
+    const sheet = workbook.addWorksheet('교육장소');
+    sheet.columns = [
+      { header: 'id', key: 'id', width: 8 },
+      { header: 'trainingPeriodId', key: 'trainingPeriodId', width: 14 },
+      { header: 'originalPlace', key: 'originalPlace', width: 25 },
+      { header: 'changedPlace', key: 'changedPlace', width: 25 },
+      { header: 'hasInstructorLounge', key: 'hasInstructorLounge', width: 15 },
+      { header: 'hasWomenRestroom', key: 'hasWomenRestroom', width: 15 },
       { header: 'note', key: 'note', width: 30 },
     ];
 
     const locations = await prisma.trainingLocation.findMany({
-      where: { unit: { educationEnd: { gte: startDate, lt: endDate } } },
+      where: { trainingPeriod: { unit: { lectureYear: year } } },
     });
 
     locations.forEach((l) => {
       sheet.addRow({
         id: l.id,
-        unitId: l.unitId,
+        trainingPeriodId: l.trainingPeriodId,
         originalPlace: l.originalPlace || '',
         changedPlace: l.changedPlace || '',
         hasInstructorLounge: l.hasInstructorLounge,
         hasWomenRestroom: l.hasWomenRestroom,
-        hasCateredMeals: l.hasCateredMeals,
-        hasHallLodging: l.hasHallLodging,
-        allowsPhoneBeforeAfter: l.allowsPhoneBeforeAfter,
-        plannedCount: l.plannedCount,
-        actualCount: l.actualCount,
         note: l.note || '',
       });
     });
@@ -185,7 +161,57 @@ export class DataBackupService {
     this.styleHeader(sheet);
   }
 
-  private async addAssignmentsSheet(workbook: ExcelJS.Workbook, startDate: Date, endDate: Date) {
+  private async addSchedulesSheet(workbook: ExcelJS.Workbook, year: number) {
+    const sheet = workbook.addWorksheet('부대일정');
+    sheet.columns = [
+      { header: 'id', key: 'id', width: 8 },
+      { header: 'trainingPeriodId', key: 'trainingPeriodId', width: 14 },
+      { header: 'date', key: 'date', width: 12 },
+    ];
+
+    const schedules = await prisma.unitSchedule.findMany({
+      where: { trainingPeriod: { unit: { lectureYear: year } } },
+    });
+
+    schedules.forEach((s) => {
+      sheet.addRow({
+        id: s.id,
+        trainingPeriodId: s.trainingPeriodId,
+        date: s.date ? this.formatDate(s.date) : '',
+      });
+    });
+
+    this.styleHeader(sheet);
+  }
+
+  private async addScheduleLocationsSheet(workbook: ExcelJS.Workbook, year: number) {
+    const sheet = workbook.addWorksheet('일정_장소');
+    sheet.columns = [
+      { header: 'id', key: 'id', width: 8 },
+      { header: 'unitScheduleId', key: 'unitScheduleId', width: 12 },
+      { header: 'trainingLocationId', key: 'trainingLocationId', width: 14 },
+      { header: 'plannedCount', key: 'plannedCount', width: 10 },
+      { header: 'actualCount', key: 'actualCount', width: 10 },
+    ];
+
+    const scheduleLocations = await prisma.scheduleLocation.findMany({
+      where: { schedule: { trainingPeriod: { unit: { lectureYear: year } } } },
+    });
+
+    scheduleLocations.forEach((sl) => {
+      sheet.addRow({
+        id: sl.id,
+        unitScheduleId: sl.unitScheduleId,
+        trainingLocationId: sl.trainingLocationId,
+        plannedCount: sl.plannedCount,
+        actualCount: sl.actualCount,
+      });
+    });
+
+    this.styleHeader(sheet);
+  }
+
+  private async addAssignmentsSheet(workbook: ExcelJS.Workbook, year: number) {
     const sheet = workbook.addWorksheet('강사배정');
     sheet.columns = [
       { header: 'userId', key: 'userId', width: 8 },
@@ -197,7 +223,7 @@ export class DataBackupService {
     ];
 
     const assignments = await prisma.instructorUnitAssignment.findMany({
-      where: { UnitSchedule: { date: { gte: startDate, lt: endDate } } },
+      where: { UnitSchedule: { trainingPeriod: { unit: { lectureYear: year } } } },
     });
 
     assignments.forEach((a) => {
@@ -214,13 +240,47 @@ export class DataBackupService {
     this.styleHeader(sheet);
   }
 
-  private async addAvailabilitiesSheet(workbook: ExcelJS.Workbook, startDate: Date, endDate: Date) {
+  private async addDistancesSheet(workbook: ExcelJS.Workbook, year: number) {
+    const sheet = workbook.addWorksheet('강사_부대_거리');
+    sheet.columns = [
+      { header: 'userId', key: 'userId', width: 8 },
+      { header: 'unitId', key: 'unitId', width: 8 },
+      { header: 'distance', key: 'distance', width: 10 },
+      { header: 'duration', key: 'duration', width: 10 },
+      { header: 'preDistance', key: 'preDistance', width: 10 },
+      { header: 'preDuration', key: 'preDuration', width: 10 },
+      { header: 'needsRecalc', key: 'needsRecalc', width: 10 },
+    ];
+
+    const distances = await prisma.instructorUnitDistance.findMany({
+      where: { unit: { lectureYear: year } },
+    });
+
+    distances.forEach((d) => {
+      sheet.addRow({
+        userId: d.userId,
+        unitId: d.unitId,
+        distance: d.distance ? Number(d.distance) : '',
+        duration: d.duration,
+        preDistance: d.preDistance ? Number(d.preDistance) : '',
+        preDuration: d.preDuration,
+        needsRecalc: d.needsRecalc,
+      });
+    });
+
+    this.styleHeader(sheet);
+  }
+
+  private async addAvailabilitiesSheet(workbook: ExcelJS.Workbook, year: number) {
     const sheet = workbook.addWorksheet('강사가능일');
     sheet.columns = [
       { header: 'id', key: 'id', width: 8 },
       { header: 'instructorId', key: 'instructorId', width: 12 },
       { header: 'availableOn', key: 'availableOn', width: 12 },
     ];
+
+    const startDate = new Date(`${year}-01-01T00:00:00.000Z`);
+    const endDate = new Date(`${year + 1}-01-01T00:00:00.000Z`);
 
     const availabilities = await prisma.instructorAvailability.findMany({
       where: { availableOn: { gte: startDate, lt: endDate } },
@@ -237,7 +297,7 @@ export class DataBackupService {
     this.styleHeader(sheet);
   }
 
-  private async addDispatchesSheet(workbook: ExcelJS.Workbook, startDate: Date, endDate: Date) {
+  private async addDispatchesSheet(workbook: ExcelJS.Workbook, year: number) {
     const sheet = workbook.addWorksheet('메시지');
     sheet.columns = [
       { header: 'id', key: 'id', width: 8 },
@@ -249,6 +309,9 @@ export class DataBackupService {
       { header: 'createdAt', key: 'createdAt', width: 18 },
       { header: 'readAt', key: 'readAt', width: 18 },
     ];
+
+    const startDate = new Date(`${year}-01-01T00:00:00.000Z`);
+    const endDate = new Date(`${year + 1}-01-01T00:00:00.000Z`);
 
     const dispatches = await prisma.dispatch.findMany({
       where: { createdAt: { gte: startDate, lt: endDate } },
@@ -270,17 +333,16 @@ export class DataBackupService {
     this.styleHeader(sheet);
   }
 
-  private async addDispatchAssignmentsSheet(
-    workbook: ExcelJS.Workbook,
-    startDate: Date,
-    endDate: Date,
-  ) {
+  private async addDispatchAssignmentsSheet(workbook: ExcelJS.Workbook, year: number) {
     const sheet = workbook.addWorksheet('메시지_배정');
     sheet.columns = [
       { header: 'dispatchId', key: 'dispatchId', width: 10 },
       { header: 'unitScheduleId', key: 'unitScheduleId', width: 12 },
       { header: 'userId', key: 'userId', width: 8 },
     ];
+
+    const startDate = new Date(`${year}-01-01T00:00:00.000Z`);
+    const endDate = new Date(`${year + 1}-01-01T00:00:00.000Z`);
 
     const dispatchAssignments = await prisma.dispatchAssignment.findMany({
       where: { dispatch: { createdAt: { gte: startDate, lt: endDate } } },
@@ -299,20 +361,19 @@ export class DataBackupService {
 
   // ========== 분석용 시트 메서드 ==========
 
-  private async addUnitsSummarySheet(workbook: ExcelJS.Workbook, startDate: Date, endDate: Date) {
+  private async addUnitsSummarySheet(workbook: ExcelJS.Workbook, year: number) {
     const sheet = workbook.addWorksheet('(분석) 부대요약');
     sheet.columns = [
       { header: '부대ID', key: 'id', width: 8 },
+      { header: '강의년도', key: 'lectureYear', width: 10 },
       { header: '군구분', key: 'unitType', width: 10 },
       { header: '부대명', key: 'name', width: 25 },
       { header: '광역', key: 'wideArea', width: 10 },
       { header: '지역', key: 'region', width: 10 },
       { header: '주소', key: 'address', width: 40 },
-      { header: '교육시작일', key: 'educationStart', width: 12 },
-      { header: '교육종료일', key: 'educationEnd', width: 12 },
-      { header: '근무시간', key: 'workTime', width: 15 },
-      { header: '담당간부', key: 'officer', width: 20 },
+      { header: '교육기간수', key: 'periodCount', width: 10 },
       { header: '일정수', key: 'scheduleCount', width: 8 },
+      { header: '배정강사수', key: 'assignmentCount', width: 10 },
     ];
 
     const unitTypeMap: Record<string, string> = {
@@ -324,37 +385,44 @@ export class DataBackupService {
     };
 
     const units = await prisma.unit.findMany({
-      where: { educationEnd: { gte: startDate, lt: endDate } },
-      include: { _count: { select: { schedules: true } } },
+      where: { lectureYear: year },
+      include: {
+        trainingPeriods: {
+          include: {
+            schedules: {
+              include: { _count: { select: { assignments: true } } },
+            },
+          },
+        },
+      },
     });
 
     units.forEach((u) => {
+      const periodCount = u.trainingPeriods.length;
+      const scheduleCount = u.trainingPeriods.reduce((acc, p) => acc + p.schedules.length, 0);
+      const assignmentCount = u.trainingPeriods.reduce(
+        (acc, p) => acc + p.schedules.reduce((acc2, s) => acc2 + s._count.assignments, 0),
+        0,
+      );
+
       sheet.addRow({
         id: u.id,
+        lectureYear: u.lectureYear,
         unitType: u.unitType ? unitTypeMap[u.unitType] || u.unitType : '-',
         name: u.name || '-',
         wideArea: u.wideArea || '-',
         region: u.region || '-',
         address: u.addressDetail || '-',
-        educationStart: u.educationStart ? this.formatDate(u.educationStart) : '-',
-        educationEnd: u.educationEnd ? this.formatDate(u.educationEnd) : '-',
-        workTime:
-          u.workStartTime && u.workEndTime
-            ? `${this.formatTime(u.workStartTime)}~${this.formatTime(u.workEndTime)}`
-            : '-',
-        officer: u.officerName ? `${u.officerName} (${u.officerPhone || ''})` : '-',
-        scheduleCount: u._count.schedules,
+        periodCount,
+        scheduleCount,
+        assignmentCount,
       });
     });
 
     this.styleHeader(sheet);
   }
 
-  private async addAssignmentsSummarySheet(
-    workbook: ExcelJS.Workbook,
-    startDate: Date,
-    endDate: Date,
-  ) {
+  private async addAssignmentsSummarySheet(workbook: ExcelJS.Workbook, year: number) {
     const sheet = workbook.addWorksheet('(분석) 배정요약');
     sheet.columns = [
       { header: '교육일', key: 'date', width: 12 },
@@ -377,17 +445,21 @@ export class DataBackupService {
     };
 
     const assignments = await prisma.instructorUnitAssignment.findMany({
-      where: { UnitSchedule: { date: { gte: startDate, lt: endDate } } },
-      include: { UnitSchedule: { include: { unit: true } }, User: true },
+      where: { UnitSchedule: { trainingPeriod: { unit: { lectureYear: year } } } },
+      include: {
+        UnitSchedule: { include: { trainingPeriod: { include: { unit: true } } } },
+        User: true,
+      },
       orderBy: { UnitSchedule: { date: 'asc' } },
     });
 
     assignments.forEach((a) => {
-      const unit = a.UnitSchedule.unit;
+      const period = a.UnitSchedule.trainingPeriod;
+      const unit = period.unit;
       let workHours = 0;
-      if (unit.workStartTime && unit.workEndTime) {
-        const s = new Date(unit.workStartTime);
-        const e = new Date(unit.workEndTime);
+      if (period.workStartTime && period.workEndTime) {
+        const s = new Date(period.workStartTime);
+        const e = new Date(period.workEndTime);
         let diff = e.getHours() * 60 + e.getMinutes() - (s.getHours() * 60 + s.getMinutes());
         if (diff < 0) diff += 24 * 60;
         workHours = diff / 60;
@@ -406,11 +478,7 @@ export class DataBackupService {
     this.styleHeader(sheet);
   }
 
-  private async addInstructorMonthlyStatsSheet(
-    workbook: ExcelJS.Workbook,
-    startDate: Date,
-    endDate: Date,
-  ) {
+  private async addInstructorMonthlyStatsSheet(workbook: ExcelJS.Workbook, year: number) {
     const sheet = workbook.addWorksheet('(분석) 강사월별통계');
     sheet.columns = [
       { header: '강사ID', key: 'instructorId', width: 8 },
@@ -424,12 +492,17 @@ export class DataBackupService {
     const assignments = await prisma.instructorUnitAssignment.findMany({
       where: {
         state: 'Accepted',
-        UnitSchedule: { date: { gte: startDate, lt: endDate } },
+        UnitSchedule: { trainingPeriod: { unit: { lectureYear: year } } },
       },
-      include: { User: true, UnitSchedule: { include: { unit: true } } },
+      include: {
+        User: true,
+        UnitSchedule: { include: { trainingPeriod: { include: { unit: true } } } },
+      },
     });
 
-    const allDistances = await prisma.instructorUnitDistance.findMany();
+    const allDistances = await prisma.instructorUnitDistance.findMany({
+      where: { unit: { lectureYear: year } },
+    });
     const distanceMap = new Map<string, number>();
     allDistances.forEach((d) => {
       const key = `${d.userId}-${d.unitId}`;
@@ -437,7 +510,7 @@ export class DataBackupService {
         key,
         d.distance
           ? typeof d.distance === 'object' && 'toNumber' in d.distance
-            ? d.distance.toNumber()
+            ? (d.distance as { toNumber: () => number }).toNumber()
             : Number(d.distance)
           : 0,
       );
@@ -457,7 +530,7 @@ export class DataBackupService {
     >();
 
     for (const a of assignments) {
-      if (!a.UnitSchedule?.date || !a.UnitSchedule?.unit) continue;
+      if (!a.UnitSchedule?.date || !a.UnitSchedule?.trainingPeriod?.unit) continue;
 
       const d = new Date(a.UnitSchedule.date);
       const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -478,10 +551,11 @@ export class DataBackupService {
       const stats = statsMap.get(key)!;
       stats.count++;
 
-      const unit = a.UnitSchedule.unit;
-      if (unit.workStartTime && unit.workEndTime) {
-        const s = new Date(unit.workStartTime);
-        const e = new Date(unit.workEndTime);
+      const period = a.UnitSchedule.trainingPeriod;
+      const unit = period.unit;
+      if (period.workStartTime && period.workEndTime) {
+        const s = new Date(period.workStartTime);
+        const e = new Date(period.workEndTime);
         let diff = e.getHours() * 60 + e.getMinutes() - (s.getHours() * 60 + s.getMinutes());
         if (diff < 0) diff += 24 * 60;
         stats.workHours += diff / 60;
@@ -561,103 +635,118 @@ export class DataBackupService {
 
   /**
    * 삭제 미리보기: 해당 연도에 삭제될 데이터 개수 반환
+   * 기준: Unit.lectureYear === year
    */
   async getDeletePreview(year: number) {
-    const startDate = new Date(`${year}-01-01T00:00:00.000Z`);
-    const endDate = new Date(`${year + 1}-01-01T00:00:00.000Z`);
+    const currentYear = new Date().getFullYear();
+    const startDateAvail = new Date(`${year}-01-01T00:00:00.000Z`);
+    const endDateAvail = new Date(`${year + 1}-01-01T00:00:00.000Z`);
+    const startDateDispatch = new Date(`${year}-01-01T00:00:00.000Z`);
+    const endDateDispatch = new Date(`${year + 1}-01-01T00:00:00.000Z`);
 
-    const [units, schedules, assignments, dispatches, availabilities] = await Promise.all([
-      prisma.unit.count({ where: { educationEnd: { gte: startDate, lt: endDate } } }),
-      prisma.unitSchedule.count({ where: { date: { gte: startDate, lt: endDate } } }),
-      prisma.instructorUnitAssignment.count({
-        where: { UnitSchedule: { date: { gte: startDate, lt: endDate } } },
+    const [
+      units,
+      trainingPeriods,
+      trainingLocations,
+      schedules,
+      scheduleLocations,
+      assignments,
+      distances,
+      availabilities,
+      dispatches,
+    ] = await Promise.all([
+      prisma.unit.count({ where: { lectureYear: year } }),
+      prisma.trainingPeriod.count({ where: { unit: { lectureYear: year } } }),
+      prisma.trainingLocation.count({ where: { trainingPeriod: { unit: { lectureYear: year } } } }),
+      prisma.unitSchedule.count({ where: { trainingPeriod: { unit: { lectureYear: year } } } }),
+      prisma.scheduleLocation.count({
+        where: { schedule: { trainingPeriod: { unit: { lectureYear: year } } } },
       }),
-      prisma.dispatch.count({ where: { createdAt: { gte: startDate, lt: endDate } } }),
+      prisma.instructorUnitAssignment.count({
+        where: { UnitSchedule: { trainingPeriod: { unit: { lectureYear: year } } } },
+      }),
+      prisma.instructorUnitDistance.count({ where: { unit: { lectureYear: year } } }),
       prisma.instructorAvailability.count({
-        where: { availableOn: { gte: startDate, lt: endDate } },
+        where: { availableOn: { gte: startDateAvail, lt: endDateAvail } },
+      }),
+      prisma.dispatch.count({
+        where: { createdAt: { gte: startDateDispatch, lt: endDateDispatch } },
       }),
     ]);
 
-    return { year, units, schedules, assignments, dispatches, availabilities };
+    return {
+      year,
+      currentYear,
+      units,
+      trainingPeriods,
+      trainingLocations,
+      schedules,
+      scheduleLocations,
+      assignments,
+      distances,
+      availabilities,
+      dispatches,
+    };
   }
 
   /**
    * 해당 연도 데이터 삭제
-   * 삭제 기준: UnitSchedule.date가 해당 연도인 데이터
+   * 기준: Unit.lectureYear === year (year < currentYear만 허용)
+   * Cascade 삭제 활용
    */
   async deleteDataByYear(year: number) {
-    const startDate = new Date(`${year}-01-01T00:00:00.000Z`);
-    const endDate = new Date(`${year + 1}-01-01T00:00:00.000Z`);
+    const currentYear = new Date().getFullYear();
+    if (year >= currentYear) {
+      throw new Error(
+        `Cannot delete current or future year data. Year: ${year}, Current: ${currentYear}`,
+      );
+    }
 
-    logger.info(`[DataBackup] Starting deletion for year ${year}`);
+    logger.info(`[DataBackup] Starting deletion for lectureYear ${year}`);
 
     try {
       const result = await prisma.$transaction(async (tx) => {
-        // 1. 해당 연도 스케줄 ID 조회
-        const scheduleIds = await tx.unitSchedule.findMany({
-          where: { date: { gte: startDate, lt: endDate } },
-          select: { id: true },
-        });
-        const scheduleIdList = scheduleIds.map((s) => s.id);
+        const startDateAvail = new Date(`${year}-01-01T00:00:00.000Z`);
+        const endDateAvail = new Date(`${year + 1}-01-01T00:00:00.000Z`);
+        const startDateDispatch = new Date(`${year}-01-01T00:00:00.000Z`);
+        const endDateDispatch = new Date(`${year + 1}-01-01T00:00:00.000Z`);
 
-        // 2. DispatchAssignment 삭제 (스케줄 기준)
-        const dispatchAssignments = await tx.dispatchAssignment.deleteMany({
-          where: { unitScheduleId: { in: scheduleIdList } },
-        });
-
-        // 3. InstructorUnitAssignment 삭제 (스케줄 기준)
-        const assignments = await tx.instructorUnitAssignment.deleteMany({
-          where: { unitScheduleId: { in: scheduleIdList } },
-        });
-
-        // 4. 해당 연도 스케줄 삭제
-        const schedules = await tx.unitSchedule.deleteMany({
-          where: { id: { in: scheduleIdList } },
-        });
-
-        // 5. 강사 가능일 삭제 (날짜 기준)
+        // 1. 강사 가용일 삭제 (날짜 기준)
         const availabilities = await tx.instructorAvailability.deleteMany({
-          where: { availableOn: { gte: startDate, lt: endDate } },
+          where: { availableOn: { gte: startDateAvail, lt: endDateAvail } },
         });
 
-        // 6. 메시지 삭제 (생성일 기준)
+        // 2. 메시지 및 메시지-배정 삭제 (생성일 기준)
+        // DispatchAssignment는 Dispatch의 onDelete: Cascade로 자동 삭제됨
         const dispatches = await tx.dispatch.deleteMany({
-          where: { createdAt: { gte: startDate, lt: endDate } },
+          where: { createdAt: { gte: startDateDispatch, lt: endDateDispatch } },
         });
 
-        // 7. 스케줄이 모두 삭제된 부대 정리 (옵션 - 스케줄 없는 부대만 삭제)
-        // 주의: educationEnd가 해당 연도인 부대 중, 남아있는 스케줄이 없는 부대만 삭제
-        const orphanedUnits = await tx.unit.findMany({
-          where: {
-            educationEnd: { gte: startDate, lt: endDate },
-            schedules: { none: {} },
-          },
-          select: { id: true },
+        // 3. 강사-부대 거리 삭제 (Unit과 연결됨, Unit 삭제 전에 먼저 삭제)
+        const distances = await tx.instructorUnitDistance.deleteMany({
+          where: { unit: { lectureYear: year } },
         });
 
-        let deletedUnits = 0;
-        if (orphanedUnits.length > 0) {
-          // TrainingLocation은 cascade 삭제됨
-          const unitResult = await tx.unit.deleteMany({
-            where: { id: { in: orphanedUnits.map((u) => u.id) } },
-          });
-          deletedUnits = unitResult.count;
-        }
+        // 4. Unit 삭제 (Cascade로 TrainingPeriod, TrainingLocation, UnitSchedule,
+        //    ScheduleLocation, InstructorUnitAssignment, DispatchAssignment 자동 삭제)
+        const units = await tx.unit.deleteMany({
+          where: { lectureYear: year },
+        });
 
         return {
-          deletedSchedules: schedules.count,
-          deletedAssignments: assignments.count,
-          deletedDispatchAssignments: dispatchAssignments.count,
-          deletedDispatches: dispatches.count,
+          deletedUnits: units.count,
+          deletedDistances: distances.count,
           deletedAvailabilities: availabilities.count,
-          deletedUnits,
+          deletedDispatches: dispatches.count,
         };
       });
 
-      logger.info(`[DataBackup] Deletion completed for year ${year}: ${JSON.stringify(result)}`);
+      logger.info(
+        `[DataBackup] Deletion completed for lectureYear ${year}: ${JSON.stringify(result)}`,
+      );
       return result;
     } catch (error) {
-      logger.error(`[DataBackup] Deletion failed for year ${year}: ${error}`);
+      logger.error(`[DataBackup] Deletion failed for lectureYear ${year}: ${error}`);
       throw error;
     }
   }
