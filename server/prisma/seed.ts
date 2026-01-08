@@ -203,7 +203,7 @@ async function main() {
       { text: ' 강사님, 배정이 확정되었습니다.', type: 'text' },
       { type: 'newline' },
 
-      { text: '\u200b', type: 'text' },
+      { text: '', type: 'text' },
       { type: 'newline' },
 
       { text: '- 구분: ', type: 'text' },
@@ -248,7 +248,7 @@ async function main() {
 
       { type: 'newline' },
 
-      { text: '\u200b부대 담당자: ', type: 'text' },
+      { text: '부대 담당자: ', type: 'text' },
       { key: 'period.officerName', type: 'var' },
       { text: '  담당자 전화번호:  ', type: 'text' },
       { key: 'period.officerPhone', type: 'var' },
@@ -268,15 +268,15 @@ async function main() {
       { key: 'period.allowsPhoneBeforeAfter', type: 'var' },
       { type: 'newline' },
 
-      { text: '\u200b[배정 강사]', type: 'text' },
+      { text: '[배정 강사]', type: 'text' },
       { type: 'newline' },
       { key: 'self.schedules', type: 'format', format: '- {date} ({dayOfWeek}) : {instructors}' },
       { type: 'newline' },
 
-      { text: '\u200b', type: 'text' },
+      { text: '', type: 'text' },
       { type: 'newline' },
 
-      { text: '\u200b- 교육장소', type: 'text' },
+      { text: '- 교육장소', type: 'text' },
       { type: 'newline' },
       {
         key: 'scheduleLocations',
