@@ -48,6 +48,18 @@ class DispatchRepository {
               include: {
                 unit: true,
                 locations: true,
+                schedules: {
+                  orderBy: { date: 'asc' },
+                  include: {
+                    scheduleLocations: {
+                      include: { location: true },
+                    },
+                    assignments: {
+                      where: { state: 'Pending' },
+                      include: { User: { include: { instructor: true } } },
+                    },
+                  },
+                },
               },
             },
             assignments: {
@@ -169,6 +181,9 @@ class DispatchRepository {
                 schedules: {
                   orderBy: { date: 'asc' },
                   include: {
+                    scheduleLocations: {
+                      include: { location: true },
+                    },
                     assignments: {
                       where: { state: 'Accepted' },
                       include: {

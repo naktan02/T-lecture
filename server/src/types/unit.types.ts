@@ -277,6 +277,7 @@ export interface UpdateTrainingPeriodScheduleLocationsInput {
     locationName?: string; // id가 없을 경우 이름으로 매칭
     plannedCount?: number | null;
     actualCount?: number | null;
+    requiredCount?: number | null;
   }>;
 }
 

@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState, useCallback, FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { unitApi, UnitData } from '../api/unitApi';
-import { showError, showSuccess, showWarning } from '../../../shared/utils/toast';
+import { showError, showSuccess, showWarning, showConfirm } from '../../../shared/utils/toast';
 import { generateDateRange } from '../../../shared/utils/dateFormat';
 import {
   Unit,
@@ -67,7 +67,7 @@ interface UseUnitDrawerReturn {
   handleScheduleLocationRowChange: (
     scheduleIndex: number,
     rowIndex: number,
-    field: 'trainingLocationId' | 'plannedCount' | 'actualCount',
+    field: 'trainingLocationId' | 'plannedCount' | 'actualCount' | 'requiredCount',
     value: number | string | null,
   ) => void;
   handleApplyFirstToAll: () => void;
@@ -85,6 +85,7 @@ interface UseUnitDrawerReturn {
     excludedDates: string[],
   ) => Promise<void>;
   handlePeriodNameEdit: (index: number, name: string) => void;
+  handleCancelLocations: () => void;
 
   // Status
   isEditMode: boolean;
@@ -150,12 +151,13 @@ const mapPeriodToForm = (period: TrainingPeriod): TrainingPeriodFormData => {
       trainingLocationId: sl.trainingLocationId,
       plannedCount: sl.plannedCount ?? null,
       actualCount: sl.actualCount ?? null,
+      requiredCount: sl.requiredCount ?? null,
     }));
     // 기존 장소 매칭이 없으면 빈 row 1개 추가 (기본 제공)
     scheduleLocationMap[key] =
       locations.length > 0
         ? locations
-        : [{ trainingLocationId: '', plannedCount: null, actualCount: null }];
+        : [{ trainingLocationId: '', plannedCount: null, actualCount: null, requiredCount: null }];
   });
 
   const hasAssignments = (period.schedules || []).some(
@@ -271,6 +273,7 @@ export const useUnitDrawer = ({
           locationName?: string;
           plannedCount?: number | null;
           actualCount?: number | null;
+          requiredCount?: number | null;
         }>;
       };
     }) => unitApi.updateTrainingPeriodScheduleLocations(periodId, data),
@@ -416,6 +419,17 @@ export const useUnitDrawer = ({
     async (index: number) => {
       const period = trainingPeriods[index];
 
+      // 삭제 전 확인
+      if (period.hasAssignments) {
+        const confirmed = await showConfirm(
+          `"${period.name}" 교육기간에 배정된 강사가 있습니다.\n\n삭제하면 모든 배정이 취소됩니다.\n\n계속하시겠습니까?`,
+        );
+        if (!confirmed) return;
+      } else {
+        const confirmed = await showConfirm(`"${period.name}" 교육기간을 삭제하시겠습니까?`);
+        if (!confirmed) return;
+      }
+
       // 서버에 저장된 교육기간이면 삭제 API 호출
       if (period.id) {
         try {
@@ -506,7 +520,7 @@ export const useUnitDrawer = ({
           const current = p.scheduleLocationMap[scheduleKey] || [];
           const next = [
             ...current,
-            { trainingLocationId: '', plannedCount: null, actualCount: null },
+            { trainingLocationId: '', plannedCount: null, actualCount: null, requiredCount: null },
           ];
           return { ...p, scheduleLocationMap: { ...p.scheduleLocationMap, [scheduleKey]: next } };
         }),
@@ -537,7 +551,7 @@ export const useUnitDrawer = ({
     (
       scheduleIndex: number,
       rowIndex: number,
-      field: 'trainingLocationId' | 'plannedCount' | 'actualCount',
+      field: 'trainingLocationId' | 'plannedCount' | 'actualCount' | 'requiredCount',
       value: number | string | null,
     ) => {
       if (typeof activeTab !== 'number') return;
@@ -548,9 +562,22 @@ export const useUnitDrawer = ({
         prev.map((p, i) => {
           if (i !== activeTab) return p;
           const current = p.scheduleLocationMap[scheduleKey] || [];
-          const next = current.map((row, idx) =>
-            idx === rowIndex ? { ...row, [field]: value } : row,
-          );
+
+          // row가 존재하지 않으면 새로 생성
+          let next: typeof current;
+          if (rowIndex >= current.length) {
+            // 빈 row 추가 후 값 설정
+            const newRow = {
+              trainingLocationId: '',
+              plannedCount: null,
+              actualCount: null,
+              requiredCount: null,
+              [field]: value,
+            };
+            next = [...current, newRow];
+          } else {
+            next = current.map((row, idx) => (idx === rowIndex ? { ...row, [field]: value } : row));
+          }
           return { ...p, scheduleLocationMap: { ...p.scheduleLocationMap, [scheduleKey]: next } };
         }),
       );
@@ -597,6 +624,7 @@ export const useUnitDrawer = ({
       trainingLocationId: number;
       plannedCount?: number | null;
       actualCount?: number | null;
+      requiredCount?: number | null;
     }> = [];
 
     for (let i = 0; i < period.schedules.length; i++) {
@@ -616,6 +644,7 @@ export const useUnitDrawer = ({
           trainingLocationId: locId,
           plannedCount: entry.plannedCount ?? null,
           actualCount: entry.actualCount ?? null,
+          requiredCount: entry.requiredCount ?? null,
         });
       }
     }
@@ -700,6 +729,7 @@ export const useUnitDrawer = ({
         locationName?: string;
         plannedCount?: number | null;
         actualCount?: number | null;
+        requiredCount?: number | null;
       }> = [];
 
       // id -> 장소 이름 맵 생성
@@ -738,6 +768,7 @@ export const useUnitDrawer = ({
             locationName: locationName || String(entry.trainingLocationId), // 항상 이름 전송
             plannedCount: entry.plannedCount ?? null,
             actualCount: entry.actualCount ?? null,
+            requiredCount: entry.requiredCount ?? null,
           });
         }
       }
@@ -903,9 +934,9 @@ export const useUnitDrawer = ({
     [unitId, basicForm, trainingPeriods, updateMutation, onRegister, queryClient, onClose],
   );
 
-  const handleDelete = useCallback(() => {
+  const handleDelete = useCallback(async () => {
     if (!unitId) return;
-    const ok = confirm('이 부대를 삭제하시겠습니까? 모든 관련 데이터가 삭제됩니다.');
+    const ok = await showConfirm('이 부대를 삭제하시겠습니까? 모든 관련 데이터가 삭제됩니다.');
     if (ok) {
       onDelete?.(unitId);
     }
@@ -919,7 +950,8 @@ export const useUnitDrawer = ({
         // 배정된 강사가 있는 경우 확인
         if (period.hasAssignments) {
           const confirmMsg = `이 교육기간에 이미 배정된 강사가 있습니다.\n\n일정을 변경하면 삭제되는 날짜에 배정된 강사에게 우선배정 크레딧이 부여됩니다.\n\n계속하시겠습니까?`;
-          if (!window.confirm(confirmMsg)) {
+          const confirmed = await showConfirm(confirmMsg);
+          if (!confirmed) {
             return;
           }
         }
@@ -954,6 +986,16 @@ export const useUnitDrawer = ({
     },
     [trainingPeriods, updateScheduleMutation],
   );
+
+  // 장소 편집 취소 - 서버 데이터로 복원
+  const handleCancelLocations = useCallback(() => {
+    // 서버에서 받은 원본 데이터로 복원
+    if (!detailData?.data) return;
+
+    const unitData = detailData.data;
+    const periods = (unitData.trainingPeriods || []).map(mapPeriodToForm);
+    setTrainingPeriods(periods);
+  }, [detailData]);
 
   const handlePeriodNameEdit = useCallback((index: number, name: string) => {
     setTrainingPeriods((prev) => prev.map((p, i) => (i === index ? { ...p, name } : p)));
@@ -992,6 +1034,7 @@ export const useUnitDrawer = ({
     handleDelete,
     handleScheduleSave,
     handlePeriodNameEdit,
+    handleCancelLocations,
 
     // Status
     isEditMode: Boolean(unitId),

@@ -4,6 +4,7 @@
 
 /* eslint-disable no-console */
 
+import 'dotenv/config';
 import { MilitaryType } from '../src/generated/prisma/client.js';
 import prisma from '../src/libs/prisma.js';
 

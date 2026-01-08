@@ -101,7 +101,7 @@ async function main() {
     'self.schedules': '- {date} ({dayOfWeek}) : {instructors}',
     'self.mySchedules': '- {date} ({dayOfWeek}) : {name}',
     scheduleLocations:
-      '{placeName}  / 참여인원 : {actualCount}\n강사휴게실: {hasInstructorLounge} 여자화장실: {hasWomenRestroom}\n특이사항 : {note}\n----------------------------------------------------------',
+      '[{date} ({dayOfWeek})]\\n  {placeName}  / 참여인원 : {actualCount}\\n강사휴게실: {hasInstructorLounge} 여자화장실: {hasWomenRestroom}\\n특이사항 : {note}\\n----------------------------------------------------------',
   };
 
   // 공통 제목 (모든 템플릿에서 동일)
@@ -242,7 +242,7 @@ async function main() {
         key: 'scheduleLocations',
         type: 'format',
         format:
-          '{placeName}  / 참여인원 : {actualCount}\n강사휴게실: {hasInstructorLounge} 여자화장실: {hasWomenRestroom}\n특이사항 : {note}\n----------------------------------------------------------',
+          '[{date} ({dayOfWeek})]\\n  {placeName}  / 참여인원 : {actualCount}\\n강사휴게실: {hasInstructorLounge} 여자화장실: {hasWomenRestroom}\\n특이사항 : {note}\\n----------------------------------------------------------',
       },
       { type: 'newline' },
       { type: 'newline' },

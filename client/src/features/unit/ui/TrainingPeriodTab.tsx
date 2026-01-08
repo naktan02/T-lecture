@@ -44,6 +44,7 @@ export interface ScheduleLocationFormData {
   trainingLocationId: number | string;
   plannedCount?: number | null;
   actualCount?: number | null;
+  requiredCount?: number | null; // 수동 설정 필요인원
 }
 
 interface TrainingPeriodTabProps {
@@ -61,13 +62,14 @@ interface TrainingPeriodTabProps {
   onScheduleLocationRowChange: (
     scheduleIndex: number,
     rowIndex: number,
-    field: 'trainingLocationId' | 'plannedCount' | 'actualCount',
+    field: 'trainingLocationId' | 'plannedCount' | 'actualCount' | 'requiredCount',
     value: number | string | null,
   ) => void;
   onApplyFirstToAll?: () => void;
   // 섹션별 저장 핸들러
   onInfoSave?: () => Promise<void>;
   onLocationsSave?: () => Promise<void>;
+  onCancelLocations?: () => void; // 장소 편집 취소 시 서버 데이터로 복원
   readOnly?: boolean;
 }
 
@@ -107,6 +109,7 @@ export const TrainingPeriodTab = ({
   onApplyFirstToAll,
   onInfoSave,
   onLocationsSave,
+  onCancelLocations,
   readOnly = false,
 }: TrainingPeriodTabProps) => {
   // 섹션별 편집 모드 상태
@@ -316,7 +319,10 @@ export const TrainingPeriodTab = ({
                 <>
                   <button
                     type="button"
-                    onClick={() => setIsEditingLocations(false)}
+                    onClick={() => {
+                      setIsEditingLocations(false);
+                      onCancelLocations?.(); // 서버 데이터로 복원
+                    }}
                     className="px-4 py-1.5 text-sm font-medium text-gray-600 border border-gray-300 rounded hover:bg-gray-100"
                     disabled={isSavingLocations}
                   >
@@ -388,11 +394,16 @@ export const TrainingPeriodTab = ({
             </div>
 
             {/* 헤더 - 한 번만 표시 */}
-            <div className="grid grid-cols-[100px_1fr_70px_70px_30px] gap-2 text-xs text-gray-500 mb-2 px-2 pb-2 border-b border-gray-300">
+            <div className="grid grid-cols-[100px_1fr_70px_70px_70px_30px] gap-2 text-xs text-gray-500 mb-2 px-2 pb-2 border-b border-gray-300">
               <span>날짜</span>
               <span>장소</span>
               <span className="text-center">계획</span>
               <span className="text-center">참여</span>
+              <span className="text-center text-[10px] leading-tight">
+                강사필요
+                <br />
+                (자동계산)
+              </span>
               <span></span>
             </div>
 
@@ -409,7 +420,7 @@ export const TrainingPeriodTab = ({
                   >
                     {/* 장소 매칭이 없는 경우 빈 행 표시 */}
                     {rows.length === 0 ? (
-                      <div className="grid grid-cols-[100px_1fr_70px_70px_30px] gap-2 items-center px-2 py-1">
+                      <div className="grid grid-cols-[100px_1fr_70px_70px_70px_30px] gap-2 items-center px-2 py-1">
                         <div className="text-sm text-gray-700">{formatDate(schedule.date)}</div>
                         <select
                           value=""
@@ -421,7 +432,7 @@ export const TrainingPeriodTab = ({
                               e.target.value,
                             )
                           }
-                          disabled={readOnly}
+                          disabled={!isEditingLocations}
                           className="px-2 py-1.5 border border-gray-300 rounded text-sm disabled:bg-gray-100"
                         >
                           <option value="">장소 선택</option>
@@ -446,7 +457,7 @@ export const TrainingPeriodTab = ({
                               e.target.value === '' ? null : Number(e.target.value),
                             )
                           }
-                          disabled={readOnly}
+                          disabled={!isEditingLocations}
                           className="px-2 py-1.5 border border-gray-300 rounded text-sm text-center disabled:bg-gray-100 w-full"
                         />
                         <input
@@ -461,7 +472,23 @@ export const TrainingPeriodTab = ({
                               e.target.value === '' ? null : Number(e.target.value),
                             )
                           }
-                          disabled={readOnly}
+                          disabled={!isEditingLocations}
+                          className="px-2 py-1.5 border border-gray-300 rounded text-sm text-center disabled:bg-gray-100 w-full"
+                        />
+                        <input
+                          type="number"
+                          min={0}
+                          value=""
+                          onChange={(e) =>
+                            onScheduleLocationRowChange(
+                              scheduleIndex,
+                              0,
+                              'requiredCount',
+                              e.target.value === '' ? null : Number(e.target.value),
+                            )
+                          }
+                          disabled={!isEditingLocations}
+                          placeholder="자동"
                           className="px-2 py-1.5 border border-gray-300 rounded text-sm text-center disabled:bg-gray-100 w-full"
                         />
                         <div></div>
@@ -470,7 +497,7 @@ export const TrainingPeriodTab = ({
                       rows.map((row, rowIndex) => (
                         <div
                           key={`${scheduleKey}-row-${rowIndex}`}
-                          className="grid grid-cols-[100px_1fr_70px_70px_30px] gap-2 items-center px-2 py-1"
+                          className="grid grid-cols-[100px_1fr_70px_70px_70px_30px] gap-2 items-center px-2 py-1"
                         >
                           {/* 날짜 - 첫 번째 행에만 표시 */}
                           <div className="text-sm text-gray-700">
@@ -530,6 +557,23 @@ export const TrainingPeriodTab = ({
                               )
                             }
                             disabled={!isEditingLocations}
+                            className="px-2 py-1.5 border border-gray-300 rounded text-sm text-center disabled:bg-gray-100 w-full"
+                          />
+
+                          <input
+                            type="number"
+                            min={0}
+                            value={row.requiredCount ?? ''}
+                            onChange={(e) =>
+                              onScheduleLocationRowChange(
+                                scheduleIndex,
+                                rowIndex,
+                                'requiredCount',
+                                e.target.value === '' ? null : Number(e.target.value),
+                              )
+                            }
+                            disabled={!isEditingLocations}
+                            placeholder="자동"
                             className="px-2 py-1.5 border border-gray-300 rounded text-sm text-center disabled:bg-gray-100 w-full"
                           />
 

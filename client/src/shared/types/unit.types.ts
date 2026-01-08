@@ -11,6 +11,7 @@ export interface ScheduleLocation {
   trainingLocationId: number;
   plannedCount?: number | null;
   actualCount?: number | null;
+  requiredCount?: number | null;
 }
 
 // 교육장소

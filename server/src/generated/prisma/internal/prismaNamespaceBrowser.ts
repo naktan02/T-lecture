@@ -335,7 +335,8 @@ export const ScheduleLocationScalarFieldEnum = {
   unitScheduleId: 'unitScheduleId',
   trainingLocationId: 'trainingLocationId',
   plannedCount: 'plannedCount',
-  actualCount: 'actualCount'
+  actualCount: 'actualCount',
+  requiredCount: 'requiredCount'
 } as const
 
 export type ScheduleLocationScalarFieldEnum = (typeof ScheduleLocationScalarFieldEnum)[keyof typeof ScheduleLocationScalarFieldEnum]

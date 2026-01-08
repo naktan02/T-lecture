@@ -99,6 +99,7 @@ model ScheduleLocation {
   trainingLocationId Int  @map("장소id")
   plannedCount       Int? @map("계획인원")
   actualCount        Int? @map("참여인원")
+  requiredCount      Int? @map("필요인원") // 수동 설정, 없으면 자동 계산
 
   schedule UnitSchedule     @relation(fields: [unitScheduleId], references: [id], onDelete: Cascade)
   location TrainingLocation @relation(fields: [trainingLocationId], references: [id], onDelete: Cascade)

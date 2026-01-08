@@ -51,6 +51,10 @@ export const AssignmentWorkspace: React.FC = () => {
   const [selectionKey, setSelectionKey] = useState<SelectionKey>(null);
   const [showAutoAssignConfirm, setShowAutoAssignConfirm] = useState(false);
 
+  // 검색 상태
+  const [unitSearch, setUnitSearch] = useState('');
+  const [instructorSearch, setInstructorSearch] = useState('');
+
   type ModalKey = { unitId: number; bucket: 'PENDING' | 'ACCEPTED' } | null;
   const [detailModalKey, setDetailModalKey] = useState<ModalKey>(null);
 
@@ -237,56 +241,94 @@ export const AssignmentWorkspace: React.FC = () => {
         <div className="flex flex-col gap-4 overflow-hidden">
           {/* Panel 1: 미배정 부대 (교육단위별 그룹화) */}
           <div className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
-            <div className="p-3 bg-red-50 border-b border-red-100 border-l-4 border-l-red-500 font-bold text-gray-700 flex justify-between items-center">
-              <span className="flex items-center gap-2">📋 배정 대상 부대 (부대별)</span>
-              <span className="text-xs bg-white px-2 py-0.5 rounded-full border border-red-200 text-red-600 font-bold">
-                {groupedUnassignedUnits.length}개 부대
+            <div className="p-3 bg-red-50 border-b border-red-100 border-l-4 border-l-red-500 font-bold text-gray-700 flex justify-between items-center gap-2">
+              <span className="flex items-center gap-2 shrink-0">📋 배정 대상 부대 (부대별)</span>
+              <input
+                type="text"
+                placeholder="부대 검색..."
+                value={unitSearch}
+                onChange={(e) => setUnitSearch(e.target.value)}
+                className="flex-1 max-w-48 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-red-400"
+              />
+              <span className="text-xs bg-white px-2 py-0.5 rounded-full border border-red-200 text-red-600 font-bold shrink-0">
+                {
+                  groupedUnassignedUnits.filter(
+                    (u) =>
+                      u.unitName?.toLowerCase().includes(unitSearch.toLowerCase()) ||
+                      u.region?.toLowerCase().includes(unitSearch.toLowerCase()),
+                  ).length
+                }
+                개 부대
               </span>
             </div>
             <div className="flex-1 p-4 overflow-y-auto bg-gray-50/50">
               <div className="space-y-3">
-                {groupedUnassignedUnits.map((unit) => (
-                  <div
-                    key={unit.unitId}
-                    onClick={() => setSelectionKey({ type: 'UNIT', unitId: unit.unitId })}
-                    className="bg-white border border-gray-200 rounded-lg p-2.5 cursor-pointer hover:shadow-md hover:border-red-300 transition-all border-l-4 border-l-transparent hover:border-l-red-400 group"
-                  >
-                    <div className="font-bold text-gray-800 text-xs flex justify-between items-center mb-1">
-                      <div className="flex items-center gap-1.5">
-                        <span>{unit.unitName}</span>
-                        {unit.locations.length > 1 && (
-                          <span className="text-[10px] font-normal text-purple-600 bg-purple-50 px-1 py-0.5 rounded">
-                            {unit.locations.length}개
+                {groupedUnassignedUnits
+                  .filter(
+                    (unit) =>
+                      unit.unitName?.toLowerCase().includes(unitSearch.toLowerCase()) ||
+                      unit.region?.toLowerCase().includes(unitSearch.toLowerCase()),
+                  )
+                  .map((unit) => (
+                    <div
+                      key={unit.unitId}
+                      onClick={() => setSelectionKey({ type: 'UNIT', unitId: unit.unitId })}
+                      className="bg-white border border-gray-200 rounded-lg p-2.5 cursor-pointer hover:shadow-md hover:border-red-300 transition-all border-l-4 border-l-transparent hover:border-l-red-400 group"
+                    >
+                      <div className="font-bold text-gray-800 text-xs flex justify-between items-center mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <span>{unit.unitName}</span>
+                          {unit.locations.length > 1 && (
+                            <span className="text-[10px] font-normal text-purple-600 bg-purple-50 px-1 py-0.5 rounded">
+                              {unit.locations.length}개
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-[10px] text-gray-500 mb-1">📍 {unit.region}</div>
+                      <div className="flex flex-wrap gap-0.5">
+                        {unit.uniqueDates.slice(0, 3).map((date, idx) => (
+                          <span
+                            key={idx}
+                            className="text-[9px] bg-gray-100 text-gray-600 px-1 py-0.5 rounded"
+                          >
+                            {date}
+                          </span>
+                        ))}
+                        {unit.uniqueDates.length > 3 && (
+                          <span className="text-[9px] bg-gray-200 text-gray-600 px-1 py-0.5 rounded">
+                            +{unit.uniqueDates.length - 3}일
                           </span>
                         )}
                       </div>
                     </div>
-                    <div className="text-[10px] text-gray-500 mb-1">📍 {unit.region}</div>
-                    <div className="flex flex-wrap gap-0.5">
-                      {unit.uniqueDates.slice(0, 3).map((date, idx) => (
-                        <span
-                          key={idx}
-                          className="text-[9px] bg-gray-100 text-gray-600 px-1 py-0.5 rounded"
-                        >
-                          {date}
-                        </span>
-                      ))}
-                      {unit.uniqueDates.length > 3 && (
-                        <span className="text-[9px] bg-gray-200 text-gray-600 px-1 py-0.5 rounded">
-                          +{unit.uniqueDates.length - 3}일
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           </div>
 
           {/* Panel 2: 가용 강사 */}
           <div className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
-            <div className="p-3 bg-slate-50 border-b border-slate-100 border-l-4 border-l-slate-700 font-bold text-gray-700">
-              <span>👤 가용 강사</span>
+            <div className="p-3 bg-slate-50 border-b border-slate-100 border-l-4 border-l-slate-700 font-bold text-gray-700 flex items-center gap-2">
+              <span className="shrink-0">👤 가용 강사</span>
+              <input
+                type="text"
+                placeholder="강사 검색..."
+                value={instructorSearch}
+                onChange={(e) => setInstructorSearch(e.target.value)}
+                className="flex-1 max-w-48 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-slate-400"
+              />
+              <span className="text-xs bg-white px-2 py-0.5 rounded-full border border-slate-200 text-slate-600 font-bold shrink-0">
+                {
+                  availableInstructors.filter(
+                    (i) =>
+                      i.name?.toLowerCase().includes(instructorSearch.toLowerCase()) ||
+                      i.location?.toLowerCase().includes(instructorSearch.toLowerCase()) ||
+                      i.teamName?.toLowerCase().includes(instructorSearch.toLowerCase()),
+                  ).length
+                }
+                명
+              </span>
             </div>
             <div className="flex-1 p-4 overflow-y-auto bg-gray-50/50">
               {loading && availableInstructors.length === 0 ? (
@@ -298,46 +340,55 @@ export const AssignmentWorkspace: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-2 pb-20">
-                  {availableInstructors.map((inst) => (
-                    <div
-                      key={inst.id}
-                      onClick={() => setSelectionKey({ type: 'INSTRUCTOR', instructorId: inst.id })}
-                      className="relative bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-slate-400 transition-all border-l-4 border-l-transparent hover:border-l-slate-600"
-                    >
-                      <div className="font-bold text-gray-800 text-sm flex items-center gap-2">
-                        {inst.name}
+                  {availableInstructors
+                    .filter(
+                      (inst) =>
+                        inst.name?.toLowerCase().includes(instructorSearch.toLowerCase()) ||
+                        inst.location?.toLowerCase().includes(instructorSearch.toLowerCase()) ||
+                        inst.teamName?.toLowerCase().includes(instructorSearch.toLowerCase()),
+                    )
+                    .map((inst) => (
+                      <div
+                        key={inst.id}
+                        onClick={() =>
+                          setSelectionKey({ type: 'INSTRUCTOR', instructorId: inst.id })
+                        }
+                        className="relative bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-slate-400 transition-all border-l-4 border-l-transparent hover:border-l-slate-600"
+                      >
+                        <div className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                          {inst.name}
 
-                        {inst.teamName && (
-                          <span className="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100">
-                            {inst.teamName}
+                          {inst.teamName && (
+                            <span className="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100">
+                              {inst.teamName}
+                            </span>
+                          )}
+
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                              inst.category === 'Main'
+                                ? 'bg-green-50 text-green-700 border-green-200'
+                                : inst.category === 'Assistant'
+                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                  : 'bg-gray-100 text-gray-600'
+                            }`}
+                          >
+                            {inst.category || 'N/A'}
                           </span>
-                        )}
+                        </div>
 
-                        <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded border ${
-                            inst.category === 'Main'
-                              ? 'bg-green-50 text-green-700 border-green-200'
-                              : inst.category === 'Assistant'
-                                ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                : 'bg-gray-100 text-gray-600'
-                          }`}
-                        >
-                          {inst.category || 'N/A'}
-                        </span>
+                        <div className="text-xs text-gray-500 mt-1 flex justify-between items-center">
+                          <span>📍 {inst.location}</span>
+                          <span
+                            className="text-blue-600 font-medium cursor-help hover:bg-blue-50 px-1 rounded transition-colors"
+                            onMouseEnter={(e) => handleMouseEnter(e, inst.availableDates)}
+                            onMouseLeave={handleMouseLeave}
+                          >
+                            📅 {inst.availableDates?.length || 0}일 가능
+                          </span>
+                        </div>
                       </div>
-
-                      <div className="text-xs text-gray-500 mt-1 flex justify-between items-center">
-                        <span>📍 {inst.location}</span>
-                        <span
-                          className="text-blue-600 font-medium cursor-help hover:bg-blue-50 px-1 rounded transition-colors"
-                          onMouseEnter={(e) => handleMouseEnter(e, inst.availableDates)}
-                          onMouseLeave={handleMouseLeave}
-                        >
-                          📅 {inst.availableDates?.length || 0}일 가능
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               )}
             </div>
