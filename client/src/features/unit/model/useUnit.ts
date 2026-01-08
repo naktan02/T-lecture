@@ -84,7 +84,13 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
   const meta: UnitMeta = response?.data?.meta || { total: 0, lastPage: 1 };
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number | string; data: UpdateUnitWithPeriodsPayload }) => {
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number | string;
+      data: UpdateUnitWithPeriodsPayload;
+    }) => {
       return unitApi.updateUnit(id, data);
     },
     onSuccess: () => {
