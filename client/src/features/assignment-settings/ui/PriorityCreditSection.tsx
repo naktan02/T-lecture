@@ -10,6 +10,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { usePriorityCredits } from '../model/usePriorityCredits';
 import { ReasonItem } from '../api/priorityCreditApi';
+import { showConfirm } from '../../../shared/utils/toast';
 
 /**
  * 우선배정 크레딧 관리 섹션
@@ -50,8 +51,11 @@ export const PriorityCreditSection = (): ReactElement => {
   };
 
   // 삭제 확인
-  const handleDelete = (instructorId: number, userName: string | null) => {
-    if (confirm(`${userName || '강사'}의 우선배정 크레딧을 삭제하시겠습니까?`)) {
+  const handleDelete = async (instructorId: number, userName: string | null) => {
+    const confirmed = await showConfirm(
+      `${userName || '강사'}의 우선배정 크레딧을 삭제하시겠습니까?`,
+    );
+    if (confirmed) {
       deleteCredit(instructorId);
     }
   };

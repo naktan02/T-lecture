@@ -69,6 +69,7 @@ interface TrainingPeriodTabProps {
   // 섹션별 저장 핸들러
   onInfoSave?: () => Promise<void>;
   onLocationsSave?: () => Promise<void>;
+  onCancelLocations?: () => void; // 장소 편집 취소 시 서버 데이터로 복원
   readOnly?: boolean;
 }
 
@@ -108,6 +109,7 @@ export const TrainingPeriodTab = ({
   onApplyFirstToAll,
   onInfoSave,
   onLocationsSave,
+  onCancelLocations,
   readOnly = false,
 }: TrainingPeriodTabProps) => {
   // 섹션별 편집 모드 상태
@@ -317,7 +319,10 @@ export const TrainingPeriodTab = ({
                 <>
                   <button
                     type="button"
-                    onClick={() => setIsEditingLocations(false)}
+                    onClick={() => {
+                      setIsEditingLocations(false);
+                      onCancelLocations?.(); // 서버 데이터로 복원
+                    }}
                     className="px-4 py-1.5 text-sm font-medium text-gray-600 border border-gray-300 rounded hover:bg-gray-100"
                     disabled={isSavingLocations}
                   >
@@ -427,7 +432,7 @@ export const TrainingPeriodTab = ({
                               e.target.value,
                             )
                           }
-                          disabled={readOnly}
+                          disabled={!isEditingLocations}
                           className="px-2 py-1.5 border border-gray-300 rounded text-sm disabled:bg-gray-100"
                         >
                           <option value="">장소 선택</option>
@@ -452,7 +457,7 @@ export const TrainingPeriodTab = ({
                               e.target.value === '' ? null : Number(e.target.value),
                             )
                           }
-                          disabled={readOnly}
+                          disabled={!isEditingLocations}
                           className="px-2 py-1.5 border border-gray-300 rounded text-sm text-center disabled:bg-gray-100 w-full"
                         />
                         <input
@@ -467,7 +472,7 @@ export const TrainingPeriodTab = ({
                               e.target.value === '' ? null : Number(e.target.value),
                             )
                           }
-                          disabled={readOnly}
+                          disabled={!isEditingLocations}
                           className="px-2 py-1.5 border border-gray-300 rounded text-sm text-center disabled:bg-gray-100 w-full"
                         />
                         <input
@@ -482,7 +487,7 @@ export const TrainingPeriodTab = ({
                               e.target.value === '' ? null : Number(e.target.value),
                             )
                           }
-                          disabled={readOnly}
+                          disabled={!isEditingLocations}
                           placeholder="자동"
                           className="px-2 py-1.5 border border-gray-300 rounded text-sm text-center disabled:bg-gray-100 w-full"
                         />

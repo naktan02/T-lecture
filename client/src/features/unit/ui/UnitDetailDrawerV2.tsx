@@ -59,6 +59,7 @@ export const UnitDetailDrawerV2 = ({
     handleSubmit,
     handleScheduleSave,
     handlePeriodNameEdit,
+    handleCancelLocations,
 
     // Status
     isEditMode,
@@ -190,6 +191,7 @@ export const UnitDetailDrawerV2 = ({
                 onApplyFirstToAll={handleApplyFirstToAll}
                 onInfoSave={handleInfoSave}
                 onLocationsSave={handleLocationsSave}
+                onCancelLocations={handleCancelLocations}
               />
             )}
           </form>
