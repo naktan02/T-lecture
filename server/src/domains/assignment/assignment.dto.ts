@@ -31,14 +31,36 @@ const toKSTTimeString = (date: Date | string | null | undefined): string => {
 };
 
 /**
- * 필요 강사 수 계산 (참여인원 / 강사당교육생수)
+ * 필요 강사 수 계산 (우선순위: 수동설정 > 참여인원 > 계획인원)
+ * 1. requiredCount(수동 설정 필요인원)가 있으면 그 값 사용
+ * 2. 없으면 actualCount / traineesPerInstructor 계산
+ * 3. actualCount도 없으면 plannedCount / traineesPerInstructor 계산
+ * 4. 모두 없으면 기본값 1명
  */
 const calcRequiredInstructors = (
-  actualCount: number | null | undefined,
+  scheduleLoc:
+    | { requiredCount?: number | null; actualCount?: number | null; plannedCount?: number | null }
+    | null
+    | undefined,
   traineesPerInstructor: number,
 ): number => {
-  if (!actualCount || actualCount <= 0) return 1; // 기본값 1명
-  return Math.floor(actualCount / traineesPerInstructor) || 1;
+  // 1. 수동 설정 필요인원이 있으면 사용
+  if (scheduleLoc?.requiredCount && scheduleLoc.requiredCount > 0) {
+    return scheduleLoc.requiredCount;
+  }
+
+  // 2. 참여인원으로 계산
+  if (scheduleLoc?.actualCount && scheduleLoc.actualCount > 0) {
+    return Math.floor(scheduleLoc.actualCount / traineesPerInstructor) || 1;
+  }
+
+  // 3. 계획인원으로 계산
+  if (scheduleLoc?.plannedCount && scheduleLoc.plannedCount > 0) {
+    return Math.floor(scheduleLoc.plannedCount / traineesPerInstructor) || 1;
+  }
+
+  // 4. 모두 없으면 기본값 1명
+  return 1;
 };
 
 class AssignmentDTO {
@@ -222,8 +244,7 @@ class AssignmentDTO {
                 const scheduleLoc = schedule.scheduleLocations?.find(
                   (sl) => sl.trainingLocationId === loc.id,
                 );
-                const actualCount = scheduleLoc?.actualCount ?? 0;
-                const requiredPerDay = calcRequiredInstructors(actualCount, traineesPerInstructor);
+                const requiredPerDay = calcRequiredInstructors(scheduleLoc, traineesPerInstructor);
 
                 const assignmentsForLocation = (schedule.assignments || []).filter(
                   (a: AssignmentRaw) =>
@@ -272,7 +293,7 @@ class AssignmentDTO {
               (sl) => sl.trainingLocationId === loc.id,
             );
             const approxActualCount = scheduleLoc?.actualCount ?? 0;
-            const requiredCount = calcRequiredInstructors(approxActualCount, traineesPerInstructor);
+            const requiredCount = calcRequiredInstructors(scheduleLoc, traineesPerInstructor);
             totalRequired += requiredCount * daysCount;
 
             // 2. 각 장소 안에서 '날짜별' 스케줄 구성
@@ -330,10 +351,7 @@ class AssignmentDTO {
                 date: dateStr,
                 unitScheduleId: schedule.id,
                 isBlocked: schedule.isBlocked || false, // 배정 막기 상태
-                requiredCount: calcRequiredInstructors(
-                  actualCountForSchedule,
-                  traineesPerInstructor,
-                ),
+                requiredCount: calcRequiredInstructors(schedLoc, traineesPerInstructor),
                 actualCount: actualCountForSchedule, // 참여인원 표시용
                 instructors: assignedInstructors,
                 rejectedInstructors, // 거절한 강사 목록 추가

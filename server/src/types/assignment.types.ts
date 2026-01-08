@@ -44,6 +44,7 @@ export interface ScheduleLocationRaw {
   trainingLocationId: number;
   plannedCount?: number | null;
   actualCount?: number | null;
+  requiredCount?: number | null; // 수동 설정 필요인원
 }
 
 export interface ScheduleRaw {
