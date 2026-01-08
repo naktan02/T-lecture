@@ -1,11 +1,14 @@
 // server/scripts/generateUnitsExcel.ts
-// 부대 1000개 엑셀 파일 생성 (엑셀 업로드 기능 테스트용)
+// 부대 엑셀 파일 생성 (엑셀 업로드 기능 테스트용)
+// - 2025년 1000개 + 2026년 1~2월 100개 = 총 1100개
+// - seedUnits.ts와 동일한 로직
 // 실행: npx tsx scripts/generateUnitsExcel.ts
 
 /* eslint-disable no-console */
 
 import ExcelJS from 'exceljs';
 import path from 'path';
+import fs from 'fs';
 
 // 군구분 비율: 육군 60%, 해군/공군/해병/국직 각 10%
 const MILITARY_TYPES = [
@@ -175,35 +178,41 @@ function getMilitaryType(): string {
   return 'Army';
 }
 
-function generateUnitName(level: string, index: number): string {
-  // 실제 부대명처럼 보이면서도 고유한 이름 생성
-  // index를 기반으로 계층적 번호를 계산하여 중복 방지
-  const seqNum = index + 1;
+// 고유 부대명 생성
+const usedNames = new Set<string>();
+function generateUniqueUnitName(year: number, index: number): string {
+  const suffixes = ['사단', '여단', '연대', '대대', '부대', '사령부', '지원단', '교육대'];
+  const prefixes = [
+    '육군',
+    '해군',
+    '공군',
+    '해병',
+    '수도방위',
+    '특전',
+    '기계화',
+    '포병',
+    '공병',
+    '통신',
+    '군수',
+    '의무',
+  ];
 
-  // 군단(1~8), 사단(1~30), 여단(1~10), 대대(1~20), 중대(1~10), 소대(1~4)
-  const corpsNum = Math.floor(seqNum / 125) + 1; // 1~8
-  const divisionNum = Math.floor((seqNum % 125) / 4) + 1; // 1~31
-  const brigadeNum = (seqNum % 10) + 1; // 1~10
-  const battalionNum = (seqNum % 20) + 1; // 1~20
-  const companyNum = (seqNum % 10) + 1; // 1~10
-  const platoonNum = (seqNum % 4) + 1; // 1~4
-
-  switch (level) {
-    case 'corps':
-      return `제${seqNum}군단`;
-    case 'division':
-      return `제${corpsNum}군단 제${seqNum}사단`;
-    case 'brigade':
-      return `제${corpsNum}군단 제${divisionNum}사단 제${seqNum}여단`;
-    case 'battalion':
-      return `제${corpsNum}군단 제${divisionNum}사단 제${brigadeNum}여단 제${seqNum}대대`;
-    case 'company':
-      return `제${divisionNum}사단 제${brigadeNum}여단 제${battalionNum}대대 제${seqNum}중대`;
-    case 'platoon':
-      return `제${divisionNum}사단 제${brigadeNum}여단 제${battalionNum}대대 제${companyNum}중대 제${seqNum}소대`;
-    default:
-      return `테스트부대${seqNum}`;
+  let name = '';
+  let attempts = 0;
+  while (attempts < 100) {
+    const num = Math.floor(index / 8) + 1 + attempts * 10;
+    const suffix = suffixes[index % suffixes.length];
+    const prefix = prefixes[Math.floor(index / 10) % prefixes.length];
+    name = `${prefix}${num}${suffix}(${year})`;
+    if (!usedNames.has(name)) {
+      usedNames.add(name);
+      return name;
+    }
+    attempts++;
   }
+  name = `부대${year}-${index}-${Date.now() % 10000}`;
+  usedNames.add(name);
+  return name;
 }
 
 function formatDate(date: Date): string {
@@ -214,8 +223,16 @@ function formatTime(hours: number, minutes: number): string {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 }
 
+interface UnitConfig {
+  year: number;
+  month: number;
+  hasExtraEducation: boolean;
+  excludedType: 'none' | 'single' | 'multiple';
+  locationCount: number;
+}
+
 async function generateExcel() {
-  console.log('📊 부대 1000개 엑셀 파일 생성 시작...\n');
+  console.log('📊 부대 엑셀 파일 생성 시작 (2025년 1000개 + 2026년 100개)...\n');
 
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('부대정보');
@@ -253,9 +270,8 @@ async function generateExcel() {
   ];
 
   // 1-2행은 메타정보
-  worksheet.getCell('A1').value = '통합 테스트용 부대 데이터 (1000개)';
-  worksheet.getCell('A2').value =
-    `생성일: ${formatDate(new Date())} | 기간: 2025년 6월 ~ 2026년 2월`;
+  worksheet.getCell('A1').value = '테스트용 부대 데이터 (2025년 1000개 + 2026년 100개)';
+  worksheet.getCell('A2').value = `생성일: ${formatDate(new Date())} | 기준일: 2026-01-08`;
 
   // 헤더 행 (3행)
   headers.forEach((header, index) => {
@@ -266,73 +282,70 @@ async function generateExcel() {
     cell.alignment = { horizontal: 'center' };
   });
 
-  // 분포 설정: 2025년 6월 ~ 2026년 2월 (9개월, 균등 분포)
-  const monthsConfig = [
-    { year: 2025, month: 5 }, // 6월
-    { year: 2025, month: 6 }, // 7월
-    { year: 2025, month: 7 }, // 8월
-    { year: 2025, month: 8 }, // 9월
-    { year: 2025, month: 9 }, // 10월
-    { year: 2025, month: 10 }, // 11월
-    { year: 2025, month: 11 }, // 12월
-    { year: 2026, month: 0 }, // 1월
-    { year: 2026, month: 1 }, // 2월
-  ];
-  const educationMonths: { year: number; month: number }[] = [];
+  // 2025년 1000개 설정
+  const units2025: UnitConfig[] = [];
   for (let i = 0; i < 1000; i++) {
-    educationMonths.push(monthsConfig[i % 9]);
+    const month = randomInt(0, 11); // 1월~12월 균등 분포
+    units2025.push({
+      year: 2025,
+      month,
+      hasExtraEducation: i < 150, // 15% 추가교육
+      excludedType: i < 200 ? 'single' : i < 300 ? 'multiple' : 'none',
+      locationCount: i < 300 ? randomInt(2, 3) : 1, // 30% 복수 장소
+    });
   }
-  educationMonths.sort(() => Math.random() - 0.5);
+  units2025.sort(() => Math.random() - 0.5);
 
-  const unitLevels: string[] = [];
-  for (let i = 0; i < 50; i++) unitLevels.push('corps');
-  for (let i = 0; i < 100; i++) unitLevels.push('division');
-  for (let i = 0; i < 400; i++) unitLevels.push('battalion');
-  for (let i = 0; i < 350; i++) unitLevels.push('company');
-  for (let i = 0; i < 100; i++) unitLevels.push('platoon');
-  unitLevels.sort(() => Math.random() - 0.5);
+  // 2026년 1~2월 100개 설정
+  const units2026: UnitConfig[] = [];
+  for (let i = 0; i < 100; i++) {
+    const month = i < 60 ? 0 : 1; // 60개 1월, 40개 2월
+    units2026.push({
+      year: 2026,
+      month,
+      hasExtraEducation: i < 10, // 10% 추가교육
+      excludedType: i < 15 ? 'single' : i < 25 ? 'multiple' : 'none',
+      locationCount: i < 20 ? randomInt(2, 3) : 1, // 20% 복수 장소
+    });
+  }
+  units2026.sort(() => Math.random() - 0.5);
 
-  const excludedDateTypes: string[] = [];
-  for (let i = 0; i < 200; i++) excludedDateTypes.push('single');
-  for (let i = 0; i < 100; i++) excludedDateTypes.push('multiple');
-  for (let i = 0; i < 700; i++) excludedDateTypes.push('none');
-  excludedDateTypes.sort(() => Math.random() - 0.5);
-
+  const allUnits = [...units2025, ...units2026];
   let currentRow = 4;
   let unitCount = 0;
 
-  for (let i = 0; i < 1000; i++) {
-    const level = unitLevels[i];
-    const unitName = generateUnitName(level, i);
+  for (let i = 0; i < allUnits.length; i++) {
+    const config = allUnits[i];
+    const { year, month, excludedType, locationCount } = config;
+
+    const unitName = generateUniqueUnitName(year, i);
     const militaryType = getMilitaryType();
     const regionData = randomChoice(REGIONS);
     const region = randomChoice(regionData.regions);
 
-    const { year, month } = educationMonths[i];
-    const dayOfMonth = randomInt(1, 25);
-    const startDate = new Date(Date.UTC(year, month, dayOfMonth));
-    const endDate = new Date(Date.UTC(year, month, dayOfMonth + 2));
+    const dayOfMonth = randomInt(1, 20);
 
-    // 불가일자
+    // 불가일자 생성
     let excludedDates = '';
-    const excludedType = excludedDateTypes[i];
+    let extraDays = 0;
+
     if (excludedType === 'single') {
+      extraDays = 1;
       excludedDates = formatDate(new Date(Date.UTC(year, month, dayOfMonth + 1)));
     } else if (excludedType === 'multiple') {
+      extraDays = 2;
       excludedDates = [
         formatDate(new Date(Date.UTC(year, month, dayOfMonth + 1))),
-        formatDate(new Date(Date.UTC(year, month, dayOfMonth + 2))),
+        formatDate(new Date(Date.UTC(year, month, dayOfMonth + 3))),
       ].join(', ');
     }
 
+    const startDate = new Date(Date.UTC(year, month, dayOfMonth));
+    const endDate = new Date(Date.UTC(year, month, dayOfMonth + 2 + extraDays));
     const officerName = `${randomChoice(LAST_NAMES)}${randomChoice(FIRST_NAMES)}`;
-
-    // 교육장소 수
-    const locationCount = level === 'battalion' ? randomInt(2, 3) : 1;
-    const plannedPerLocation = level === 'battalion' ? 100 : randomInt(40, 150);
+    const plannedCount = Math.min(randomInt(40, 150), 200);
 
     // 첫 번째 장소 (부대 정보 포함)
-    // 위도/경도는 빈값으로 설정 (업로드 후 주소 변환 로직 테스트용)
     const mainRow: (string | number | null)[] = [
       unitName,
       militaryType,
@@ -351,7 +364,7 @@ async function generateExcel() {
       formatTime(13, 0),
       officerName,
       `010-${randomInt(1000, 9999)}-${randomInt(1000, 9999)}`,
-      `${officerName.toLowerCase()}${randomInt(1, 99)}@army.mil.kr`,
+      `officer${i}@army.mil.kr`,
       randomChoice(PLACES),
       '',
       'O',
@@ -359,8 +372,8 @@ async function generateExcel() {
       Math.random() > 0.3 ? 'O' : 'X',
       Math.random() > 0.4 ? 'O' : 'X',
       'O',
-      plannedPerLocation,
-      randomInt(Math.floor(plannedPerLocation * 0.7), plannedPerLocation),
+      plannedCount,
+      Math.floor(plannedCount * (0.8 + Math.random() * 0.2)),
       '',
     ];
 
@@ -397,8 +410,8 @@ async function generateExcel() {
         Math.random() > 0.3 ? 'O' : 'X',
         Math.random() > 0.4 ? 'O' : 'X',
         'O',
-        plannedPerLocation,
-        randomInt(Math.floor(plannedPerLocation * 0.7), plannedPerLocation),
+        plannedCount,
+        Math.floor(plannedCount * (0.8 + Math.random() * 0.2)),
         '',
       ];
 
@@ -410,7 +423,7 @@ async function generateExcel() {
 
     unitCount++;
     if (unitCount % 100 === 0) {
-      console.log(`  📊 ${unitCount}/1000 부대 생성...`);
+      console.log(`  📊 ${unitCount}/1100 부대 생성...`);
     }
   }
 
@@ -421,21 +434,20 @@ async function generateExcel() {
 
   // 파일 저장
   const outputDir = path.join(__dirname, '..', 'test-data');
-  const fs = await import('fs');
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
 
-  const filePath = path.join(outputDir, 'units-1000.xlsx');
+  const filePath = path.join(outputDir, 'units-1100.xlsx');
   await workbook.xlsx.writeFile(filePath);
 
   console.log(`\n✅ 엑셀 파일 생성 완료: ${filePath}`);
   console.log('\n📋 구성:');
-  console.log('   - 군단/사단: 150개');
-  console.log('   - 대대급 (복수 장소): 400개');
-  console.log('   - 중대/소대급: 450개');
-  console.log('   - 12월: 400개, 1월: 400개, 2월: 200개');
-  console.log('   - 불가일자: 단일 200개, 복수 100개');
+  console.log('   - 2025년: 1000개 (전체 월 균등 분포)');
+  console.log('   - 2026년 1월: 60개');
+  console.log('   - 2026년 2월: 40개');
+  console.log('   - 불가일자: 단일 ~20%, 복수 ~10%');
+  console.log('   - 복수 장소: ~25%');
 }
 
 generateExcel().catch((err) => {
