@@ -9,7 +9,7 @@ export default defineConfig({
   },
   datasource: {
     // CLI (마이그레이션 등)에서 사용할 URL
-    // Supabase는 직접 연결 또는 pooler 사용
-    url: env('DATABASE_URL'),
+    // Supabase: DIRECT_URL (5432) 사용, 없으면 DATABASE_URL 폴백
+    url: env('DIRECT_URL') || env('DATABASE_URL'),
   },
 });
