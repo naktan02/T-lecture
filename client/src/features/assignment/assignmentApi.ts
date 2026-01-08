@@ -112,12 +112,12 @@ export const getAssignmentCandidates = async (
 };
 
 export const postAutoAssignment = async (
-  startDate: string,
-  endDate: string,
+  scheduleIds: number[],
+  instructorIds: number[],
 ): Promise<AutoAssignmentResult> => {
   const res = await apiClient('/api/v1/assignments/auto-assign', {
     method: 'POST',
-    body: JSON.stringify({ startDate, endDate }),
+    body: JSON.stringify({ scheduleIds, instructorIds }),
   });
   if (!res.ok) throw new Error('자동 배정 실행에 실패했습니다.');
 
