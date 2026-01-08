@@ -75,6 +75,22 @@ export const updateBasicInfo = asyncHandler(async (req: Request, res: Response) 
   });
 });
 
+// 부대 + 교육기간 + 장소 전체 업데이트
+export const updateUnitWithPeriods = asyncHandler(async (req: Request, res: Response) => {
+  const unitId = Number(req.params.id);
+  if (isNaN(unitId)) {
+    throw new AppError('유효하지 않은 부대 ID입니다.', 400, 'INVALID_ID');
+  }
+
+  const unit = await unitService.updateUnitWithPeriods(unitId, req.body);
+
+  res.status(200).json({
+    result: 'Success',
+    message: '부대 정보가 업데이트되었습니다.',
+    data: unit,
+  });
+});
+
 // 부대 담당자 정보 수정
 export const updateOfficerInfo = asyncHandler(async (req: Request, res: Response) => {
   const unit = await unitService.modifyUnitContactInfo(req.params.id, req.body);
@@ -85,17 +101,22 @@ export const updateOfficerInfo = asyncHandler(async (req: Request, res: Response
   });
 });
 
-// 부대 전체 정보 수정 (기본정보 + 교육장소 + 일정)
-export const updateUnitFull = asyncHandler(async (req: Request, res: Response) => {
-  const unit = await unitService.updateUnitFull(req.params.id, req.body);
+// 교육기간 생성 (즉시 저장)
+export const createTrainingPeriod = asyncHandler(async (req: Request, res: Response) => {
+  const unitId = Number(req.params.id);
+  if (isNaN(unitId)) {
+    throw new AppError('유효하지 않은 부대 ID입니다.', 400, 'INVALID_ID');
+  }
 
-  res.status(200).json({
+  const period = await unitService.createTrainingPeriod(unitId, req.body);
+
+  res.status(201).json({
     result: 'Success',
-    data: unit,
+    data: period,
   });
 });
 
-// 부대 주소만 수정 (좌표 재계산)
+// 부대 전체 정보 수정 (기본정보 + 교육장소 + 일정)
 export const updateUnitAddress = asyncHandler(async (req: Request, res: Response) => {
   const unit = await unitService.updateUnitAddress(req.params.id, req.body.addressDetail);
 
@@ -106,16 +127,6 @@ export const updateUnitAddress = asyncHandler(async (req: Request, res: Response
 });
 
 // 부대 일정만 수정 (교육시작, 교육종료, 교육불가일자)
-export const updateUnitSchedule = asyncHandler(async (req: Request, res: Response) => {
-  const unit = await unitService.updateUnitSchedule(req.params.id, req.body);
-
-  res.status(200).json({
-    result: 'Success',
-    data: unit,
-  });
-});
-
-// 부대 일정 추가
 export const addSchedule = asyncHandler(async (req: Request, res: Response) => {
   const result = await unitService.addScheduleToUnit(req.params.id, req.body.date);
 
@@ -158,6 +169,69 @@ export const deleteMultipleUnits = asyncHandler(async (req: Request, res: Respon
   });
 });
 
+// ===== TrainingPeriod 일정 관리 =====
+
+// 교육기간 일정 수정 (시작일, 종료일, 불가일자)
+export const updateTrainingPeriodSchedule = asyncHandler(async (req: Request, res: Response) => {
+  const periodId = Number(req.params.periodId);
+  const { startDate, endDate, excludedDates, forceUpdate } = req.body;
+
+  if (!startDate || !endDate) {
+    throw new AppError('시작일과 종료일은 필수입니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  const result = await unitService.updateTrainingPeriodSchedule(periodId, {
+    startDate,
+    endDate,
+    excludedDates: excludedDates || [],
+    forceUpdate: forceUpdate || false,
+  });
+
+  res.status(200).json({
+    result: 'Success',
+    data: result,
+  });
+});
+
+// 교육기간 일정-장소/인원 저장
+export const updateTrainingPeriodScheduleLocations = asyncHandler(
+  async (req: Request, res: Response) => {
+    const periodId = Number(req.params.periodId);
+
+    const result = await unitService.updateTrainingPeriodScheduleLocations(periodId, req.body);
+
+    res.status(200).json({
+      result: 'Success',
+      data: result,
+    });
+  },
+);
+
+// 교육기간 삭제
+export const deleteTrainingPeriod = asyncHandler(async (req: Request, res: Response) => {
+  const periodId = Number(req.params.periodId);
+
+  await unitService.deleteTrainingPeriod(periodId);
+
+  res.status(200).json({
+    result: 'Success',
+    message: '교육기간이 삭제되었습니다.',
+  });
+});
+
+// 교육기간 일정 삭제 전 배정 확인
+export const checkScheduleAssignments = asyncHandler(async (req: Request, res: Response) => {
+  const periodId = Number(req.params.periodId);
+  const { schedulesToDelete } = req.body;
+
+  const result = await unitService.checkScheduleAssignments(periodId, schedulesToDelete || []);
+
+  res.status(200).json({
+    result: 'Success',
+    data: result,
+  });
+});
+
 // CommonJS 호환
 module.exports = {
   getUnitList,
@@ -165,12 +239,16 @@ module.exports = {
   uploadExcelAndRegisterUnits,
   getUnitDetail,
   updateBasicInfo,
+  updateUnitWithPeriods,
   updateOfficerInfo,
-  updateUnitFull,
+  createTrainingPeriod,
+  deleteTrainingPeriod,
   updateUnitAddress,
-  updateUnitSchedule,
   addSchedule,
   removeSchedule,
   deleteUnit,
   deleteMultipleUnits,
+  updateTrainingPeriodSchedule,
+  updateTrainingPeriodScheduleLocations,
+  checkScheduleAssignments,
 };

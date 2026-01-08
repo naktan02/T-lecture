@@ -345,6 +345,40 @@ export function useTemplateEditor({
     [handleInternalDragStart],
   );
 
+  // 키다운 핸들러 (엔터 키 처리)
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const sel = window.getSelection();
+        const editor = editorRef.current;
+        if (!sel || sel.rangeCount === 0 || !editor) return;
+
+        const range = sel.getRangeAt(0);
+        if (!editor.contains(range.commonAncestorContainer)) return;
+
+        // 현재 선택 영역 제거
+        range.deleteContents();
+
+        // <br> 삽입 + 빈 텍스트 노드 (커서 위치용)
+        const br = document.createElement('br');
+        const textNode = document.createTextNode('\u200B'); // Zero-width space
+        range.insertNode(textNode);
+        range.insertNode(br);
+
+        // 커서를 텍스트 노드 뒤로 이동
+        range.setStart(textNode, 1);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        // DOM 정리 후 동기화
+        queueMicrotask(() => syncToTemplate());
+      }
+    },
+    [syncToTemplate],
+  );
+
   return {
     editorRef,
     activeTab,
@@ -361,5 +395,6 @@ export function useTemplateEditor({
     handleDrop,
     handleEditorClick,
     handleEditorMouseDown,
+    handleKeyDown,
   };
 }

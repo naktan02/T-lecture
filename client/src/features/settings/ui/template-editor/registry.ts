@@ -4,9 +4,10 @@ import type { VariableDef, VariableCategory } from './types';
 
 export const variableCategories: VariableCategory[] = [
   { id: 'unit', label: '부대정보', icon: '🏛️', color: '#3b82f6' },
+  { id: 'period', label: '교육기간', icon: '📅', color: '#f97316' },
   { id: 'location', label: '교육장소', icon: '📍', color: '#10b981' },
   { id: 'self', label: '본인정보', icon: '👤', color: '#8b5cf6' },
-  { id: 'instructor', label: '강사목록', icon: '👥', color: '#f59e0b' },
+  { id: 'instructor', label: '강사목록', icon: '👥', color: '#ec4899' },
 ];
 
 /**
@@ -32,13 +33,12 @@ export const PLACEHOLDER_META: Record<string, { label: string; icon: string }> =
 };
 
 export const formatPlaceholders: Record<string, { key: string; label: string; icon: string }[]> = {
-  locations: [
-    { key: 'index', ...PLACEHOLDER_META.index },
+  // 교육장소 목록 - 날짜는 자동 표시, 오른쪽 장소 세부정보만 편집 가능
+  scheduleLocations: [
     { key: 'placeName', ...PLACEHOLDER_META.placeName },
     { key: 'actualCount', ...PLACEHOLDER_META.actualCount },
     { key: 'hasInstructorLounge', ...PLACEHOLDER_META.hasInstructorLounge },
     { key: 'hasWomenRestroom', ...PLACEHOLDER_META.hasWomenRestroom },
-    { key: 'allowsPhoneBeforeAfter', ...PLACEHOLDER_META.allowsPhoneBeforeAfter },
     { key: 'note', ...PLACEHOLDER_META.note },
   ],
   instructors: [
@@ -64,30 +64,40 @@ export const formatPlaceholders: Record<string, { key: string; label: string; ic
  * 템플릿에서 사용할 수 있는 모든 변수 정의
  */
 export const variableConfig: VariableDef[] = [
-  // === 부대 정보 ===
+  // === 부대 정보 (Unit 테이블) ===
   { key: 'unit.name', label: '부대명', icon: '🏛️', category: 'unit' },
-  { key: 'unit.region', label: '지역', icon: '📍', category: 'unit' },
+  { key: 'unit.unitType', label: '군구분', icon: '🎖️', category: 'unit' },
   { key: 'unit.wideArea', label: '광역', icon: '🗺️', category: 'unit' },
+  { key: 'unit.region', label: '지역', icon: '📍', category: 'unit' },
   { key: 'unit.addressDetail', label: '주소', icon: '📍', category: 'unit' },
   { key: 'unit.detailAddress', label: '상세주소', icon: '🏠', category: 'unit' },
-  { key: 'unit.officerName', label: '담당자 이름', icon: '👤', category: 'unit' },
-  { key: 'unit.officerPhone', label: '담당자 전화', icon: '📞', category: 'unit' },
-  { key: 'unit.startDate', label: '교육 시작일', icon: '📅', category: 'unit' },
-  { key: 'unit.endDate', label: '교육 종료일', icon: '📅', category: 'unit' },
-  { key: 'unit.startTime', label: '시작 시간', icon: '⏰', category: 'unit' },
-  { key: 'unit.endTime', label: '종료 시간', icon: '⏰', category: 'unit' },
-  { key: 'unit.excludedDates', label: '교육불가일', icon: '🚫', category: 'unit' },
-  { key: 'location.originalPlace', label: '기존교육장소', icon: '📍', category: 'location' },
-  { key: 'location.changedPlace', label: '변경교육장소', icon: '📍', category: 'location' },
-  { key: 'location.hasInstructorLounge', label: '강사휴게실', icon: '🛋️', category: 'location' },
-  { key: 'location.hasWomenRestroom', label: '여자화장실', icon: '🚻', category: 'location' },
-  { key: 'location.hasCateredMeals', label: '수탁급식', icon: '🍱', category: 'location' },
-  { key: 'location.hasHallLodging', label: '회관숙박', icon: '🏨', category: 'location' },
-  { key: 'location.allowsPhoneBeforeAfter', label: '휴대폰불출', icon: '📱', category: 'location' },
-  { key: 'location.plannedCount', label: '계획인원', icon: '👥', category: 'location' },
-  { key: 'location.actualCount', label: '참여인원', icon: '👥', category: 'location' },
-  { key: 'location.note', label: '특이사항', icon: '📝', category: 'location' },
-  { key: 'locations', label: '교육장소 목록', icon: '📍', isFormat: true, category: 'location' },
+
+  // === 교육기간 정보 (TrainingPeriod 테이블) ===
+  { key: 'period.name', label: '교육기간명', icon: '📋', category: 'period' },
+  { key: 'period.startDate', label: '교육 시작일', icon: '📅', category: 'period' },
+  { key: 'period.endDate', label: '교육 종료일', icon: '📅', category: 'period' },
+  { key: 'period.startTime', label: '근무 시작시간', icon: '⏰', category: 'period' },
+  { key: 'period.endTime', label: '근무 종료시간', icon: '⏰', category: 'period' },
+  { key: 'period.lunchStartTime', label: '점심 시작시간', icon: '🍽️', category: 'period' },
+  { key: 'period.lunchEndTime', label: '점심 종료시간', icon: '🍽️', category: 'period' },
+  { key: 'period.officerName', label: '담당관 이름', icon: '👤', category: 'period' },
+  { key: 'period.officerPhone', label: '담당관 전화', icon: '📞', category: 'period' },
+  { key: 'period.officerEmail', label: '담당관 이메일', icon: '📧', category: 'period' },
+  { key: 'period.excludedDates', label: '교육불가일', icon: '🚫', category: 'period' },
+  { key: 'period.hasCateredMeals', label: '수탁급식', icon: '🍱', category: 'period' },
+  { key: 'period.hasHallLodging', label: '회관숙박', icon: '🏨', category: 'period' },
+  { key: 'period.allowsPhoneBeforeAfter', label: '휴대폰불출', icon: '📱', category: 'period' },
+
+  // === 교육장소 정보 (날짜별 + 장소별 세부정보) ===
+  {
+    key: 'scheduleLocations',
+    label: '날짜별 장소목록',
+    icon: '📅',
+    isFormat: true,
+    category: 'location',
+    defaultFormat:
+      '{date} ({dayOfWeek}) - {placeName}: 참여 {actualCount}명, 강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}',
+  },
 
   // === 본인 정보 ===
   { key: 'self.name', label: '본인 이름', icon: '👤', category: 'self' },

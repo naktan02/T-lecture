@@ -1,5 +1,5 @@
 // src/app/App.tsx
-import type { ReactElement } from 'react';
+import { useEffect, type ReactElement } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
@@ -26,6 +26,22 @@ import AdminInquiryPage from '../pages/admin/InquiryPage';
 import InstructorInquiryPage from '../pages/instructor/InquiryPage';
 
 function App(): ReactElement {
+  // 전역 백스페이스 이전 페이지 이동 방지
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isEditable =
+        target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+      if (e.key === 'Backspace' && !isEditable) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* 토스트 컨테이너 */}

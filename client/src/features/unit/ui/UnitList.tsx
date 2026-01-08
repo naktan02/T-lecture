@@ -1,22 +1,7 @@
 // client/src/features/unit/ui/UnitList.tsx
 import { ReactElement, ChangeEvent } from 'react';
 import { EmptyState } from '../../../shared/ui';
-
-interface Unit {
-  id: number;
-  name: string;
-  unitType?: string;
-  wideArea?: string;
-  region?: string;
-  addressDetail?: string;
-  officerName?: string;
-  officerPhone?: string;
-  educationStart?: string;
-  educationEnd?: string;
-  lat?: number | null;
-  lng?: number | null;
-  [key: string]: unknown;
-}
+import { Unit, TrainingPeriod, getPeriodDateRange } from '../../../shared/types/unit.types';
 
 interface UnitListProps {
   units?: Unit[];
@@ -29,16 +14,17 @@ interface UnitListProps {
   onSort?: (field: string) => void;
 }
 
-// 날짜 포맷팅 헬퍼
-const formatDate = (dateStr?: string): string => {
+// 날짜 포맷팅 헬퍼 (M/D 형식)
+const formatDateMD = (dateStr?: string | null): string => {
   if (!dateStr) return '-';
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '-';
   return `${date.getMonth() + 1}/${date.getDate()}`;
 };
 
 // 군 타입 정보 헬퍼
 const getUnitTypeInfo = (
-  unitType?: string,
+  unitType?: string | null,
 ): { label: string; bgColor: string; textColor: string } => {
   switch (unitType) {
     case 'Army':
@@ -54,6 +40,31 @@ const getUnitTypeInfo = (
     default:
       return { label: unitType || '미지정', bgColor: 'bg-gray-100', textColor: 'text-gray-600' };
   }
+};
+
+// 교육기간 표시 (trainingPeriods에서 날짜 추출)
+const renderEducationPeriods = (periods?: TrainingPeriod[]): ReactElement => {
+  if (!periods || periods.length === 0) {
+    return <span className="text-gray-400">-</span>;
+  }
+
+  return (
+    <div className="space-y-1">
+      {periods.map((period, idx) => {
+        const { start, end } = getPeriodDateRange(period);
+        const startStr = formatDateMD(start);
+        const endStr = formatDateMD(end);
+        return (
+          <div key={period.id || idx} className="text-sm">
+            <span className="text-gray-500">{period.name}:</span>{' '}
+            <span className="text-gray-700">
+              {startStr} ~ {endStr}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
 };
 
 export const UnitList = ({
@@ -120,13 +131,7 @@ export const UnitList = ({
               >
                 위치 {getSortIcon('region')}
               </th>
-              <th
-                className="px-4 py-3 cursor-pointer hover:bg-gray-100"
-                onClick={() => onSort?.('educationStart')}
-              >
-                교육기간 {getSortIcon('educationStart')}
-              </th>
-              <th className="px-4 py-3">담당자</th>
+              <th className="px-4 py-3">교육기간</th>
               <th className="px-4 py-3 w-16"></th>
             </tr>
           </thead>
@@ -156,7 +161,7 @@ export const UnitList = ({
                   <td className="px-4 py-3">
                     <div className="font-semibold text-gray-900 flex items-center gap-1">
                       {unit.name}
-                      {/* 주소 오류 경고 아이콘: addressDetail이 비어있거나 lat/lng가 null인 경우 */}
+                      {/* 주소 오류 경고 아이콘 */}
                       {(!unit.addressDetail || unit.lat === null) && (
                         <span
                           title={
@@ -198,28 +203,13 @@ export const UnitList = ({
                     </div>
                     <div
                       className="text-xs text-gray-400 truncate max-w-[180px]"
-                      title={unit.addressDetail}
+                      title={unit.addressDetail || ''}
                     >
                       {unit.addressDetail || '-'}
                     </div>
                   </td>
 
-                  <td className="px-4 py-3">
-                    <div className="text-sm text-gray-700">
-                      {formatDate(unit.educationStart)} ~ {formatDate(unit.educationEnd)}
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-3">
-                    {unit.officerName ? (
-                      <div>
-                        <div className="text-sm font-medium">{unit.officerName}</div>
-                        <div className="text-xs text-gray-400">{unit.officerPhone}</div>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-400">미지정</span>
-                    )}
-                  </td>
+                  <td className="px-4 py-3">{renderEducationPeriods(unit.trainingPeriods)}</td>
 
                   <td className="px-4 py-3 text-right">
                     <svg
@@ -259,6 +249,10 @@ export const UnitList = ({
 
         {units.map((unit) => {
           const isSelected = selectedIds.includes(unit.id);
+          const firstPeriod = unit.trainingPeriods?.[0];
+          const { start, end } = firstPeriod
+            ? getPeriodDateRange(firstPeriod)
+            : { start: null, end: null };
 
           return (
             <div
@@ -326,16 +320,9 @@ export const UnitList = ({
                   <div className="flex items-center gap-1.5 text-gray-600">
                     <span className="text-base">📅</span>
                     <span>
-                      {formatDate(unit.educationStart)} ~ {formatDate(unit.educationEnd)}
+                      {formatDateMD(start)} ~ {formatDateMD(end)}
                     </span>
                   </div>
-                  {unit.officerName && (
-                    <div className="flex items-center gap-1.5 text-gray-600 col-span-2">
-                      <span className="text-base">👤</span>
-                      <span>{unit.officerName}</span>
-                      <span className="text-gray-400">{unit.officerPhone}</span>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>

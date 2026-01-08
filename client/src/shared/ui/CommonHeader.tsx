@@ -175,10 +175,11 @@ export const CommonHeader = ({
   const userName = localStorage.getItem('userName') || '사용자';
   const displayLabel = userLabel || userName;
 
-  const handleLogout = (): void => {
-    showConfirm('정말 로그아웃 하시겠습니까?', () => {
+  const handleLogout = async (): Promise<void> => {
+    const confirmed = await showConfirm('정말 로그아웃 하시겠습니까?');
+    if (confirmed) {
       logout();
-    });
+    }
   };
 
   const isInAdminPage = location.pathname.startsWith('/admin');

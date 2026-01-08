@@ -197,6 +197,151 @@ class AssignmentService {
   }
 
   /**
+   * ID 기반 자동 배정 (하이브리드 방식)
+   * - 클라이언트에서 scheduleIds, instructorIds 전달받음
+   * - 기배정 상태는 서버에서 실시간 조회
+   */
+  async createAutoAssignmentsByIds(scheduleIds: number[], instructorIds: number[]) {
+    if (!scheduleIds || scheduleIds.length === 0) {
+      throw new AppError('배정할 스케줄 ID가 없습니다.', 400, 'VALIDATION_ERROR');
+    }
+    if (!instructorIds || instructorIds.length === 0) {
+      throw new AppError('배정할 강사 ID가 없습니다.', 400, 'VALIDATION_ERROR');
+    }
+
+    // 1) 스케줄 조회 (기배정 상태 포함)
+    const schedules = await assignmentRepository.findSchedulesByIds(scheduleIds);
+
+    if (!schedules || schedules.length === 0) {
+      throw new AppError('조회되는 스케줄이 없습니다.', 404, 'NO_SCHEDULES');
+    }
+
+    // 2) 스케줄 날짜 범위 계산 (강사 가용일 조회용)
+    const validSchedules = schedules.filter((s) => s.date !== null);
+    if (validSchedules.length === 0) {
+      throw new AppError('유효한 날짜가 있는 스케줄이 없습니다.', 404, 'NO_VALID_SCHEDULES');
+    }
+
+    let minDate = new Date(validSchedules[0].date!);
+    let maxDate = new Date(validSchedules[0].date!);
+    for (const schedule of validSchedules) {
+      const d = new Date(schedule.date!);
+      if (d < minDate) minDate = d;
+      if (d > maxDate) maxDate = d;
+    }
+
+    // 3) 강사 조회 (ID 필터링 + 가용일 조회)
+    const allInstructors = await instructorRepository.findAvailableInPeriod(
+      minDate.toISOString(),
+      maxDate.toISOString(),
+    );
+    // 클라이언트에서 전달받은 ID로 필터링
+    const instructors = allInstructors.filter((i: any) => instructorIds.includes(i.userId));
+
+    if (!instructors || instructors.length === 0) {
+      throw new AppError('배정 가능한 강사가 없습니다.', 404, 'NO_INSTRUCTORS');
+    }
+
+    // 4) 스케줄 데이터를 기존 알고리즘 형식으로 변환 (Unit 기반)
+    // 알고리즘 인터페이스: { id, name, region, wideArea, schedules, trainingLocations, isStaffLocked }
+    const unitMap = new Map<number, any>();
+    for (const schedule of schedules) {
+      const unitId = schedule.trainingPeriod?.unitId;
+      if (!unitId) continue;
+
+      if (!unitMap.has(unitId)) {
+        // 장소 정보 추출 (scheduleLocations에서 actualCount/plannedCount 포함)
+        const locations =
+          schedule.trainingPeriod?.locations?.map((loc: any) => {
+            // scheduleLocations에서 해당 장소의 인원 정보 가져오기
+            const schedLoc = schedule.scheduleLocations?.find(
+              (sl: any) => sl.trainingLocationId === loc.id,
+            );
+            return {
+              id: loc.id,
+              originalPlace: loc.originalPlace,
+              actualCount: schedLoc?.actualCount ?? null,
+              plannedCount: schedLoc?.plannedCount ?? null,
+            };
+          }) || [];
+
+        unitMap.set(unitId, {
+          id: unitId,
+          name: schedule.trainingPeriod?.unit?.name,
+          region: schedule.trainingPeriod?.unit?.region,
+          wideArea: schedule.trainingPeriod?.unit?.wideArea,
+          trainingLocations: locations,
+          schedules: [],
+          isStaffLocked: schedule.trainingPeriod?.isStaffLocked ?? false,
+        });
+      }
+
+      // 스케줄 추가 (assignments 포함)
+      unitMap.get(unitId).schedules.push({
+        id: schedule.id,
+        date: schedule.date,
+        assignments: schedule.assignments || [],
+      });
+    }
+    const units = Array.from(unitMap.values());
+
+    // 5) 취소된 강사 조회 (재배정 방지)
+    const blockedInstructorIdsBySchedule =
+      await assignmentRepository.findCanceledInstructorIdsByScheduleIds(scheduleIds);
+
+    // 6) 공정성/패널티 통계
+    const traineesPerInstructor = await this.getSystemConfigNumber('TRAINEES_PER_INSTRUCTOR', 36);
+    const fairnessLookbackMonths = await this.getSystemConfigNumber(
+      'FAIRNESS_LOOKBACK_MONTHS',
+      DEFAULT_ASSIGNMENT_CONFIG.fairnessLookbackMonths,
+    );
+    const rejectionPenaltyMonths = await this.getSystemConfigNumber(
+      'REJECTION_PENALTY_MONTHS',
+      DEFAULT_ASSIGNMENT_CONFIG.rejectionPenaltyMonths,
+    );
+
+    const assignmentSince = this.subtractMonths(minDate, fairnessLookbackMonths);
+    const rejectionSince = this.subtractMonths(minDate, rejectionPenaltyMonths);
+
+    const { recentAssignmentCountByInstructorId, recentRejectionCountByInstructorId } =
+      await assignmentRepository.getInstructorRecentStats(
+        instructorIds,
+        assignmentSince,
+        rejectionSince,
+      );
+
+    // 7) 배정 알고리즘 실행
+    const matchResult = assignmentAlgorithm.execute(units as any, instructors as any, {
+      traineesPerInstructor,
+      blockedInstructorIdsBySchedule,
+      recentAssignmentCountByInstructorId,
+      recentRejectionCountByInstructorId,
+    });
+
+    const { assignments: matchResults } = matchResult;
+
+    if (!matchResults || matchResults.length === 0) {
+      throw new AppError('배정 가능한 매칭 결과가 없습니다.', 404, 'NO_MATCHES');
+    }
+
+    // 8) 배정 저장
+    const summary = await assignmentRepository.createAssignmentsBulk(matchResults);
+
+    // 9) 크레딧 소모 및 역할 재계산
+    const assignedInstructorIds = new Set(matchResults.map((m) => m.instructorId));
+    for (const instructorId of assignedInstructorIds) {
+      await this.consumePriorityCredit(instructorId);
+    }
+
+    const affectedUnitIds = new Set(units.map((u) => u.id));
+    for (const unitId of affectedUnitIds) {
+      await assignmentRepository.recalculateRolesForUnit(unitId);
+    }
+
+    return { summary };
+  }
+
+  /**
    * 자동 배정 미리보기 (저장 안 함)
    * @param startDate 시작일
    * @param endDate 종료일

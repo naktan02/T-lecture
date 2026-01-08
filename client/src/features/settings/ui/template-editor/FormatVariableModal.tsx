@@ -162,12 +162,14 @@ export const FormatVariableModal = ({
       // 1) 현재 선택 영역 제거
       range.deleteContents();
 
-      // 2) <br> 삽입
+      // 2) <br> 삽입 + 빈 텍스트 노드 (커서 위치용)
       const br = document.createElement('br');
+      const textNode = document.createTextNode('\u200B'); // Zero-width space
+      range.insertNode(textNode);
       range.insertNode(br);
 
-      // 3) 커서를 <br> 뒤로 이동
-      range.setStartAfter(br);
+      // 3) 커서를 텍스트 노드 뒤로 이동
+      range.setStart(textNode, 1);
       range.collapse(true);
       sel.removeAllRanges();
       sel.addRange(range);
@@ -192,6 +194,56 @@ export const FormatVariableModal = ({
         }
       }
     }
+  };
+
+  // 팬텀 커서 제거
+  const removeDragCaret = () => {
+    const existing = document.querySelector('.format-drag-caret');
+    if (existing) existing.remove();
+  };
+
+  // 드래그 오버 - 팬텀 커서 표시
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    removeDragCaret();
+
+    // 드롭 위치 계산
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const doc = document as any;
+    let range: Range | null = null;
+
+    if (doc.caretPositionFromPoint) {
+      const pos = doc.caretPositionFromPoint(e.clientX, e.clientY);
+      if (pos) {
+        range = document.createRange();
+        range.setStart(pos.offsetNode, pos.offset);
+        range.collapse(true);
+      }
+    } else if (document.caretRangeFromPoint) {
+      range = document.caretRangeFromPoint(e.clientX, e.clientY);
+    }
+
+    if (range && editor.contains(range.startContainer)) {
+      const caret = document.createElement('span');
+      caret.className = 'format-drag-caret';
+      caret.style.cssText =
+        'width: 2px; height: 16px; background: #f97316; display: inline-block; vertical-align: middle; animation: blink 1s infinite; margin: 0 1px;';
+      try {
+        range.insertNode(caret);
+      } catch {
+        // ignore
+      }
+    }
+  };
+
+  // 드래그 리브 - 팬텀 커서 제거
+  const handleDragLeave = () => {
+    removeDragCaret();
   };
 
   // 드래그 시작
@@ -295,7 +347,63 @@ export const FormatVariableModal = ({
 
   // 미리보기
   const renderPreview = (): string => {
-    // 일정용 샘플 데이터 (self.schedules)
+    // 날짜별 장소 목록용 샘플 데이터 (날짜 + 장소 세부정보) - 먼저 체크!
+    const hasScheduleLocationPlaceholder =
+      formatValue.includes('{placeName}') || formatValue.includes('{actualCount}');
+
+    if (hasScheduleLocationPlaceholder) {
+      const scheduleLocationSampleData = [
+        {
+          date: '2024-11-17',
+          dayOfWeek: '일',
+          placeName: '교육관',
+          actualCount: '75',
+          hasInstructorLounge: 'O',
+          hasWomenRestroom: 'O',
+          note: 'TV 있음',
+        },
+        {
+          date: '2024-11-17',
+          dayOfWeek: '일',
+          placeName: '체육관',
+          actualCount: '48',
+          hasInstructorLounge: 'X',
+          hasWomenRestroom: 'O',
+          note: '',
+        },
+        {
+          date: '2024-11-18',
+          dayOfWeek: '월',
+          placeName: '교육관',
+          actualCount: '80',
+          hasInstructorLounge: 'O',
+          hasWomenRestroom: 'O',
+          note: '',
+        },
+      ];
+      // 날짜별로 그룹핑하여 "날짜 (요일) | 장소정보" 형태로 표시
+      const grouped = new Map<string, typeof scheduleLocationSampleData>();
+      for (const item of scheduleLocationSampleData) {
+        const key = `${item.date} (${item.dayOfWeek})`;
+        if (!grouped.has(key)) grouped.set(key, []);
+        grouped.get(key)!.push(item);
+      }
+
+      const lines: string[] = [];
+      for (const [dateKey, locations] of grouped) {
+        lines.push(`[${dateKey}]`);
+        for (const data of locations) {
+          let line = formatValue;
+          Object.entries(data).forEach(([key, value]) => {
+            line = line.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+          });
+          lines.push(`  ${line}`);
+        }
+      }
+      return lines.join('\n');
+    }
+
+    // 일정용 샘플 데이터 (self.schedules) - date만 있고 placeName 없을 때
     const hasDatePlaceholder =
       formatValue.includes('{date}') || formatValue.includes('{dayOfWeek}');
 
@@ -321,42 +429,6 @@ export const FormatVariableModal = ({
         },
       ];
       return scheduleSampleData
-        .map((data) => {
-          let line = formatValue;
-          Object.entries(data).forEach(([key, value]) => {
-            line = line.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
-          });
-          return line;
-        })
-        .join('\n');
-    }
-
-    // 장소 목록용 샘플 데이터
-    const hasLocationPlaceholder =
-      formatValue.includes('{placeName}') || formatValue.includes('{actualCount}');
-
-    if (hasLocationPlaceholder) {
-      const locationSampleData = [
-        {
-          index: '1',
-          placeName: '교육관',
-          actualCount: '75',
-          hasInstructorLounge: 'O',
-          hasWomenRestroom: 'O',
-          allowsPhoneBeforeAfter: '가능',
-          note: 'TV, 마이크 있음',
-        },
-        {
-          index: '2',
-          placeName: '체육관',
-          actualCount: '48',
-          hasInstructorLounge: 'X',
-          hasWomenRestroom: 'O',
-          allowsPhoneBeforeAfter: '불가',
-          note: '',
-        },
-      ];
-      return locationSampleData
         .map((data) => {
           let line = formatValue;
           Object.entries(data).forEach(([key, value]) => {
@@ -479,6 +551,19 @@ export const FormatVariableModal = ({
           .placeholder-btn:active {
             cursor: grabbing;
           }
+          @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+          }
+          .format-drag-caret {
+            width: 2px;
+            height: 16px;
+            background: #f97316;
+            display: inline-block;
+            vertical-align: middle;
+            animation: blink 1s infinite;
+            margin: 0 1px;
+          }
         `}</style>
 
         {/* 헤더 */}
@@ -528,8 +613,12 @@ export const FormatVariableModal = ({
               onInput={handleInput}
               onClick={handleClick}
               onKeyDown={handleKeyDown}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => {
+                removeDragCaret();
+                handleDrop(e);
+              }}
               className="format-editor w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm bg-white"
               suppressContentEditableWarning
             />

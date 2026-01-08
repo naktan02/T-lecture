@@ -1,5 +1,9 @@
 // client/src/features/unit/api/unitApi.ts
 import { apiClient } from '../../../shared/apiClient';
+import {
+  CreateTrainingPeriodPayload,
+  UpdateUnitWithPeriodsPayload,
+} from '../../../shared/types/unit.types';
 
 interface UnitListParams {
   page?: number;
@@ -81,7 +85,7 @@ export const unitApi = {
   },
 
   // 부대 전체 정보 수정 (기본정보 + 교육장소 + 일정)
-  updateUnit: async (id: number | string, data: Partial<UnitData>) => {
+  updateUnit: async (id: number | string, data: UpdateUnitWithPeriodsPayload) => {
     const response = await apiClient(`/api/v1/units/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -116,20 +120,89 @@ export const unitApi = {
     return response.json();
   },
 
-  // 일정만 수정 (교육시작, 교육종료, 교육불가일자)
-  updateUnitSchedule: async (
-    id: number | string,
+  // 일정만 수정 (교육기간 단위: 시작일, 종료일, 교육불가일자)
+  updateTrainingPeriodSchedule: async (
+    trainingPeriodId: number,
     data: {
-      educationStart?: string | null;
-      educationEnd?: string | null;
-      excludedDates?: string[];
+      startDate: string;
+      endDate: string;
+      excludedDates: string[];
     },
   ) => {
-    const response = await apiClient(`/api/v1/units/${id}/schedule`, {
-      method: 'PATCH',
+    const response = await apiClient(
+      `/api/v1/units/training-periods/${trainingPeriodId}/schedule`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      },
+    );
+    return response.json();
+  },
+
+  // 일정-장소/인원 + 장소 목록 저장
+  updateTrainingPeriodScheduleLocations: async (
+    trainingPeriodId: number,
+    data: {
+      locations?: Array<{
+        id?: number;
+        originalPlace: string;
+        changedPlace?: string | null;
+        hasInstructorLounge?: boolean;
+        hasWomenRestroom?: boolean;
+        note?: string | null;
+      }>;
+      scheduleLocations: Array<{
+        unitScheduleId: number;
+        trainingLocationId?: number;
+        locationName?: string;
+        plannedCount?: number | null;
+        actualCount?: number | null;
+      }>;
+    },
+  ) => {
+    const response = await apiClient(
+      `/api/v1/units/training-periods/${trainingPeriodId}/schedule-locations`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      },
+    );
+    return response.json();
+  },
+
+  // 교육기간 생성 (즉시 저장)
+  createTrainingPeriod: async (unitId: number, data: CreateTrainingPeriodPayload) => {
+    const response = await apiClient(`/api/v1/units/${unitId}/training-periods`, {
+      method: 'POST',
       body: JSON.stringify(data),
     });
     return response.json();
+  },
+
+  // 교육기간 삭제
+  deleteTrainingPeriod: async (trainingPeriodId: number) => {
+    const response = await apiClient(`/api/v1/units/training-periods/${trainingPeriodId}`, {
+      method: 'DELETE',
+    });
+    return response.json();
+  },
+
+  // 스케줄 삭제 전 배정 확인 (배정된 강사가 있는지 체크)
+  checkScheduleAssignments: async (
+    trainingPeriodId: number,
+    schedulesToDelete: string[], // 삭제될 날짜 목록 (YYYY-MM-DD)
+  ) => {
+    const response = await apiClient(
+      `/api/v1/units/training-periods/${trainingPeriodId}/schedule/check`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ schedulesToDelete }),
+      },
+    );
+    return response.json() as Promise<{
+      hasAssignments: boolean;
+      affectedInstructors: { name: string; date: string }[];
+    }>;
   },
 
   // 삭제

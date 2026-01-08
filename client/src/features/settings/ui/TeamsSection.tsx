@@ -53,11 +53,13 @@ export const TeamsSection = (): ReactElement => {
     setNewTeamName('');
   };
 
-  const handleDelete = (id: number, name: string | null) => {
-    showConfirm(
+  const handleDelete = async (id: number, name: string | null) => {
+    const confirmed = await showConfirm(
       `"${name || '이름 없음'}" 팀을 삭제하시겠습니까?\n\n삭제된 팀은 설정에서 보이지 않지만, 기존 강사 이력에서는 확인 가능합니다.`,
-      () => deleteTeam(id),
     );
+    if (confirmed) {
+      deleteTeam(id);
+    }
   };
 
   if (isLoading) {

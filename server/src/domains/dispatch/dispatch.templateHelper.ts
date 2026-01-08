@@ -25,6 +25,17 @@ export const categoryKorean: Record<string, string> = {
   실습강사: '실습',
 };
 
+/**
+ * 군구분 한글 변환
+ */
+export const militaryTypeKorean: Record<string, string> = {
+  Army: '육군',
+  Navy: '해군',
+  AirForce: '공군',
+  Marines: '해병대',
+  MND: '국직부대',
+};
+
 // === Types ===
 interface UserData {
   name?: string | null;
@@ -37,10 +48,12 @@ interface UserData {
 
 interface UnitData {
   name?: string | null;
+  unitType?: string | null;
   region?: string | null;
   wideArea?: string | null;
   addressDetail?: string | null;
   detailAddress?: string | null;
+  // 하위 호환용 (레거시)
   officerName?: string | null;
   officerPhone?: string | null;
   educationStart?: Date | null;
@@ -50,6 +63,23 @@ interface UnitData {
   excludedDates?: string[];
   trainingLocations?: TrainingLocationData[];
   schedules?: ScheduleData[];
+  // 새 구조: TrainingPeriod 정보
+  trainingPeriod?: TrainingPeriodData | null;
+}
+
+interface TrainingPeriodData {
+  name?: string | null;
+  workStartTime?: Date | string | null;
+  workEndTime?: Date | string | null;
+  lunchStartTime?: Date | string | null;
+  lunchEndTime?: Date | string | null;
+  officerName?: string | null;
+  officerPhone?: string | null;
+  officerEmail?: string | null;
+  excludedDates?: string[];
+  hasCateredMeals?: boolean | null;
+  hasHallLodging?: boolean | null;
+  allowsPhoneBeforeAfter?: boolean | null;
 }
 
 interface TrainingLocationData {
@@ -67,6 +97,17 @@ interface TrainingLocationData {
 
 interface ScheduleData {
   date: Date | null;
+  scheduleLocations?: Array<{
+    actualCount?: number | null;
+    plannedCount?: number | null;
+    location?: {
+      originalPlace?: string | null;
+      changedPlace?: string | null;
+      hasInstructorLounge?: boolean | null;
+      hasWomenRestroom?: boolean | null;
+      note?: string | null;
+    };
+  }>;
   assignments?: Array<{
     User?: {
       name?: string | null;
@@ -82,7 +123,7 @@ interface AssignmentData {
 // === Variable Builders ===
 
 /**
- * 단순 변수 빌드 (self.*, unit.*)
+ * 단순 변수 빌드 (self.*, unit.*, period.*, location.*)
  */
 export function buildVariables(
   user: UserData,
@@ -129,6 +170,27 @@ export function buildVariables(
   // 첫 번째 교육장소 정보 (단수 변수용)
   const firstLocation = unit.trainingLocations?.[0];
 
+  // TrainingPeriod 정보 (새 구조)
+  const period = unit.trainingPeriod;
+
+  // 담당관 정보 (period 우선, 없으면 unit 레거시)
+  const officerName = period?.officerName ?? unit.officerName ?? '';
+  const officerPhone = period?.officerPhone ?? unit.officerPhone ?? '';
+  const officerEmail = period?.officerEmail ?? '';
+
+  // 근무시간 (period 우선, 없으면 unit 레거시)
+  const workStartTime = period?.workStartTime ?? unit.workStartTime;
+  const workEndTime = period?.workEndTime ?? unit.workEndTime;
+
+  // 교육불가일 (period 우선)
+  const excludedDates = period?.excludedDates ?? unit.excludedDates ?? [];
+
+  // 시설 정보 (period에서 가져옴, 없으면 location에서 레거시)
+  const hasCateredMeals = period?.hasCateredMeals ?? firstLocation?.hasCateredMeals ?? false;
+  const hasHallLodging = period?.hasHallLodging ?? firstLocation?.hasHallLodging ?? false;
+  const allowsPhoneBeforeAfter =
+    period?.allowsPhoneBeforeAfter ?? firstLocation?.allowsPhoneBeforeAfter ?? false;
+
   return {
     // Legacy 호환
     userName: user.name || '',
@@ -144,19 +206,37 @@ export function buildVariables(
     'self.position': position,
     'self.virtues': virtues,
 
-    // unit.* 부대 정보
+    // unit.* 부대 정보 (Unit 테이블)
     'unit.name': unit.name || '',
-    'unit.region': unit.region || '',
+    'unit.unitType': militaryTypeKorean[unit.unitType || ''] || unit.unitType || '',
     'unit.wideArea': unit.wideArea || '',
+    'unit.region': unit.region || '',
     'unit.addressDetail': unit.addressDetail || '',
     'unit.detailAddress': unit.detailAddress || '',
-    'unit.officerName': unit.officerName || '',
-    'unit.officerPhone': unit.officerPhone || '',
+    // 하위 호환: unit.* 레거시 변수들
+    'unit.officerName': officerName,
+    'unit.officerPhone': officerPhone,
     'unit.startDate': unitStartDate,
     'unit.endDate': unitEndDate,
-    'unit.startTime': formatTime(unit.workStartTime),
-    'unit.endTime': formatTime(unit.workEndTime),
-    'unit.excludedDates': (unit.excludedDates || []).join(' / '),
+    'unit.startTime': formatTime(workStartTime),
+    'unit.endTime': formatTime(workEndTime),
+    'unit.excludedDates': excludedDates.join(' / '),
+
+    // period.* 교육기간 정보 (TrainingPeriod 테이블)
+    'period.name': period?.name || '',
+    'period.startDate': unitStartDate,
+    'period.endDate': unitEndDate,
+    'period.startTime': formatTime(workStartTime),
+    'period.endTime': formatTime(workEndTime),
+    'period.lunchStartTime': formatTime(period?.lunchStartTime),
+    'period.lunchEndTime': formatTime(period?.lunchEndTime),
+    'period.officerName': officerName,
+    'period.officerPhone': officerPhone,
+    'period.officerEmail': officerEmail,
+    'period.excludedDates': excludedDates.join(' / '),
+    'period.hasCateredMeals': hasCateredMeals ? 'O' : 'X',
+    'period.hasHallLodging': hasHallLodging ? 'O' : 'X',
+    'period.allowsPhoneBeforeAfter': allowsPhoneBeforeAfter ? '가능' : '불가',
 
     // location.* 첫 번째 교육장소 정보 (단수형)
     'location.placeName': firstLocation?.originalPlace || '',
@@ -166,10 +246,11 @@ export function buildVariables(
     'location.plannedCount': String(firstLocation?.plannedCount ?? 0),
     'location.hasInstructorLounge': firstLocation?.hasInstructorLounge ? 'O' : 'X',
     'location.hasWomenRestroom': firstLocation?.hasWomenRestroom ? 'O' : 'X',
-    'location.hasCateredMeals': firstLocation?.hasCateredMeals ? 'O' : 'X',
-    'location.hasHallLodging': firstLocation?.hasHallLodging ? 'O' : 'X',
-    'location.allowsPhoneBeforeAfter': firstLocation?.allowsPhoneBeforeAfter ? 'O' : 'X',
     'location.note': firstLocation?.note || '',
+    // 하위 호환: location.* 레거시 변수들
+    'location.hasCateredMeals': hasCateredMeals ? 'O' : 'X',
+    'location.hasHallLodging': hasHallLodging ? 'O' : 'X',
+    'location.allowsPhoneBeforeAfter': allowsPhoneBeforeAfter ? '가능' : '불가',
   };
 }
 
@@ -221,6 +302,53 @@ export function buildLocationsFormat(
     plannedCount: String(loc.plannedCount ?? 0),
     note: String(loc.note ?? ''),
   }));
+}
+
+/**
+ * scheduleLocations 포맷 변수 빌드
+ * 날짜별 장소 세부정보 (date, dayOfWeek, placeName, actualCount, ...)
+ * 각 날짜의 각 장소별로 한 줄씩 출력
+ */
+export function buildScheduleLocationsFormat(
+  schedules: ScheduleData[],
+): Array<Record<string, string>> {
+  const result: Array<Record<string, string>> = [];
+
+  for (const schedule of schedules) {
+    const scheduleDate = schedule.date ? new Date(schedule.date) : new Date();
+    const dateStr = scheduleDate.toISOString().split('T')[0];
+    const dayOfWeek = getDayOfWeek(scheduleDate);
+
+    // 해당 날짜의 장소들을 각각 한 줄씩
+    const scheduleLocations = schedule.scheduleLocations || [];
+    if (scheduleLocations.length === 0) {
+      result.push({
+        date: dateStr,
+        dayOfWeek,
+        placeName: '-',
+        actualCount: '0',
+        hasInstructorLounge: 'X',
+        hasWomenRestroom: 'X',
+        note: '',
+      });
+    } else {
+      for (const sl of scheduleLocations) {
+        const loc = sl.location;
+        result.push({
+          date: dateStr,
+          dayOfWeek,
+          placeName: loc?.originalPlace || '-',
+          actualCount: String(sl.actualCount ?? 0),
+          plannedCount: String(sl.plannedCount ?? 0),
+          hasInstructorLounge: loc?.hasInstructorLounge ? 'O' : 'X',
+          hasWomenRestroom: loc?.hasWomenRestroom ? 'O' : 'X',
+          note: loc?.note || '',
+        });
+      }
+    }
+  }
+
+  return result;
 }
 
 // 강사 목록 데이터 타입
@@ -289,5 +417,6 @@ export function buildFormatVariables(
   return {
     'self.schedules': buildSchedulesFormat(unit.schedules || []),
     locations: buildLocationsFormat(unit.trainingLocations || []),
+    scheduleLocations: buildScheduleLocationsFormat(unit.schedules || []),
   };
 }

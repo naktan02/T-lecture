@@ -44,7 +44,7 @@ interface UseSuperAdminReturn {
   grantAdmin: (userId: number, level?: AdminLevel) => Promise<void>;
   revokeAdmin: (userId: number) => Promise<void>;
   grantInstructor: (userId: number) => Promise<void>;
-  revokeInstructor: (userId: number) => void;
+  revokeInstructor: (userId: number) => Promise<void>;
 }
 
 export const useSuperAdmin = (): UseSuperAdminReturn => {
@@ -128,19 +128,19 @@ export const useSuperAdmin = (): UseSuperAdminReturn => {
     }
   };
 
-  const revokeInstructor = (userId: number): void => {
-    showConfirm(
+  const revokeInstructor = async (userId: number): Promise<void> => {
+    const confirmed = await showConfirm(
       '강사 역할을 회수하시겠습니까?\n\n⚠️ 강사 정보(주소, 덕목, 가용일 등)가 삭제됩니다.',
-      async () => {
-        try {
-          await revokeInstructorApi(userId);
-          setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, instructor: null } : u)));
-          showSuccess('강사 역할이 회수되었습니다.');
-        } catch (e) {
-          showError((e as Error).message);
-        }
-      },
     );
+    if (confirmed) {
+      try {
+        await revokeInstructorApi(userId);
+        setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, instructor: null } : u)));
+        showSuccess('강사 역할이 회수되었습니다.');
+      } catch (e) {
+        showError((e as Error).message);
+      }
+    }
   };
 
   const filtered = users.filter((u) => {

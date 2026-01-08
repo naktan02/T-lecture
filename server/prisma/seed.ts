@@ -93,14 +93,23 @@ async function main() {
   // 5. 메시지 템플릿 생성
   console.log('📝 메시지 템플릿 생성 중...');
 
+  // 공통 formatPresets (모든 템플릿에서 동일)
+  const commonPresets = {
+    locations:
+      '장소명: {placeName} 참여인원: {actualCount}\n강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}\n특이사항: {note}\n-------------------------------------------------------',
+    instructors: '{index}. {name}({category}) / {phone} / {virtues}',
+    'self.schedules': '- {date} ({dayOfWeek}) : {instructors}',
+    'self.mySchedules': '- {date} ({dayOfWeek}) : {name}',
+    scheduleLocations:
+      '{placeName}  / 참여인원 : {actualCount}\n강사휴게실: {hasInstructorLounge} 여자화장실: {hasWomenRestroom}\n특이사항 : {note}\n----------------------------------------------------------',
+  };
+
+  // 공통 제목 (모든 템플릿에서 동일)
+  const commonTitle = '{{unit.name}} : {{period.startDate}} ~ {{period.endDate}}';
+
   // 임시 배정 템플릿
   const temporaryBody = {
     tokens: [
-      {
-        key: 'instructors',
-        type: 'format',
-        format: '{index}. {name}({category}) / {phone} / {virtues}',
-      },
       { text: '[임시 배정 알림]', type: 'text' },
       { type: 'newline' },
       { key: 'self.name', type: 'var' },
@@ -125,26 +134,18 @@ async function main() {
     ],
   };
 
-  const temporaryPresets = {
-    locations:
-      '장소명: {placeName} 참여인원: {actualCount}\n강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}, 휴대폰불출: {allowsPhoneBeforeAfter}\n특이사항: {note}\n-------------------------------------------------------',
-    instructors: '{index}. {name}({category}) / {phone} / {virtues}',
-    'self.schedules': '- {date} ({dayOfWeek}) : {instructors}',
-    'self.mySchedules': '- {date} ({dayOfWeek}) : {name}',
-  };
-
   await prisma.messageTemplate.upsert({
     where: { key: 'TEMPORARY' },
     update: {
-      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
+      title: commonTitle,
       body: temporaryBody as Prisma.InputJsonValue,
-      formatPresets: temporaryPresets,
+      formatPresets: commonPresets,
     },
     create: {
       key: 'TEMPORARY',
-      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
+      title: commonTitle,
       body: temporaryBody as Prisma.InputJsonValue,
-      formatPresets: temporaryPresets,
+      formatPresets: commonPresets,
     },
   });
 
@@ -178,26 +179,18 @@ async function main() {
     ],
   };
 
-  const confirmedMemberPresets = {
-    locations:
-      '장소명: {placeName} 참여인원: {actualCount}\n강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}, 휴대폰불출: {allowsPhoneBeforeAfter}\n특이사항: {note}\n-------------------------------------------------------',
-    instructors: '{index}. {name}({category}) / {phone}',
-    'self.schedules': '- {date} ({dayOfWeek}) : {instructors}',
-    'self.mySchedules': '- {date} ({dayOfWeek}) : {name}',
-  };
-
   await prisma.messageTemplate.upsert({
     where: { key: 'CONFIRMED_MEMBER' },
     update: {
-      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
+      title: commonTitle,
       body: confirmedMemberBody as Prisma.InputJsonValue,
-      formatPresets: confirmedMemberPresets,
+      formatPresets: commonPresets,
     },
     create: {
       key: 'CONFIRMED_MEMBER',
-      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
+      title: commonTitle,
       body: confirmedMemberBody as Prisma.InputJsonValue,
-      formatPresets: confirmedMemberPresets,
+      formatPresets: commonPresets,
     },
   });
 
@@ -208,6 +201,11 @@ async function main() {
       { type: 'newline' },
       { key: 'self.name', type: 'var' },
       { text: ' 강사님, 배정이 확정되었습니다.', type: 'text' },
+      { type: 'newline' },
+      { text: '​', type: 'text' },
+      { type: 'newline' },
+      { text: '- 구분: ', type: 'text' },
+      { key: 'unit.unitType', type: 'var' },
       { type: 'newline' },
       { text: '- 부대: ', type: 'text' },
       { key: 'unit.name', type: 'var' },
@@ -224,27 +222,27 @@ async function main() {
       { text: '- 상세주소: ', type: 'text' },
       { key: 'unit.detailAddress', type: 'var' },
       { type: 'newline' },
-      { text: '- 교육일정: ', type: 'text' },
-      { key: 'unit.startDate', type: 'var' },
+      { text: '- 교육일정:  ', type: 'text' },
+      { key: 'period.startDate', type: 'var' },
       { text: ' ~ ', type: 'text' },
-      { key: 'unit.endDate', type: 'var' },
+      { key: 'period.endDate', type: 'var' },
       { type: 'newline' },
-      { text: '- 교육 시간: ', type: 'text' },
-      { key: 'unit.startTime', type: 'var' },
+      { text: '- 교육 시간:  ', type: 'text' },
+      { key: 'period.startTime', type: 'var' },
       { text: ' ~ ', type: 'text' },
-      { key: 'unit.endTime', type: 'var' },
+      { key: 'period.endTime', type: 'var' },
       { type: 'newline' },
       { text: '- 교육불가일: ', type: 'text' },
-      { key: 'unit.excludedDates', type: 'var' },
+      { key: 'period.excludedDates', type: 'var' },
       { type: 'newline' },
       { type: 'newline' },
       { text: '- 교육장소', type: 'text' },
       { type: 'newline' },
       {
-        key: 'locations',
+        key: 'scheduleLocations',
         type: 'format',
         format:
-          '장소명: {placeName} 참여인원: {actualCount}\n강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}, 휴대폰불출: {allowsPhoneBeforeAfter}\n특이사항: {note}\n-------------------------------------------------------',
+          '{placeName}  / 참여인원 : {actualCount}\n강사휴게실: {hasInstructorLounge} 여자화장실: {hasWomenRestroom}\n특이사항 : {note}\n----------------------------------------------------------',
       },
       { type: 'newline' },
       { type: 'newline' },
@@ -254,15 +252,21 @@ async function main() {
       { type: 'newline' },
       { type: 'newline' },
       { text: '부대 담당자: ', type: 'text' },
-      { key: 'unit.officerName', type: 'var' },
-      { text: ' / ', type: 'text' },
-      { key: 'unit.officerPhone', type: 'var' },
+      { key: 'period.officerName', type: 'var' },
+      { text: ' 담당자 전화번호: ', type: 'text' },
+      { key: 'period.officerPhone', type: 'var' },
+      { text: ' ', type: 'text' },
+      { type: 'newline' },
+      { text: '담당자 이메일: ', type: 'text' },
+      { key: 'period.officerEmail', type: 'var' },
       { type: 'newline' },
       { text: '수탁급식여부: ', type: 'text' },
-      { key: 'location.hasCateredMeals', type: 'var' },
+      { key: 'period.hasCateredMeals', type: 'var' },
       { type: 'newline' },
       { text: '회관숙박여부: ', type: 'text' },
-      { key: 'location.hasHallLodging', type: 'var' },
+      { key: 'period.hasHallLodging', type: 'var' },
+      { text: ' 휴대폰 불출: ', type: 'text' },
+      { key: 'period.allowsPhoneBeforeAfter', type: 'var' },
       { type: 'newline' },
       { text: '----------------------------------------------------------------', type: 'text' },
       { type: 'newline' },
@@ -271,29 +275,22 @@ async function main() {
         type: 'format',
         format: '{index}. {name}({category}) / {phone} / {virtues}',
       },
+      { type: 'newline' },
     ],
-  };
-
-  const confirmedLeaderPresets = {
-    locations:
-      '장소명: {placeName} 참여인원: {actualCount}\n강사휴게실: {hasInstructorLounge}, 여자화장실: {hasWomenRestroom}, 휴대폰불출: {allowsPhoneBeforeAfter}\n특이사항: {note}\n-------------------------------------------------------',
-    instructors: '{index}. {name}({category}) / {phone} / {virtues}',
-    'self.schedules': '- {date} ({dayOfWeek}) : {instructors}',
-    'self.mySchedules': '- {date} ({dayOfWeek}) : {name}',
   };
 
   await prisma.messageTemplate.upsert({
     where: { key: 'CONFIRMED_LEADER' },
     update: {
-      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
+      title: commonTitle,
       body: confirmedLeaderBody as Prisma.InputJsonValue,
-      formatPresets: confirmedLeaderPresets,
+      formatPresets: commonPresets,
     },
     create: {
       key: 'CONFIRMED_LEADER',
-      title: '{{unit.name}} : {{unit.startDate}} ~ {{unit.endDate}}',
+      title: commonTitle,
       body: confirmedLeaderBody as Prisma.InputJsonValue,
-      formatPresets: confirmedLeaderPresets,
+      formatPresets: commonPresets,
     },
   });
 

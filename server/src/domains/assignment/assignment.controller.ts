@@ -78,28 +78,27 @@ export const getCandidates = asyncHandler(async (req: Request, res: Response) =>
   });
 });
 
-//자동 배정 실행
+//자동 배정 실행 (ID 기반 하이브리드)
 export const autoAssign = asyncHandler(async (req: Request, res: Response) => {
-  const { startDate, endDate } = req.body;
+  const { scheduleIds, instructorIds } = req.body;
 
-  if (!startDate || !endDate) {
-    throw new AppError('기간(startDate, endDate)이 필요합니다.', 400, 'VALIDATION_ERROR');
+  if (!scheduleIds || !Array.isArray(scheduleIds) || scheduleIds.length === 0) {
+    throw new AppError('배정할 스케줄 ID 목록(scheduleIds)이 필요합니다.', 400, 'VALIDATION_ERROR');
   }
-
-  const s = new Date(startDate);
-  const e = new Date(endDate);
-
-  if (isNaN(s.getTime()) || isNaN(e.getTime())) {
-    throw new AppError('유효하지 않은 날짜 형식입니다.', 400, 'VALIDATION_ERROR');
+  if (!instructorIds || !Array.isArray(instructorIds) || instructorIds.length === 0) {
+    throw new AppError('배정할 강사 ID 목록(instructorIds)이 필요합니다.', 400, 'VALIDATION_ERROR');
   }
 
   logger.info('[assignment.autoAssign] Start', {
     userId: req.user!.id,
-    startDate,
-    endDate,
+    scheduleCount: scheduleIds.length,
+    instructorCount: instructorIds.length,
   });
 
-  const result = await assignmentService.createAutoAssignments(s, e);
+  const result = await assignmentService.createAutoAssignmentsByIds(
+    scheduleIds.map(Number),
+    instructorIds.map(Number),
+  );
 
   res.status(200).json(result);
 });

@@ -4,6 +4,7 @@
 
 /* eslint-disable no-console */
 
+import 'dotenv/config';
 import prisma from '../src/libs/prisma.js';
 
 export async function runSeedReset() {

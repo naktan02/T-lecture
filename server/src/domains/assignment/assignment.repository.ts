@@ -128,6 +128,7 @@ class AssignmentRepository {
     const endOfDay = new Date(`${endStr}T00:00:00.000Z`);
 
     // 새 구조: Unit → TrainingPeriod → (Locations, Schedules) + ScheduleLocation
+    // 조회 날짜 범위에 해당하는 스케줄이 있는 TrainingPeriod만 포함
     return await prisma.unit.findMany({
       where: {
         trainingPeriods: {
@@ -145,6 +146,17 @@ class AssignmentRepository {
       },
       include: {
         trainingPeriods: {
+          // 조회 범위에 스케줄이 있는 TrainingPeriod만 가져옴
+          where: {
+            schedules: {
+              some: {
+                date: {
+                  gte: startOfDay,
+                  lte: endOfDay,
+                },
+              },
+            },
+          },
           include: {
             locations: {
               include: {
@@ -152,6 +164,13 @@ class AssignmentRepository {
               },
             },
             schedules: {
+              // 조회 범위의 스케줄만 가져옴
+              where: {
+                date: {
+                  gte: startOfDay,
+                  lte: endOfDay,
+                },
+              },
               orderBy: { date: 'asc' },
               include: {
                 scheduleLocations: true, // 해당 날짜의 장소별 인원
@@ -184,6 +203,48 @@ class AssignmentRepository {
       orderBy: {
         name: 'asc',
       },
+    });
+  }
+
+  /**
+   * ID 기반 스케줄 조회 (자동 배정용)
+   * 클라이언트에서 전달받은 scheduleIds로 스케줄과 관련 데이터 조회
+   */
+  async findSchedulesByIds(scheduleIds: number[]) {
+    if (!scheduleIds || scheduleIds.length === 0) return [];
+
+    return await prisma.unitSchedule.findMany({
+      where: {
+        id: { in: scheduleIds },
+      },
+      include: {
+        trainingPeriod: {
+          include: {
+            unit: true,
+            locations: {
+              include: {
+                scheduleLocations: true,
+              },
+            },
+          },
+        },
+        scheduleLocations: true,
+        assignments: {
+          where: { state: { in: ['Pending', 'Accepted', 'Rejected'] } },
+          include: {
+            User: {
+              include: {
+                instructor: {
+                  include: {
+                    team: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { date: 'asc' },
     });
   }
 
