@@ -28,60 +28,41 @@ export type AggregateTrainingLocation = {
 
 export type TrainingLocationAvgAggregateOutputType = {
   id: number | null
-  unitId: number | null
-  plannedCount: number | null
-  actualCount: number | null
+  trainingPeriodId: number | null
 }
 
 export type TrainingLocationSumAggregateOutputType = {
   id: number | null
-  unitId: number | null
-  plannedCount: number | null
-  actualCount: number | null
+  trainingPeriodId: number | null
 }
 
 export type TrainingLocationMinAggregateOutputType = {
   id: number | null
-  unitId: number | null
+  trainingPeriodId: number | null
   originalPlace: string | null
   changedPlace: string | null
   hasInstructorLounge: boolean | null
   hasWomenRestroom: boolean | null
-  hasCateredMeals: boolean | null
-  hasHallLodging: boolean | null
-  allowsPhoneBeforeAfter: boolean | null
-  plannedCount: number | null
-  actualCount: number | null
   note: string | null
 }
 
 export type TrainingLocationMaxAggregateOutputType = {
   id: number | null
-  unitId: number | null
+  trainingPeriodId: number | null
   originalPlace: string | null
   changedPlace: string | null
   hasInstructorLounge: boolean | null
   hasWomenRestroom: boolean | null
-  hasCateredMeals: boolean | null
-  hasHallLodging: boolean | null
-  allowsPhoneBeforeAfter: boolean | null
-  plannedCount: number | null
-  actualCount: number | null
   note: string | null
 }
 
 export type TrainingLocationCountAggregateOutputType = {
   id: number
-  unitId: number
+  trainingPeriodId: number
   originalPlace: number
   changedPlace: number
   hasInstructorLounge: number
   hasWomenRestroom: number
-  hasCateredMeals: number
-  hasHallLodging: number
-  allowsPhoneBeforeAfter: number
-  plannedCount: number
-  actualCount: number
   note: number
   _all: number
 }
@@ -89,60 +70,41 @@ export type TrainingLocationCountAggregateOutputType = {
 
 export type TrainingLocationAvgAggregateInputType = {
   id?: true
-  unitId?: true
-  plannedCount?: true
-  actualCount?: true
+  trainingPeriodId?: true
 }
 
 export type TrainingLocationSumAggregateInputType = {
   id?: true
-  unitId?: true
-  plannedCount?: true
-  actualCount?: true
+  trainingPeriodId?: true
 }
 
 export type TrainingLocationMinAggregateInputType = {
   id?: true
-  unitId?: true
+  trainingPeriodId?: true
   originalPlace?: true
   changedPlace?: true
   hasInstructorLounge?: true
   hasWomenRestroom?: true
-  hasCateredMeals?: true
-  hasHallLodging?: true
-  allowsPhoneBeforeAfter?: true
-  plannedCount?: true
-  actualCount?: true
   note?: true
 }
 
 export type TrainingLocationMaxAggregateInputType = {
   id?: true
-  unitId?: true
+  trainingPeriodId?: true
   originalPlace?: true
   changedPlace?: true
   hasInstructorLounge?: true
   hasWomenRestroom?: true
-  hasCateredMeals?: true
-  hasHallLodging?: true
-  allowsPhoneBeforeAfter?: true
-  plannedCount?: true
-  actualCount?: true
   note?: true
 }
 
 export type TrainingLocationCountAggregateInputType = {
   id?: true
-  unitId?: true
+  trainingPeriodId?: true
   originalPlace?: true
   changedPlace?: true
   hasInstructorLounge?: true
   hasWomenRestroom?: true
-  hasCateredMeals?: true
-  hasHallLodging?: true
-  allowsPhoneBeforeAfter?: true
-  plannedCount?: true
-  actualCount?: true
   note?: true
   _all?: true
 }
@@ -235,16 +197,11 @@ export type TrainingLocationGroupByArgs<ExtArgs extends runtime.Types.Extensions
 
 export type TrainingLocationGroupByOutputType = {
   id: number
-  unitId: number
+  trainingPeriodId: number
   originalPlace: string | null
   changedPlace: string | null
   hasInstructorLounge: boolean | null
   hasWomenRestroom: boolean | null
-  hasCateredMeals: boolean | null
-  hasHallLodging: boolean | null
-  allowsPhoneBeforeAfter: boolean | null
-  plannedCount: number | null
-  actualCount: number | null
   note: string | null
   _count: TrainingLocationCountAggregateOutputType | null
   _avg: TrainingLocationAvgAggregateOutputType | null
@@ -273,35 +230,27 @@ export type TrainingLocationWhereInput = {
   OR?: Prisma.TrainingLocationWhereInput[]
   NOT?: Prisma.TrainingLocationWhereInput | Prisma.TrainingLocationWhereInput[]
   id?: Prisma.IntFilter<"TrainingLocation"> | number
-  unitId?: Prisma.IntFilter<"TrainingLocation"> | number
+  trainingPeriodId?: Prisma.IntFilter<"TrainingLocation"> | number
   originalPlace?: Prisma.StringNullableFilter<"TrainingLocation"> | string | null
   changedPlace?: Prisma.StringNullableFilter<"TrainingLocation"> | string | null
   hasInstructorLounge?: Prisma.BoolNullableFilter<"TrainingLocation"> | boolean | null
   hasWomenRestroom?: Prisma.BoolNullableFilter<"TrainingLocation"> | boolean | null
-  hasCateredMeals?: Prisma.BoolNullableFilter<"TrainingLocation"> | boolean | null
-  hasHallLodging?: Prisma.BoolNullableFilter<"TrainingLocation"> | boolean | null
-  allowsPhoneBeforeAfter?: Prisma.BoolNullableFilter<"TrainingLocation"> | boolean | null
-  plannedCount?: Prisma.IntNullableFilter<"TrainingLocation"> | number | null
-  actualCount?: Prisma.IntNullableFilter<"TrainingLocation"> | number | null
   note?: Prisma.StringNullableFilter<"TrainingLocation"> | string | null
-  unit?: Prisma.XOR<Prisma.UnitScalarRelationFilter, Prisma.UnitWhereInput>
+  trainingPeriod?: Prisma.XOR<Prisma.TrainingPeriodScalarRelationFilter, Prisma.TrainingPeriodWhereInput>
+  scheduleLocations?: Prisma.ScheduleLocationListRelationFilter
   assignments?: Prisma.InstructorUnitAssignmentListRelationFilter
 }
 
 export type TrainingLocationOrderByWithRelationInput = {
   id?: Prisma.SortOrder
-  unitId?: Prisma.SortOrder
+  trainingPeriodId?: Prisma.SortOrder
   originalPlace?: Prisma.SortOrderInput | Prisma.SortOrder
   changedPlace?: Prisma.SortOrderInput | Prisma.SortOrder
   hasInstructorLounge?: Prisma.SortOrderInput | Prisma.SortOrder
   hasWomenRestroom?: Prisma.SortOrderInput | Prisma.SortOrder
-  hasCateredMeals?: Prisma.SortOrderInput | Prisma.SortOrder
-  hasHallLodging?: Prisma.SortOrderInput | Prisma.SortOrder
-  allowsPhoneBeforeAfter?: Prisma.SortOrderInput | Prisma.SortOrder
-  plannedCount?: Prisma.SortOrderInput | Prisma.SortOrder
-  actualCount?: Prisma.SortOrderInput | Prisma.SortOrder
   note?: Prisma.SortOrderInput | Prisma.SortOrder
-  unit?: Prisma.UnitOrderByWithRelationInput
+  trainingPeriod?: Prisma.TrainingPeriodOrderByWithRelationInput
+  scheduleLocations?: Prisma.ScheduleLocationOrderByRelationAggregateInput
   assignments?: Prisma.InstructorUnitAssignmentOrderByRelationAggregateInput
 }
 
@@ -310,33 +259,24 @@ export type TrainingLocationWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.TrainingLocationWhereInput | Prisma.TrainingLocationWhereInput[]
   OR?: Prisma.TrainingLocationWhereInput[]
   NOT?: Prisma.TrainingLocationWhereInput | Prisma.TrainingLocationWhereInput[]
-  unitId?: Prisma.IntFilter<"TrainingLocation"> | number
+  trainingPeriodId?: Prisma.IntFilter<"TrainingLocation"> | number
   originalPlace?: Prisma.StringNullableFilter<"TrainingLocation"> | string | null
   changedPlace?: Prisma.StringNullableFilter<"TrainingLocation"> | string | null
   hasInstructorLounge?: Prisma.BoolNullableFilter<"TrainingLocation"> | boolean | null
   hasWomenRestroom?: Prisma.BoolNullableFilter<"TrainingLocation"> | boolean | null
-  hasCateredMeals?: Prisma.BoolNullableFilter<"TrainingLocation"> | boolean | null
-  hasHallLodging?: Prisma.BoolNullableFilter<"TrainingLocation"> | boolean | null
-  allowsPhoneBeforeAfter?: Prisma.BoolNullableFilter<"TrainingLocation"> | boolean | null
-  plannedCount?: Prisma.IntNullableFilter<"TrainingLocation"> | number | null
-  actualCount?: Prisma.IntNullableFilter<"TrainingLocation"> | number | null
   note?: Prisma.StringNullableFilter<"TrainingLocation"> | string | null
-  unit?: Prisma.XOR<Prisma.UnitScalarRelationFilter, Prisma.UnitWhereInput>
+  trainingPeriod?: Prisma.XOR<Prisma.TrainingPeriodScalarRelationFilter, Prisma.TrainingPeriodWhereInput>
+  scheduleLocations?: Prisma.ScheduleLocationListRelationFilter
   assignments?: Prisma.InstructorUnitAssignmentListRelationFilter
 }, "id">
 
 export type TrainingLocationOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
-  unitId?: Prisma.SortOrder
+  trainingPeriodId?: Prisma.SortOrder
   originalPlace?: Prisma.SortOrderInput | Prisma.SortOrder
   changedPlace?: Prisma.SortOrderInput | Prisma.SortOrder
   hasInstructorLounge?: Prisma.SortOrderInput | Prisma.SortOrder
   hasWomenRestroom?: Prisma.SortOrderInput | Prisma.SortOrder
-  hasCateredMeals?: Prisma.SortOrderInput | Prisma.SortOrder
-  hasHallLodging?: Prisma.SortOrderInput | Prisma.SortOrder
-  allowsPhoneBeforeAfter?: Prisma.SortOrderInput | Prisma.SortOrder
-  plannedCount?: Prisma.SortOrderInput | Prisma.SortOrder
-  actualCount?: Prisma.SortOrderInput | Prisma.SortOrder
   note?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.TrainingLocationCountOrderByAggregateInput
   _avg?: Prisma.TrainingLocationAvgOrderByAggregateInput
@@ -350,16 +290,11 @@ export type TrainingLocationScalarWhereWithAggregatesInput = {
   OR?: Prisma.TrainingLocationScalarWhereWithAggregatesInput[]
   NOT?: Prisma.TrainingLocationScalarWhereWithAggregatesInput | Prisma.TrainingLocationScalarWhereWithAggregatesInput[]
   id?: Prisma.IntWithAggregatesFilter<"TrainingLocation"> | number
-  unitId?: Prisma.IntWithAggregatesFilter<"TrainingLocation"> | number
+  trainingPeriodId?: Prisma.IntWithAggregatesFilter<"TrainingLocation"> | number
   originalPlace?: Prisma.StringNullableWithAggregatesFilter<"TrainingLocation"> | string | null
   changedPlace?: Prisma.StringNullableWithAggregatesFilter<"TrainingLocation"> | string | null
   hasInstructorLounge?: Prisma.BoolNullableWithAggregatesFilter<"TrainingLocation"> | boolean | null
   hasWomenRestroom?: Prisma.BoolNullableWithAggregatesFilter<"TrainingLocation"> | boolean | null
-  hasCateredMeals?: Prisma.BoolNullableWithAggregatesFilter<"TrainingLocation"> | boolean | null
-  hasHallLodging?: Prisma.BoolNullableWithAggregatesFilter<"TrainingLocation"> | boolean | null
-  allowsPhoneBeforeAfter?: Prisma.BoolNullableWithAggregatesFilter<"TrainingLocation"> | boolean | null
-  plannedCount?: Prisma.IntNullableWithAggregatesFilter<"TrainingLocation"> | number | null
-  actualCount?: Prisma.IntNullableWithAggregatesFilter<"TrainingLocation"> | number | null
   note?: Prisma.StringNullableWithAggregatesFilter<"TrainingLocation"> | string | null
 }
 
@@ -368,29 +303,21 @@ export type TrainingLocationCreateInput = {
   changedPlace?: string | null
   hasInstructorLounge?: boolean | null
   hasWomenRestroom?: boolean | null
-  hasCateredMeals?: boolean | null
-  hasHallLodging?: boolean | null
-  allowsPhoneBeforeAfter?: boolean | null
-  plannedCount?: number | null
-  actualCount?: number | null
   note?: string | null
-  unit: Prisma.UnitCreateNestedOneWithoutTrainingLocationsInput
+  trainingPeriod: Prisma.TrainingPeriodCreateNestedOneWithoutLocationsInput
+  scheduleLocations?: Prisma.ScheduleLocationCreateNestedManyWithoutLocationInput
   assignments?: Prisma.InstructorUnitAssignmentCreateNestedManyWithoutTrainingLocationInput
 }
 
 export type TrainingLocationUncheckedCreateInput = {
   id?: number
-  unitId: number
+  trainingPeriodId: number
   originalPlace?: string | null
   changedPlace?: string | null
   hasInstructorLounge?: boolean | null
   hasWomenRestroom?: boolean | null
-  hasCateredMeals?: boolean | null
-  hasHallLodging?: boolean | null
-  allowsPhoneBeforeAfter?: boolean | null
-  plannedCount?: number | null
-  actualCount?: number | null
   note?: string | null
+  scheduleLocations?: Prisma.ScheduleLocationUncheckedCreateNestedManyWithoutLocationInput
   assignments?: Prisma.InstructorUnitAssignmentUncheckedCreateNestedManyWithoutTrainingLocationInput
 }
 
@@ -399,44 +326,31 @@ export type TrainingLocationUpdateInput = {
   changedPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hasInstructorLounge?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasWomenRestroom?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  unit?: Prisma.UnitUpdateOneRequiredWithoutTrainingLocationsNestedInput
+  trainingPeriod?: Prisma.TrainingPeriodUpdateOneRequiredWithoutLocationsNestedInput
+  scheduleLocations?: Prisma.ScheduleLocationUpdateManyWithoutLocationNestedInput
   assignments?: Prisma.InstructorUnitAssignmentUpdateManyWithoutTrainingLocationNestedInput
 }
 
 export type TrainingLocationUncheckedUpdateInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
-  unitId?: Prisma.IntFieldUpdateOperationsInput | number
+  trainingPeriodId?: Prisma.IntFieldUpdateOperationsInput | number
   originalPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changedPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hasInstructorLounge?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasWomenRestroom?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scheduleLocations?: Prisma.ScheduleLocationUncheckedUpdateManyWithoutLocationNestedInput
   assignments?: Prisma.InstructorUnitAssignmentUncheckedUpdateManyWithoutTrainingLocationNestedInput
 }
 
 export type TrainingLocationCreateManyInput = {
   id?: number
-  unitId: number
+  trainingPeriodId: number
   originalPlace?: string | null
   changedPlace?: string | null
   hasInstructorLounge?: boolean | null
   hasWomenRestroom?: boolean | null
-  hasCateredMeals?: boolean | null
-  hasHallLodging?: boolean | null
-  allowsPhoneBeforeAfter?: boolean | null
-  plannedCount?: number | null
-  actualCount?: number | null
   note?: string | null
 }
 
@@ -445,26 +359,16 @@ export type TrainingLocationUpdateManyMutationInput = {
   changedPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hasInstructorLounge?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasWomenRestroom?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type TrainingLocationUncheckedUpdateManyInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
-  unitId?: Prisma.IntFieldUpdateOperationsInput | number
+  trainingPeriodId?: Prisma.IntFieldUpdateOperationsInput | number
   originalPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changedPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hasInstructorLounge?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasWomenRestroom?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
@@ -485,61 +389,47 @@ export type TrainingLocationOrderByRelationAggregateInput = {
 
 export type TrainingLocationCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  unitId?: Prisma.SortOrder
+  trainingPeriodId?: Prisma.SortOrder
   originalPlace?: Prisma.SortOrder
   changedPlace?: Prisma.SortOrder
   hasInstructorLounge?: Prisma.SortOrder
   hasWomenRestroom?: Prisma.SortOrder
-  hasCateredMeals?: Prisma.SortOrder
-  hasHallLodging?: Prisma.SortOrder
-  allowsPhoneBeforeAfter?: Prisma.SortOrder
-  plannedCount?: Prisma.SortOrder
-  actualCount?: Prisma.SortOrder
   note?: Prisma.SortOrder
 }
 
 export type TrainingLocationAvgOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  unitId?: Prisma.SortOrder
-  plannedCount?: Prisma.SortOrder
-  actualCount?: Prisma.SortOrder
+  trainingPeriodId?: Prisma.SortOrder
 }
 
 export type TrainingLocationMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  unitId?: Prisma.SortOrder
+  trainingPeriodId?: Prisma.SortOrder
   originalPlace?: Prisma.SortOrder
   changedPlace?: Prisma.SortOrder
   hasInstructorLounge?: Prisma.SortOrder
   hasWomenRestroom?: Prisma.SortOrder
-  hasCateredMeals?: Prisma.SortOrder
-  hasHallLodging?: Prisma.SortOrder
-  allowsPhoneBeforeAfter?: Prisma.SortOrder
-  plannedCount?: Prisma.SortOrder
-  actualCount?: Prisma.SortOrder
   note?: Prisma.SortOrder
 }
 
 export type TrainingLocationMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  unitId?: Prisma.SortOrder
+  trainingPeriodId?: Prisma.SortOrder
   originalPlace?: Prisma.SortOrder
   changedPlace?: Prisma.SortOrder
   hasInstructorLounge?: Prisma.SortOrder
   hasWomenRestroom?: Prisma.SortOrder
-  hasCateredMeals?: Prisma.SortOrder
-  hasHallLodging?: Prisma.SortOrder
-  allowsPhoneBeforeAfter?: Prisma.SortOrder
-  plannedCount?: Prisma.SortOrder
-  actualCount?: Prisma.SortOrder
   note?: Prisma.SortOrder
 }
 
 export type TrainingLocationSumOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  unitId?: Prisma.SortOrder
-  plannedCount?: Prisma.SortOrder
-  actualCount?: Prisma.SortOrder
+  trainingPeriodId?: Prisma.SortOrder
+}
+
+export type TrainingLocationScalarRelationFilter = {
+  is?: Prisma.TrainingLocationWhereInput
+  isNot?: Prisma.TrainingLocationWhereInput
 }
 
 export type TrainingLocationCreateNestedOneWithoutAssignmentsInput = {
@@ -558,50 +448,60 @@ export type TrainingLocationUpdateOneWithoutAssignmentsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.TrainingLocationUpdateToOneWithWhereWithoutAssignmentsInput, Prisma.TrainingLocationUpdateWithoutAssignmentsInput>, Prisma.TrainingLocationUncheckedUpdateWithoutAssignmentsInput>
 }
 
-export type TrainingLocationCreateNestedManyWithoutUnitInput = {
-  create?: Prisma.XOR<Prisma.TrainingLocationCreateWithoutUnitInput, Prisma.TrainingLocationUncheckedCreateWithoutUnitInput> | Prisma.TrainingLocationCreateWithoutUnitInput[] | Prisma.TrainingLocationUncheckedCreateWithoutUnitInput[]
-  connectOrCreate?: Prisma.TrainingLocationCreateOrConnectWithoutUnitInput | Prisma.TrainingLocationCreateOrConnectWithoutUnitInput[]
-  createMany?: Prisma.TrainingLocationCreateManyUnitInputEnvelope
+export type TrainingLocationCreateNestedManyWithoutTrainingPeriodInput = {
+  create?: Prisma.XOR<Prisma.TrainingLocationCreateWithoutTrainingPeriodInput, Prisma.TrainingLocationUncheckedCreateWithoutTrainingPeriodInput> | Prisma.TrainingLocationCreateWithoutTrainingPeriodInput[] | Prisma.TrainingLocationUncheckedCreateWithoutTrainingPeriodInput[]
+  connectOrCreate?: Prisma.TrainingLocationCreateOrConnectWithoutTrainingPeriodInput | Prisma.TrainingLocationCreateOrConnectWithoutTrainingPeriodInput[]
+  createMany?: Prisma.TrainingLocationCreateManyTrainingPeriodInputEnvelope
   connect?: Prisma.TrainingLocationWhereUniqueInput | Prisma.TrainingLocationWhereUniqueInput[]
 }
 
-export type TrainingLocationUncheckedCreateNestedManyWithoutUnitInput = {
-  create?: Prisma.XOR<Prisma.TrainingLocationCreateWithoutUnitInput, Prisma.TrainingLocationUncheckedCreateWithoutUnitInput> | Prisma.TrainingLocationCreateWithoutUnitInput[] | Prisma.TrainingLocationUncheckedCreateWithoutUnitInput[]
-  connectOrCreate?: Prisma.TrainingLocationCreateOrConnectWithoutUnitInput | Prisma.TrainingLocationCreateOrConnectWithoutUnitInput[]
-  createMany?: Prisma.TrainingLocationCreateManyUnitInputEnvelope
+export type TrainingLocationUncheckedCreateNestedManyWithoutTrainingPeriodInput = {
+  create?: Prisma.XOR<Prisma.TrainingLocationCreateWithoutTrainingPeriodInput, Prisma.TrainingLocationUncheckedCreateWithoutTrainingPeriodInput> | Prisma.TrainingLocationCreateWithoutTrainingPeriodInput[] | Prisma.TrainingLocationUncheckedCreateWithoutTrainingPeriodInput[]
+  connectOrCreate?: Prisma.TrainingLocationCreateOrConnectWithoutTrainingPeriodInput | Prisma.TrainingLocationCreateOrConnectWithoutTrainingPeriodInput[]
+  createMany?: Prisma.TrainingLocationCreateManyTrainingPeriodInputEnvelope
   connect?: Prisma.TrainingLocationWhereUniqueInput | Prisma.TrainingLocationWhereUniqueInput[]
 }
 
-export type TrainingLocationUpdateManyWithoutUnitNestedInput = {
-  create?: Prisma.XOR<Prisma.TrainingLocationCreateWithoutUnitInput, Prisma.TrainingLocationUncheckedCreateWithoutUnitInput> | Prisma.TrainingLocationCreateWithoutUnitInput[] | Prisma.TrainingLocationUncheckedCreateWithoutUnitInput[]
-  connectOrCreate?: Prisma.TrainingLocationCreateOrConnectWithoutUnitInput | Prisma.TrainingLocationCreateOrConnectWithoutUnitInput[]
-  upsert?: Prisma.TrainingLocationUpsertWithWhereUniqueWithoutUnitInput | Prisma.TrainingLocationUpsertWithWhereUniqueWithoutUnitInput[]
-  createMany?: Prisma.TrainingLocationCreateManyUnitInputEnvelope
+export type TrainingLocationUpdateManyWithoutTrainingPeriodNestedInput = {
+  create?: Prisma.XOR<Prisma.TrainingLocationCreateWithoutTrainingPeriodInput, Prisma.TrainingLocationUncheckedCreateWithoutTrainingPeriodInput> | Prisma.TrainingLocationCreateWithoutTrainingPeriodInput[] | Prisma.TrainingLocationUncheckedCreateWithoutTrainingPeriodInput[]
+  connectOrCreate?: Prisma.TrainingLocationCreateOrConnectWithoutTrainingPeriodInput | Prisma.TrainingLocationCreateOrConnectWithoutTrainingPeriodInput[]
+  upsert?: Prisma.TrainingLocationUpsertWithWhereUniqueWithoutTrainingPeriodInput | Prisma.TrainingLocationUpsertWithWhereUniqueWithoutTrainingPeriodInput[]
+  createMany?: Prisma.TrainingLocationCreateManyTrainingPeriodInputEnvelope
   set?: Prisma.TrainingLocationWhereUniqueInput | Prisma.TrainingLocationWhereUniqueInput[]
   disconnect?: Prisma.TrainingLocationWhereUniqueInput | Prisma.TrainingLocationWhereUniqueInput[]
   delete?: Prisma.TrainingLocationWhereUniqueInput | Prisma.TrainingLocationWhereUniqueInput[]
   connect?: Prisma.TrainingLocationWhereUniqueInput | Prisma.TrainingLocationWhereUniqueInput[]
-  update?: Prisma.TrainingLocationUpdateWithWhereUniqueWithoutUnitInput | Prisma.TrainingLocationUpdateWithWhereUniqueWithoutUnitInput[]
-  updateMany?: Prisma.TrainingLocationUpdateManyWithWhereWithoutUnitInput | Prisma.TrainingLocationUpdateManyWithWhereWithoutUnitInput[]
+  update?: Prisma.TrainingLocationUpdateWithWhereUniqueWithoutTrainingPeriodInput | Prisma.TrainingLocationUpdateWithWhereUniqueWithoutTrainingPeriodInput[]
+  updateMany?: Prisma.TrainingLocationUpdateManyWithWhereWithoutTrainingPeriodInput | Prisma.TrainingLocationUpdateManyWithWhereWithoutTrainingPeriodInput[]
   deleteMany?: Prisma.TrainingLocationScalarWhereInput | Prisma.TrainingLocationScalarWhereInput[]
 }
 
-export type TrainingLocationUncheckedUpdateManyWithoutUnitNestedInput = {
-  create?: Prisma.XOR<Prisma.TrainingLocationCreateWithoutUnitInput, Prisma.TrainingLocationUncheckedCreateWithoutUnitInput> | Prisma.TrainingLocationCreateWithoutUnitInput[] | Prisma.TrainingLocationUncheckedCreateWithoutUnitInput[]
-  connectOrCreate?: Prisma.TrainingLocationCreateOrConnectWithoutUnitInput | Prisma.TrainingLocationCreateOrConnectWithoutUnitInput[]
-  upsert?: Prisma.TrainingLocationUpsertWithWhereUniqueWithoutUnitInput | Prisma.TrainingLocationUpsertWithWhereUniqueWithoutUnitInput[]
-  createMany?: Prisma.TrainingLocationCreateManyUnitInputEnvelope
+export type TrainingLocationUncheckedUpdateManyWithoutTrainingPeriodNestedInput = {
+  create?: Prisma.XOR<Prisma.TrainingLocationCreateWithoutTrainingPeriodInput, Prisma.TrainingLocationUncheckedCreateWithoutTrainingPeriodInput> | Prisma.TrainingLocationCreateWithoutTrainingPeriodInput[] | Prisma.TrainingLocationUncheckedCreateWithoutTrainingPeriodInput[]
+  connectOrCreate?: Prisma.TrainingLocationCreateOrConnectWithoutTrainingPeriodInput | Prisma.TrainingLocationCreateOrConnectWithoutTrainingPeriodInput[]
+  upsert?: Prisma.TrainingLocationUpsertWithWhereUniqueWithoutTrainingPeriodInput | Prisma.TrainingLocationUpsertWithWhereUniqueWithoutTrainingPeriodInput[]
+  createMany?: Prisma.TrainingLocationCreateManyTrainingPeriodInputEnvelope
   set?: Prisma.TrainingLocationWhereUniqueInput | Prisma.TrainingLocationWhereUniqueInput[]
   disconnect?: Prisma.TrainingLocationWhereUniqueInput | Prisma.TrainingLocationWhereUniqueInput[]
   delete?: Prisma.TrainingLocationWhereUniqueInput | Prisma.TrainingLocationWhereUniqueInput[]
   connect?: Prisma.TrainingLocationWhereUniqueInput | Prisma.TrainingLocationWhereUniqueInput[]
-  update?: Prisma.TrainingLocationUpdateWithWhereUniqueWithoutUnitInput | Prisma.TrainingLocationUpdateWithWhereUniqueWithoutUnitInput[]
-  updateMany?: Prisma.TrainingLocationUpdateManyWithWhereWithoutUnitInput | Prisma.TrainingLocationUpdateManyWithWhereWithoutUnitInput[]
+  update?: Prisma.TrainingLocationUpdateWithWhereUniqueWithoutTrainingPeriodInput | Prisma.TrainingLocationUpdateWithWhereUniqueWithoutTrainingPeriodInput[]
+  updateMany?: Prisma.TrainingLocationUpdateManyWithWhereWithoutTrainingPeriodInput | Prisma.TrainingLocationUpdateManyWithWhereWithoutTrainingPeriodInput[]
   deleteMany?: Prisma.TrainingLocationScalarWhereInput | Prisma.TrainingLocationScalarWhereInput[]
 }
 
-export type NullableBoolFieldUpdateOperationsInput = {
-  set?: boolean | null
+export type TrainingLocationCreateNestedOneWithoutScheduleLocationsInput = {
+  create?: Prisma.XOR<Prisma.TrainingLocationCreateWithoutScheduleLocationsInput, Prisma.TrainingLocationUncheckedCreateWithoutScheduleLocationsInput>
+  connectOrCreate?: Prisma.TrainingLocationCreateOrConnectWithoutScheduleLocationsInput
+  connect?: Prisma.TrainingLocationWhereUniqueInput
+}
+
+export type TrainingLocationUpdateOneRequiredWithoutScheduleLocationsNestedInput = {
+  create?: Prisma.XOR<Prisma.TrainingLocationCreateWithoutScheduleLocationsInput, Prisma.TrainingLocationUncheckedCreateWithoutScheduleLocationsInput>
+  connectOrCreate?: Prisma.TrainingLocationCreateOrConnectWithoutScheduleLocationsInput
+  upsert?: Prisma.TrainingLocationUpsertWithoutScheduleLocationsInput
+  connect?: Prisma.TrainingLocationWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.TrainingLocationUpdateToOneWithWhereWithoutScheduleLocationsInput, Prisma.TrainingLocationUpdateWithoutScheduleLocationsInput>, Prisma.TrainingLocationUncheckedUpdateWithoutScheduleLocationsInput>
 }
 
 export type TrainingLocationCreateWithoutAssignmentsInput = {
@@ -609,28 +509,20 @@ export type TrainingLocationCreateWithoutAssignmentsInput = {
   changedPlace?: string | null
   hasInstructorLounge?: boolean | null
   hasWomenRestroom?: boolean | null
-  hasCateredMeals?: boolean | null
-  hasHallLodging?: boolean | null
-  allowsPhoneBeforeAfter?: boolean | null
-  plannedCount?: number | null
-  actualCount?: number | null
   note?: string | null
-  unit: Prisma.UnitCreateNestedOneWithoutTrainingLocationsInput
+  trainingPeriod: Prisma.TrainingPeriodCreateNestedOneWithoutLocationsInput
+  scheduleLocations?: Prisma.ScheduleLocationCreateNestedManyWithoutLocationInput
 }
 
 export type TrainingLocationUncheckedCreateWithoutAssignmentsInput = {
   id?: number
-  unitId: number
+  trainingPeriodId: number
   originalPlace?: string | null
   changedPlace?: string | null
   hasInstructorLounge?: boolean | null
   hasWomenRestroom?: boolean | null
-  hasCateredMeals?: boolean | null
-  hasHallLodging?: boolean | null
-  allowsPhoneBeforeAfter?: boolean | null
-  plannedCount?: number | null
-  actualCount?: number | null
   note?: string | null
+  scheduleLocations?: Prisma.ScheduleLocationUncheckedCreateNestedManyWithoutLocationInput
 }
 
 export type TrainingLocationCreateOrConnectWithoutAssignmentsInput = {
@@ -654,83 +546,67 @@ export type TrainingLocationUpdateWithoutAssignmentsInput = {
   changedPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hasInstructorLounge?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasWomenRestroom?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  unit?: Prisma.UnitUpdateOneRequiredWithoutTrainingLocationsNestedInput
+  trainingPeriod?: Prisma.TrainingPeriodUpdateOneRequiredWithoutLocationsNestedInput
+  scheduleLocations?: Prisma.ScheduleLocationUpdateManyWithoutLocationNestedInput
 }
 
 export type TrainingLocationUncheckedUpdateWithoutAssignmentsInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
-  unitId?: Prisma.IntFieldUpdateOperationsInput | number
+  trainingPeriodId?: Prisma.IntFieldUpdateOperationsInput | number
   originalPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changedPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hasInstructorLounge?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasWomenRestroom?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scheduleLocations?: Prisma.ScheduleLocationUncheckedUpdateManyWithoutLocationNestedInput
 }
 
-export type TrainingLocationCreateWithoutUnitInput = {
+export type TrainingLocationCreateWithoutTrainingPeriodInput = {
   originalPlace?: string | null
   changedPlace?: string | null
   hasInstructorLounge?: boolean | null
   hasWomenRestroom?: boolean | null
-  hasCateredMeals?: boolean | null
-  hasHallLodging?: boolean | null
-  allowsPhoneBeforeAfter?: boolean | null
-  plannedCount?: number | null
-  actualCount?: number | null
   note?: string | null
+  scheduleLocations?: Prisma.ScheduleLocationCreateNestedManyWithoutLocationInput
   assignments?: Prisma.InstructorUnitAssignmentCreateNestedManyWithoutTrainingLocationInput
 }
 
-export type TrainingLocationUncheckedCreateWithoutUnitInput = {
+export type TrainingLocationUncheckedCreateWithoutTrainingPeriodInput = {
   id?: number
   originalPlace?: string | null
   changedPlace?: string | null
   hasInstructorLounge?: boolean | null
   hasWomenRestroom?: boolean | null
-  hasCateredMeals?: boolean | null
-  hasHallLodging?: boolean | null
-  allowsPhoneBeforeAfter?: boolean | null
-  plannedCount?: number | null
-  actualCount?: number | null
   note?: string | null
+  scheduleLocations?: Prisma.ScheduleLocationUncheckedCreateNestedManyWithoutLocationInput
   assignments?: Prisma.InstructorUnitAssignmentUncheckedCreateNestedManyWithoutTrainingLocationInput
 }
 
-export type TrainingLocationCreateOrConnectWithoutUnitInput = {
+export type TrainingLocationCreateOrConnectWithoutTrainingPeriodInput = {
   where: Prisma.TrainingLocationWhereUniqueInput
-  create: Prisma.XOR<Prisma.TrainingLocationCreateWithoutUnitInput, Prisma.TrainingLocationUncheckedCreateWithoutUnitInput>
+  create: Prisma.XOR<Prisma.TrainingLocationCreateWithoutTrainingPeriodInput, Prisma.TrainingLocationUncheckedCreateWithoutTrainingPeriodInput>
 }
 
-export type TrainingLocationCreateManyUnitInputEnvelope = {
-  data: Prisma.TrainingLocationCreateManyUnitInput | Prisma.TrainingLocationCreateManyUnitInput[]
+export type TrainingLocationCreateManyTrainingPeriodInputEnvelope = {
+  data: Prisma.TrainingLocationCreateManyTrainingPeriodInput | Prisma.TrainingLocationCreateManyTrainingPeriodInput[]
   skipDuplicates?: boolean
 }
 
-export type TrainingLocationUpsertWithWhereUniqueWithoutUnitInput = {
+export type TrainingLocationUpsertWithWhereUniqueWithoutTrainingPeriodInput = {
   where: Prisma.TrainingLocationWhereUniqueInput
-  update: Prisma.XOR<Prisma.TrainingLocationUpdateWithoutUnitInput, Prisma.TrainingLocationUncheckedUpdateWithoutUnitInput>
-  create: Prisma.XOR<Prisma.TrainingLocationCreateWithoutUnitInput, Prisma.TrainingLocationUncheckedCreateWithoutUnitInput>
+  update: Prisma.XOR<Prisma.TrainingLocationUpdateWithoutTrainingPeriodInput, Prisma.TrainingLocationUncheckedUpdateWithoutTrainingPeriodInput>
+  create: Prisma.XOR<Prisma.TrainingLocationCreateWithoutTrainingPeriodInput, Prisma.TrainingLocationUncheckedCreateWithoutTrainingPeriodInput>
 }
 
-export type TrainingLocationUpdateWithWhereUniqueWithoutUnitInput = {
+export type TrainingLocationUpdateWithWhereUniqueWithoutTrainingPeriodInput = {
   where: Prisma.TrainingLocationWhereUniqueInput
-  data: Prisma.XOR<Prisma.TrainingLocationUpdateWithoutUnitInput, Prisma.TrainingLocationUncheckedUpdateWithoutUnitInput>
+  data: Prisma.XOR<Prisma.TrainingLocationUpdateWithoutTrainingPeriodInput, Prisma.TrainingLocationUncheckedUpdateWithoutTrainingPeriodInput>
 }
 
-export type TrainingLocationUpdateManyWithWhereWithoutUnitInput = {
+export type TrainingLocationUpdateManyWithWhereWithoutTrainingPeriodInput = {
   where: Prisma.TrainingLocationScalarWhereInput
-  data: Prisma.XOR<Prisma.TrainingLocationUpdateManyMutationInput, Prisma.TrainingLocationUncheckedUpdateManyWithoutUnitInput>
+  data: Prisma.XOR<Prisma.TrainingLocationUpdateManyMutationInput, Prisma.TrainingLocationUncheckedUpdateManyWithoutTrainingPeriodInput>
 }
 
 export type TrainingLocationScalarWhereInput = {
@@ -738,73 +614,108 @@ export type TrainingLocationScalarWhereInput = {
   OR?: Prisma.TrainingLocationScalarWhereInput[]
   NOT?: Prisma.TrainingLocationScalarWhereInput | Prisma.TrainingLocationScalarWhereInput[]
   id?: Prisma.IntFilter<"TrainingLocation"> | number
-  unitId?: Prisma.IntFilter<"TrainingLocation"> | number
+  trainingPeriodId?: Prisma.IntFilter<"TrainingLocation"> | number
   originalPlace?: Prisma.StringNullableFilter<"TrainingLocation"> | string | null
   changedPlace?: Prisma.StringNullableFilter<"TrainingLocation"> | string | null
   hasInstructorLounge?: Prisma.BoolNullableFilter<"TrainingLocation"> | boolean | null
   hasWomenRestroom?: Prisma.BoolNullableFilter<"TrainingLocation"> | boolean | null
-  hasCateredMeals?: Prisma.BoolNullableFilter<"TrainingLocation"> | boolean | null
-  hasHallLodging?: Prisma.BoolNullableFilter<"TrainingLocation"> | boolean | null
-  allowsPhoneBeforeAfter?: Prisma.BoolNullableFilter<"TrainingLocation"> | boolean | null
-  plannedCount?: Prisma.IntNullableFilter<"TrainingLocation"> | number | null
-  actualCount?: Prisma.IntNullableFilter<"TrainingLocation"> | number | null
   note?: Prisma.StringNullableFilter<"TrainingLocation"> | string | null
 }
 
-export type TrainingLocationCreateManyUnitInput = {
+export type TrainingLocationCreateWithoutScheduleLocationsInput = {
+  originalPlace?: string | null
+  changedPlace?: string | null
+  hasInstructorLounge?: boolean | null
+  hasWomenRestroom?: boolean | null
+  note?: string | null
+  trainingPeriod: Prisma.TrainingPeriodCreateNestedOneWithoutLocationsInput
+  assignments?: Prisma.InstructorUnitAssignmentCreateNestedManyWithoutTrainingLocationInput
+}
+
+export type TrainingLocationUncheckedCreateWithoutScheduleLocationsInput = {
+  id?: number
+  trainingPeriodId: number
+  originalPlace?: string | null
+  changedPlace?: string | null
+  hasInstructorLounge?: boolean | null
+  hasWomenRestroom?: boolean | null
+  note?: string | null
+  assignments?: Prisma.InstructorUnitAssignmentUncheckedCreateNestedManyWithoutTrainingLocationInput
+}
+
+export type TrainingLocationCreateOrConnectWithoutScheduleLocationsInput = {
+  where: Prisma.TrainingLocationWhereUniqueInput
+  create: Prisma.XOR<Prisma.TrainingLocationCreateWithoutScheduleLocationsInput, Prisma.TrainingLocationUncheckedCreateWithoutScheduleLocationsInput>
+}
+
+export type TrainingLocationUpsertWithoutScheduleLocationsInput = {
+  update: Prisma.XOR<Prisma.TrainingLocationUpdateWithoutScheduleLocationsInput, Prisma.TrainingLocationUncheckedUpdateWithoutScheduleLocationsInput>
+  create: Prisma.XOR<Prisma.TrainingLocationCreateWithoutScheduleLocationsInput, Prisma.TrainingLocationUncheckedCreateWithoutScheduleLocationsInput>
+  where?: Prisma.TrainingLocationWhereInput
+}
+
+export type TrainingLocationUpdateToOneWithWhereWithoutScheduleLocationsInput = {
+  where?: Prisma.TrainingLocationWhereInput
+  data: Prisma.XOR<Prisma.TrainingLocationUpdateWithoutScheduleLocationsInput, Prisma.TrainingLocationUncheckedUpdateWithoutScheduleLocationsInput>
+}
+
+export type TrainingLocationUpdateWithoutScheduleLocationsInput = {
+  originalPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  changedPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  hasInstructorLounge?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  hasWomenRestroom?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  trainingPeriod?: Prisma.TrainingPeriodUpdateOneRequiredWithoutLocationsNestedInput
+  assignments?: Prisma.InstructorUnitAssignmentUpdateManyWithoutTrainingLocationNestedInput
+}
+
+export type TrainingLocationUncheckedUpdateWithoutScheduleLocationsInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  trainingPeriodId?: Prisma.IntFieldUpdateOperationsInput | number
+  originalPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  changedPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  hasInstructorLounge?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  hasWomenRestroom?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  assignments?: Prisma.InstructorUnitAssignmentUncheckedUpdateManyWithoutTrainingLocationNestedInput
+}
+
+export type TrainingLocationCreateManyTrainingPeriodInput = {
   id?: number
   originalPlace?: string | null
   changedPlace?: string | null
   hasInstructorLounge?: boolean | null
   hasWomenRestroom?: boolean | null
-  hasCateredMeals?: boolean | null
-  hasHallLodging?: boolean | null
-  allowsPhoneBeforeAfter?: boolean | null
-  plannedCount?: number | null
-  actualCount?: number | null
   note?: string | null
 }
 
-export type TrainingLocationUpdateWithoutUnitInput = {
+export type TrainingLocationUpdateWithoutTrainingPeriodInput = {
   originalPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changedPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hasInstructorLounge?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasWomenRestroom?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scheduleLocations?: Prisma.ScheduleLocationUpdateManyWithoutLocationNestedInput
   assignments?: Prisma.InstructorUnitAssignmentUpdateManyWithoutTrainingLocationNestedInput
 }
 
-export type TrainingLocationUncheckedUpdateWithoutUnitInput = {
+export type TrainingLocationUncheckedUpdateWithoutTrainingPeriodInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   originalPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changedPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hasInstructorLounge?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasWomenRestroom?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  scheduleLocations?: Prisma.ScheduleLocationUncheckedUpdateManyWithoutLocationNestedInput
   assignments?: Prisma.InstructorUnitAssignmentUncheckedUpdateManyWithoutTrainingLocationNestedInput
 }
 
-export type TrainingLocationUncheckedUpdateManyWithoutUnitInput = {
+export type TrainingLocationUncheckedUpdateManyWithoutTrainingPeriodInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   originalPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   changedPlace?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hasInstructorLounge?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasWomenRestroom?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
-  plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
@@ -814,10 +725,12 @@ export type TrainingLocationUncheckedUpdateManyWithoutUnitInput = {
  */
 
 export type TrainingLocationCountOutputType = {
+  scheduleLocations: number
   assignments: number
 }
 
 export type TrainingLocationCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  scheduleLocations?: boolean | TrainingLocationCountOutputTypeCountScheduleLocationsArgs
   assignments?: boolean | TrainingLocationCountOutputTypeCountAssignmentsArgs
 }
 
@@ -834,6 +747,13 @@ export type TrainingLocationCountOutputTypeDefaultArgs<ExtArgs extends runtime.T
 /**
  * TrainingLocationCountOutputType without action
  */
+export type TrainingLocationCountOutputTypeCountScheduleLocationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ScheduleLocationWhereInput
+}
+
+/**
+ * TrainingLocationCountOutputType without action
+ */
 export type TrainingLocationCountOutputTypeCountAssignmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.InstructorUnitAssignmentWhereInput
 }
@@ -841,100 +761,78 @@ export type TrainingLocationCountOutputTypeCountAssignmentsArgs<ExtArgs extends 
 
 export type TrainingLocationSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  unitId?: boolean
+  trainingPeriodId?: boolean
   originalPlace?: boolean
   changedPlace?: boolean
   hasInstructorLounge?: boolean
   hasWomenRestroom?: boolean
-  hasCateredMeals?: boolean
-  hasHallLodging?: boolean
-  allowsPhoneBeforeAfter?: boolean
-  plannedCount?: boolean
-  actualCount?: boolean
   note?: boolean
-  unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
+  trainingPeriod?: boolean | Prisma.TrainingPeriodDefaultArgs<ExtArgs>
+  scheduleLocations?: boolean | Prisma.TrainingLocation$scheduleLocationsArgs<ExtArgs>
   assignments?: boolean | Prisma.TrainingLocation$assignmentsArgs<ExtArgs>
   _count?: boolean | Prisma.TrainingLocationCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["trainingLocation"]>
 
 export type TrainingLocationSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  unitId?: boolean
+  trainingPeriodId?: boolean
   originalPlace?: boolean
   changedPlace?: boolean
   hasInstructorLounge?: boolean
   hasWomenRestroom?: boolean
-  hasCateredMeals?: boolean
-  hasHallLodging?: boolean
-  allowsPhoneBeforeAfter?: boolean
-  plannedCount?: boolean
-  actualCount?: boolean
   note?: boolean
-  unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
+  trainingPeriod?: boolean | Prisma.TrainingPeriodDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["trainingLocation"]>
 
 export type TrainingLocationSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  unitId?: boolean
+  trainingPeriodId?: boolean
   originalPlace?: boolean
   changedPlace?: boolean
   hasInstructorLounge?: boolean
   hasWomenRestroom?: boolean
-  hasCateredMeals?: boolean
-  hasHallLodging?: boolean
-  allowsPhoneBeforeAfter?: boolean
-  plannedCount?: boolean
-  actualCount?: boolean
   note?: boolean
-  unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
+  trainingPeriod?: boolean | Prisma.TrainingPeriodDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["trainingLocation"]>
 
 export type TrainingLocationSelectScalar = {
   id?: boolean
-  unitId?: boolean
+  trainingPeriodId?: boolean
   originalPlace?: boolean
   changedPlace?: boolean
   hasInstructorLounge?: boolean
   hasWomenRestroom?: boolean
-  hasCateredMeals?: boolean
-  hasHallLodging?: boolean
-  allowsPhoneBeforeAfter?: boolean
-  plannedCount?: boolean
-  actualCount?: boolean
   note?: boolean
 }
 
-export type TrainingLocationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "unitId" | "originalPlace" | "changedPlace" | "hasInstructorLounge" | "hasWomenRestroom" | "hasCateredMeals" | "hasHallLodging" | "allowsPhoneBeforeAfter" | "plannedCount" | "actualCount" | "note", ExtArgs["result"]["trainingLocation"]>
+export type TrainingLocationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "trainingPeriodId" | "originalPlace" | "changedPlace" | "hasInstructorLounge" | "hasWomenRestroom" | "note", ExtArgs["result"]["trainingLocation"]>
 export type TrainingLocationInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
+  trainingPeriod?: boolean | Prisma.TrainingPeriodDefaultArgs<ExtArgs>
+  scheduleLocations?: boolean | Prisma.TrainingLocation$scheduleLocationsArgs<ExtArgs>
   assignments?: boolean | Prisma.TrainingLocation$assignmentsArgs<ExtArgs>
   _count?: boolean | Prisma.TrainingLocationCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type TrainingLocationIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
+  trainingPeriod?: boolean | Prisma.TrainingPeriodDefaultArgs<ExtArgs>
 }
 export type TrainingLocationIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
+  trainingPeriod?: boolean | Prisma.TrainingPeriodDefaultArgs<ExtArgs>
 }
 
 export type $TrainingLocationPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "TrainingLocation"
   objects: {
-    unit: Prisma.$UnitPayload<ExtArgs>
+    trainingPeriod: Prisma.$TrainingPeriodPayload<ExtArgs>
+    scheduleLocations: Prisma.$ScheduleLocationPayload<ExtArgs>[]
     assignments: Prisma.$InstructorUnitAssignmentPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
-    unitId: number
+    trainingPeriodId: number
     originalPlace: string | null
     changedPlace: string | null
     hasInstructorLounge: boolean | null
     hasWomenRestroom: boolean | null
-    hasCateredMeals: boolean | null
-    hasHallLodging: boolean | null
-    allowsPhoneBeforeAfter: boolean | null
-    plannedCount: number | null
-    actualCount: number | null
     note: string | null
   }, ExtArgs["result"]["trainingLocation"]>
   composites: {}
@@ -1330,7 +1228,8 @@ readonly fields: TrainingLocationFieldRefs;
  */
 export interface Prisma__TrainingLocationClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
-  unit<T extends Prisma.UnitDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UnitDefaultArgs<ExtArgs>>): Prisma.Prisma__UnitClient<runtime.Types.Result.GetResult<Prisma.$UnitPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  trainingPeriod<T extends Prisma.TrainingPeriodDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.TrainingPeriodDefaultArgs<ExtArgs>>): Prisma.Prisma__TrainingPeriodClient<runtime.Types.Result.GetResult<Prisma.$TrainingPeriodPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  scheduleLocations<T extends Prisma.TrainingLocation$scheduleLocationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.TrainingLocation$scheduleLocationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ScheduleLocationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   assignments<T extends Prisma.TrainingLocation$assignmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.TrainingLocation$assignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$InstructorUnitAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -1362,16 +1261,11 @@ export interface Prisma__TrainingLocationClient<T, Null = never, ExtArgs extends
  */
 export interface TrainingLocationFieldRefs {
   readonly id: Prisma.FieldRef<"TrainingLocation", 'Int'>
-  readonly unitId: Prisma.FieldRef<"TrainingLocation", 'Int'>
+  readonly trainingPeriodId: Prisma.FieldRef<"TrainingLocation", 'Int'>
   readonly originalPlace: Prisma.FieldRef<"TrainingLocation", 'String'>
   readonly changedPlace: Prisma.FieldRef<"TrainingLocation", 'String'>
   readonly hasInstructorLounge: Prisma.FieldRef<"TrainingLocation", 'Boolean'>
   readonly hasWomenRestroom: Prisma.FieldRef<"TrainingLocation", 'Boolean'>
-  readonly hasCateredMeals: Prisma.FieldRef<"TrainingLocation", 'Boolean'>
-  readonly hasHallLodging: Prisma.FieldRef<"TrainingLocation", 'Boolean'>
-  readonly allowsPhoneBeforeAfter: Prisma.FieldRef<"TrainingLocation", 'Boolean'>
-  readonly plannedCount: Prisma.FieldRef<"TrainingLocation", 'Int'>
-  readonly actualCount: Prisma.FieldRef<"TrainingLocation", 'Int'>
   readonly note: Prisma.FieldRef<"TrainingLocation", 'String'>
 }
     
@@ -1766,6 +1660,30 @@ export type TrainingLocationDeleteManyArgs<ExtArgs extends runtime.Types.Extensi
    * Limit how many TrainingLocations to delete.
    */
   limit?: number
+}
+
+/**
+ * TrainingLocation.scheduleLocations
+ */
+export type TrainingLocation$scheduleLocationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ScheduleLocation
+   */
+  select?: Prisma.ScheduleLocationSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ScheduleLocation
+   */
+  omit?: Prisma.ScheduleLocationOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ScheduleLocationInclude<ExtArgs> | null
+  where?: Prisma.ScheduleLocationWhereInput
+  orderBy?: Prisma.ScheduleLocationOrderByWithRelationInput | Prisma.ScheduleLocationOrderByWithRelationInput[]
+  cursor?: Prisma.ScheduleLocationWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ScheduleLocationScalarFieldEnum | Prisma.ScheduleLocationScalarFieldEnum[]
 }
 
 /**

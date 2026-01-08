@@ -31,14 +31,36 @@ const toKSTTimeString = (date: Date | string | null | undefined): string => {
 };
 
 /**
- * 필요 강사 수 계산 (참여인원 / 강사당교육생수)
+ * 필요 강사 수 계산 (우선순위: 수동설정 > 참여인원 > 계획인원)
+ * 1. requiredCount(수동 설정 필요인원)가 있으면 그 값 사용
+ * 2. 없으면 actualCount / traineesPerInstructor 계산
+ * 3. actualCount도 없으면 plannedCount / traineesPerInstructor 계산
+ * 4. 모두 없으면 기본값 1명
  */
 const calcRequiredInstructors = (
-  actualCount: number | null | undefined,
+  scheduleLoc:
+    | { requiredCount?: number | null; actualCount?: number | null; plannedCount?: number | null }
+    | null
+    | undefined,
   traineesPerInstructor: number,
 ): number => {
-  if (!actualCount || actualCount <= 0) return 1; // 기본값 1명
-  return Math.floor(actualCount / traineesPerInstructor) || 1;
+  // 1. 수동 설정 필요인원이 있으면 사용
+  if (scheduleLoc?.requiredCount && scheduleLoc.requiredCount > 0) {
+    return scheduleLoc.requiredCount;
+  }
+
+  // 2. 참여인원으로 계산
+  if (scheduleLoc?.actualCount && scheduleLoc.actualCount > 0) {
+    return Math.floor(scheduleLoc.actualCount / traineesPerInstructor) || 1;
+  }
+
+  // 3. 계획인원으로 계산
+  if (scheduleLoc?.plannedCount && scheduleLoc.plannedCount > 0) {
+    return Math.floor(scheduleLoc.plannedCount / traineesPerInstructor) || 1;
+  }
+
+  // 4. 모두 없으면 기본값 1명
+  return 1;
 };
 
 class AssignmentDTO {
@@ -59,18 +81,28 @@ class AssignmentDTO {
   mapUnitsToCards(units: UnitRaw[]) {
     const list: unknown[] = [];
     units.forEach((unit) => {
-      // 1. 교육장소 목록 준비
-      const locations =
-        unit.trainingLocations && unit.trainingLocations.length > 0
-          ? unit.trainingLocations
-          : [{ id: 'def', originalPlace: '교육장소 미정', actualCount: 0 }];
+      // 첫 번째 TrainingPeriod 가져오기
+      const period = unit.trainingPeriods[0];
+      if (!period) return; // TrainingPeriod가 없으면 스킵
 
-      // 2. 스케줄(날짜)별로 반복
-      unit.schedules.forEach((schedule: ScheduleRaw) => {
+      // 1. 교육장소 목록 준비 (TrainingPeriod.locations)
+      const locations =
+        period.locations && period.locations.length > 0
+          ? period.locations
+          : [{ id: 'def', originalPlace: '교육장소 미정' }];
+
+      // 2. 스케줄(날짜)별로 반복 (TrainingPeriod.schedules)
+      (period.schedules || []).forEach((schedule: ScheduleRaw) => {
         const dateStr = toKSTDateString(schedule.date);
 
         // 3. 교육장소별로 카드 생성
         locations.forEach((loc: TrainingLocationRaw) => {
+          // ScheduleLocation에서 actualCount 가져오기
+          const scheduleLoc = schedule.scheduleLocations?.find(
+            (sl) => sl.trainingLocationId === loc.id,
+          );
+          const actualCount = scheduleLoc?.actualCount ?? 0;
+
           list.push({
             type: 'UNIT',
             id: `u-${unit.id}-s-${schedule.id}-l-${loc.id}`,
@@ -78,9 +110,9 @@ class AssignmentDTO {
             // [Card UI]
             unitName: unit.name,
             originalPlace: loc.originalPlace,
-            actualCount: loc.actualCount,
+            actualCount: actualCount,
             date: dateStr,
-            time: toKSTTimeString(unit.workStartTime),
+            time: toKSTTimeString(period.workStartTime),
             location: unit.region,
 
             // [Modal Detail]
@@ -90,27 +122,33 @@ class AssignmentDTO {
               wideArea: unit.wideArea,
               address: unit.addressDetail,
               detailAddress: unit.detailAddress,
-              officerName: unit.officerName,
-              officerPhone: unit.officerPhone,
-              officerEmail: unit.officerEmail,
+              officerName: period.officerName,
+              officerPhone: period.officerPhone,
+              officerEmail: period.officerEmail,
               originalPlace: loc.originalPlace,
               changedPlace: loc.changedPlace,
-              plannedCount: loc.plannedCount,
-              actualCount: loc.actualCount,
+              plannedCount: scheduleLoc?.plannedCount ?? 0,
+              actualCount: actualCount,
               note: loc.note,
 
-              educationStart: toKSTDateString(unit.educationStart),
-              educationEnd: toKSTDateString(unit.educationEnd),
-              workStartTime: toKSTTimeString(unit.workStartTime),
-              workEndTime: toKSTTimeString(unit.workEndTime),
-              lunchStartTime: toKSTTimeString(unit.lunchStartTime),
-              lunchEndTime: toKSTTimeString(unit.lunchEndTime),
+              // TrainingPeriod의 schedules에서 첫/끝 날짜 가져오기
+              educationStart: period.schedules[0]
+                ? toKSTDateString(period.schedules[0].date)
+                : null,
+              educationEnd: period.schedules[period.schedules.length - 1]
+                ? toKSTDateString(period.schedules[period.schedules.length - 1].date)
+                : null,
+              workStartTime: toKSTTimeString(period.workStartTime),
+              workEndTime: toKSTTimeString(period.workEndTime),
+              lunchStartTime: toKSTTimeString(period.lunchStartTime),
+              lunchEndTime: toKSTTimeString(period.lunchEndTime),
 
               hasInstructorLounge: loc.hasInstructorLounge,
               hasWomenRestroom: loc.hasWomenRestroom,
-              hasCateredMeals: loc.hasCateredMeals,
-              hasHallLodging: loc.hasHallLodging,
-              allowsPhoneBeforeAfter: loc.allowsPhoneBeforeAfter,
+              // NOTE: 이 3개 필드는 TrainingPeriod에 있음
+              hasCateredMeals: period.hasCateredMeals,
+              hasHallLodging: period.hasHallLodging,
+              allowsPhoneBeforeAfter: period.allowsPhoneBeforeAfter,
             },
           });
         });
@@ -173,21 +211,25 @@ class AssignmentDTO {
       unitsWithAssignments
         // 1단계: 부대별 상태 계산
         .map((unit) => {
-          // 부대가 "Confirmed" 상태인지 판단:
-          // 모든 스케줄의 필요 인원이 Accepted 상태로 채워져 있으면 Confirmed
+          // 첫 번째 TrainingPeriod 가져오기
+          const period = unit.trainingPeriods[0];
+          if (!period) return null; // TrainingPeriod가 없으면 스킵
+
           const locations =
-            unit.trainingLocations && unit.trainingLocations.length > 0
-              ? unit.trainingLocations
-              : [{ id: 'default', originalPlace: '교육장소 미정', actualCount: 0 }];
+            period.locations?.length > 0
+              ? period.locations
+              : [{ id: 'default', originalPlace: '교육장소 미정' }];
+
+          const schedules = period.schedules || [];
 
           let isUnitConfirmed = true;
-          const isStaffLocked = (unit as any).isStaffLocked ?? false;
+          const isStaffLocked = period.isStaffLocked ?? false;
 
           // 인원고정인 경우: Pending 없고 최소 1명 이상 Accepted면 확정
           if (isStaffLocked) {
             let hasPending = false;
             let hasAccepted = false;
-            for (const schedule of unit.schedules as ScheduleRaw[]) {
+            for (const schedule of schedules as ScheduleRaw[]) {
               for (const a of (schedule.assignments || []) as AssignmentRaw[]) {
                 if (a.state === 'Pending') hasPending = true;
                 if (a.state === 'Accepted') hasAccepted = true;
@@ -195,16 +237,15 @@ class AssignmentDTO {
             }
             isUnitConfirmed = !hasPending && hasAccepted;
           } else {
-            // 일반 경우:
-            // 1) 필요 인원 이상이 Accepted 상태
-            // 2) Pending 상태인 배정이 없어야 함 (추가 배정 인원도 모두 수락해야 확정)
+            // 일반 경우
             for (const loc of locations as TrainingLocationRaw[]) {
-              // 동적 계산: actualCount / traineesPerInstructor
-              const requiredPerDay = calcRequiredInstructors(
-                loc.actualCount,
-                traineesPerInstructor,
-              );
-              for (const schedule of unit.schedules as ScheduleRaw[]) {
+              // ScheduleLocation에서 actualCount 가져오기
+              for (const schedule of schedules as ScheduleRaw[]) {
+                const scheduleLoc = schedule.scheduleLocations?.find(
+                  (sl) => sl.trainingLocationId === loc.id,
+                );
+                const requiredPerDay = calcRequiredInstructors(scheduleLoc, traineesPerInstructor);
+
                 const assignmentsForLocation = (schedule.assignments || []).filter(
                   (a: AssignmentRaw) =>
                     a.trainingLocationId === loc.id || a.trainingLocationId === null,
@@ -218,7 +259,6 @@ class AssignmentDTO {
                   (a: AssignmentRaw) => a.state === 'Pending',
                 );
 
-                // 필요 인원보다 Accepted가 적거나, Pending이 있으면 미완료
                 if (acceptedCount < requiredPerDay || hasPending) {
                   isUnitConfirmed = false;
                   break;
@@ -228,11 +268,11 @@ class AssignmentDTO {
             }
           }
 
-          // 부대 상태 할당
           const unitStatus: 'Confirmed' | 'Temporary' = isUnitConfirmed ? 'Confirmed' : 'Temporary';
 
-          return { ...unit, unitStatus, locations };
+          return { ...unit, unitStatus, locations, schedules, period, isStaffLocked };
         })
+        .filter((unit): unit is NonNullable<typeof unit> => unit !== null)
         // 2단계: 부대 단위로 필터링
         .filter((unit) => {
           if (classificationFilter === 'all') return true;
@@ -247,12 +287,24 @@ class AssignmentDTO {
 
           const trainingLocations = locations.map((loc: TrainingLocationRaw) => {
             const daysCount = unit.schedules.length;
-            const requiredCount = calcRequiredInstructors(loc.actualCount, traineesPerInstructor);
+            // ScheduleLocation에서 첫 스케줄의 actualCount로 approximate 계산
+            const firstSchedule = unit.schedules[0];
+            const scheduleLoc = firstSchedule?.scheduleLocations?.find(
+              (sl) => sl.trainingLocationId === loc.id,
+            );
+            const approxActualCount = scheduleLoc?.actualCount ?? 0;
+            const requiredCount = calcRequiredInstructors(scheduleLoc, traineesPerInstructor);
             totalRequired += requiredCount * daysCount;
 
             // 2. 각 장소 안에서 '날짜별' 스케줄 구성
             const dates = unit.schedules.map((schedule: ScheduleRaw) => {
               const dateStr = toKSTDateString(schedule.date);
+
+              // ScheduleLocation에서 actualCount 가져오기
+              const schedLoc = schedule.scheduleLocations?.find(
+                (sl) => sl.trainingLocationId === loc.id,
+              );
+              const actualCountForSchedule = schedLoc?.actualCount ?? 0;
 
               // 해당 장소(loc.id)에 배정된 강사만 필터링 (부대 단위로 이미 필터링됨)
               const assignedInstructors = (schedule.assignments || [])
@@ -299,7 +351,8 @@ class AssignmentDTO {
                 date: dateStr,
                 unitScheduleId: schedule.id,
                 isBlocked: schedule.isBlocked || false, // 배정 막기 상태
-                requiredCount: calcRequiredInstructors(loc.actualCount, traineesPerInstructor),
+                requiredCount: calcRequiredInstructors(schedLoc, traineesPerInstructor),
+                actualCount: actualCountForSchedule, // 참여인원 표시용
                 instructors: assignedInstructors,
                 rejectedInstructors, // 거절한 강사 목록 추가
               };
@@ -308,7 +361,7 @@ class AssignmentDTO {
             return {
               id: loc.id,
               name: loc.originalPlace || '장소 미명',
-              actualCount: loc.actualCount || 0,
+              actualCount: approxActualCount, // 첫 스케줄 기준 approximate
               dates: dates,
             };
           });

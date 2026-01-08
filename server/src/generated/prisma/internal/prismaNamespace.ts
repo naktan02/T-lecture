@@ -400,8 +400,10 @@ export const ModelName = {
   SystemConfig: 'SystemConfig',
   InstructorPenalty: 'InstructorPenalty',
   Unit: 'Unit',
+  TrainingPeriod: 'TrainingPeriod',
   TrainingLocation: 'TrainingLocation',
   UnitSchedule: 'UnitSchedule',
+  ScheduleLocation: 'ScheduleLocation',
   User: 'User',
   Admin: 'Admin',
   Instructor: 'Instructor',
@@ -424,7 +426,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "emailVerification" | "refreshToken" | "kakaoApiUsage" | "dispatch" | "dispatchAssignment" | "messageTemplate" | "notice" | "noticeReceipt" | "inquiry" | "instructorAvailability" | "instructorUnitAssignment" | "instructorUnitDistance" | "instructorPriorityCredit" | "systemConfig" | "instructorPenalty" | "unit" | "trainingLocation" | "unitSchedule" | "user" | "admin" | "instructor" | "team" | "virtue" | "instructorVirtue" | "instructorStats"
+    modelProps: "emailVerification" | "refreshToken" | "kakaoApiUsage" | "dispatch" | "dispatchAssignment" | "messageTemplate" | "notice" | "noticeReceipt" | "inquiry" | "instructorAvailability" | "instructorUnitAssignment" | "instructorUnitDistance" | "instructorPriorityCredit" | "systemConfig" | "instructorPenalty" | "unit" | "trainingPeriod" | "trainingLocation" | "unitSchedule" | "scheduleLocation" | "user" | "admin" | "instructor" | "team" | "virtue" | "instructorVirtue" | "instructorStats"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1612,6 +1614,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    TrainingPeriod: {
+      payload: Prisma.$TrainingPeriodPayload<ExtArgs>
+      fields: Prisma.TrainingPeriodFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.TrainingPeriodFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TrainingPeriodPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.TrainingPeriodFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TrainingPeriodPayload>
+        }
+        findFirst: {
+          args: Prisma.TrainingPeriodFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TrainingPeriodPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.TrainingPeriodFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TrainingPeriodPayload>
+        }
+        findMany: {
+          args: Prisma.TrainingPeriodFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TrainingPeriodPayload>[]
+        }
+        create: {
+          args: Prisma.TrainingPeriodCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TrainingPeriodPayload>
+        }
+        createMany: {
+          args: Prisma.TrainingPeriodCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.TrainingPeriodCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TrainingPeriodPayload>[]
+        }
+        delete: {
+          args: Prisma.TrainingPeriodDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TrainingPeriodPayload>
+        }
+        update: {
+          args: Prisma.TrainingPeriodUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TrainingPeriodPayload>
+        }
+        deleteMany: {
+          args: Prisma.TrainingPeriodDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.TrainingPeriodUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.TrainingPeriodUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TrainingPeriodPayload>[]
+        }
+        upsert: {
+          args: Prisma.TrainingPeriodUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TrainingPeriodPayload>
+        }
+        aggregate: {
+          args: Prisma.TrainingPeriodAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateTrainingPeriod>
+        }
+        groupBy: {
+          args: Prisma.TrainingPeriodGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TrainingPeriodGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.TrainingPeriodCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TrainingPeriodCountAggregateOutputType> | number
+        }
+      }
+    }
     TrainingLocation: {
       payload: Prisma.$TrainingLocationPayload<ExtArgs>
       fields: Prisma.TrainingLocationFieldRefs
@@ -1757,6 +1833,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.UnitScheduleCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.UnitScheduleCountAggregateOutputType> | number
+        }
+      }
+    }
+    ScheduleLocation: {
+      payload: Prisma.$ScheduleLocationPayload<ExtArgs>
+      fields: Prisma.ScheduleLocationFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ScheduleLocationFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduleLocationPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ScheduleLocationFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduleLocationPayload>
+        }
+        findFirst: {
+          args: Prisma.ScheduleLocationFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduleLocationPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ScheduleLocationFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduleLocationPayload>
+        }
+        findMany: {
+          args: Prisma.ScheduleLocationFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduleLocationPayload>[]
+        }
+        create: {
+          args: Prisma.ScheduleLocationCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduleLocationPayload>
+        }
+        createMany: {
+          args: Prisma.ScheduleLocationCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ScheduleLocationCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduleLocationPayload>[]
+        }
+        delete: {
+          args: Prisma.ScheduleLocationDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduleLocationPayload>
+        }
+        update: {
+          args: Prisma.ScheduleLocationUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduleLocationPayload>
+        }
+        deleteMany: {
+          args: Prisma.ScheduleLocationDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ScheduleLocationUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ScheduleLocationUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduleLocationPayload>[]
+        }
+        upsert: {
+          args: Prisma.ScheduleLocationUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ScheduleLocationPayload>
+        }
+        aggregate: {
+          args: Prisma.ScheduleLocationAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateScheduleLocation>
+        }
+        groupBy: {
+          args: Prisma.ScheduleLocationGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ScheduleLocationGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ScheduleLocationCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ScheduleLocationCountAggregateOutputType> | number
         }
       }
     }
@@ -2494,16 +2644,24 @@ export type InstructorPenaltyScalarFieldEnum = (typeof InstructorPenaltyScalarFi
 
 export const UnitScalarFieldEnum = {
   id: 'id',
-  unitType: 'unitType',
+  lectureYear: 'lectureYear',
   name: 'name',
+  unitType: 'unitType',
   wideArea: 'wideArea',
   region: 'region',
   addressDetail: 'addressDetail',
   detailAddress: 'detailAddress',
   lat: 'lat',
-  lng: 'lng',
-  educationStart: 'educationStart',
-  educationEnd: 'educationEnd',
+  lng: 'lng'
+} as const
+
+export type UnitScalarFieldEnum = (typeof UnitScalarFieldEnum)[keyof typeof UnitScalarFieldEnum]
+
+
+export const TrainingPeriodScalarFieldEnum = {
+  id: 'id',
+  unitId: 'unitId',
+  name: 'name',
   workStartTime: 'workStartTime',
   workEndTime: 'workEndTime',
   lunchStartTime: 'lunchStartTime',
@@ -2512,24 +2670,22 @@ export const UnitScalarFieldEnum = {
   officerPhone: 'officerPhone',
   officerEmail: 'officerEmail',
   isStaffLocked: 'isStaffLocked',
-  excludedDates: 'excludedDates'
+  excludedDates: 'excludedDates',
+  hasCateredMeals: 'hasCateredMeals',
+  hasHallLodging: 'hasHallLodging',
+  allowsPhoneBeforeAfter: 'allowsPhoneBeforeAfter'
 } as const
 
-export type UnitScalarFieldEnum = (typeof UnitScalarFieldEnum)[keyof typeof UnitScalarFieldEnum]
+export type TrainingPeriodScalarFieldEnum = (typeof TrainingPeriodScalarFieldEnum)[keyof typeof TrainingPeriodScalarFieldEnum]
 
 
 export const TrainingLocationScalarFieldEnum = {
   id: 'id',
-  unitId: 'unitId',
+  trainingPeriodId: 'trainingPeriodId',
   originalPlace: 'originalPlace',
   changedPlace: 'changedPlace',
   hasInstructorLounge: 'hasInstructorLounge',
   hasWomenRestroom: 'hasWomenRestroom',
-  hasCateredMeals: 'hasCateredMeals',
-  hasHallLodging: 'hasHallLodging',
-  allowsPhoneBeforeAfter: 'allowsPhoneBeforeAfter',
-  plannedCount: 'plannedCount',
-  actualCount: 'actualCount',
   note: 'note'
 } as const
 
@@ -2538,11 +2694,23 @@ export type TrainingLocationScalarFieldEnum = (typeof TrainingLocationScalarFiel
 
 export const UnitScheduleScalarFieldEnum = {
   id: 'id',
-  unitId: 'unitId',
+  trainingPeriodId: 'trainingPeriodId',
   date: 'date'
 } as const
 
 export type UnitScheduleScalarFieldEnum = (typeof UnitScheduleScalarFieldEnum)[keyof typeof UnitScheduleScalarFieldEnum]
+
+
+export const ScheduleLocationScalarFieldEnum = {
+  id: 'id',
+  unitScheduleId: 'unitScheduleId',
+  trainingLocationId: 'trainingLocationId',
+  plannedCount: 'plannedCount',
+  actualCount: 'actualCount',
+  requiredCount: 'requiredCount'
+} as const
+
+export type ScheduleLocationScalarFieldEnum = (typeof ScheduleLocationScalarFieldEnum)[keyof typeof ScheduleLocationScalarFieldEnum]
 
 
 export const UserScalarFieldEnum = {
@@ -2611,13 +2779,7 @@ export type InstructorVirtueScalarFieldEnum = (typeof InstructorVirtueScalarFiel
 export const InstructorStatsScalarFieldEnum = {
   instructorId: 'instructorId',
   legacyPracticumCount: 'legacyPracticumCount',
-  autoPromotionEnabled: 'autoPromotionEnabled',
-  totalWorkHours: 'totalWorkHours',
-  totalDistance: 'totalDistance',
-  totalWorkDays: 'totalWorkDays',
-  acceptedCount: 'acceptedCount',
-  totalAssignmentsCount: 'totalAssignmentsCount',
-  lastCalculatedAt: 'lastCalculatedAt'
+  autoPromotionEnabled: 'autoPromotionEnabled'
 } as const
 
 export type InstructorStatsScalarFieldEnum = (typeof InstructorStatsScalarFieldEnum)[keyof typeof InstructorStatsScalarFieldEnum]
@@ -3018,8 +3180,10 @@ export type GlobalOmitConfig = {
   systemConfig?: Prisma.SystemConfigOmit
   instructorPenalty?: Prisma.InstructorPenaltyOmit
   unit?: Prisma.UnitOmit
+  trainingPeriod?: Prisma.TrainingPeriodOmit
   trainingLocation?: Prisma.TrainingLocationOmit
   unitSchedule?: Prisma.UnitScheduleOmit
+  scheduleLocation?: Prisma.ScheduleLocationOmit
   user?: Prisma.UserOmit
   admin?: Prisma.AdminOmit
   instructor?: Prisma.InstructorOmit

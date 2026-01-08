@@ -39,7 +39,7 @@ const CATEGORY_OPTIONS = [
   { value: '', label: '전체 분류' },
   { value: 'Main', label: '주강사' },
   { value: 'Co', label: '보조강사' },
-  { value: 'Assistant', label: '조교' },
+  { value: 'Assistant', label: '부강사' },
   { value: 'Practicum', label: '실습' },
 ];
 

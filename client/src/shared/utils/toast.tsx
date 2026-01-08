@@ -85,90 +85,92 @@ export const dismissLoading = (toastId: string, successMessage?: string) => {
 };
 
 /**
- * 확인이 필요한 토스트
- * confirm() 대체용
+ * 확인이 필요한 토스트 (Promise 패턴)
+ * @returns Promise<boolean> - 확인: true, 취소: false
  */
-export const showConfirm = (message: string, onConfirm: () => void, onCancel?: () => void) => {
-  toast(
-    (t) => (
-      <div style={{ minWidth: '240px', padding: '4px' }}>
-        <p
-          style={{
-            fontSize: '14px',
-            fontWeight: 500,
-            color: '#1f2937',
-            marginBottom: '14px',
-            lineHeight: 1.5,
-            textAlign: 'center',
-          }}
-        >
-          {message}
-        </p>
-        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-          <button
-            onClick={() => {
-              toast.dismiss(t.id);
-              if (onCancel) onCancel();
-            }}
+export const showConfirm = (message: string): Promise<boolean> => {
+  return new Promise((resolve) => {
+    toast(
+      (t) => (
+        <div style={{ minWidth: '240px', padding: '4px' }}>
+          <p
             style={{
-              padding: '6px 16px',
-              fontSize: '13px',
+              fontSize: '14px',
               fontWeight: 500,
-              backgroundColor: '#f3f4f6',
-              color: '#374151',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#e5e7eb';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = '#f3f4f6';
+              color: '#1f2937',
+              marginBottom: '14px',
+              lineHeight: 1.5,
+              textAlign: 'center',
             }}
           >
-            취소
-          </button>
-          <button
-            onClick={() => {
-              toast.dismiss(t.id);
-              onConfirm();
-            }}
-            style={{
-              padding: '6px 16px',
-              fontSize: '13px',
-              fontWeight: 600,
-              backgroundColor: '#3b82f6',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#2563eb';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = '#3b82f6';
-            }}
-          >
-            확인
-          </button>
+            {message}
+          </p>
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                resolve(false);
+              }}
+              style={{
+                padding: '6px 16px',
+                fontSize: '13px',
+                fontWeight: 500,
+                backgroundColor: '#f3f4f6',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = '#e5e7eb';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = '#f3f4f6';
+              }}
+            >
+              취소
+            </button>
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                resolve(true);
+              }}
+              style={{
+                padding: '6px 16px',
+                fontSize: '13px',
+                fontWeight: 600,
+                backgroundColor: '#3b82f6',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = '#2563eb';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = '#3b82f6';
+              }}
+            >
+              확인
+            </button>
+          </div>
         </div>
-      </div>
-    ),
-    {
-      duration: Infinity,
-      position: 'top-center',
-      style: {
-        background: '#ffffff',
-        padding: '16px',
-        borderRadius: '12px',
-        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
+      ),
+      {
+        duration: Infinity,
+        position: 'top-center',
+        style: {
+          background: '#ffffff',
+          padding: '16px',
+          borderRadius: '12px',
+          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
+        },
       },
-    },
-  );
+    );
+  });
 };
 
 // 모든 토스트 제거

@@ -83,12 +83,15 @@ export const useSchedule = (year: number, month: number) => {
   }, []);
 
   // 저장
-  const saveSchedule = () => {
+  const saveSchedule = async () => {
     // 빈 배열도 허용 (해당 월에 근무하지 않는 경우)
     if (selectedDays.length === 0) {
-      showConfirm('이번 달에 근무 가능한 날짜가 없습니다. 저장하시겠습니까?', () =>
-        saveMutation.mutate(),
+      const confirmed = await showConfirm(
+        '이번 달에 근무 가능한 날짜가 없습니다. 저장하시겠습니까?',
       );
+      if (confirmed) {
+        saveMutation.mutate();
+      }
     } else {
       saveMutation.mutate();
     }

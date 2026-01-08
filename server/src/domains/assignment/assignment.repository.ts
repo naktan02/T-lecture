@@ -68,7 +68,7 @@ class AssignmentRepository {
       select: {
         userId: true,
         UnitSchedule: {
-          select: { unitId: true },
+          select: { trainingPeriod: { select: { unitId: true } } },
         },
       },
       distinct: ['userId', 'unitScheduleId'],
@@ -77,7 +77,7 @@ class AssignmentRepository {
     // 부대별로 중복 제거하여 카운트
     const userUnitSet = new Map<number, Set<number>>();
     for (const row of rejectedRows) {
-      const unitId = row.UnitSchedule?.unitId;
+      const unitId = row.UnitSchedule?.trainingPeriod?.unitId;
       if (!unitId) continue;
       if (!userUnitSet.has(row.userId)) {
         userUnitSet.set(row.userId, new Set());
@@ -127,41 +127,71 @@ class AssignmentRepository {
     const startOfDay = new Date(`${startStr}T00:00:00.000Z`);
     const endOfDay = new Date(`${endStr}T00:00:00.000Z`);
 
+    // 새 구조: Unit → TrainingPeriod → (Locations, Schedules) + ScheduleLocation
+    // 조회 날짜 범위에 해당하는 스케줄이 있는 TrainingPeriod만 포함
     return await prisma.unit.findMany({
       where: {
-        schedules: {
+        trainingPeriods: {
           some: {
-            date: {
-              gte: startOfDay,
-              lte: endOfDay,
+            schedules: {
+              some: {
+                date: {
+                  gte: startOfDay,
+                  lte: endOfDay,
+                },
+              },
             },
           },
         },
       },
       include: {
-        trainingLocations: true,
-        schedules: {
-          // 부대의 모든 스케줄을 가져옴 (날짜 필터 제거)
-          // 부대가 선택된 기간에 포함되면 해당 부대의 전체 일정을 표시
-          orderBy: { date: 'asc' },
+        trainingPeriods: {
+          // 조회 범위에 스케줄이 있는 TrainingPeriod만 가져옴
+          where: {
+            schedules: {
+              some: {
+                date: {
+                  gte: startOfDay,
+                  lte: endOfDay,
+                },
+              },
+            },
+          },
           include: {
-            assignments: {
-              where: { state: { in: ['Pending', 'Accepted', 'Rejected'] } },
+            locations: {
               include: {
-                User: {
+                scheduleLocations: true, // 날짜별 인원 정보
+              },
+            },
+            schedules: {
+              // 조회 범위의 스케줄만 가져옴
+              where: {
+                date: {
+                  gte: startOfDay,
+                  lte: endOfDay,
+                },
+              },
+              orderBy: { date: 'asc' },
+              include: {
+                scheduleLocations: true, // 해당 날짜의 장소별 인원
+                assignments: {
+                  where: { state: { in: ['Pending', 'Accepted', 'Rejected'] } },
                   include: {
-                    instructor: {
+                    User: {
                       include: {
-                        team: true,
+                        instructor: {
+                          include: {
+                            team: true,
+                          },
+                        },
                       },
                     },
-                  },
-                },
-                // 확정 발송 여부 확인용
-                dispatchAssignments: {
-                  select: {
-                    dispatch: {
-                      select: { type: true },
+                    dispatchAssignments: {
+                      select: {
+                        dispatch: {
+                          select: { type: true },
+                        },
+                      },
                     },
                   },
                 },
@@ -171,8 +201,50 @@ class AssignmentRepository {
         },
       },
       orderBy: {
-        educationStart: 'asc',
+        name: 'asc',
       },
+    });
+  }
+
+  /**
+   * ID 기반 스케줄 조회 (자동 배정용)
+   * 클라이언트에서 전달받은 scheduleIds로 스케줄과 관련 데이터 조회
+   */
+  async findSchedulesByIds(scheduleIds: number[]) {
+    if (!scheduleIds || scheduleIds.length === 0) return [];
+
+    return await prisma.unitSchedule.findMany({
+      where: {
+        id: { in: scheduleIds },
+      },
+      include: {
+        trainingPeriod: {
+          include: {
+            unit: true,
+            locations: {
+              include: {
+                scheduleLocations: true,
+              },
+            },
+          },
+        },
+        scheduleLocations: true,
+        assignments: {
+          where: { state: { in: ['Pending', 'Accepted', 'Rejected'] } },
+          include: {
+            User: {
+              include: {
+                instructor: {
+                  include: {
+                    team: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { date: 'asc' },
     });
   }
 
@@ -278,7 +350,7 @@ class AssignmentRepository {
         ...whereCondition,
       },
       include: {
-        UnitSchedule: { include: { unit: true } },
+        UnitSchedule: { include: { trainingPeriod: { include: { unit: true } } } },
       },
       orderBy: {
         UnitSchedule: { date: 'asc' },
@@ -312,7 +384,7 @@ class AssignmentRepository {
     // 1. 부대 전체 배정의 role 초기화
     await prisma.instructorUnitAssignment.updateMany({
       where: {
-        UnitSchedule: { unitId },
+        UnitSchedule: { trainingPeriod: { unitId } },
         state: { in: ['Pending', 'Accepted'] },
       },
       data: { role: null },
@@ -323,7 +395,7 @@ class AssignmentRepository {
     if (role) {
       const result = await prisma.instructorUnitAssignment.updateMany({
         where: {
-          UnitSchedule: { unitId },
+          UnitSchedule: { trainingPeriod: { unitId } },
           userId: instructorId,
           state: { in: ['Pending', 'Accepted'] },
         },
@@ -336,11 +408,11 @@ class AssignmentRepository {
   }
 
   /**
-   * 부대 인원고정 설정/해제
+   * 교육기간 인원고정 설정/해제
    */
-  async toggleStaffLock(unitId: number, isStaffLocked: boolean) {
-    return await prisma.unit.update({
-      where: { id: unitId },
+  async toggleStaffLock(trainingPeriodId: number, isStaffLocked: boolean) {
+    return await prisma.trainingPeriod.update({
+      where: { id: trainingPeriodId },
       data: { isStaffLocked },
     });
   }
@@ -380,11 +452,13 @@ class AssignmentRepository {
       include: {
         UnitSchedule: {
           include: {
-            unit: {
+            trainingPeriod: {
               include: {
-                trainingLocations: true,
+                unit: true,
+                locations: true,
               },
             },
+            scheduleLocations: true,
             assignments: {
               where: { state: { in: ['Pending', 'Accepted'] } },
               include: {
@@ -479,9 +553,9 @@ class AssignmentRepository {
   async getUnitIdByScheduleId(unitScheduleId: number): Promise<number | null> {
     const schedule = await prisma.unitSchedule.findUnique({
       where: { id: unitScheduleId },
-      select: { unitId: true },
+      select: { trainingPeriod: { select: { unitId: true } } },
     });
-    return schedule?.unitId ?? null;
+    return schedule?.trainingPeriod?.unitId ?? null;
   }
 
   /**
@@ -493,16 +567,27 @@ class AssignmentRepository {
       select: {
         id: true,
         name: true,
-        isStaffLocked: true,
-        trainingLocations: {
-          select: { id: true, actualCount: true },
-        },
-        schedules: {
+        trainingPeriods: {
           select: {
             id: true,
-            assignments: {
-              where: { state: { in: ['Pending', 'Accepted'] } },
-              select: { userId: true, state: true, trainingLocationId: true },
+            isStaffLocked: true,
+            locations: {
+              select: {
+                id: true,
+                scheduleLocations: {
+                  select: { actualCount: true, unitScheduleId: true },
+                },
+              },
+            },
+            schedules: {
+              select: {
+                id: true,
+                scheduleLocations: true,
+                assignments: {
+                  where: { state: { in: ['Pending', 'Accepted'] } },
+                  select: { userId: true, state: true, trainingLocationId: true },
+                },
+              },
             },
           },
         },
@@ -514,12 +599,12 @@ class AssignmentRepository {
    * 부대의 모든 배정을 일괄 확정 (Accepted 상태인 것만)
    */
   async updateClassificationByUnit(unitId: number, classification: 'Temporary' | 'Confirmed') {
-    // 부대의 모든 스케줄 ID 조회
-    const schedules = await prisma.unitSchedule.findMany({
+    // 부대의 모든 스케줄 ID 조회 (trainingPeriod를 통해)
+    const periods = await prisma.trainingPeriod.findMany({
       where: { unitId: unitId },
-      select: { id: true },
+      include: { schedules: { select: { id: true } } },
     });
-    const scheduleIds = schedules.map((s) => s.id);
+    const scheduleIds = periods.flatMap((p) => p.schedules.map((s) => s.id));
 
     if (scheduleIds.length === 0) return { count: 0 };
 
@@ -576,14 +661,15 @@ class AssignmentRepository {
             },
             include: {
               UnitSchedule: {
-                include: { unit: { select: { name: true } } },
+                include: { trainingPeriod: { include: { unit: { select: { name: true } } } } },
               },
             },
           });
 
           // 기존 배정이 Rejected였다면 패널티 사유 제거
           if (existingAssignment?.state === 'Rejected') {
-            const unitName = existingAssignment.UnitSchedule?.unit?.name || 'unknown';
+            const unitName =
+              existingAssignment.UnitSchedule?.trainingPeriod?.unit?.name || 'unknown';
             const dateStr = existingAssignment.UnitSchedule?.date
               ? new Date(existingAssignment.UnitSchedule.date).toISOString().split('T')[0]
               : 'unknown';
@@ -677,7 +763,7 @@ class AssignmentRepository {
           // 해당 부대의 모든 role 초기화
           await tx.instructorUnitAssignment.updateMany({
             where: {
-              UnitSchedule: { unitId: rc.unitId },
+              UnitSchedule: { trainingPeriod: { unitId: rc.unitId } },
               state: { in: ['Pending', 'Accepted'] },
             },
             data: { role: null },
@@ -687,7 +773,7 @@ class AssignmentRepository {
           if (rc.role) {
             await tx.instructorUnitAssignment.updateMany({
               where: {
-                UnitSchedule: { unitId: rc.unitId },
+                UnitSchedule: { trainingPeriod: { unitId: rc.unitId } },
                 userId: rc.instructorId,
                 state: { in: ['Pending', 'Accepted'] },
               },
@@ -698,13 +784,21 @@ class AssignmentRepository {
         }
       }
 
-      // 4. 인원고정 변경
+      // 4. 인원고정 변경 (TrainingPeriod 단위)
+      // 주의: staffLockChanges는 이제 trainingPeriodId로 받아야 함
+      // 기존 API 호환성을 위해 unitId로 받는 경우 첫 번째 period를 사용
       if (changes.staffLockChanges && changes.staffLockChanges.length > 0) {
         for (const slc of changes.staffLockChanges) {
-          await tx.unit.update({
-            where: { id: slc.unitId },
-            data: { isStaffLocked: slc.isStaffLocked },
+          // unitId로 trainingPeriod 조회 후 첫 번째 period 업데이트
+          const period = await tx.trainingPeriod.findFirst({
+            where: { unitId: slc.unitId },
           });
+          if (period) {
+            await tx.trainingPeriod.update({
+              where: { id: period.id },
+              data: { isStaffLocked: slc.isStaffLocked },
+            });
+          }
           results.staffLocksUpdated++;
         }
       }
@@ -723,7 +817,7 @@ class AssignmentRepository {
     // 1. 해당 부대의 모든 활성 배정 조회 (Pending/Accepted)
     const assignments = await prisma.instructorUnitAssignment.findMany({
       where: {
-        UnitSchedule: { unitId },
+        UnitSchedule: { trainingPeriod: { unitId } },
         state: { in: ['Pending', 'Accepted'] },
       },
       include: {
@@ -784,7 +878,7 @@ class AssignmentRepository {
     // 먼저 모두 null로 초기화
     await prisma.instructorUnitAssignment.updateMany({
       where: {
-        UnitSchedule: { unitId },
+        UnitSchedule: { trainingPeriod: { unitId } },
         state: { in: ['Pending', 'Accepted'] },
       },
       data: { role: null },
@@ -795,7 +889,7 @@ class AssignmentRepository {
     if (headUserId && roleType) {
       const result = await prisma.instructorUnitAssignment.updateMany({
         where: {
-          UnitSchedule: { unitId },
+          UnitSchedule: { trainingPeriod: { unitId } },
           userId: headUserId,
           state: { in: ['Pending', 'Accepted'] },
         },

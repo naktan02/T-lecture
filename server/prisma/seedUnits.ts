@@ -1,9 +1,10 @@
 // server/prisma/seedUnits.ts
-// 부대 1000개 시드 데이터 생성 (자동 테스트용)
+// 부대 시드 데이터 생성: 2025년 1000개 + 2026년 1~2월 100개
 // 실행: npx tsx prisma/seedUnits.ts
 
 /* eslint-disable no-console */
 
+import 'dotenv/config';
 import { MilitaryType } from '../src/generated/prisma/client.js';
 import prisma from '../src/libs/prisma.js';
 
@@ -197,198 +198,307 @@ function getMilitaryType(): MilitaryType {
   return 'Army';
 }
 
-function generateUnitName(
-  level: 'corps' | 'division' | 'brigade' | 'battalion' | 'company' | 'platoon',
-  index: number,
-): string {
-  const corpsNum = (index % 8) + 1; // 1~8군단
-  const divisionNum = (index % 30) + 1; // 1~30사단
-  const brigadeNum = (index % 10) + 1; // 1~10여단
-  const battalionNum = (index % 5) + 1; // 1~5대대
-  const companyNum = (index % 4) + 1; // 1~4중대
-  const platoonNum = (index % 3) + 1; // 1~3소대
-
-  switch (level) {
-    case 'corps':
-      return `제${corpsNum}군단`;
-    case 'division':
-      return `제${corpsNum}군단 제${divisionNum}사단`;
-    case 'brigade':
-      return `제${corpsNum}군단 제${divisionNum}사단 제${brigadeNum}여단`;
-    case 'battalion':
-      return `제${corpsNum}군단 제${divisionNum}사단 제${brigadeNum}여단 제${battalionNum}대대`;
-    case 'company':
-      return `제${corpsNum}군단 제${divisionNum}사단 제${brigadeNum}여단 제${battalionNum}대대 제${companyNum}중대`;
-    case 'platoon':
-      return `제${corpsNum}군단 제${divisionNum}사단 제${brigadeNum}여단 제${battalionNum}대대 제${platoonNum}소대`;
-  }
-}
-
 function formatDate(date: Date): string {
   return date.toISOString().split('T')[0];
 }
 
-export async function runSeedUnits() {
-  console.log('🏢 부대 1000개 생성 시작...\n');
-
-  // 교육 기간 분포: 2025년 6월 ~ 2026년 2월 (9개월, 균등 분포)
-  const educationMonths: { year: number; month: number }[] = [];
-  // 각 월별 약 111개씩 (1000 / 9 ≈ 111)
-  const monthsConfig = [
-    { year: 2025, month: 5 }, // 6월
-    { year: 2025, month: 6 }, // 7월
-    { year: 2025, month: 7 }, // 8월
-    { year: 2025, month: 8 }, // 9월
-    { year: 2025, month: 9 }, // 10월
-    { year: 2025, month: 10 }, // 11월
-    { year: 2025, month: 11 }, // 12월
-    { year: 2026, month: 0 }, // 1월
-    { year: 2026, month: 1 }, // 2월
+// 부대명 생성 (중복 방지를 위한 카운터 기반)
+const usedNames = new Set<string>();
+function generateUniqueUnitName(year: number, index: number): string {
+  const suffixes = ['사단', '여단', '연대', '대대', '부대', '사령부', '지원단', '교육대'];
+  const prefixes = [
+    '육군',
+    '해군',
+    '공군',
+    '해병',
+    '수도방위',
+    '특전',
+    '기계화',
+    '포병',
+    '공병',
+    '통신',
+    '군수',
+    '의무',
   ];
-  for (let i = 0; i < 1000; i++) {
-    educationMonths.push(monthsConfig[i % 9]);
-  }
-  educationMonths.sort(() => Math.random() - 0.5);
 
-  // 부대 레벨 분포
-  const unitLevels: ('corps' | 'division' | 'brigade' | 'battalion' | 'company' | 'platoon')[] = [];
-  for (let i = 0; i < 50; i++) unitLevels.push('corps'); // 50개
-  for (let i = 0; i < 100; i++) unitLevels.push('division'); // 100개
-  for (let i = 0; i < 400; i++) unitLevels.push('battalion'); // 400개 (2~3 장소)
-  for (let i = 0; i < 350; i++) unitLevels.push('company'); // 350개
-  for (let i = 0; i < 100; i++) unitLevels.push('platoon'); // 100개
-  unitLevels.sort(() => Math.random() - 0.5);
-
-  // 불가일자 분포: 20% 단일, 10% 복수
-  const excludedDateTypes: ('none' | 'single' | 'multiple')[] = [];
-  for (let i = 0; i < 200; i++) excludedDateTypes.push('single'); // 200개
-  for (let i = 0; i < 100; i++) excludedDateTypes.push('multiple'); // 100개
-  for (let i = 0; i < 700; i++) excludedDateTypes.push('none'); // 700개
-  excludedDateTypes.sort(() => Math.random() - 0.5);
-
-  let createdCount = 0;
-
-  for (let i = 0; i < 1000; i++) {
-    const level = unitLevels[i];
-    const unitName = generateUnitName(level, i);
-    const militaryType = getMilitaryType();
-    const regionData = randomChoice(REGIONS);
-
-    const { year, month } = educationMonths[i];
-    const dayOfMonth = randomInt(1, 22); // 불가일자 포함해도 월 내 수용 가능하도록
-
-    // 불가일자 생성
-    let excludedDates: string[] = [];
-    const excludedType = excludedDateTypes[i];
-    let extraDays = 0; // 불가일자만큼 기간 연장
-
-    if (excludedType === 'single') {
-      extraDays = 1;
-      // 교육 기간 중 랜덤 위치에 불가일자 배치
-      const excludedDay = dayOfMonth + randomInt(1, 2);
-      excludedDates = [formatDate(new Date(Date.UTC(year, month, excludedDay)))];
-    } else if (excludedType === 'multiple') {
-      extraDays = 2;
-      // 교육 기간 중 2일 불가일자
-      excludedDates = [
-        formatDate(new Date(Date.UTC(year, month, dayOfMonth + 1))),
-        formatDate(new Date(Date.UTC(year, month, dayOfMonth + 3))),
-      ];
+  let name = '';
+  let attempts = 0;
+  while (attempts < 100) {
+    const num = Math.floor(index / 8) + 1 + attempts * 10;
+    const suffix = suffixes[index % suffixes.length];
+    const prefix = prefixes[Math.floor(index / 10) % prefixes.length];
+    name = `${prefix}${num}${suffix}(${year})`;
+    if (!usedNames.has(name)) {
+      usedNames.add(name);
+      return name;
     }
+    attempts++;
+  }
+  // Fallback with UUID-like suffix
+  name = `부대${year}-${index}-${Date.now() % 10000}`;
+  usedNames.add(name);
+  return name;
+}
 
-    // 교육 시작일과 종료일 (불가일자 포함해서 3일 교육 보장)
-    const startDate = new Date(Date.UTC(year, month, dayOfMonth));
-    const endDate = new Date(Date.UTC(year, month, dayOfMonth + 2 + extraDays)); // 불가일자 포함
+interface UnitConfig {
+  year: number;
+  month: number;
+  hasExtraEducation: boolean;
+  excludedType: 'none' | 'single' | 'multiple';
+  locationCount: number;
+}
 
-    const lat = randomFloat(regionData.latRange[0], regionData.latRange[1]);
-    const lng = randomFloat(regionData.lngRange[0], regionData.lngRange[1]);
-    const region = randomChoice(regionData.regions);
-    const officerName = `${randomChoice(LAST_NAMES)}${randomChoice(FIRST_NAMES)}`;
+async function createUnit(index: number, config: UnitConfig) {
+  const { year, month, hasExtraEducation, excludedType, locationCount } = config;
 
-    // 교육장소 수: 대대급은 2~3개, 나머지는 1개
-    const locationCount = level === 'battalion' ? randomInt(2, 3) : 1;
-    const plannedPerLocation = level === 'battalion' ? 100 : randomInt(40, 150);
+  const unitName = generateUniqueUnitName(year, index);
+  const militaryType = getMilitaryType();
+  const regionData = randomChoice(REGIONS);
+  const region = randomChoice(regionData.regions);
+  const lat = randomFloat(regionData.latRange[0], regionData.latRange[1]);
+  const lng = randomFloat(regionData.lngRange[0], regionData.lngRange[1]);
 
-    try {
-      const unit = await prisma.unit.create({
-        data: {
-          name: unitName,
-          unitType: militaryType,
-          wideArea: regionData.wideArea,
-          region: region,
-          addressDetail: `${regionData.wideArea} ${region} 군부대로 ${randomInt(1, 999)}`,
-          detailAddress: `본관 ${randomInt(1, 5)}층`,
-          lat: parseFloat(lat.toFixed(6)),
-          lng: parseFloat(lng.toFixed(6)),
-          educationStart: startDate,
-          educationEnd: endDate,
-          workStartTime: new Date('1970-01-01T09:00:00Z'),
-          workEndTime: new Date('1970-01-01T18:00:00Z'),
-          lunchStartTime: new Date('1970-01-01T12:00:00Z'),
-          lunchEndTime: new Date('1970-01-01T13:00:00Z'),
-          officerName: officerName,
-          officerPhone: `010-${randomInt(1000, 9999)}-${randomInt(1000, 9999)}`,
-          officerEmail: `${officerName.toLowerCase()}${randomInt(1, 99)}@army.mil.kr`,
-          isStaffLocked: false,
-          excludedDates: excludedDates,
-        },
+  // 기본 교육 일정 (2박3일)
+  const dayOfMonth = randomInt(1, 20);
+
+  // 불가일자 생성
+  let excludedDates: string[] = [];
+  let extraDays = 0;
+
+  if (excludedType === 'single') {
+    extraDays = 1;
+    excludedDates = [formatDate(new Date(Date.UTC(year, month, dayOfMonth + 1)))];
+  } else if (excludedType === 'multiple') {
+    extraDays = 2;
+    excludedDates = [
+      formatDate(new Date(Date.UTC(year, month, dayOfMonth + 1))),
+      formatDate(new Date(Date.UTC(year, month, dayOfMonth + 3))),
+    ];
+  }
+
+  const startDate = new Date(Date.UTC(year, month, dayOfMonth));
+  const endDate = new Date(Date.UTC(year, month, dayOfMonth + 2 + extraDays));
+  const officerName = `${randomChoice(LAST_NAMES)}${randomChoice(FIRST_NAMES)}`;
+
+  // 부대 생성
+  const unit = await prisma.unit.create({
+    data: {
+      lectureYear: year,
+      name: unitName,
+      unitType: militaryType,
+      wideArea: regionData.wideArea,
+      region: region,
+      addressDetail: `${regionData.wideArea} ${region} 군부대로 ${randomInt(1, 999)}`,
+      detailAddress: `본관 ${randomInt(1, 5)}층`,
+      lat: parseFloat(lat.toFixed(6)),
+      lng: parseFloat(lng.toFixed(6)),
+    },
+  });
+
+  // 정규교육 TrainingPeriod 생성
+  const mainPeriod = await prisma.trainingPeriod.create({
+    data: {
+      unitId: unit.id,
+      name: '정규교육',
+      workStartTime: new Date('1970-01-01T09:00:00Z'),
+      workEndTime: new Date('1970-01-01T18:00:00Z'),
+      lunchStartTime: new Date('1970-01-01T12:00:00Z'),
+      lunchEndTime: new Date('1970-01-01T13:00:00Z'),
+      officerName: officerName,
+      officerPhone: `010-${randomInt(1000, 9999)}-${randomInt(1000, 9999)}`,
+      officerEmail: `officer${index}@army.mil.kr`,
+      isStaffLocked: false,
+      excludedDates: excludedDates,
+      hasCateredMeals: Math.random() > 0.3,
+      hasHallLodging: Math.random() > 0.4,
+      allowsPhoneBeforeAfter: true,
+    },
+  });
+
+  // 교육장소 생성
+  const locationIds: number[] = [];
+  for (let loc = 0; loc < locationCount; loc++) {
+    const location = await prisma.trainingLocation.create({
+      data: {
+        trainingPeriodId: mainPeriod.id,
+        originalPlace: loc === 0 ? randomChoice(PLACES) : `추가장소${loc + 1}`,
+        changedPlace: null,
+        hasInstructorLounge: true,
+        hasWomenRestroom: true,
+        note: null,
+      },
+    });
+    locationIds.push(location.id);
+  }
+
+  // 정규교육 일정 생성 (불가일자 제외, 3일 보장)
+  const excludedSet = new Set(excludedDates);
+  const currentDate = new Date(startDate);
+  let scheduleCount = 0;
+
+  while (currentDate <= endDate && scheduleCount < 3) {
+    const dateStr = formatDate(currentDate);
+    if (!excludedSet.has(dateStr)) {
+      const schedule = await prisma.unitSchedule.create({
+        data: { trainingPeriodId: mainPeriod.id, date: new Date(currentDate) },
       });
 
-      // 교육장소 생성
-      for (let loc = 0; loc < locationCount; loc++) {
-        await prisma.trainingLocation.create({
+      // ScheduleLocation 생성 (각 장소별 인원)
+      for (const locId of locationIds) {
+        const plannedCount = Math.min(randomInt(40, 150), 200);
+        await prisma.scheduleLocation.create({
           data: {
-            unitId: unit.id,
-            originalPlace: loc === 0 ? randomChoice(PLACES) : `추가장소${loc + 1}`,
-            changedPlace: null,
-            hasInstructorLounge: true,
-            hasWomenRestroom: true,
-            hasCateredMeals: Math.random() > 0.3,
-            hasHallLodging: Math.random() > 0.4,
-            allowsPhoneBeforeAfter: true,
-            plannedCount: plannedPerLocation,
-            actualCount: randomInt(Math.floor(plannedPerLocation * 0.7), plannedPerLocation),
-            note: null,
+            unitScheduleId: schedule.id,
+            trainingLocationId: locId,
+            plannedCount: plannedCount,
+            actualCount: Math.floor(plannedCount * (0.8 + Math.random() * 0.2)),
           },
         });
       }
+      scheduleCount++;
+    }
+    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+  }
 
-      // 일정 생성 (불가일자 제외)
-      const excludedSet = new Set(excludedDates);
-      const currentDate = new Date(startDate);
-      let scheduleCount = 0;
+  // 추가교육 (20% 확률 또는 지정)
+  if (hasExtraEducation) {
+    // 정규교육 종료 후 1~2개월 후에 추가교육
+    const extraMonth = month + randomInt(2, 3);
+    const extraYear = extraMonth > 11 ? year + 1 : year;
+    const normalizedMonth = extraMonth % 12;
+    const extraDay = randomInt(1, 20);
 
-      while (currentDate <= endDate && scheduleCount < 3) {
-        const dateStr = formatDate(currentDate);
-        if (!excludedSet.has(dateStr)) {
-          await prisma.unitSchedule.create({
-            data: { unitId: unit.id, date: new Date(currentDate) },
-          });
-          scheduleCount++;
-        }
-        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+    const extraPeriod = await prisma.trainingPeriod.create({
+      data: {
+        unitId: unit.id,
+        name: '추가교육 1차',
+        workStartTime: new Date('1970-01-01T09:00:00Z'),
+        workEndTime: new Date('1970-01-01T17:00:00Z'),
+        lunchStartTime: new Date('1970-01-01T12:00:00Z'),
+        lunchEndTime: new Date('1970-01-01T13:00:00Z'),
+        officerName: officerName,
+        officerPhone: `010-${randomInt(1000, 9999)}-${randomInt(1000, 9999)}`,
+        officerEmail: `officer${index}extra@army.mil.kr`,
+        isStaffLocked: false,
+        excludedDates: [],
+        hasCateredMeals: true,
+        hasHallLodging: false,
+        allowsPhoneBeforeAfter: true,
+      },
+    });
+
+    // 추가교육 장소 (1개)
+    const extraLocation = await prisma.trainingLocation.create({
+      data: {
+        trainingPeriodId: extraPeriod.id,
+        originalPlace: randomChoice(PLACES),
+        hasInstructorLounge: true,
+        hasWomenRestroom: true,
+      },
+    });
+
+    // 추가교육 일정 (1일)
+    const extraSchedule = await prisma.unitSchedule.create({
+      data: {
+        trainingPeriodId: extraPeriod.id,
+        date: new Date(Date.UTC(extraYear, normalizedMonth, extraDay)),
+      },
+    });
+
+    await prisma.scheduleLocation.create({
+      data: {
+        unitScheduleId: extraSchedule.id,
+        trainingLocationId: extraLocation.id,
+        plannedCount: Math.min(randomInt(30, 80), 200),
+        actualCount: randomInt(20, 60),
+      },
+    });
+  }
+
+  return unit.id;
+}
+
+export async function runSeedUnits() {
+  console.log('🏢 부대 1100개 생성 시작 (2025년 1000개 + 2026년 100개)...\n');
+
+  // 2025년 부대 1000개 설정
+  const units2025: UnitConfig[] = [];
+  for (let i = 0; i < 1000; i++) {
+    const month = randomInt(0, 11); // 1월~12월 균등 분포
+    units2025.push({
+      year: 2025,
+      month,
+      hasExtraEducation: i < 150, // 15% 추가교육
+      excludedType: i < 200 ? 'single' : i < 300 ? 'multiple' : 'none',
+      locationCount: i < 300 ? randomInt(2, 3) : 1, // 30% 복수 장소
+    });
+  }
+  units2025.sort(() => Math.random() - 0.5);
+
+  // 2026년 1~2월 부대 100개 설정
+  const units2026: UnitConfig[] = [];
+  for (let i = 0; i < 100; i++) {
+    const month = i < 60 ? 0 : 1; // 60개 1월, 40개 2월
+    units2026.push({
+      year: 2026,
+      month,
+      hasExtraEducation: i < 10, // 10% 추가교육
+      excludedType: i < 15 ? 'single' : i < 25 ? 'multiple' : 'none',
+      locationCount: i < 20 ? randomInt(2, 3) : 1, // 20% 복수 장소
+    });
+  }
+  units2026.sort(() => Math.random() - 0.5);
+
+  let created2025 = 0;
+  let created2026 = 0;
+
+  // 2025년 부대 생성
+  console.log('📅 2025년 부대 1000개 생성 중...');
+  for (let i = 0; i < units2025.length; i++) {
+    try {
+      await createUnit(i, units2025[i]);
+      created2025++;
+      if (created2025 % 100 === 0) {
+        console.log(`  ✅ 2025년 ${created2025}/1000 완료...`);
       }
-
-      createdCount++;
-      if (createdCount % 100 === 0) {
-        console.log(`  📊 ${createdCount}/1000 부대 생성 완료...`);
-      }
-    } catch (error: any) {
-      console.error(`  ❌ 부대 생성 실패 (${unitName}):`, error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`  ❌ 2025년 부대 ${i} 생성 실패:`, message);
     }
   }
+  console.log(`  ✅ 2025년 부대 ${created2025}개 생성 완료\n`);
 
-  console.log(`\n✅ 부대 ${createdCount}개 생성 완료!\n`);
+  // 2026년 부대 생성
+  console.log('📅 2026년 1~2월 부대 100개 생성 중...');
+  for (let i = 0; i < units2026.length; i++) {
+    try {
+      await createUnit(1000 + i, units2026[i]);
+      created2026++;
+      if (created2026 % 20 === 0) {
+        console.log(`  ✅ 2026년 ${created2026}/100 완료...`);
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`  ❌ 2026년 부대 ${i} 생성 실패:`, message);
+    }
+  }
+  console.log(`  ✅ 2026년 부대 ${created2026}개 생성 완료\n`);
 
-  // 통계 출력
+  console.log('='.repeat(50));
+  console.log('📊 부대 생성 결과');
+  console.log('='.repeat(50));
+  console.log(`총 부대: ${created2025 + created2026}개`);
+  console.log(`  - 2025년: ${created2025}개`);
+  console.log(`  - 2026년: ${created2026}개`);
+
   const stats = await prisma.unit.groupBy({
-    by: ['unitType'],
+    by: ['lectureYear'],
     _count: { id: true },
   });
-  console.log('📊 군구분별 부대 수:');
   for (const s of stats) {
-    console.log(`  - ${s.unitType}: ${s._count.id}개`);
+    console.log(`  - ${s.lectureYear}년: ${s._count.id}개`);
   }
+  console.log('='.repeat(50));
 }
 
 // 직접 실행 시

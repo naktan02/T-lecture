@@ -76,7 +76,7 @@ const getCategoryLabel = (category?: string | null): string => {
     case 'Co':
       return '보조강사';
     case 'Assistant':
-      return '조교';
+      return '부강사';
     case 'Practicum':
       return '실습';
     default:

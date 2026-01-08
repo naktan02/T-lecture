@@ -5,4 +5,3 @@ export { useUnit } from './model/useUnit';
 export { UnitWorkspace } from './ui/UnitWorkspace';
 export { UnitToolbar } from './ui/UnitToolbar';
 export { UnitList } from './ui/UnitList';
-export { UnitDetailDrawer } from './ui/UnitDetailDrawer';

@@ -43,8 +43,24 @@ class DispatchRepository {
         },
         UnitSchedule: {
           include: {
-            unit: {
-              include: { trainingLocations: true },
+            // NOTE: unit은 이제 trainingPeriod를 통해 접근
+            trainingPeriod: {
+              include: {
+                unit: true,
+                locations: true,
+                schedules: {
+                  orderBy: { date: 'asc' },
+                  include: {
+                    scheduleLocations: {
+                      include: { location: true },
+                    },
+                    assignments: {
+                      where: { state: 'Pending' },
+                      include: { User: { include: { instructor: true } } },
+                    },
+                  },
+                },
+              },
             },
             assignments: {
               where: { state: 'Pending' },
@@ -72,9 +88,9 @@ class DispatchRepository {
           }
         : {};
 
-    // 1단계: 확정 상태인 부대 찾기
-    // 확정 조건: 해당 부대의 모든 배정이 Accepted (Pending 없음)
-    const confirmedUnits = await prisma.unit.findMany({
+    // 1단계: 확정 상태인 부대 찾기 (TrainingPeriod 기반)
+    // 확정 조건: 해당 TrainingPeriod의 모든 배정이 Accepted (Pending 없음)
+    const confirmedPeriods = await prisma.trainingPeriod.findMany({
       where: {
         schedules: {
           some: {
@@ -84,7 +100,7 @@ class DispatchRepository {
             },
           },
         },
-        // Pending이 없는 부대만
+        // Pending이 없는 period만
         NOT: {
           schedules: {
             some: {
@@ -96,51 +112,53 @@ class DispatchRepository {
           },
         },
       },
-      select: { id: true },
+      select: { id: true, unitId: true },
     });
 
-    const confirmedUnitIds = confirmedUnits.map((u) => u.id);
+    const confirmedPeriodIds = confirmedPeriods.map((p) => p.id);
 
-    if (confirmedUnitIds.length === 0) {
+    if (confirmedPeriodIds.length === 0) {
       return [];
     }
 
-    // 2단계: 확정 부대 중에서 Confirmed 발송 미완료인 배정 조회
+    // 2단계: 확정 period 중에서 Confirmed 발송 미완료인 배정 조회
     const unsentAssignments = await prisma.instructorUnitAssignment.findMany({
       where: {
         state: 'Accepted',
-        UnitSchedule: { unitId: { in: confirmedUnitIds } },
+        UnitSchedule: { trainingPeriodId: { in: confirmedPeriodIds } },
         dispatchAssignments: {
           none: { dispatch: { type: 'Confirmed' } },
         },
       },
       select: {
-        UnitSchedule: { select: { unitId: true } },
+        UnitSchedule: { select: { trainingPeriodId: true } },
       },
     });
 
-    const unitIdsNeedingResend = [...new Set(unsentAssignments.map((a) => a.UnitSchedule.unitId))];
+    const periodIdsNeedingResend = [
+      ...new Set(unsentAssignments.map((a) => a.UnitSchedule.trainingPeriodId)),
+    ];
 
-    if (unitIdsNeedingResend.length === 0) {
+    if (periodIdsNeedingResend.length === 0) {
       return [];
     }
 
-    // 3단계: 해당 부대들의 기존 Confirmed 발송 연결 삭제 (재발송을 위해)
+    // 3단계: 해당 period들의 기존 Confirmed 발송 연결 삭제 (재발송을 위해)
     await prisma.dispatchAssignment.deleteMany({
       where: {
         assignment: {
           state: 'Accepted',
-          UnitSchedule: { unitId: { in: unitIdsNeedingResend } },
+          UnitSchedule: { trainingPeriodId: { in: periodIdsNeedingResend } },
         },
         dispatch: { type: 'Confirmed' },
       },
     });
 
-    // 4단계: 해당 부대의 모든 Accepted 강사 반환
+    // 4단계: 해당 period의 모든 Accepted 강사 반환
     return await prisma.instructorUnitAssignment.findMany({
       where: {
         state: 'Accepted',
-        UnitSchedule: { unitId: { in: unitIdsNeedingResend } },
+        UnitSchedule: { trainingPeriodId: { in: periodIdsNeedingResend } },
       },
       include: {
         User: {
@@ -156,12 +174,16 @@ class DispatchRepository {
         },
         UnitSchedule: {
           include: {
-            unit: {
+            trainingPeriod: {
               include: {
-                trainingLocations: true,
+                unit: true,
+                locations: true,
                 schedules: {
                   orderBy: { date: 'asc' },
                   include: {
+                    scheduleLocations: {
+                      include: { location: true },
+                    },
                     assignments: {
                       where: { state: 'Accepted' },
                       include: {
@@ -279,13 +301,15 @@ class DispatchRepository {
     });
   }
 
-  // 특정 유저-부대의 모든 배정 조회 (날짜 필터 없이 전체)
+  // 특정 유저-TrainingPeriod의 모든 배정 조회 (날짜 필터 없이 전체)
   async findAllAssignmentsForUserInUnit(userId: number, unitId: number) {
     return await prisma.instructorUnitAssignment.findMany({
       where: {
         userId,
         UnitSchedule: {
-          unitId,
+          trainingPeriod: {
+            unitId,
+          },
         },
         state: 'Pending', // Pending 상태만
       },

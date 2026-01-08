@@ -27,6 +27,8 @@ interface TrainingLocation {
   id?: number;
   originalPlace?: string | null;
   actualCount?: number | null;
+  plannedCount?: number | null; // 참여인원이 없을 때 계획인원 사용
+  requiredCount?: number | null; // 수동 설정된 필요인원, 있으면 우선 사용
 }
 
 interface Assignment {
@@ -192,8 +194,11 @@ class AssignmentAlgorithm {
               (a.trainingLocationId === loc.id || a.trainingLocationId === null),
           ).length;
 
-          const computedNeeded =
-            Math.floor((loc.actualCount ?? 0) / Math.max(1, traineesPerInstructor)) || 1;
+          // 필요인원 계산: requiredCount 우선, 없으면 자동 계산
+          const headcount = loc.actualCount ?? loc.plannedCount ?? 0;
+          const calculatedNeeded = Math.floor(headcount / Math.max(1, traineesPerInstructor)) || 1;
+          // requiredCount가 있으면 바로 사용, 없으면 자동 계산
+          const computedNeeded = loc.requiredCount ?? calculatedNeeded;
           const needed = computedNeeded;
 
           const required = Math.max(0, needed - existingAssignments);

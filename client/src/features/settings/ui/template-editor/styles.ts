@@ -6,9 +6,10 @@
  */
 export const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
   unit: { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af' }, // 파랑
+  period: { bg: '#ffedd5', border: '#f97316', text: '#c2410c' }, // 주황
   location: { bg: '#d1fae5', border: '#10b981', text: '#047857' }, // 초록
   self: { bg: '#ede9fe', border: '#8b5cf6', text: '#5b21b6' }, // 보라
-  instructor: { bg: '#fef3c7', border: '#f59e0b', text: '#b45309' }, // 주황
+  instructor: { bg: '#fce7f3', border: '#ec4899', text: '#be185d' }, // 핑크
   default: { bg: '#f3f4f6', border: '#9ca3af', text: '#374151' }, // 회색 (기본)
 };
 

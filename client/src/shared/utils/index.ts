@@ -5,7 +5,14 @@ export { getDeviceId } from './deviceId';
 export { logger } from './logger';
 export * from './formatPhoneNumber';
 
-export { formatDateToString, formatDay, parseStringToDate } from './dateFormat';
+export {
+  formatDateToString,
+  formatDay,
+  parseStringToDate,
+  toDateOnlyString,
+  toUTCMidnight,
+  generateDateRange,
+} from './dateFormat';
 export { formatBool, formatTimeDisplay, formatDateDisplay, formatCount } from './formatters';
 export {
   getHolidaysForMonth,

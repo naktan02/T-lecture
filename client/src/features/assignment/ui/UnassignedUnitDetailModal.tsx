@@ -72,6 +72,11 @@ export const UnassignedUnitDetailModal: React.FC<Props> = ({ unit, onClose }) =>
               <InfoRow label="간부명" value={String(detail.officerName || '-')} />
               <InfoRow label="간부 전화번호" value={String(detail.officerPhone || '-')} />
               <InfoRow label="간부 이메일" value={String(detail.officerEmail || '-')} isLong />
+
+              {/* 교육기간 편의시설 (TrainingPeriod 필드) */}
+              <InfoRow label="수탁 급식" value={formatBool(detail.hasCateredMeals)} />
+              <InfoRow label="회관 숙박" value={formatBool(detail.hasHallLodging)} />
+              <InfoRow label="휴대폰 불출" value={formatBool(detail.allowsPhoneBeforeAfter)} />
             </div>
 
             {/* 일정 표시 */}
@@ -137,12 +142,9 @@ export const UnassignedUnitDetailModal: React.FC<Props> = ({ unit, onClose }) =>
                     value={detail.actualCount ? `${detail.actualCount}명` : '-'}
                   />
 
-                  {/* 시설 정보 */}
+                  {/* 시설 정보 (TrainingLocation 필드만) */}
                   <InfoRow label="강사 휴게실" value={formatBool(detail.hasInstructorLounge)} />
                   <InfoRow label="여자 화장실" value={formatBool(detail.hasWomenRestroom)} />
-                  <InfoRow label="수탁 급식" value={formatBool(detail.hasCateredMeals)} />
-                  <InfoRow label="회관 숙박" value={formatBool(detail.hasHallLodging)} />
-                  <InfoRow label="휴대폰 불출" value={formatBool(detail.allowsPhoneBeforeAfter)} />
                 </div>
 
                 {/* 특이사항 */}
