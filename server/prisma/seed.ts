@@ -202,41 +202,81 @@ async function main() {
       { key: 'self.name', type: 'var' },
       { text: ' 강사님, 배정이 확정되었습니다.', type: 'text' },
       { type: 'newline' },
-      { text: '​', type: 'text' },
+
+      { text: '\u200b', type: 'text' },
       { type: 'newline' },
+
       { text: '- 구분: ', type: 'text' },
       { key: 'unit.unitType', type: 'var' },
       { type: 'newline' },
+
       { text: '- 부대: ', type: 'text' },
       { key: 'unit.name', type: 'var' },
       { type: 'newline' },
+
       { text: '- 지역: ', type: 'text' },
       { key: 'unit.region', type: 'var' },
       { type: 'newline' },
+
       { text: '- 광역: ', type: 'text' },
       { key: 'unit.wideArea', type: 'var' },
       { type: 'newline' },
+
       { text: '- 주소: ', type: 'text' },
       { key: 'unit.addressDetail', type: 'var' },
       { type: 'newline' },
+
       { text: '- 상세주소: ', type: 'text' },
       { key: 'unit.detailAddress', type: 'var' },
       { type: 'newline' },
+
       { text: '- 교육일정:  ', type: 'text' },
       { key: 'period.startDate', type: 'var' },
       { text: ' ~ ', type: 'text' },
       { key: 'period.endDate', type: 'var' },
       { type: 'newline' },
+
       { text: '- 교육 시간:  ', type: 'text' },
       { key: 'period.startTime', type: 'var' },
       { text: ' ~ ', type: 'text' },
       { key: 'period.endTime', type: 'var' },
       { type: 'newline' },
+
       { text: '- 교육불가일: ', type: 'text' },
       { key: 'period.excludedDates', type: 'var' },
       { type: 'newline' },
+
       { type: 'newline' },
-      { text: '- 교육장소', type: 'text' },
+
+      { text: '\u200b부대 담당자: ', type: 'text' },
+      { key: 'period.officerName', type: 'var' },
+      { text: '  담당자 전화번호:  ', type: 'text' },
+      { key: 'period.officerPhone', type: 'var' },
+      { type: 'newline' },
+
+      { text: '담당자 이메일: ', type: 'text' },
+      { key: 'period.officerEmail', type: 'var' },
+      { type: 'newline' },
+
+      { text: '수탁급식여부: ', type: 'text' },
+      { key: 'period.hasCateredMeals', type: 'var' },
+      { type: 'newline' },
+
+      { text: '회관숙박여부: ', type: 'text' },
+      { key: 'period.hasHallLodging', type: 'var' },
+      { text: '  휴대폰 불출: ', type: 'text' },
+      { key: 'period.allowsPhoneBeforeAfter', type: 'var' },
+      { type: 'newline' },
+
+      { text: '\u200b[배정 강사]', type: 'text' },
+      { type: 'newline' },
+      { key: 'self.schedules', type: 'format', format: '- {date} ({dayOfWeek}) : {instructors}' },
+      { type: 'newline' },
+
+      { text: '\u200b', type: 'text' },
+      { type: 'newline' },
+
+      { text: '\u200b- 교육장소', type: 'text' },
       { type: 'newline' },
       {
         key: 'scheduleLocations',
@@ -245,36 +285,10 @@ async function main() {
           '[{date} ({dayOfWeek})]\\n  {placeName}  / 참여인원 : {actualCount}\\n강사휴게실: {hasInstructorLounge} 여자화장실: {hasWomenRestroom}\\n특이사항 : {note}\\n----------------------------------------------------------',
       },
       { type: 'newline' },
+
       { type: 'newline' },
-      { text: '[배정 강사]', type: 'text' },
-      { type: 'newline' },
-      { key: 'self.schedules', type: 'format', format: '- {date} ({dayOfWeek}) : {instructors}' },
-      { type: 'newline' },
-      { type: 'newline' },
-      { text: '부대 담당자: ', type: 'text' },
-      { key: 'period.officerName', type: 'var' },
-      { text: ' 담당자 전화번호: ', type: 'text' },
-      { key: 'period.officerPhone', type: 'var' },
-      { text: ' ', type: 'text' },
-      { type: 'newline' },
-      { text: '담당자 이메일: ', type: 'text' },
-      { key: 'period.officerEmail', type: 'var' },
-      { type: 'newline' },
-      { text: '수탁급식여부: ', type: 'text' },
-      { key: 'period.hasCateredMeals', type: 'var' },
-      { type: 'newline' },
-      { text: '회관숙박여부: ', type: 'text' },
-      { key: 'period.hasHallLodging', type: 'var' },
-      { text: ' 휴대폰 불출: ', type: 'text' },
-      { key: 'period.allowsPhoneBeforeAfter', type: 'var' },
-      { type: 'newline' },
-      { text: '----------------------------------------------------------------', type: 'text' },
-      { type: 'newline' },
-      {
-        key: 'instructors',
-        type: 'format',
-        format: '{index}. {name}({category}) / {phone} / {virtues}',
-      },
+
+      { key: 'instructors', type: 'format', format: '{index}. {name}({category}) / {phone} / {virtues}' },
       { type: 'newline' },
     ],
   };
