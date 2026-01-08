@@ -50,6 +50,7 @@ export function TemplateEditor({
     handleDrop,
     handleEditorClick,
     handleEditorMouseDown,
+    handleKeyDown,
   } = useTemplateEditor({
     value,
     onChange,
@@ -76,9 +77,11 @@ export function TemplateEditor({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onKeyDown={(e) => {
-          // singleLine일 때 엔터 방지
+          // singleLine일 때 엔터 방지, 아니면 커스텀 핸들러
           if (singleLine && e.key === 'Enter') {
             e.preventDefault();
+          } else {
+            handleKeyDown(e);
           }
         }}
         className={className}
@@ -118,6 +121,13 @@ export function TemplateEditor({
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+          onKeyDown={(e) => {
+            if (singleLine && e.key === 'Enter') {
+              e.preventDefault();
+            } else {
+              handleKeyDown(e);
+            }
+          }}
           style={{
             minHeight: editorMinHeight,
             padding: singleLine ? '8px 12px' : EDITOR_STYLE.padding,
