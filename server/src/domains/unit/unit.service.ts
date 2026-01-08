@@ -92,7 +92,7 @@ class UnitService {
       });
 
       // 스케줄이 있으면 활성 강사들에 대해 거리 행 미리 생성
-      if (schedules.length > 0) {
+      if (unit && schedules.length > 0) {
         await distanceService.createDistanceRowsForNewUnit(unit.id);
       }
 
