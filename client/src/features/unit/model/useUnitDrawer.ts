@@ -67,7 +67,7 @@ interface UseUnitDrawerReturn {
   handleScheduleLocationRowChange: (
     scheduleIndex: number,
     rowIndex: number,
-    field: 'trainingLocationId' | 'plannedCount' | 'actualCount',
+    field: 'trainingLocationId' | 'plannedCount' | 'actualCount' | 'requiredCount',
     value: number | string | null,
   ) => void;
   handleApplyFirstToAll: () => void;
@@ -150,12 +150,13 @@ const mapPeriodToForm = (period: TrainingPeriod): TrainingPeriodFormData => {
       trainingLocationId: sl.trainingLocationId,
       plannedCount: sl.plannedCount ?? null,
       actualCount: sl.actualCount ?? null,
+      requiredCount: sl.requiredCount ?? null,
     }));
     // 기존 장소 매칭이 없으면 빈 row 1개 추가 (기본 제공)
     scheduleLocationMap[key] =
       locations.length > 0
         ? locations
-        : [{ trainingLocationId: '', plannedCount: null, actualCount: null }];
+        : [{ trainingLocationId: '', plannedCount: null, actualCount: null, requiredCount: null }];
   });
 
   const hasAssignments = (period.schedules || []).some(
@@ -271,6 +272,7 @@ export const useUnitDrawer = ({
           locationName?: string;
           plannedCount?: number | null;
           actualCount?: number | null;
+          requiredCount?: number | null;
         }>;
       };
     }) => unitApi.updateTrainingPeriodScheduleLocations(periodId, data),
@@ -506,7 +508,7 @@ export const useUnitDrawer = ({
           const current = p.scheduleLocationMap[scheduleKey] || [];
           const next = [
             ...current,
-            { trainingLocationId: '', plannedCount: null, actualCount: null },
+            { trainingLocationId: '', plannedCount: null, actualCount: null, requiredCount: null },
           ];
           return { ...p, scheduleLocationMap: { ...p.scheduleLocationMap, [scheduleKey]: next } };
         }),
@@ -537,7 +539,7 @@ export const useUnitDrawer = ({
     (
       scheduleIndex: number,
       rowIndex: number,
-      field: 'trainingLocationId' | 'plannedCount' | 'actualCount',
+      field: 'trainingLocationId' | 'plannedCount' | 'actualCount' | 'requiredCount',
       value: number | string | null,
     ) => {
       if (typeof activeTab !== 'number') return;
@@ -597,6 +599,7 @@ export const useUnitDrawer = ({
       trainingLocationId: number;
       plannedCount?: number | null;
       actualCount?: number | null;
+      requiredCount?: number | null;
     }> = [];
 
     for (let i = 0; i < period.schedules.length; i++) {
@@ -616,6 +619,7 @@ export const useUnitDrawer = ({
           trainingLocationId: locId,
           plannedCount: entry.plannedCount ?? null,
           actualCount: entry.actualCount ?? null,
+          requiredCount: entry.requiredCount ?? null,
         });
       }
     }
@@ -700,6 +704,7 @@ export const useUnitDrawer = ({
         locationName?: string;
         plannedCount?: number | null;
         actualCount?: number | null;
+        requiredCount?: number | null;
       }> = [];
 
       // id -> 장소 이름 맵 생성
@@ -738,6 +743,7 @@ export const useUnitDrawer = ({
             locationName: locationName || String(entry.trainingLocationId), // 항상 이름 전송
             plannedCount: entry.plannedCount ?? null,
             actualCount: entry.actualCount ?? null,
+            requiredCount: entry.requiredCount ?? null,
           });
         }
       }

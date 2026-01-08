@@ -37,13 +37,16 @@ export const militaryTypeKorean: Record<string, string> = {
 };
 
 // === Types ===
+// Prisma 반환 타입과 호환되도록 유연하게 정의 (추가 필드 허용)
 interface UserData {
   name?: string | null;
   userphoneNumber?: string | null;
   instructor?: {
     category?: string | null;
     virtues?: Array<{ virtue?: { name?: string | null } }>;
+    [key: string]: unknown;
   } | null;
+  [key: string]: unknown;
 }
 
 interface UnitData {
@@ -65,6 +68,8 @@ interface UnitData {
   schedules?: ScheduleData[];
   // 새 구조: TrainingPeriod 정보
   trainingPeriod?: TrainingPeriodData | null;
+  // Prisma 추가 필드 허용
+  [key: string]: unknown;
 }
 
 interface TrainingPeriodData {
@@ -80,6 +85,7 @@ interface TrainingPeriodData {
   hasCateredMeals?: boolean | null;
   hasHallLodging?: boolean | null;
   allowsPhoneBeforeAfter?: boolean | null;
+  [key: string]: unknown;
 }
 
 interface TrainingLocationData {
@@ -93,6 +99,7 @@ interface TrainingLocationData {
   allowsPhoneBeforeAfter?: string | boolean | null;
   plannedCount?: number | null;
   note?: string | null;
+  [key: string]: unknown;
 }
 
 interface ScheduleData {
@@ -106,13 +113,22 @@ interface ScheduleData {
       hasInstructorLounge?: boolean | null;
       hasWomenRestroom?: boolean | null;
       note?: string | null;
-    };
+    } | null;
   }>;
+  // Prisma 반환 타입과 호환되도록 유연하게 정의
   assignments?: Array<{
     User?: {
       name?: string | null;
-      instructor?: { category?: string | null };
-    };
+      instructor?: {
+        category?: string | null;
+        // Prisma에서 추가로 반환하는 필드들 허용
+        [key: string]: unknown;
+      } | null;
+      // Prisma에서 추가로 반환하는 필드들 허용
+      [key: string]: unknown;
+    } | null;
+    // 배정 자체의 추가 필드들 허용
+    [key: string]: unknown;
   }>;
 }
 

@@ -334,6 +334,7 @@ class AssignmentDTO {
                   actualCountForSchedule,
                   traineesPerInstructor,
                 ),
+                actualCount: actualCountForSchedule, // 참여인원 표시용
                 instructors: assignedInstructors,
                 rejectedInstructors, // 거절한 강사 목록 추가
               };

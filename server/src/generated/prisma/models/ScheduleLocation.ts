@@ -32,6 +32,7 @@ export type ScheduleLocationAvgAggregateOutputType = {
   trainingLocationId: number | null
   plannedCount: number | null
   actualCount: number | null
+  requiredCount: number | null
 }
 
 export type ScheduleLocationSumAggregateOutputType = {
@@ -40,6 +41,7 @@ export type ScheduleLocationSumAggregateOutputType = {
   trainingLocationId: number | null
   plannedCount: number | null
   actualCount: number | null
+  requiredCount: number | null
 }
 
 export type ScheduleLocationMinAggregateOutputType = {
@@ -48,6 +50,7 @@ export type ScheduleLocationMinAggregateOutputType = {
   trainingLocationId: number | null
   plannedCount: number | null
   actualCount: number | null
+  requiredCount: number | null
 }
 
 export type ScheduleLocationMaxAggregateOutputType = {
@@ -56,6 +59,7 @@ export type ScheduleLocationMaxAggregateOutputType = {
   trainingLocationId: number | null
   plannedCount: number | null
   actualCount: number | null
+  requiredCount: number | null
 }
 
 export type ScheduleLocationCountAggregateOutputType = {
@@ -64,6 +68,7 @@ export type ScheduleLocationCountAggregateOutputType = {
   trainingLocationId: number
   plannedCount: number
   actualCount: number
+  requiredCount: number
   _all: number
 }
 
@@ -74,6 +79,7 @@ export type ScheduleLocationAvgAggregateInputType = {
   trainingLocationId?: true
   plannedCount?: true
   actualCount?: true
+  requiredCount?: true
 }
 
 export type ScheduleLocationSumAggregateInputType = {
@@ -82,6 +88,7 @@ export type ScheduleLocationSumAggregateInputType = {
   trainingLocationId?: true
   plannedCount?: true
   actualCount?: true
+  requiredCount?: true
 }
 
 export type ScheduleLocationMinAggregateInputType = {
@@ -90,6 +97,7 @@ export type ScheduleLocationMinAggregateInputType = {
   trainingLocationId?: true
   plannedCount?: true
   actualCount?: true
+  requiredCount?: true
 }
 
 export type ScheduleLocationMaxAggregateInputType = {
@@ -98,6 +106,7 @@ export type ScheduleLocationMaxAggregateInputType = {
   trainingLocationId?: true
   plannedCount?: true
   actualCount?: true
+  requiredCount?: true
 }
 
 export type ScheduleLocationCountAggregateInputType = {
@@ -106,6 +115,7 @@ export type ScheduleLocationCountAggregateInputType = {
   trainingLocationId?: true
   plannedCount?: true
   actualCount?: true
+  requiredCount?: true
   _all?: true
 }
 
@@ -201,6 +211,7 @@ export type ScheduleLocationGroupByOutputType = {
   trainingLocationId: number
   plannedCount: number | null
   actualCount: number | null
+  requiredCount: number | null
   _count: ScheduleLocationCountAggregateOutputType | null
   _avg: ScheduleLocationAvgAggregateOutputType | null
   _sum: ScheduleLocationSumAggregateOutputType | null
@@ -232,6 +243,7 @@ export type ScheduleLocationWhereInput = {
   trainingLocationId?: Prisma.IntFilter<"ScheduleLocation"> | number
   plannedCount?: Prisma.IntNullableFilter<"ScheduleLocation"> | number | null
   actualCount?: Prisma.IntNullableFilter<"ScheduleLocation"> | number | null
+  requiredCount?: Prisma.IntNullableFilter<"ScheduleLocation"> | number | null
   schedule?: Prisma.XOR<Prisma.UnitScheduleScalarRelationFilter, Prisma.UnitScheduleWhereInput>
   location?: Prisma.XOR<Prisma.TrainingLocationScalarRelationFilter, Prisma.TrainingLocationWhereInput>
 }
@@ -242,6 +254,7 @@ export type ScheduleLocationOrderByWithRelationInput = {
   trainingLocationId?: Prisma.SortOrder
   plannedCount?: Prisma.SortOrderInput | Prisma.SortOrder
   actualCount?: Prisma.SortOrderInput | Prisma.SortOrder
+  requiredCount?: Prisma.SortOrderInput | Prisma.SortOrder
   schedule?: Prisma.UnitScheduleOrderByWithRelationInput
   location?: Prisma.TrainingLocationOrderByWithRelationInput
 }
@@ -256,6 +269,7 @@ export type ScheduleLocationWhereUniqueInput = Prisma.AtLeast<{
   trainingLocationId?: Prisma.IntFilter<"ScheduleLocation"> | number
   plannedCount?: Prisma.IntNullableFilter<"ScheduleLocation"> | number | null
   actualCount?: Prisma.IntNullableFilter<"ScheduleLocation"> | number | null
+  requiredCount?: Prisma.IntNullableFilter<"ScheduleLocation"> | number | null
   schedule?: Prisma.XOR<Prisma.UnitScheduleScalarRelationFilter, Prisma.UnitScheduleWhereInput>
   location?: Prisma.XOR<Prisma.TrainingLocationScalarRelationFilter, Prisma.TrainingLocationWhereInput>
 }, "id" | "unitScheduleId_trainingLocationId">
@@ -266,6 +280,7 @@ export type ScheduleLocationOrderByWithAggregationInput = {
   trainingLocationId?: Prisma.SortOrder
   plannedCount?: Prisma.SortOrderInput | Prisma.SortOrder
   actualCount?: Prisma.SortOrderInput | Prisma.SortOrder
+  requiredCount?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ScheduleLocationCountOrderByAggregateInput
   _avg?: Prisma.ScheduleLocationAvgOrderByAggregateInput
   _max?: Prisma.ScheduleLocationMaxOrderByAggregateInput
@@ -282,11 +297,13 @@ export type ScheduleLocationScalarWhereWithAggregatesInput = {
   trainingLocationId?: Prisma.IntWithAggregatesFilter<"ScheduleLocation"> | number
   plannedCount?: Prisma.IntNullableWithAggregatesFilter<"ScheduleLocation"> | number | null
   actualCount?: Prisma.IntNullableWithAggregatesFilter<"ScheduleLocation"> | number | null
+  requiredCount?: Prisma.IntNullableWithAggregatesFilter<"ScheduleLocation"> | number | null
 }
 
 export type ScheduleLocationCreateInput = {
   plannedCount?: number | null
   actualCount?: number | null
+  requiredCount?: number | null
   schedule: Prisma.UnitScheduleCreateNestedOneWithoutScheduleLocationsInput
   location: Prisma.TrainingLocationCreateNestedOneWithoutScheduleLocationsInput
 }
@@ -297,11 +314,13 @@ export type ScheduleLocationUncheckedCreateInput = {
   trainingLocationId: number
   plannedCount?: number | null
   actualCount?: number | null
+  requiredCount?: number | null
 }
 
 export type ScheduleLocationUpdateInput = {
   plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  requiredCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   schedule?: Prisma.UnitScheduleUpdateOneRequiredWithoutScheduleLocationsNestedInput
   location?: Prisma.TrainingLocationUpdateOneRequiredWithoutScheduleLocationsNestedInput
 }
@@ -312,6 +331,7 @@ export type ScheduleLocationUncheckedUpdateInput = {
   trainingLocationId?: Prisma.IntFieldUpdateOperationsInput | number
   plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  requiredCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type ScheduleLocationCreateManyInput = {
@@ -320,11 +340,13 @@ export type ScheduleLocationCreateManyInput = {
   trainingLocationId: number
   plannedCount?: number | null
   actualCount?: number | null
+  requiredCount?: number | null
 }
 
 export type ScheduleLocationUpdateManyMutationInput = {
   plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  requiredCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type ScheduleLocationUncheckedUpdateManyInput = {
@@ -333,6 +355,7 @@ export type ScheduleLocationUncheckedUpdateManyInput = {
   trainingLocationId?: Prisma.IntFieldUpdateOperationsInput | number
   plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  requiredCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type ScheduleLocationListRelationFilter = {
@@ -356,6 +379,7 @@ export type ScheduleLocationCountOrderByAggregateInput = {
   trainingLocationId?: Prisma.SortOrder
   plannedCount?: Prisma.SortOrder
   actualCount?: Prisma.SortOrder
+  requiredCount?: Prisma.SortOrder
 }
 
 export type ScheduleLocationAvgOrderByAggregateInput = {
@@ -364,6 +388,7 @@ export type ScheduleLocationAvgOrderByAggregateInput = {
   trainingLocationId?: Prisma.SortOrder
   plannedCount?: Prisma.SortOrder
   actualCount?: Prisma.SortOrder
+  requiredCount?: Prisma.SortOrder
 }
 
 export type ScheduleLocationMaxOrderByAggregateInput = {
@@ -372,6 +397,7 @@ export type ScheduleLocationMaxOrderByAggregateInput = {
   trainingLocationId?: Prisma.SortOrder
   plannedCount?: Prisma.SortOrder
   actualCount?: Prisma.SortOrder
+  requiredCount?: Prisma.SortOrder
 }
 
 export type ScheduleLocationMinOrderByAggregateInput = {
@@ -380,6 +406,7 @@ export type ScheduleLocationMinOrderByAggregateInput = {
   trainingLocationId?: Prisma.SortOrder
   plannedCount?: Prisma.SortOrder
   actualCount?: Prisma.SortOrder
+  requiredCount?: Prisma.SortOrder
 }
 
 export type ScheduleLocationSumOrderByAggregateInput = {
@@ -388,6 +415,7 @@ export type ScheduleLocationSumOrderByAggregateInput = {
   trainingLocationId?: Prisma.SortOrder
   plannedCount?: Prisma.SortOrder
   actualCount?: Prisma.SortOrder
+  requiredCount?: Prisma.SortOrder
 }
 
 export type ScheduleLocationCreateNestedManyWithoutLocationInput = {
@@ -477,6 +505,7 @@ export type ScheduleLocationUncheckedUpdateManyWithoutScheduleNestedInput = {
 export type ScheduleLocationCreateWithoutLocationInput = {
   plannedCount?: number | null
   actualCount?: number | null
+  requiredCount?: number | null
   schedule: Prisma.UnitScheduleCreateNestedOneWithoutScheduleLocationsInput
 }
 
@@ -485,6 +514,7 @@ export type ScheduleLocationUncheckedCreateWithoutLocationInput = {
   unitScheduleId: number
   plannedCount?: number | null
   actualCount?: number | null
+  requiredCount?: number | null
 }
 
 export type ScheduleLocationCreateOrConnectWithoutLocationInput = {
@@ -522,11 +552,13 @@ export type ScheduleLocationScalarWhereInput = {
   trainingLocationId?: Prisma.IntFilter<"ScheduleLocation"> | number
   plannedCount?: Prisma.IntNullableFilter<"ScheduleLocation"> | number | null
   actualCount?: Prisma.IntNullableFilter<"ScheduleLocation"> | number | null
+  requiredCount?: Prisma.IntNullableFilter<"ScheduleLocation"> | number | null
 }
 
 export type ScheduleLocationCreateWithoutScheduleInput = {
   plannedCount?: number | null
   actualCount?: number | null
+  requiredCount?: number | null
   location: Prisma.TrainingLocationCreateNestedOneWithoutScheduleLocationsInput
 }
 
@@ -535,6 +567,7 @@ export type ScheduleLocationUncheckedCreateWithoutScheduleInput = {
   trainingLocationId: number
   plannedCount?: number | null
   actualCount?: number | null
+  requiredCount?: number | null
 }
 
 export type ScheduleLocationCreateOrConnectWithoutScheduleInput = {
@@ -568,11 +601,13 @@ export type ScheduleLocationCreateManyLocationInput = {
   unitScheduleId: number
   plannedCount?: number | null
   actualCount?: number | null
+  requiredCount?: number | null
 }
 
 export type ScheduleLocationUpdateWithoutLocationInput = {
   plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  requiredCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   schedule?: Prisma.UnitScheduleUpdateOneRequiredWithoutScheduleLocationsNestedInput
 }
 
@@ -581,6 +616,7 @@ export type ScheduleLocationUncheckedUpdateWithoutLocationInput = {
   unitScheduleId?: Prisma.IntFieldUpdateOperationsInput | number
   plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  requiredCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type ScheduleLocationUncheckedUpdateManyWithoutLocationInput = {
@@ -588,6 +624,7 @@ export type ScheduleLocationUncheckedUpdateManyWithoutLocationInput = {
   unitScheduleId?: Prisma.IntFieldUpdateOperationsInput | number
   plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  requiredCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type ScheduleLocationCreateManyScheduleInput = {
@@ -595,11 +632,13 @@ export type ScheduleLocationCreateManyScheduleInput = {
   trainingLocationId: number
   plannedCount?: number | null
   actualCount?: number | null
+  requiredCount?: number | null
 }
 
 export type ScheduleLocationUpdateWithoutScheduleInput = {
   plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  requiredCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   location?: Prisma.TrainingLocationUpdateOneRequiredWithoutScheduleLocationsNestedInput
 }
 
@@ -608,6 +647,7 @@ export type ScheduleLocationUncheckedUpdateWithoutScheduleInput = {
   trainingLocationId?: Prisma.IntFieldUpdateOperationsInput | number
   plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  requiredCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type ScheduleLocationUncheckedUpdateManyWithoutScheduleInput = {
@@ -615,6 +655,7 @@ export type ScheduleLocationUncheckedUpdateManyWithoutScheduleInput = {
   trainingLocationId?: Prisma.IntFieldUpdateOperationsInput | number
   plannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   actualCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  requiredCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 
@@ -625,6 +666,7 @@ export type ScheduleLocationSelect<ExtArgs extends runtime.Types.Extensions.Inte
   trainingLocationId?: boolean
   plannedCount?: boolean
   actualCount?: boolean
+  requiredCount?: boolean
   schedule?: boolean | Prisma.UnitScheduleDefaultArgs<ExtArgs>
   location?: boolean | Prisma.TrainingLocationDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["scheduleLocation"]>
@@ -635,6 +677,7 @@ export type ScheduleLocationSelectCreateManyAndReturn<ExtArgs extends runtime.Ty
   trainingLocationId?: boolean
   plannedCount?: boolean
   actualCount?: boolean
+  requiredCount?: boolean
   schedule?: boolean | Prisma.UnitScheduleDefaultArgs<ExtArgs>
   location?: boolean | Prisma.TrainingLocationDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["scheduleLocation"]>
@@ -645,6 +688,7 @@ export type ScheduleLocationSelectUpdateManyAndReturn<ExtArgs extends runtime.Ty
   trainingLocationId?: boolean
   plannedCount?: boolean
   actualCount?: boolean
+  requiredCount?: boolean
   schedule?: boolean | Prisma.UnitScheduleDefaultArgs<ExtArgs>
   location?: boolean | Prisma.TrainingLocationDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["scheduleLocation"]>
@@ -655,9 +699,10 @@ export type ScheduleLocationSelectScalar = {
   trainingLocationId?: boolean
   plannedCount?: boolean
   actualCount?: boolean
+  requiredCount?: boolean
 }
 
-export type ScheduleLocationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "unitScheduleId" | "trainingLocationId" | "plannedCount" | "actualCount", ExtArgs["result"]["scheduleLocation"]>
+export type ScheduleLocationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "unitScheduleId" | "trainingLocationId" | "plannedCount" | "actualCount" | "requiredCount", ExtArgs["result"]["scheduleLocation"]>
 export type ScheduleLocationInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   schedule?: boolean | Prisma.UnitScheduleDefaultArgs<ExtArgs>
   location?: boolean | Prisma.TrainingLocationDefaultArgs<ExtArgs>
@@ -683,6 +728,7 @@ export type $ScheduleLocationPayload<ExtArgs extends runtime.Types.Extensions.In
     trainingLocationId: number
     plannedCount: number | null
     actualCount: number | null
+    requiredCount: number | null
   }, ExtArgs["result"]["scheduleLocation"]>
   composites: {}
 }
@@ -1113,6 +1159,7 @@ export interface ScheduleLocationFieldRefs {
   readonly trainingLocationId: Prisma.FieldRef<"ScheduleLocation", 'Int'>
   readonly plannedCount: Prisma.FieldRef<"ScheduleLocation", 'Int'>
   readonly actualCount: Prisma.FieldRef<"ScheduleLocation", 'Int'>
+  readonly requiredCount: Prisma.FieldRef<"ScheduleLocation", 'Int'>
 }
     
 

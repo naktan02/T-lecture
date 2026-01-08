@@ -464,7 +464,7 @@ class UnitRepository {
   async upsertScheduleLocation(
     unitScheduleId: number,
     trainingLocationId: number,
-    data: { plannedCount?: number; actualCount?: number },
+    data: { plannedCount?: number; actualCount?: number; requiredCount?: number },
   ) {
     return prisma.scheduleLocation.upsert({
       where: {
@@ -475,10 +475,12 @@ class UnitRepository {
         trainingLocationId,
         plannedCount: data.plannedCount,
         actualCount: data.actualCount,
+        requiredCount: data.requiredCount,
       },
       update: {
         plannedCount: data.plannedCount,
         actualCount: data.actualCount,
+        requiredCount: data.requiredCount,
       },
     });
   }
@@ -490,6 +492,7 @@ class UnitRepository {
       trainingLocationId: number;
       plannedCount?: number | null;
       actualCount?: number | null;
+      requiredCount?: number | null;
     }[],
   ) {
     const existing = await prisma.scheduleLocation.findMany({
@@ -509,6 +512,7 @@ class UnitRepository {
       await this.upsertScheduleLocation(unitScheduleId, item.trainingLocationId, {
         plannedCount: item.plannedCount ?? undefined,
         actualCount: item.actualCount ?? undefined,
+        requiredCount: item.requiredCount ?? undefined,
       });
     }
   }

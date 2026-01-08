@@ -59,6 +59,7 @@ interface DateInfo {
   unitScheduleId: number;
   date: string;
   requiredCount: number;
+  actualCount?: number;
   instructors: Instructor[];
   rejectedInstructors?: RejectedInstructor[];
 }
@@ -500,11 +501,6 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                 <div className="flex items-center gap-2">
                   <span className="text-lg">🏫</span>
                   <h3 className="font-bold text-indigo-900">{loc.name}</h3>
-                  {loc.actualCount > 0 && (
-                    <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded">
-                      참여 {loc.actualCount}명
-                    </span>
-                  )}
                 </div>
                 {/* 총괄/책임강사 + 거절 강사 표시 */}
                 <div className="flex items-center gap-4 mt-1 flex-wrap">
@@ -653,8 +649,9 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                   >
                     <div className="w-32 flex-shrink-0">
                       <div className="font-bold text-gray-700">{dateInfo.date}</div>
-                      <div className="text-xs text-gray-400 mt-1">
-                        필요: {dateInfo.requiredCount}명
+                      <div className="text-xs text-gray-400 mt-1 flex flex-col gap-0.5">
+                        {dateInfo.actualCount ? <span>참여: {dateInfo.actualCount}명</span> : null}
+                        <span>필요: {dateInfo.requiredCount}명</span>
                       </div>
                     </div>
 

@@ -262,6 +262,7 @@ class AssignmentService {
               originalPlace: loc.originalPlace,
               actualCount: schedLoc?.actualCount ?? null,
               plannedCount: schedLoc?.plannedCount ?? null,
+              requiredCount: schedLoc?.requiredCount ?? null,
             };
           }) || [];
 

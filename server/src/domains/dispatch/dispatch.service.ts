@@ -123,8 +123,14 @@ class DispatchService {
         };
       });
 
-      // 기본 변수들 (헬퍼 사용)
-      const variables = buildVariables(user, unit);
+      // 기본 변수들 (헬퍼 사용) - unit에 trainingPeriod와 schedules 정보 첨부
+      const unitWithPeriod = {
+        ...unit,
+        trainingPeriod: trainingPeriod,
+        schedules: trainingPeriod.schedules || [],
+        trainingLocations: trainingPeriod.locations || [],
+      };
+      const variables = buildVariables(user, unitWithPeriod);
 
       // 장소 목록 (locations 포맷 변수) - 이제 trainingPeriod.locations
       const locationsList = buildLocationsFormat(trainingPeriod.locations || []);
@@ -140,6 +146,38 @@ class DispatchService {
       );
 
       // 템플릿 치환 (포맷 변수 포함) - JSONB body를 문자열로 변환
+      // scheduleLocations 추가 - 날짜별 장소 정보
+      type ScheduleWithLocations = {
+        date?: Date | null;
+        scheduleLocations?: Array<{
+          actualCount?: number | null;
+          plannedCount?: number | null;
+          location?: {
+            originalPlace?: string | null;
+            hasInstructorLounge?: boolean | null;
+            hasWomenRestroom?: boolean | null;
+            note?: string | null;
+          } | null;
+        }>;
+      };
+      const scheduleLocationsForFormat = (trainingPeriod.schedules || []).flatMap(
+        (schedule: ScheduleWithLocations) => {
+          const scheduleDate = schedule.date ? new Date(schedule.date) : new Date();
+          const dateStr = scheduleDate.toISOString().split('T')[0];
+          const dayOfWeek = getDayOfWeek(scheduleDate);
+          return (schedule.scheduleLocations || []).map((sl) => ({
+            date: dateStr,
+            dayOfWeek,
+            placeName: sl.location?.originalPlace || '-',
+            actualCount: String(sl.actualCount ?? 0),
+            plannedCount: String(sl.plannedCount ?? 0),
+            hasInstructorLounge: sl.location?.hasInstructorLounge ? 'O' : 'X',
+            hasWomenRestroom: sl.location?.hasWomenRestroom ? 'O' : 'X',
+            note: sl.location?.note || '',
+          }));
+        },
+      );
+
       const templateBodyStr = tokensToTemplate(
         (template.body as unknown as MessageTemplateBody).tokens,
       );
@@ -147,6 +185,7 @@ class DispatchService {
         'self.schedules': scheduleDates,
         'self.mySchedules': mySchedulesList,
         locations: locationsList,
+        scheduleLocations: scheduleLocationsForFormat,
       });
 
       // 제목도 변수 치환 (단순 변수만, 포맷 없음)
@@ -185,9 +224,12 @@ class DispatchService {
         const items = formatVariables[key];
         if (!items || items.length === 0) return '';
 
+        // 이스케이프된 \n을 실제 줄바꿈으로 변환
+        const unescapedFormat = format.replace(/\\n/g, '\n');
+
         return items
           .map((item) => {
-            let line = format;
+            let line = unescapedFormat;
             for (const [placeholder, value] of Object.entries(item)) {
               line = line.replace(new RegExp(`\\{\\s*${placeholder}\\s*\\}`, 'g'), value);
             }
@@ -265,8 +307,14 @@ class DispatchService {
       const targetTemplate = isLeader ? leaderTemplate : memberTemplate;
 
       // 기본 변수들 (헬퍼 사용 - assignments 전달해서 position 계산)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const variables = buildVariables(user, unit as any, assignments);
+      // unit에 trainingPeriod와 schedules 정보 첨부
+      const unitWithPeriod = {
+        ...unit,
+        trainingPeriod: trainingPeriod,
+        schedules: trainingPeriod.schedules || [],
+        trainingLocations: trainingPeriod.locations || [],
+      };
+      const variables = buildVariables(user, unitWithPeriod, assignments);
 
       // 장소 목록 (locations 포맷 변수) - 이제 trainingPeriod.locations
       const locationsList = buildLocationsFormat(trainingPeriod.locations || []);
@@ -355,11 +403,44 @@ class DispatchService {
 
       const instructorsFormatList = buildInstructorsFormat(instructorList);
 
+      // scheduleLocations 포맷 데이터 구성 - 날짜별 장소 정보
+      type ScheduleWithLocationsConfirmed = {
+        date?: Date | null;
+        scheduleLocations?: Array<{
+          actualCount?: number | null;
+          plannedCount?: number | null;
+          location?: {
+            originalPlace?: string | null;
+            hasInstructorLounge?: boolean | null;
+            hasWomenRestroom?: boolean | null;
+            note?: string | null;
+          } | null;
+        }>;
+      };
+      const scheduleLocationsForFormat = (trainingPeriod.schedules || []).flatMap(
+        (schedule: ScheduleWithLocationsConfirmed) => {
+          const scheduleDate = schedule.date ? new Date(schedule.date) : new Date();
+          const dateStr = scheduleDate.toISOString().split('T')[0];
+          const dayOfWeek = getDayOfWeek(scheduleDate);
+          return (schedule.scheduleLocations || []).map((sl) => ({
+            date: dateStr,
+            dayOfWeek,
+            placeName: sl.location?.originalPlace || '-',
+            actualCount: String(sl.actualCount ?? 0),
+            plannedCount: String(sl.plannedCount ?? 0),
+            hasInstructorLounge: sl.location?.hasInstructorLounge ? 'O' : 'X',
+            hasWomenRestroom: sl.location?.hasWomenRestroom ? 'O' : 'X',
+            note: sl.location?.note || '',
+          }));
+        },
+      );
+
       const body = this.compileTemplateWithFormat(targetBodyStr, variables, {
         locations: locationsList,
         'self.schedules': schedulesList,
         'self.mySchedules': mySchedulesList,
         instructors: instructorsFormatList,
+        scheduleLocations: scheduleLocationsForFormat,
       });
 
       // 제목도 변수 치환 (단순 변수만, 포맷 없음)

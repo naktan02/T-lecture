@@ -746,6 +746,7 @@ class UnitService {
           trainingLocationId: locationId || 0,
           plannedCount: item.plannedCount,
           actualCount: item.actualCount,
+          requiredCount: item.requiredCount,
         };
       })
       // 유효한 id만 (0보다 크고, 현재 교육기간에 속한 장소)
