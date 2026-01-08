@@ -4,7 +4,6 @@
 
 import { FormEvent } from 'react';
 import { UnitData } from '../api/unitApi';
-import { Button } from '../../../shared/ui';
 import { useUnitDrawer } from '../model/useUnitDrawer';
 import { UnitBasicInfoTab } from './UnitBasicInfoTab';
 import { TrainingPeriodTab } from './TrainingPeriodTab';
@@ -37,7 +36,7 @@ export const UnitDetailDrawerV2 = ({
     basicForm,
     trainingPeriods,
 
-    // Computed
+    // Derived
     periodSummaries,
 
     // Handlers
@@ -52,10 +51,12 @@ export const UnitDetailDrawerV2 = ({
     handleScheduleLocationRowAdd,
     handleScheduleLocationRowRemove,
     handleScheduleLocationRowChange,
-    handleScheduleLocationsSave,
+    handleApplyFirstToAll,
+    handleInfoSave,
+    handleLocationsSave,
+    handleBasicInfoSave,
     handleSaveAddress,
     handleSubmit,
-    handleDelete,
     handleScheduleSave,
     handlePeriodNameEdit,
 
@@ -165,6 +166,7 @@ export const UnitDetailDrawerV2 = ({
                 }))}
                 onFormChange={handleBasicFormChange}
                 onAddressSave={handleSaveAddress}
+                onBasicInfoSave={handleBasicInfoSave}
                 onPeriodAdd={handleAddPeriod}
                 onPeriodRemove={handleRemovePeriod}
                 onPeriodClick={handlePeriodClick}
@@ -185,36 +187,12 @@ export const UnitDetailDrawerV2 = ({
                 onScheduleLocationRowAdd={handleScheduleLocationRowAdd}
                 onScheduleLocationRowRemove={handleScheduleLocationRowRemove}
                 onScheduleLocationRowChange={handleScheduleLocationRowChange}
-                onScheduleLocationsSave={handleScheduleLocationsSave}
+                onApplyFirstToAll={handleApplyFirstToAll}
+                onInfoSave={handleInfoSave}
+                onLocationsSave={handleLocationsSave}
               />
             )}
           </form>
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t bg-white flex justify-between shrink-0">
-          {initialUnit && (
-            <button
-              type="button"
-              onClick={handleDelete}
-              className="text-red-500 hover:text-red-700"
-            >
-              삭제
-            </button>
-          )}
-
-          <div className="flex gap-2 ml-auto">
-            <Button variant="outline" onClick={onClose}>
-              취소
-            </Button>
-            <button
-              type="submit"
-              form="unit-form"
-              className="px-5 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700 transition"
-            >
-              저장
-            </button>
-          </div>
         </div>
       </div>
     </>

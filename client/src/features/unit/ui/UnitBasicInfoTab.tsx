@@ -50,6 +50,7 @@ interface UnitBasicInfoTabProps {
   }[];
   onFormChange: (field: keyof UnitBasicFormData, value: string) => void;
   onAddressSave?: () => void;
+  onBasicInfoSave?: () => Promise<void>;
   onPeriodAdd: (
     name: string,
     startDate?: string,
@@ -100,6 +101,7 @@ export const UnitBasicInfoTab = ({
   fullPeriodData,
   onFormChange,
   onAddressSave,
+  onBasicInfoSave,
   onPeriodAdd,
   onPeriodRemove,
   onPeriodClick,
@@ -107,6 +109,10 @@ export const UnitBasicInfoTab = ({
   onScheduleSave,
   isEditMode,
 }: UnitBasicInfoTabProps) => {
+  // 기본 정보 편집 상태
+  const [isEditingBasicInfo, setIsEditingBasicInfo] = useState(!isEditMode);
+  const [isSavingBasicInfo, setIsSavingBasicInfo] = useState(false);
+
   // 인라인 교육기간 입력 폼 상태
   const [isAddingPeriod, setIsAddingPeriod] = useState(false);
   const [newPeriodForm, setNewPeriodForm] = useState<NewPeriodForm>(EMPTY_PERIOD_FORM);
@@ -119,6 +125,18 @@ export const UnitBasicInfoTab = ({
   const [editEndDate, setEditEndDate] = useState('');
   const [editExcludedDates, setEditExcludedDates] = useState<string[]>([]);
   const [editExcludedDateInput, setEditExcludedDateInput] = useState('');
+
+  // 기본 정보 저장
+  const handleBasicInfoSave = async () => {
+    if (!onBasicInfoSave) return;
+    setIsSavingBasicInfo(true);
+    try {
+      await onBasicInfoSave();
+      setIsEditingBasicInfo(false);
+    } finally {
+      setIsSavingBasicInfo(false);
+    }
+  };
 
   const hydrateEditStateFromSchedules = (schedules: { date: string }[] = []) => {
     const dates = schedules
@@ -208,10 +226,43 @@ export const UnitBasicInfoTab = ({
     <div className="space-y-6 p-4">
       {/* 기본 정보 섹션 */}
       <div className="bg-white border border-gray-200 rounded-lg p-4">
-        <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-          🏢 기본 정보
-        </h4>
-
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+            🏢 기본 정보
+          </h4>
+          {isEditMode && (
+            <div className="flex items-center gap-2">
+              {isEditingBasicInfo ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingBasicInfo(false)}
+                    className="px-4 py-1.5 text-sm font-medium text-gray-600 border border-gray-300 rounded hover:bg-gray-100"
+                    disabled={isSavingBasicInfo}
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBasicInfoSave}
+                    className="px-4 py-1.5 text-sm font-medium bg-green-500 text-white rounded hover:bg-green-600"
+                    disabled={isSavingBasicInfo}
+                  >
+                    {isSavingBasicInfo ? '저장 중...' : '저장'}
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingBasicInfo(true)}
+                  className="px-4 py-1.5 text-sm font-medium text-white bg-blue-500 rounded hover:bg-blue-600"
+                >
+                  수정
+                </button>
+              )}
+            </div>
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-4">
           {/* 부대명 */}
           <div>
@@ -223,7 +274,8 @@ export const UnitBasicInfoTab = ({
               name="name"
               value={formData.name}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              disabled={isEditMode && !isEditingBasicInfo}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100"
               placeholder="부대명 입력"
             />
           </div>
@@ -237,7 +289,8 @@ export const UnitBasicInfoTab = ({
               name="unitType"
               value={formData.unitType}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+              disabled={isEditMode && !isEditingBasicInfo}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white disabled:bg-gray-100"
             >
               {MILITARY_TYPE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -255,23 +308,23 @@ export const UnitBasicInfoTab = ({
               name="wideArea"
               value={formData.wideArea}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50"
-              placeholder="주소 검색 시 자동 입력"
-              readOnly
+              disabled={isEditMode && !isEditingBasicInfo}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100"
+              placeholder="광역 입력"
             />
           </div>
 
-          {/* 시역 */}
+          {/* 지역 */}
           <div>
-            <label className="block text-xs text-gray-500 mb-1">시역</label>
+            <label className="block text-xs text-gray-500 mb-1">지역</label>
             <input
               type="text"
               name="region"
               value={formData.region}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50"
-              placeholder="주소 검색 시 자동 입력"
-              readOnly
+              disabled={isEditMode && !isEditingBasicInfo}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100"
+              placeholder="지역 입력"
             />
           </div>
         </div>
@@ -307,7 +360,8 @@ export const UnitBasicInfoTab = ({
             name="detailAddress"
             value={formData.detailAddress}
             onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            disabled={isEditMode && !isEditingBasicInfo}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm disabled:bg-gray-100"
             placeholder="상세주소 입력 (예: 301동 근무대대 강당)"
           />
         </div>

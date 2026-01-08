@@ -98,7 +98,7 @@ class UnitRepository {
                 scheduleLocations: true,
                 assignments: {
                   where: { state: { in: ['Pending', 'Accepted'] } },
-                  select: { userId: true },
+                  select: { userId: true, trainingLocationId: true },
                 },
               },
             },
@@ -486,7 +486,11 @@ class UnitRepository {
   // 일정별 장소 인원 동기화
   async syncScheduleLocations(
     unitScheduleId: number,
-    inputs: { trainingLocationId: number; plannedCount?: number | null; actualCount?: number | null }[],
+    inputs: {
+      trainingLocationId: number;
+      plannedCount?: number | null;
+      actualCount?: number | null;
+    }[],
   ) {
     const existing = await prisma.scheduleLocation.findMany({
       where: { unitScheduleId },
@@ -503,12 +507,11 @@ class UnitRepository {
 
     for (const item of inputs) {
       await this.upsertScheduleLocation(unitScheduleId, item.trainingLocationId, {
-        plannedCount: item.plannedCount ?? null,
-        actualCount: item.actualCount ?? null,
+        plannedCount: item.plannedCount ?? undefined,
+        actualCount: item.actualCount ?? undefined,
       });
     }
   }
-
 
   // --- 일정 관리 ---
 
@@ -672,7 +675,7 @@ class UnitRepository {
         hasWomenRestroom?: boolean;
         note?: string | null;
       }[];
-      schedules?: { date: string }[];
+      schedules?: { date: string | Date }[];
     },
   ) {
     return prisma.trainingPeriod.create({

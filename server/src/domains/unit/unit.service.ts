@@ -362,43 +362,7 @@ class UnitService {
       await unitRepository.updateUnitById(unitId, unitUpdateData);
     }
 
-    // 3. 교육기간별 정보 업데이트 (기존 기간만 - 생성/삭제는 별도 API)
-    if (data.trainingPeriods && data.trainingPeriods.length > 0) {
-      for (const periodData of data.trainingPeriods) {
-        if (periodData.id) {
-          // 기존 교육기간 정보 업데이트
-          await unitRepository.updateTrainingPeriod(periodData.id, {
-            name: periodData.name,
-            workStartTime: periodData.workStartTime
-              ? new Date(`2000-01-01T${periodData.workStartTime}:00.000Z`)
-              : null,
-            workEndTime: periodData.workEndTime
-              ? new Date(`2000-01-01T${periodData.workEndTime}:00.000Z`)
-              : null,
-            lunchStartTime: periodData.lunchStartTime
-              ? new Date(`2000-01-01T${periodData.lunchStartTime}:00.000Z`)
-              : null,
-            lunchEndTime: periodData.lunchEndTime
-              ? new Date(`2000-01-01T${periodData.lunchEndTime}:00.000Z`)
-              : null,
-            officerName: periodData.officerName || null,
-            officerPhone: periodData.officerPhone || null,
-            officerEmail: periodData.officerEmail || null,
-            hasCateredMeals: periodData.hasCateredMeals ?? false,
-            hasHallLodging: periodData.hasHallLodging ?? false,
-            allowsPhoneBeforeAfter: periodData.allowsPhoneBeforeAfter ?? false,
-          });
-
-          // 해당 기간의 장소 처리
-          if (periodData.locations) {
-            await this._syncLocations(periodData.id, periodData.locations);
-          }
-        }
-        // 신규 교육기간(id가 없는 경우)은 createTrainingPeriod API 사용
-      }
-    }
-
-    // 4. 업데이트된 결과 반환
+    // 업데이트된 결과 반환
     return await unitRepository.findUnitWithRelations(unitId);
   }
 
@@ -739,6 +703,21 @@ class UnitService {
       throw new AppError('교육기간을 찾을 수 없습니다.', 404, 'TRAINING_PERIOD_NOT_FOUND');
     }
 
+    // 1. 장소 동기화 (새 장소 생성, 기존 장소 업데이트)
+    if (data.locations && data.locations.length > 0) {
+      await this._syncLocations(trainingPeriodId, data.locations);
+    }
+
+    // 2. 갱신된 장소 목록 조회 (이름 -> id 매핑용)
+    const updatedLocations = await unitRepository.findLocationsByPeriodId(trainingPeriodId);
+    const locationNameToId = new Map<string, number>();
+    for (const loc of updatedLocations) {
+      if (loc.originalPlace) {
+        locationNameToId.set(loc.originalPlace, loc.id);
+      }
+    }
+
+    // 3. 일정 검증
     const schedules = await unitRepository.findSchedulesByPeriodId(trainingPeriodId);
     const scheduleIdSet = new Set(schedules.map((s) => s.id));
 
@@ -749,8 +728,34 @@ class UnitService {
       }
     }
 
-    const byScheduleId = new Map<number, typeof inputs>();
-    for (const item of inputs) {
+    // 유효한 장소 ID 목록 (현재 교육기간에 속한 장소만)
+    const validLocationIds = new Set(updatedLocations.map((l) => l.id));
+
+    // 4. 매칭 데이터 변환 (locationName -> trainingLocationId)
+    const resolvedInputs = inputs
+      .map((item) => {
+        let locationId = item.trainingLocationId;
+
+        // id가 없고 이름이 있으면 이름으로 id 찾기
+        if (!locationId && item.locationName) {
+          locationId = locationNameToId.get(item.locationName);
+        }
+
+        return {
+          unitScheduleId: item.unitScheduleId,
+          trainingLocationId: locationId || 0,
+          plannedCount: item.plannedCount,
+          actualCount: item.actualCount,
+        };
+      })
+      // 유효한 id만 (0보다 크고, 현재 교육기간에 속한 장소)
+      .filter(
+        (item) => item.trainingLocationId > 0 && validLocationIds.has(item.trainingLocationId),
+      );
+
+    // 5. 일정별 장소 매칭 저장
+    const byScheduleId = new Map<number, typeof resolvedInputs>();
+    for (const item of resolvedInputs) {
       const arr = byScheduleId.get(item.unitScheduleId) || [];
       arr.push(item);
       byScheduleId.set(item.unitScheduleId, arr);
@@ -761,7 +766,20 @@ class UnitService {
       await unitRepository.syncScheduleLocations(schedule.id, scheduleInputs);
     }
 
-    return { updated: inputs.length };
+    return { updated: resolvedInputs.length };
+  }
+
+  /**
+   * 교육기간 삭제
+   */
+  async deleteTrainingPeriod(trainingPeriodId: number) {
+    const period = await unitRepository.findTrainingPeriodById(trainingPeriodId);
+    if (!period) {
+      throw new AppError('교육기간을 찾을 수 없습니다.', 404, 'TRAINING_PERIOD_NOT_FOUND');
+    }
+
+    await unitRepository.deleteTrainingPeriod(trainingPeriodId);
+    return { deleted: true };
   }
 
   async updateTrainingPeriodSchedule(

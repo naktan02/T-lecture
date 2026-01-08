@@ -34,7 +34,7 @@ router.patch('/:id/officer', unitController.updateOfficerInfo);
 // 교육기간 추가
 router.post('/:id/training-periods', unitController.createTrainingPeriod);
 
-// 부대 + 교육기간 + 장소 전체 업데이트 (주소, 일정 제외) - 임시 비활성화
+// 부대 + 교육기간 + 장소 전체 업데이트 (주소, 일정 제외)
 
 router.put('/:id', unitController.updateUnitWithPeriods);
 
@@ -47,7 +47,13 @@ router.patch('/:id/address', unitController.updateUnitAddress);
 router.patch('/training-periods/:periodId/schedule', unitController.updateTrainingPeriodSchedule);
 
 // 교육기간 장소 수정
-router.patch('/training-periods/:periodId/schedule-locations', unitController.updateTrainingPeriodScheduleLocations);
+router.patch(
+  '/training-periods/:periodId/schedule-locations',
+  unitController.updateTrainingPeriodScheduleLocations,
+);
+
+// 교육기간 삭제
+router.delete('/training-periods/:periodId', unitController.deleteTrainingPeriod);
 
 // 교육기간 일정 삭제 전 배정 확인
 router.post('/training-periods/:periodId/schedule/check', unitController.checkScheduleAssignments);

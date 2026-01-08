@@ -139,13 +139,22 @@ export const unitApi = {
     return response.json();
   },
 
-  // 일정-장소/인원 저장
+  // 일정-장소/인원 + 장소 목록 저장
   updateTrainingPeriodScheduleLocations: async (
     trainingPeriodId: number,
     data: {
+      locations?: Array<{
+        id?: number;
+        originalPlace: string;
+        changedPlace?: string | null;
+        hasInstructorLounge?: boolean;
+        hasWomenRestroom?: boolean;
+        note?: string | null;
+      }>;
       scheduleLocations: Array<{
         unitScheduleId: number;
-        trainingLocationId: number;
+        trainingLocationId?: number;
+        locationName?: string;
         plannedCount?: number | null;
         actualCount?: number | null;
       }>;
@@ -166,6 +175,14 @@ export const unitApi = {
     const response = await apiClient(`/api/v1/units/${unitId}/training-periods`, {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+    return response.json();
+  },
+
+  // 교육기간 삭제
+  deleteTrainingPeriod: async (trainingPeriodId: number) => {
+    const response = await apiClient(`/api/v1/units/training-periods/${trainingPeriodId}`, {
+      method: 'DELETE',
     });
     return response.json();
   },

@@ -194,14 +194,28 @@ export const updateTrainingPeriodSchedule = asyncHandler(async (req: Request, re
 });
 
 // 교육기간 일정-장소/인원 저장
-export const updateTrainingPeriodScheduleLocations = asyncHandler(async (req: Request, res: Response) => {
+export const updateTrainingPeriodScheduleLocations = asyncHandler(
+  async (req: Request, res: Response) => {
+    const periodId = Number(req.params.periodId);
+
+    const result = await unitService.updateTrainingPeriodScheduleLocations(periodId, req.body);
+
+    res.status(200).json({
+      result: 'Success',
+      data: result,
+    });
+  },
+);
+
+// 교육기간 삭제
+export const deleteTrainingPeriod = asyncHandler(async (req: Request, res: Response) => {
   const periodId = Number(req.params.periodId);
 
-  const result = await unitService.updateTrainingPeriodScheduleLocations(periodId, req.body);
+  await unitService.deleteTrainingPeriod(periodId);
 
   res.status(200).json({
     result: 'Success',
-    data: result,
+    message: '교육기간이 삭제되었습니다.',
   });
 });
 
@@ -228,6 +242,7 @@ module.exports = {
   updateUnitWithPeriods,
   updateOfficerInfo,
   createTrainingPeriod,
+  deleteTrainingPeriod,
   updateUnitAddress,
   addSchedule,
   removeSchedule,

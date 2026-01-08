@@ -11,6 +11,7 @@ export interface LocationData {
   hasInstructorLounge: boolean;
   hasWomenRestroom: boolean;
   note: string;
+  hasAssignments?: boolean;
 }
 
 interface LocationAccordionProps {
@@ -117,10 +118,15 @@ export const LocationAccordion = ({
                       type="button"
                       onClick={async (e) => {
                         e.stopPropagation();
-                        const confirmed = await showConfirm(
-                          `"${loc.originalPlace || '장소 ' + (index + 1)}" 교육장소를 삭제하시겠습니까?`,
-                        );
-                        if (confirmed) {
+                        // 배정이 있으면 확인, 없으면 바로 삭제
+                        if (loc.hasAssignments) {
+                          const confirmed = await showConfirm(
+                            `"${loc.originalPlace || '장소 ' + (index + 1)}"에 배정이 존재합니다. 삭제하시겠습니까?`,
+                          );
+                          if (confirmed) {
+                            onRemove(index);
+                          }
+                        } else {
                           onRemove(index);
                         }
                       }}

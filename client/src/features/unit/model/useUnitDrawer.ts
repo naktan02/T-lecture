@@ -70,7 +70,11 @@ interface UseUnitDrawerReturn {
     field: 'trainingLocationId' | 'plannedCount' | 'actualCount',
     value: number | string | null,
   ) => void;
+  handleApplyFirstToAll: () => void;
   handleScheduleLocationsSave: () => Promise<void>;
+  handleInfoSave: () => Promise<void>;
+  handleLocationsSave: () => Promise<void>;
+  handleBasicInfoSave: () => Promise<void>;
   handleSaveAddress: () => Promise<void>;
   handleSubmit: (e: FormEvent) => Promise<void>;
   handleDelete: () => void;
@@ -99,7 +103,7 @@ const createEmptyLocation = (): LocationData => ({
 const createEmptyPeriod = (name: string): TrainingPeriodFormData => ({
   name,
   workStartTime: '09:00',
-  workEndTime: '18:00',
+  workEndTime: '17:00',
   lunchStartTime: '12:00',
   lunchEndTime: '13:00',
   officerName: '',
@@ -116,9 +120,14 @@ const createEmptyPeriod = (name: string): TrainingPeriodFormData => ({
 const toTimeString = (dateStr?: string | null): string => {
   if (!dateStr) return '';
   try {
+    // 서버에서 2000-01-01T09:00:00.000Z 형식으로 저장
+    // UTC 시간을 그대로 파싱하여 HH:MM 추출 (로컬 변환 없음)
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return '';
-    return d.toTimeString().slice(0, 5);
+    // UTC 시간 그대로 사용
+    const hours = d.getUTCHours().toString().padStart(2, '0');
+    const minutes = d.getUTCMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
   } catch {
     return '';
   }
@@ -137,16 +146,38 @@ const mapPeriodToForm = (period: TrainingPeriod): TrainingPeriodFormData => {
   const scheduleLocationMap: Record<number | string, ScheduleLocationFormData[]> = {};
   (period.schedules || []).forEach((s, idx) => {
     const key = s.id ?? `new-${idx}`;
-    scheduleLocationMap[key] = (s.scheduleLocations || []).map((sl) => ({
+    const locations = (s.scheduleLocations || []).map((sl) => ({
       trainingLocationId: sl.trainingLocationId,
       plannedCount: sl.plannedCount ?? null,
       actualCount: sl.actualCount ?? null,
     }));
+    // 기존 장소 매칭이 없으면 빈 row 1개 추가 (기본 제공)
+    scheduleLocationMap[key] =
+      locations.length > 0
+        ? locations
+        : [{ trainingLocationId: '', plannedCount: null, actualCount: null }];
   });
 
   const hasAssignments = (period.schedules || []).some(
     (s) => s.assignments && s.assignments.length > 0,
   );
+
+  // 각 장소별로 배정이 있는지 확인 (assignments의 trainingLocationId와 매칭)
+  const locationAssignmentsMap = new Map<number, boolean>();
+  for (const schedule of period.schedules || []) {
+    for (const assignment of schedule.assignments || []) {
+      // @ts-expect-error - trainingLocationId는 서버에서 추가됨
+      if (assignment.trainingLocationId) {
+        // @ts-expect-error - trainingLocationId는 서버에서 추가됨
+        locationAssignmentsMap.set(assignment.trainingLocationId, true);
+      }
+    }
+  }
+
+  const locationsWithAssignments = (period.locations || []).map((loc) => ({
+    ...mapLocationToForm(loc),
+    hasAssignments: loc.id ? locationAssignmentsMap.has(loc.id) : false,
+  }));
 
   return {
     id: period.id,
@@ -161,7 +192,7 @@ const mapPeriodToForm = (period: TrainingPeriod): TrainingPeriodFormData => {
     hasCateredMeals: period.hasCateredMeals || false,
     hasHallLodging: period.hasHallLodging || false,
     allowsPhoneBeforeAfter: period.allowsPhoneBeforeAfter || false,
-    locations: (period.locations || []).map(mapLocationToForm),
+    locations: locationsWithAssignments,
     schedules: (period.schedules || []).map((s) => ({
       id: s.id,
       date: toDateInputValue(s.date),
@@ -206,14 +237,17 @@ export const useUnitDrawer = ({
   const updateMutation = useMutation({
     mutationFn: (payload: UpdateUnitWithPeriodsPayload) => unitApi.updateUnit(unitId!, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['units'] });
-      queryClient.invalidateQueries({ queryKey: ['unitDetail', unitId] });
+      // 로컬 상태를 유지하므로 invalidate하지 않음
     },
   });
 
   const createPeriodMutation = useMutation({
     mutationFn: (payload: CreateTrainingPeriodPayload) =>
       unitApi.createTrainingPeriod(unitId!, payload),
+  });
+
+  const deletePeriodMutation = useMutation({
+    mutationFn: (trainingPeriodId: number) => unitApi.deleteTrainingPeriod(trainingPeriodId),
   });
 
   const updateScheduleLocationsMutation = useMutation({
@@ -223,23 +257,32 @@ export const useUnitDrawer = ({
     }: {
       periodId: number;
       data: {
+        locations?: Array<{
+          id?: number;
+          originalPlace: string;
+          changedPlace?: string | null;
+          hasInstructorLounge?: boolean;
+          hasWomenRestroom?: boolean;
+          note?: string | null;
+        }>;
         scheduleLocations: Array<{
           unitScheduleId: number;
-          trainingLocationId: number;
+          trainingLocationId?: number;
+          locationName?: string;
           plannedCount?: number | null;
           actualCount?: number | null;
         }>;
       };
     }) => unitApi.updateTrainingPeriodScheduleLocations(periodId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['unitDetail', unitId] });
+      // 로컬 상태를 유지하므로 invalidate하지 않음
     },
   });
 
   const updateAddressMutation = useMutation({
     mutationFn: (address: string) => unitApi.updateUnitAddress(unitId!, address),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['unitDetail', unitId] });
+      // 로컬 상태를 유지하므로 invalidate하지 않음
     },
   });
 
@@ -252,7 +295,7 @@ export const useUnitDrawer = ({
       data: { startDate: string; endDate: string; excludedDates: string[] };
     }) => unitApi.updateTrainingPeriodSchedule(periodId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['unitDetail', unitId] });
+      // 로컬 상태를 유지하므로 invalidate하지 않음
     },
   });
 
@@ -370,18 +413,25 @@ export const useUnitDrawer = ({
   );
 
   const handleRemovePeriod = useCallback(
-    (index: number) => {
+    async (index: number) => {
       const period = trainingPeriods[index];
+
+      // 서버에 저장된 교육기간이면 삭제 API 호출
       if (period.id) {
-        const ok = confirm(
-          `"${period.name}" 교육기간을 삭제하시겠습니까? 관련된 일정과 장소도 모두 삭제됩니다.`,
-        );
-        if (!ok) return;
+        try {
+          await deletePeriodMutation.mutateAsync(period.id);
+          showSuccess(`"${period.name}" 교육기간이 삭제되었습니다.`);
+        } catch {
+          showError('교육기간 삭제에 실패했습니다.');
+          return;
+        }
       }
+
+      // 로컬 상태에서 제거
       setTrainingPeriods((prev) => prev.filter((_, i) => i !== index));
       setActiveTab('basic');
     },
-    [trainingPeriods],
+    [trainingPeriods, deletePeriodMutation],
   );
 
   const handlePeriodClick = useCallback((index: number) => {
@@ -508,6 +558,32 @@ export const useUnitDrawer = ({
     [activeTab, trainingPeriods],
   );
 
+  // 첫 번째 일정의 장소 매칭 데이터를 모든 일정에 복사
+  const handleApplyFirstToAll = useCallback(() => {
+    if (typeof activeTab !== 'number') return;
+    const period = trainingPeriods[activeTab];
+    if (period.schedules.length < 2) return;
+
+    const firstScheduleKey = period.schedules[0]?.id ?? 'new-0';
+    const firstData = period.scheduleLocationMap[firstScheduleKey] || [];
+    if (firstData.length === 0) {
+      showWarning('첫 번째 날짜에 장소 데이터가 없습니다.');
+      return;
+    }
+
+    // 첫 번째 데이터를 깊은 복사하여 모든 스케줄에 적용
+    const newMap: Record<number | string, ScheduleLocationFormData[]> = {};
+    for (let i = 0; i < period.schedules.length; i++) {
+      const scheduleKey = period.schedules[i]?.id ?? `new-${i}`;
+      newMap[scheduleKey] = firstData.map((row) => ({ ...row }));
+    }
+
+    setTrainingPeriods((prev) =>
+      prev.map((p, i) => (i === activeTab ? { ...p, scheduleLocationMap: newMap } : p)),
+    );
+    showSuccess('첫 번째 날짜 데이터가 전체 적용되었습니다.');
+  }, [activeTab, trainingPeriods]);
+
   const handleScheduleLocationsSave = useCallback(async () => {
     if (typeof activeTab !== 'number') return;
     const period = trainingPeriods[activeTab];
@@ -523,15 +599,17 @@ export const useUnitDrawer = ({
       actualCount?: number | null;
     }> = [];
 
-    for (const schedule of period.schedules) {
+    for (let i = 0; i < period.schedules.length; i++) {
+      const schedule = period.schedules[i];
       if (!schedule.id) continue;
-      const scheduleKey = schedule.id;
+      // TrainingPeriodTab과 동일한 키 계산 방식
+      const scheduleKey = schedule.id ?? `new-${i}`;
       const entries = period.scheduleLocationMap[scheduleKey] || [];
       for (const entry of entries) {
         const locId = Number(entry.trainingLocationId);
-        if (!entry.trainingLocationId || Number.isNaN(locId)) {
-          showWarning('장소를 선택해야 저장할 수 있습니다.');
-          return;
+        // 빈 장소 선택은 건너뛰기 (아직 선택 안 한 경우)
+        if (!entry.trainingLocationId || entry.trainingLocationId === '' || Number.isNaN(locId)) {
+          continue;
         }
         scheduleLocationsPayload.push({
           unitScheduleId: schedule.id,
@@ -552,6 +630,151 @@ export const useUnitDrawer = ({
       showError('장소 매칭 저장에 실패했습니다.');
     }
   }, [activeTab, trainingPeriods, updateScheduleLocationsMutation]);
+
+  // 정보 섹션 저장 (근무시간, 담당관, 시설정보만 전송)
+  const handleInfoSave = useCallback(async () => {
+    if (typeof activeTab !== 'number' || !unitId) return;
+    const period = trainingPeriods[activeTab];
+    if (!period.id) {
+      showWarning('교육기간을 먼저 저장해주세요.');
+      return;
+    }
+
+    try {
+      await updateMutation.mutateAsync({
+        name: basicForm.name,
+        unitType: basicForm.unitType,
+        wideArea: basicForm.wideArea,
+        region: basicForm.region,
+        trainingPeriods: [
+          {
+            id: period.id,
+            name: period.name,
+            workStartTime: period.workStartTime || null,
+            workEndTime: period.workEndTime || null,
+            lunchStartTime: period.lunchStartTime || null,
+            lunchEndTime: period.lunchEndTime || null,
+            officerName: period.officerName || null,
+            officerPhone: period.officerPhone || null,
+            officerEmail: period.officerEmail || null,
+            hasCateredMeals: period.hasCateredMeals,
+            hasHallLodging: period.hasHallLodging,
+            allowsPhoneBeforeAfter: period.allowsPhoneBeforeAfter,
+            // locations 제외 - 장소 정보는 handleLocationsSave에서 처리
+          },
+        ],
+      });
+      showSuccess('기본 정보가 저장되었습니다.');
+    } catch {
+      showError('기본 정보 저장에 실패했습니다.');
+    }
+  }, [activeTab, unitId, trainingPeriods, basicForm, updateMutation]);
+
+  // 장소 섹션 저장 (장소 + 일정별 장소 매칭 동시 처리)
+  const handleLocationsSave = useCallback(async () => {
+    if (typeof activeTab !== 'number' || !unitId) return;
+    const period = trainingPeriods[activeTab];
+    if (!period.id) {
+      showWarning('교육기간을 먼저 저장해주세요.');
+      return;
+    }
+
+    try {
+      // 장소 목록 + 일정별 매칭을 한 번에 전송
+      // 서버에서 장소를 먼저 생성한 후 이름으로 id를 매핑
+
+      // 1. 장소 목록 준비
+      const locationsPayload = period.locations.map((loc) => ({
+        id: loc.id,
+        originalPlace: loc.originalPlace,
+        changedPlace: loc.changedPlace || null,
+        hasInstructorLounge: loc.hasInstructorLounge,
+        hasWomenRestroom: loc.hasWomenRestroom,
+        note: loc.note || null,
+      }));
+
+      // 2. 일정별 장소 매칭 준비 (id 대신 locationName 사용 가능)
+      const scheduleLocationsPayload: Array<{
+        unitScheduleId: number;
+        trainingLocationId?: number;
+        locationName?: string;
+        plannedCount?: number | null;
+        actualCount?: number | null;
+      }> = [];
+
+      // id -> 장소 이름 맵 생성
+      const locIdToName = new Map<number | string, string>();
+      // 유효한 장소 id 목록 (실제 DB에 존재하는 id)
+      const validLocationIds = new Set<number>();
+
+      for (const loc of period.locations) {
+        if (loc.id) {
+          locIdToName.set(loc.id, loc.originalPlace);
+          validLocationIds.add(loc.id);
+        }
+        // 새 장소 (id 없음)도 originalPlace로 매핑용 임시 키 생성
+        locIdToName.set(loc.originalPlace, loc.originalPlace);
+      }
+
+      for (let i = 0; i < period.schedules.length; i++) {
+        const schedule = period.schedules[i];
+        if (!schedule.id) continue;
+        const scheduleKey = schedule.id ?? `new-${i}`;
+        const entries = period.scheduleLocationMap[scheduleKey] || [];
+        for (const entry of entries) {
+          if (!entry.trainingLocationId || entry.trainingLocationId === '') {
+            continue;
+          }
+
+          const locId = Number(entry.trainingLocationId);
+          // 유효한 장소 id인 경우에만 trainingLocationId 사용
+          const isValidId = !Number.isNaN(locId) && validLocationIds.has(locId);
+          const locationName =
+            locIdToName.get(locId) || locIdToName.get(String(entry.trainingLocationId));
+
+          scheduleLocationsPayload.push({
+            unitScheduleId: schedule.id,
+            trainingLocationId: isValidId ? locId : undefined,
+            locationName: locationName || String(entry.trainingLocationId), // 항상 이름 전송
+            plannedCount: entry.plannedCount ?? null,
+            actualCount: entry.actualCount ?? null,
+          });
+        }
+      }
+
+      // 3. 한 번의 API 호출로 전송
+      await updateScheduleLocationsMutation.mutateAsync({
+        periodId: period.id,
+        data: {
+          locations: locationsPayload,
+          scheduleLocations: scheduleLocationsPayload,
+        },
+      });
+
+      showSuccess('장소 정보가 저장되었습니다.');
+    } catch {
+      showError('장소 저장에 실패했습니다.');
+    }
+  }, [activeTab, unitId, trainingPeriods, updateScheduleLocationsMutation]);
+
+  // 기본 정보 저장 (부대명, 군구분, 주소)
+  const handleBasicInfoSave = useCallback(async () => {
+    if (!unitId) return;
+
+    try {
+      await updateMutation.mutateAsync({
+        name: basicForm.name,
+        unitType: basicForm.unitType,
+        wideArea: basicForm.wideArea,
+        region: basicForm.region,
+        detailAddress: basicForm.detailAddress,
+        trainingPeriods: [], // 기본정보만 업데이트, 교육기간은 변경하지 않음
+      });
+      showSuccess('기본 정보가 저장되었습니다.');
+    } catch {
+      showError('기본 정보 저장에 실패했습니다.');
+    }
+  }, [unitId, basicForm, updateMutation]);
 
   const handleSaveAddress = useCallback(async () => {
     if (!unitId) return;
@@ -669,7 +892,10 @@ export const useUnitDrawer = ({
         }
 
         queryClient.invalidateQueries({ queryKey: ['units'] });
-        onClose();
+        // 신규 등록 시에만 drawer 닫기, 수정 모드에서는 화면 유지
+        if (!unitId) {
+          onClose();
+        }
       } catch {
         showError('저장 중 오류가 발생했습니다.');
       }
@@ -756,7 +982,11 @@ export const useUnitDrawer = ({
     handleScheduleLocationRowAdd,
     handleScheduleLocationRowRemove,
     handleScheduleLocationRowChange,
+    handleApplyFirstToAll,
     handleScheduleLocationsSave,
+    handleInfoSave,
+    handleLocationsSave,
+    handleBasicInfoSave,
     handleSaveAddress,
     handleSubmit,
     handleDelete,

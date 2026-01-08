@@ -261,7 +261,23 @@ export interface UpdateUnitWithPeriodsInput {
 }
 
 export interface UpdateTrainingPeriodScheduleLocationsInput {
-  scheduleLocations: ScheduleLocationUpdateInput[];
+  // 장소 목록 (새 장소 추가/기존 장소 업데이트)
+  locations?: Array<{
+    id?: number;
+    originalPlace: string;
+    changedPlace?: string | null;
+    hasInstructorLounge?: boolean;
+    hasWomenRestroom?: boolean;
+    note?: string | null;
+  }>;
+  // 일정별 장소 매칭 (locationName으로 매칭 가능)
+  scheduleLocations: Array<{
+    unitScheduleId: number;
+    trainingLocationId?: number;
+    locationName?: string; // id가 없을 경우 이름으로 매칭
+    plannedCount?: number | null;
+    actualCount?: number | null;
+  }>;
 }
 
 // ===== TrainingPeriod 생성 =====
