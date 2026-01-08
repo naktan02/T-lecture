@@ -217,6 +217,7 @@ class UnitRepository {
   /**
    * 부대 + TrainingPeriod 함께 생성 (새 구조)
    * - 모든 TrainingPeriod 필드 지원 (시간, 담당관, 시설 정보)
+   * - ScheduleLocation 자동 생성 (모든 일정에 모든 장소 연결)
    */
   async createUnitWithTrainingPeriod(
     unitData: Prisma.UnitCreateInput,
@@ -240,16 +241,15 @@ class UnitRepository {
     const parseTime = (t: Date | string | null | undefined): Date | null => {
       if (!t) return null;
       if (t instanceof Date) return t;
-      // HH:MM 형태면 임의 날짜에 시간 설정
       if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(t)) {
         return new Date(`2000-01-01T${t}:00.000Z`);
       }
-      // ISO 문자열이면 시간만 추출
       const d = new Date(t);
       return isNaN(d.getTime()) ? null : d;
     };
 
-    return prisma.unit.create({
+    // 1. Unit + TrainingPeriod + Locations + Schedules 생성
+    const unit = await prisma.unit.create({
       data: {
         ...unitData,
         trainingPeriods: {
@@ -281,7 +281,66 @@ class UnitRepository {
       },
       include: {
         trainingPeriods: {
-          include: { locations: true, schedules: true },
+          include: {
+            locations: true,
+            schedules: true,
+          },
+        },
+      },
+    });
+
+    // 2. ScheduleLocation 생성 (모든 schedule × 모든 location)
+    const trainingPeriod = unit.trainingPeriods[0];
+    if (
+      trainingPeriod &&
+      trainingPeriod.locations.length > 0 &&
+      trainingPeriod.schedules.length > 0
+    ) {
+      const scheduleLocationData: {
+        unitScheduleId: number;
+        trainingLocationId: number;
+        plannedCount: number | null;
+        actualCount: number | null;
+      }[] = [];
+
+      // locations 배열과 DB에 저장된 locations를 인덱스로 매칭
+      const dbLocations = trainingPeriod.locations;
+      const inputLocations = periodData.locations || [];
+
+      for (const schedule of trainingPeriod.schedules) {
+        for (let i = 0; i < dbLocations.length; i++) {
+          const dbLoc = dbLocations[i];
+          // 입력 데이터에서 인원수 가져오기 (인덱스 매칭)
+          const inputLoc = inputLocations[i];
+          scheduleLocationData.push({
+            unitScheduleId: schedule.id,
+            trainingLocationId: dbLoc.id,
+            plannedCount: safeInt(inputLoc?.plannedCount),
+            actualCount: safeInt(inputLoc?.actualCount),
+          });
+        }
+      }
+
+      if (scheduleLocationData.length > 0) {
+        await prisma.scheduleLocation.createMany({
+          data: scheduleLocationData,
+        });
+      }
+    }
+
+    // 3. ScheduleLocation 포함하여 다시 조회
+    return prisma.unit.findUnique({
+      where: { id: unit.id },
+      include: {
+        trainingPeriods: {
+          include: {
+            locations: true,
+            schedules: {
+              include: {
+                scheduleLocations: true,
+              },
+            },
+          },
         },
       },
     });

@@ -344,7 +344,11 @@ async function generateExcel() {
     const startDate = new Date(Date.UTC(year, month, dayOfMonth));
     const endDate = new Date(Date.UTC(year, month, dayOfMonth + 2 + extraDays));
     const officerName = `${randomChoice(LAST_NAMES)}${randomChoice(FIRST_NAMES)}`;
-    const plannedCount = Math.min(randomInt(40, 150), 200);
+
+    // 첫 번째 장소 인원 (40~150명)
+    const plannedCount1 = randomInt(40, 150);
+    // 참여인원은 계획의 70~100% (일부는 계획보다 적음)
+    const actualCount1 = Math.floor(plannedCount1 * (0.7 + Math.random() * 0.3));
 
     // 첫 번째 장소 (부대 정보 포함) - 위도/경도 제외
     const mainRow: (string | number | null)[] = [
@@ -371,8 +375,8 @@ async function generateExcel() {
       Math.random() > 0.3 ? 'O' : 'X',
       Math.random() > 0.4 ? 'O' : 'X',
       'O',
-      plannedCount,
-      Math.floor(plannedCount * (0.8 + Math.random() * 0.2)),
+      plannedCount1,
+      actualCount1,
       '',
     ];
 
@@ -381,8 +385,13 @@ async function generateExcel() {
     });
     currentRow++;
 
-    // 추가 장소 (부대명 비움) - 위도/경도 제외로 열 수 감소
+    // 추가 장소 (각 장소마다 다른 인원수)
     for (let loc = 1; loc < locationCount; loc++) {
+      // 각 장소별로 다른 계획인원 (30~100명)
+      const plannedCountN = randomInt(30, 100);
+      // 참여인원은 계획의 70~100%
+      const actualCountN = Math.floor(plannedCountN * (0.7 + Math.random() * 0.3));
+
       const additionalRow: (string | number | null)[] = [
         '',
         '',
@@ -400,15 +409,15 @@ async function generateExcel() {
         '',
         '',
         '', // 간부명~이메일
-        `추가장소${loc + 1}`,
+        randomChoice(PLACES), // 실제 장소명 사용
         '',
         'O',
         'O',
         Math.random() > 0.3 ? 'O' : 'X',
         Math.random() > 0.4 ? 'O' : 'X',
         'O',
-        plannedCount,
-        Math.floor(plannedCount * (0.8 + Math.random() * 0.2)),
+        plannedCountN,
+        actualCountN,
         '',
       ];
 

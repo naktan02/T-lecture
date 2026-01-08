@@ -77,10 +77,16 @@ export function toCreateUnitDto(
 }
 
 // 엑셀 Row -> 교육장소 데이터 추출
-// NOTE: plannedCount, actualCount는 이제 ScheduleLocation에 있음
-function extractTrainingLocation(row: Record<string, unknown>): TrainingLocationInput | null {
+// NOTE: plannedCount, actualCount는 ScheduleLocation에 저장되지만, location 생성 시 함께 전달
+function extractTrainingLocation(
+  row: Record<string, unknown>,
+): (TrainingLocationInput & { plannedCount?: number; actualCount?: number }) | null {
   const hasLocationData = row.originalPlace || row.changedPlace;
   if (!hasLocationData) return null;
+
+  // plannedCount/actualCount 파싱
+  const parsedPlanned = row.plannedCount !== undefined ? Number(row.plannedCount) : undefined;
+  const parsedActual = row.actualCount !== undefined ? Number(row.actualCount) : undefined;
 
   return {
     originalPlace: row.originalPlace as string | undefined,
@@ -88,6 +94,8 @@ function extractTrainingLocation(row: Record<string, unknown>): TrainingLocation
     hasInstructorLounge: row.hasInstructorLounge as boolean | undefined,
     hasWomenRestroom: row.hasWomenRestroom as boolean | undefined,
     note: row.note as string | undefined,
+    plannedCount: parsedPlanned && !isNaN(parsedPlanned) ? parsedPlanned : undefined,
+    actualCount: parsedActual && !isNaN(parsedActual) ? parsedActual : undefined,
   };
 }
 
