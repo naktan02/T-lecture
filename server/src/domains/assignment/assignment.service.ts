@@ -243,28 +243,45 @@ class AssignmentService {
     }
 
     // 4) 스케줄 데이터를 기존 알고리즘 형식으로 변환 (Unit 기반)
-    // 스케줄을 unitId별로 그룹핑하여 units 형식으로 변환
+    // 알고리즘 인터페이스: { id, name, region, wideArea, schedules, trainingLocations, isStaffLocked }
     const unitMap = new Map<number, any>();
     for (const schedule of schedules) {
       const unitId = schedule.trainingPeriod?.unitId;
       if (!unitId) continue;
 
       if (!unitMap.has(unitId)) {
+        // 장소 정보 추출 (scheduleLocations에서 actualCount/plannedCount 포함)
+        const locations =
+          schedule.trainingPeriod?.locations?.map((loc: any) => {
+            // scheduleLocations에서 해당 장소의 인원 정보 가져오기
+            const schedLoc = schedule.scheduleLocations?.find(
+              (sl: any) => sl.trainingLocationId === loc.id,
+            );
+            return {
+              id: loc.id,
+              originalPlace: loc.originalPlace,
+              actualCount: schedLoc?.actualCount ?? null,
+              plannedCount: schedLoc?.plannedCount ?? null,
+            };
+          }) || [];
+
         unitMap.set(unitId, {
           id: unitId,
           name: schedule.trainingPeriod?.unit?.name,
-          trainingPeriods: [
-            {
-              id: schedule.trainingPeriod?.id,
-              unitId,
-              locations: schedule.trainingPeriod?.locations || [],
-              schedules: [],
-            },
-          ],
+          region: schedule.trainingPeriod?.unit?.region,
+          wideArea: schedule.trainingPeriod?.unit?.wideArea,
+          trainingLocations: locations,
+          schedules: [],
+          isStaffLocked: schedule.trainingPeriod?.isStaffLocked ?? false,
         });
       }
 
-      unitMap.get(unitId).trainingPeriods[0].schedules.push(schedule);
+      // 스케줄 추가 (assignments 포함)
+      unitMap.get(unitId).schedules.push({
+        id: schedule.id,
+        date: schedule.date,
+        assignments: schedule.assignments || [],
+      });
     }
     const units = Array.from(unitMap.values());
 

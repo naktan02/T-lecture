@@ -566,12 +566,17 @@ async function main() {
 
           // 5. ScheduleLocation 생성 (각 일정-장소 연결)
           for (const schedule of createdSchedules) {
+            // 인원수: 30~120명 랜덤, 70%는 참여인원도 설정
+            const planned = randomInt(30, 120);
+            const hasActual = Math.random() > 0.3;
+            const actual = hasActual ? randomInt(Math.floor(planned * 0.8), planned) : null;
+
             await prisma.scheduleLocation.create({
               data: {
                 unitScheduleId: schedule.id,
                 trainingLocationId: trainingLocation.id,
-                plannedCount: randomInt(30, 50),
-                actualCount: null,
+                plannedCount: planned,
+                actualCount: actual,
               },
             });
           }
