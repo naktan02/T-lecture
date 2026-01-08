@@ -10,6 +10,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { usePenalties } from '../model/usePenalties';
 import { ReasonItem } from '../api/penaltyApi';
+import { showConfirm } from '../../../shared/utils/toast';
 
 /**
  * 배정 패널티 관리 탭 - 강사별 패널티 목록 및 관리
@@ -72,8 +73,9 @@ export const PenaltyManagementSection = (): ReactElement => {
   };
 
   // 삭제 확인
-  const handleDelete = (userId: number, userName: string | null) => {
-    if (confirm(`${userName || '강사'}의 패널티를 삭제하시겠습니까?`)) {
+  const handleDelete = async (userId: number, userName: string | null) => {
+    const confirmed = await showConfirm(`${userName || '강사'}의 패널티를 삭제하시겠습니까?`);
+    if (confirmed) {
       deletePenalty(userId);
     }
   };

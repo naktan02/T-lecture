@@ -4,6 +4,7 @@
 
 /* eslint-disable no-console */
 
+import 'dotenv/config';
 import prisma from '../src/libs/prisma.js';
 
 export async function runSeedReset() {
@@ -17,8 +18,10 @@ export async function runSeedReset() {
     { name: 'Notice', fn: () => prisma.notice.deleteMany() },
     { name: 'Inquiry', fn: () => prisma.inquiry.deleteMany() },
     { name: 'InstructorUnitAssignment', fn: () => prisma.instructorUnitAssignment.deleteMany() },
+    { name: 'ScheduleLocation', fn: () => prisma.scheduleLocation.deleteMany() },
     { name: 'UnitSchedule', fn: () => prisma.unitSchedule.deleteMany() },
     { name: 'TrainingLocation', fn: () => prisma.trainingLocation.deleteMany() },
+    { name: 'TrainingPeriod', fn: () => prisma.trainingPeriod.deleteMany() },
     { name: 'Unit', fn: () => prisma.unit.deleteMany() },
     { name: 'InstructorPriorityCredit', fn: () => prisma.instructorPriorityCredit.deleteMany() },
     { name: 'InstructorPenalty', fn: () => prisma.instructorPenalty.deleteMany() },

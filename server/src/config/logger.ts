@@ -1,7 +1,9 @@
 // server/src/config/logger.ts
 import winston from 'winston';
 import winstonDaily from 'winston-daily-rotate-file';
+import Transport from 'winston-transport';
 import path from 'path';
+import * as Sentry from '@sentry/node';
 
 const logDir = 'logs';
 const { combine, timestamp, printf, colorize } = winston.format;
@@ -14,6 +16,39 @@ const debugToFile = process.env.DEBUG_TO_FILE === 'true';
 const logFormat = printf(({ level, message, timestamp }) => {
   return `${timestamp} [${level}]: ${message}`;
 });
+
+/**
+ * Sentry로 에러를 전송하는 커스텀 Winston Transport
+ * logger.error() 호출 시 자동으로 Sentry에 에러가 기록됩니다.
+ */
+class SentryTransport extends Transport {
+  constructor(opts?: Transport.TransportStreamOptions) {
+    super(opts);
+  }
+
+  log(info: { level: string; message: string; [key: string]: unknown }, callback: () => void) {
+    setImmediate(() => {
+      this.emit('logged', info);
+    });
+
+    // error 레벨일 때만 Sentry에 전송
+    if (info.level === 'error') {
+      // 메시지가 Error 객체인 경우 그대로 전송, 아니면 문자열로 전송
+      if (info.error instanceof Error) {
+        Sentry.captureException(info.error, {
+          extra: { ...info },
+        });
+      } else {
+        Sentry.captureMessage(info.message, {
+          level: 'error',
+          extra: info,
+        });
+      }
+    }
+
+    callback();
+  }
+}
 
 const transports: winston.transport[] = [];
 
@@ -64,6 +99,11 @@ transports.push(
       : combine(colorize(), timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), logFormat),
   }),
 );
+
+// Sentry Transport 추가 (SENTRY_DSN이 설정되어 있을 때만)
+if (process.env.SENTRY_DSN) {
+  transports.push(new SentryTransport({ level: 'error' }));
+}
 
 const logger = winston.createLogger({
   format: combine(timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), logFormat),

@@ -104,10 +104,10 @@ export const InstructorFields: React.FC<InstructorFieldsProps> = ({
             </div>
           </div>
 
-          {/* 팀 */}
+          {/* 팀 (선택) */}
           <SelectField
             label="소속 팀"
-            required
+            placeholder="무소속"
             value={form.teamId}
             onChange={onChange('teamId') as (e: ChangeEvent<HTMLSelectElement>) => void}
             options={options.teams}

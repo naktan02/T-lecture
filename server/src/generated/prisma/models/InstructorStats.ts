@@ -29,57 +29,29 @@ export type AggregateInstructorStats = {
 export type InstructorStatsAvgAggregateOutputType = {
   instructorId: number | null
   legacyPracticumCount: number | null
-  totalWorkHours: number | null
-  totalDistance: number | null
-  totalWorkDays: number | null
-  acceptedCount: number | null
-  totalAssignmentsCount: number | null
 }
 
 export type InstructorStatsSumAggregateOutputType = {
   instructorId: number | null
   legacyPracticumCount: number | null
-  totalWorkHours: number | null
-  totalDistance: number | null
-  totalWorkDays: number | null
-  acceptedCount: number | null
-  totalAssignmentsCount: number | null
 }
 
 export type InstructorStatsMinAggregateOutputType = {
   instructorId: number | null
   legacyPracticumCount: number | null
   autoPromotionEnabled: boolean | null
-  totalWorkHours: number | null
-  totalDistance: number | null
-  totalWorkDays: number | null
-  acceptedCount: number | null
-  totalAssignmentsCount: number | null
-  lastCalculatedAt: Date | null
 }
 
 export type InstructorStatsMaxAggregateOutputType = {
   instructorId: number | null
   legacyPracticumCount: number | null
   autoPromotionEnabled: boolean | null
-  totalWorkHours: number | null
-  totalDistance: number | null
-  totalWorkDays: number | null
-  acceptedCount: number | null
-  totalAssignmentsCount: number | null
-  lastCalculatedAt: Date | null
 }
 
 export type InstructorStatsCountAggregateOutputType = {
   instructorId: number
   legacyPracticumCount: number
   autoPromotionEnabled: number
-  totalWorkHours: number
-  totalDistance: number
-  totalWorkDays: number
-  acceptedCount: number
-  totalAssignmentsCount: number
-  lastCalculatedAt: number
   _all: number
 }
 
@@ -87,57 +59,29 @@ export type InstructorStatsCountAggregateOutputType = {
 export type InstructorStatsAvgAggregateInputType = {
   instructorId?: true
   legacyPracticumCount?: true
-  totalWorkHours?: true
-  totalDistance?: true
-  totalWorkDays?: true
-  acceptedCount?: true
-  totalAssignmentsCount?: true
 }
 
 export type InstructorStatsSumAggregateInputType = {
   instructorId?: true
   legacyPracticumCount?: true
-  totalWorkHours?: true
-  totalDistance?: true
-  totalWorkDays?: true
-  acceptedCount?: true
-  totalAssignmentsCount?: true
 }
 
 export type InstructorStatsMinAggregateInputType = {
   instructorId?: true
   legacyPracticumCount?: true
   autoPromotionEnabled?: true
-  totalWorkHours?: true
-  totalDistance?: true
-  totalWorkDays?: true
-  acceptedCount?: true
-  totalAssignmentsCount?: true
-  lastCalculatedAt?: true
 }
 
 export type InstructorStatsMaxAggregateInputType = {
   instructorId?: true
   legacyPracticumCount?: true
   autoPromotionEnabled?: true
-  totalWorkHours?: true
-  totalDistance?: true
-  totalWorkDays?: true
-  acceptedCount?: true
-  totalAssignmentsCount?: true
-  lastCalculatedAt?: true
 }
 
 export type InstructorStatsCountAggregateInputType = {
   instructorId?: true
   legacyPracticumCount?: true
   autoPromotionEnabled?: true
-  totalWorkHours?: true
-  totalDistance?: true
-  totalWorkDays?: true
-  acceptedCount?: true
-  totalAssignmentsCount?: true
-  lastCalculatedAt?: true
   _all?: true
 }
 
@@ -231,12 +175,6 @@ export type InstructorStatsGroupByOutputType = {
   instructorId: number
   legacyPracticumCount: number
   autoPromotionEnabled: boolean
-  totalWorkHours: number
-  totalDistance: number
-  totalWorkDays: number
-  acceptedCount: number
-  totalAssignmentsCount: number
-  lastCalculatedAt: Date
   _count: InstructorStatsCountAggregateOutputType | null
   _avg: InstructorStatsAvgAggregateOutputType | null
   _sum: InstructorStatsSumAggregateOutputType | null
@@ -266,12 +204,6 @@ export type InstructorStatsWhereInput = {
   instructorId?: Prisma.IntFilter<"InstructorStats"> | number
   legacyPracticumCount?: Prisma.IntFilter<"InstructorStats"> | number
   autoPromotionEnabled?: Prisma.BoolFilter<"InstructorStats"> | boolean
-  totalWorkHours?: Prisma.FloatFilter<"InstructorStats"> | number
-  totalDistance?: Prisma.FloatFilter<"InstructorStats"> | number
-  totalWorkDays?: Prisma.IntFilter<"InstructorStats"> | number
-  acceptedCount?: Prisma.IntFilter<"InstructorStats"> | number
-  totalAssignmentsCount?: Prisma.IntFilter<"InstructorStats"> | number
-  lastCalculatedAt?: Prisma.DateTimeFilter<"InstructorStats"> | Date | string
   instructor?: Prisma.XOR<Prisma.InstructorScalarRelationFilter, Prisma.InstructorWhereInput>
 }
 
@@ -279,12 +211,6 @@ export type InstructorStatsOrderByWithRelationInput = {
   instructorId?: Prisma.SortOrder
   legacyPracticumCount?: Prisma.SortOrder
   autoPromotionEnabled?: Prisma.SortOrder
-  totalWorkHours?: Prisma.SortOrder
-  totalDistance?: Prisma.SortOrder
-  totalWorkDays?: Prisma.SortOrder
-  acceptedCount?: Prisma.SortOrder
-  totalAssignmentsCount?: Prisma.SortOrder
-  lastCalculatedAt?: Prisma.SortOrder
   instructor?: Prisma.InstructorOrderByWithRelationInput
 }
 
@@ -295,12 +221,6 @@ export type InstructorStatsWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.InstructorStatsWhereInput | Prisma.InstructorStatsWhereInput[]
   legacyPracticumCount?: Prisma.IntFilter<"InstructorStats"> | number
   autoPromotionEnabled?: Prisma.BoolFilter<"InstructorStats"> | boolean
-  totalWorkHours?: Prisma.FloatFilter<"InstructorStats"> | number
-  totalDistance?: Prisma.FloatFilter<"InstructorStats"> | number
-  totalWorkDays?: Prisma.IntFilter<"InstructorStats"> | number
-  acceptedCount?: Prisma.IntFilter<"InstructorStats"> | number
-  totalAssignmentsCount?: Prisma.IntFilter<"InstructorStats"> | number
-  lastCalculatedAt?: Prisma.DateTimeFilter<"InstructorStats"> | Date | string
   instructor?: Prisma.XOR<Prisma.InstructorScalarRelationFilter, Prisma.InstructorWhereInput>
 }, "instructorId">
 
@@ -308,12 +228,6 @@ export type InstructorStatsOrderByWithAggregationInput = {
   instructorId?: Prisma.SortOrder
   legacyPracticumCount?: Prisma.SortOrder
   autoPromotionEnabled?: Prisma.SortOrder
-  totalWorkHours?: Prisma.SortOrder
-  totalDistance?: Prisma.SortOrder
-  totalWorkDays?: Prisma.SortOrder
-  acceptedCount?: Prisma.SortOrder
-  totalAssignmentsCount?: Prisma.SortOrder
-  lastCalculatedAt?: Prisma.SortOrder
   _count?: Prisma.InstructorStatsCountOrderByAggregateInput
   _avg?: Prisma.InstructorStatsAvgOrderByAggregateInput
   _max?: Prisma.InstructorStatsMaxOrderByAggregateInput
@@ -328,23 +242,11 @@ export type InstructorStatsScalarWhereWithAggregatesInput = {
   instructorId?: Prisma.IntWithAggregatesFilter<"InstructorStats"> | number
   legacyPracticumCount?: Prisma.IntWithAggregatesFilter<"InstructorStats"> | number
   autoPromotionEnabled?: Prisma.BoolWithAggregatesFilter<"InstructorStats"> | boolean
-  totalWorkHours?: Prisma.FloatWithAggregatesFilter<"InstructorStats"> | number
-  totalDistance?: Prisma.FloatWithAggregatesFilter<"InstructorStats"> | number
-  totalWorkDays?: Prisma.IntWithAggregatesFilter<"InstructorStats"> | number
-  acceptedCount?: Prisma.IntWithAggregatesFilter<"InstructorStats"> | number
-  totalAssignmentsCount?: Prisma.IntWithAggregatesFilter<"InstructorStats"> | number
-  lastCalculatedAt?: Prisma.DateTimeWithAggregatesFilter<"InstructorStats"> | Date | string
 }
 
 export type InstructorStatsCreateInput = {
   legacyPracticumCount?: number
   autoPromotionEnabled?: boolean
-  totalWorkHours?: number
-  totalDistance?: number
-  totalWorkDays?: number
-  acceptedCount?: number
-  totalAssignmentsCount?: number
-  lastCalculatedAt?: Date | string
   instructor: Prisma.InstructorCreateNestedOneWithoutInstructorStatsInput
 }
 
@@ -352,23 +254,11 @@ export type InstructorStatsUncheckedCreateInput = {
   instructorId: number
   legacyPracticumCount?: number
   autoPromotionEnabled?: boolean
-  totalWorkHours?: number
-  totalDistance?: number
-  totalWorkDays?: number
-  acceptedCount?: number
-  totalAssignmentsCount?: number
-  lastCalculatedAt?: Date | string
 }
 
 export type InstructorStatsUpdateInput = {
   legacyPracticumCount?: Prisma.IntFieldUpdateOperationsInput | number
   autoPromotionEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  totalWorkHours?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalDistance?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalWorkDays?: Prisma.IntFieldUpdateOperationsInput | number
-  acceptedCount?: Prisma.IntFieldUpdateOperationsInput | number
-  totalAssignmentsCount?: Prisma.IntFieldUpdateOperationsInput | number
-  lastCalculatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   instructor?: Prisma.InstructorUpdateOneRequiredWithoutInstructorStatsNestedInput
 }
 
@@ -376,47 +266,23 @@ export type InstructorStatsUncheckedUpdateInput = {
   instructorId?: Prisma.IntFieldUpdateOperationsInput | number
   legacyPracticumCount?: Prisma.IntFieldUpdateOperationsInput | number
   autoPromotionEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  totalWorkHours?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalDistance?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalWorkDays?: Prisma.IntFieldUpdateOperationsInput | number
-  acceptedCount?: Prisma.IntFieldUpdateOperationsInput | number
-  totalAssignmentsCount?: Prisma.IntFieldUpdateOperationsInput | number
-  lastCalculatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type InstructorStatsCreateManyInput = {
   instructorId: number
   legacyPracticumCount?: number
   autoPromotionEnabled?: boolean
-  totalWorkHours?: number
-  totalDistance?: number
-  totalWorkDays?: number
-  acceptedCount?: number
-  totalAssignmentsCount?: number
-  lastCalculatedAt?: Date | string
 }
 
 export type InstructorStatsUpdateManyMutationInput = {
   legacyPracticumCount?: Prisma.IntFieldUpdateOperationsInput | number
   autoPromotionEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  totalWorkHours?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalDistance?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalWorkDays?: Prisma.IntFieldUpdateOperationsInput | number
-  acceptedCount?: Prisma.IntFieldUpdateOperationsInput | number
-  totalAssignmentsCount?: Prisma.IntFieldUpdateOperationsInput | number
-  lastCalculatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type InstructorStatsUncheckedUpdateManyInput = {
   instructorId?: Prisma.IntFieldUpdateOperationsInput | number
   legacyPracticumCount?: Prisma.IntFieldUpdateOperationsInput | number
   autoPromotionEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  totalWorkHours?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalDistance?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalWorkDays?: Prisma.IntFieldUpdateOperationsInput | number
-  acceptedCount?: Prisma.IntFieldUpdateOperationsInput | number
-  totalAssignmentsCount?: Prisma.IntFieldUpdateOperationsInput | number
-  lastCalculatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type InstructorStatsListRelationFilter = {
@@ -433,56 +299,28 @@ export type InstructorStatsCountOrderByAggregateInput = {
   instructorId?: Prisma.SortOrder
   legacyPracticumCount?: Prisma.SortOrder
   autoPromotionEnabled?: Prisma.SortOrder
-  totalWorkHours?: Prisma.SortOrder
-  totalDistance?: Prisma.SortOrder
-  totalWorkDays?: Prisma.SortOrder
-  acceptedCount?: Prisma.SortOrder
-  totalAssignmentsCount?: Prisma.SortOrder
-  lastCalculatedAt?: Prisma.SortOrder
 }
 
 export type InstructorStatsAvgOrderByAggregateInput = {
   instructorId?: Prisma.SortOrder
   legacyPracticumCount?: Prisma.SortOrder
-  totalWorkHours?: Prisma.SortOrder
-  totalDistance?: Prisma.SortOrder
-  totalWorkDays?: Prisma.SortOrder
-  acceptedCount?: Prisma.SortOrder
-  totalAssignmentsCount?: Prisma.SortOrder
 }
 
 export type InstructorStatsMaxOrderByAggregateInput = {
   instructorId?: Prisma.SortOrder
   legacyPracticumCount?: Prisma.SortOrder
   autoPromotionEnabled?: Prisma.SortOrder
-  totalWorkHours?: Prisma.SortOrder
-  totalDistance?: Prisma.SortOrder
-  totalWorkDays?: Prisma.SortOrder
-  acceptedCount?: Prisma.SortOrder
-  totalAssignmentsCount?: Prisma.SortOrder
-  lastCalculatedAt?: Prisma.SortOrder
 }
 
 export type InstructorStatsMinOrderByAggregateInput = {
   instructorId?: Prisma.SortOrder
   legacyPracticumCount?: Prisma.SortOrder
   autoPromotionEnabled?: Prisma.SortOrder
-  totalWorkHours?: Prisma.SortOrder
-  totalDistance?: Prisma.SortOrder
-  totalWorkDays?: Prisma.SortOrder
-  acceptedCount?: Prisma.SortOrder
-  totalAssignmentsCount?: Prisma.SortOrder
-  lastCalculatedAt?: Prisma.SortOrder
 }
 
 export type InstructorStatsSumOrderByAggregateInput = {
   instructorId?: Prisma.SortOrder
   legacyPracticumCount?: Prisma.SortOrder
-  totalWorkHours?: Prisma.SortOrder
-  totalDistance?: Prisma.SortOrder
-  totalWorkDays?: Prisma.SortOrder
-  acceptedCount?: Prisma.SortOrder
-  totalAssignmentsCount?: Prisma.SortOrder
 }
 
 export type InstructorStatsCreateNestedManyWithoutInstructorInput = {
@@ -527,34 +365,14 @@ export type InstructorStatsUncheckedUpdateManyWithoutInstructorNestedInput = {
   deleteMany?: Prisma.InstructorStatsScalarWhereInput | Prisma.InstructorStatsScalarWhereInput[]
 }
 
-export type FloatFieldUpdateOperationsInput = {
-  set?: number
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
-}
-
 export type InstructorStatsCreateWithoutInstructorInput = {
   legacyPracticumCount?: number
   autoPromotionEnabled?: boolean
-  totalWorkHours?: number
-  totalDistance?: number
-  totalWorkDays?: number
-  acceptedCount?: number
-  totalAssignmentsCount?: number
-  lastCalculatedAt?: Date | string
 }
 
 export type InstructorStatsUncheckedCreateWithoutInstructorInput = {
   legacyPracticumCount?: number
   autoPromotionEnabled?: boolean
-  totalWorkHours?: number
-  totalDistance?: number
-  totalWorkDays?: number
-  acceptedCount?: number
-  totalAssignmentsCount?: number
-  lastCalculatedAt?: Date | string
 }
 
 export type InstructorStatsCreateOrConnectWithoutInstructorInput = {
@@ -590,56 +408,26 @@ export type InstructorStatsScalarWhereInput = {
   instructorId?: Prisma.IntFilter<"InstructorStats"> | number
   legacyPracticumCount?: Prisma.IntFilter<"InstructorStats"> | number
   autoPromotionEnabled?: Prisma.BoolFilter<"InstructorStats"> | boolean
-  totalWorkHours?: Prisma.FloatFilter<"InstructorStats"> | number
-  totalDistance?: Prisma.FloatFilter<"InstructorStats"> | number
-  totalWorkDays?: Prisma.IntFilter<"InstructorStats"> | number
-  acceptedCount?: Prisma.IntFilter<"InstructorStats"> | number
-  totalAssignmentsCount?: Prisma.IntFilter<"InstructorStats"> | number
-  lastCalculatedAt?: Prisma.DateTimeFilter<"InstructorStats"> | Date | string
 }
 
 export type InstructorStatsCreateManyInstructorInput = {
   legacyPracticumCount?: number
   autoPromotionEnabled?: boolean
-  totalWorkHours?: number
-  totalDistance?: number
-  totalWorkDays?: number
-  acceptedCount?: number
-  totalAssignmentsCount?: number
-  lastCalculatedAt?: Date | string
 }
 
 export type InstructorStatsUpdateWithoutInstructorInput = {
   legacyPracticumCount?: Prisma.IntFieldUpdateOperationsInput | number
   autoPromotionEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  totalWorkHours?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalDistance?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalWorkDays?: Prisma.IntFieldUpdateOperationsInput | number
-  acceptedCount?: Prisma.IntFieldUpdateOperationsInput | number
-  totalAssignmentsCount?: Prisma.IntFieldUpdateOperationsInput | number
-  lastCalculatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type InstructorStatsUncheckedUpdateWithoutInstructorInput = {
   legacyPracticumCount?: Prisma.IntFieldUpdateOperationsInput | number
   autoPromotionEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  totalWorkHours?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalDistance?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalWorkDays?: Prisma.IntFieldUpdateOperationsInput | number
-  acceptedCount?: Prisma.IntFieldUpdateOperationsInput | number
-  totalAssignmentsCount?: Prisma.IntFieldUpdateOperationsInput | number
-  lastCalculatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type InstructorStatsUncheckedUpdateManyWithoutInstructorInput = {
   legacyPracticumCount?: Prisma.IntFieldUpdateOperationsInput | number
   autoPromotionEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  totalWorkHours?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalDistance?: Prisma.FloatFieldUpdateOperationsInput | number
-  totalWorkDays?: Prisma.IntFieldUpdateOperationsInput | number
-  acceptedCount?: Prisma.IntFieldUpdateOperationsInput | number
-  totalAssignmentsCount?: Prisma.IntFieldUpdateOperationsInput | number
-  lastCalculatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 
@@ -648,12 +436,6 @@ export type InstructorStatsSelect<ExtArgs extends runtime.Types.Extensions.Inter
   instructorId?: boolean
   legacyPracticumCount?: boolean
   autoPromotionEnabled?: boolean
-  totalWorkHours?: boolean
-  totalDistance?: boolean
-  totalWorkDays?: boolean
-  acceptedCount?: boolean
-  totalAssignmentsCount?: boolean
-  lastCalculatedAt?: boolean
   instructor?: boolean | Prisma.InstructorDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["instructorStats"]>
 
@@ -661,12 +443,6 @@ export type InstructorStatsSelectCreateManyAndReturn<ExtArgs extends runtime.Typ
   instructorId?: boolean
   legacyPracticumCount?: boolean
   autoPromotionEnabled?: boolean
-  totalWorkHours?: boolean
-  totalDistance?: boolean
-  totalWorkDays?: boolean
-  acceptedCount?: boolean
-  totalAssignmentsCount?: boolean
-  lastCalculatedAt?: boolean
   instructor?: boolean | Prisma.InstructorDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["instructorStats"]>
 
@@ -674,12 +450,6 @@ export type InstructorStatsSelectUpdateManyAndReturn<ExtArgs extends runtime.Typ
   instructorId?: boolean
   legacyPracticumCount?: boolean
   autoPromotionEnabled?: boolean
-  totalWorkHours?: boolean
-  totalDistance?: boolean
-  totalWorkDays?: boolean
-  acceptedCount?: boolean
-  totalAssignmentsCount?: boolean
-  lastCalculatedAt?: boolean
   instructor?: boolean | Prisma.InstructorDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["instructorStats"]>
 
@@ -687,15 +457,9 @@ export type InstructorStatsSelectScalar = {
   instructorId?: boolean
   legacyPracticumCount?: boolean
   autoPromotionEnabled?: boolean
-  totalWorkHours?: boolean
-  totalDistance?: boolean
-  totalWorkDays?: boolean
-  acceptedCount?: boolean
-  totalAssignmentsCount?: boolean
-  lastCalculatedAt?: boolean
 }
 
-export type InstructorStatsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"instructorId" | "legacyPracticumCount" | "autoPromotionEnabled" | "totalWorkHours" | "totalDistance" | "totalWorkDays" | "acceptedCount" | "totalAssignmentsCount" | "lastCalculatedAt", ExtArgs["result"]["instructorStats"]>
+export type InstructorStatsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"instructorId" | "legacyPracticumCount" | "autoPromotionEnabled", ExtArgs["result"]["instructorStats"]>
 export type InstructorStatsInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   instructor?: boolean | Prisma.InstructorDefaultArgs<ExtArgs>
 }
@@ -715,12 +479,6 @@ export type $InstructorStatsPayload<ExtArgs extends runtime.Types.Extensions.Int
     instructorId: number
     legacyPracticumCount: number
     autoPromotionEnabled: boolean
-    totalWorkHours: number
-    totalDistance: number
-    totalWorkDays: number
-    acceptedCount: number
-    totalAssignmentsCount: number
-    lastCalculatedAt: Date
   }, ExtArgs["result"]["instructorStats"]>
   composites: {}
 }
@@ -1148,12 +906,6 @@ export interface InstructorStatsFieldRefs {
   readonly instructorId: Prisma.FieldRef<"InstructorStats", 'Int'>
   readonly legacyPracticumCount: Prisma.FieldRef<"InstructorStats", 'Int'>
   readonly autoPromotionEnabled: Prisma.FieldRef<"InstructorStats", 'Boolean'>
-  readonly totalWorkHours: Prisma.FieldRef<"InstructorStats", 'Float'>
-  readonly totalDistance: Prisma.FieldRef<"InstructorStats", 'Float'>
-  readonly totalWorkDays: Prisma.FieldRef<"InstructorStats", 'Int'>
-  readonly acceptedCount: Prisma.FieldRef<"InstructorStats", 'Int'>
-  readonly totalAssignmentsCount: Prisma.FieldRef<"InstructorStats", 'Int'>
-  readonly lastCalculatedAt: Prisma.FieldRef<"InstructorStats", 'DateTime'>
 }
     
 

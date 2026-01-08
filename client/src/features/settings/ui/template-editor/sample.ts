@@ -7,12 +7,38 @@ import type { Token } from './types';
  * 일반 변수용 샘플 데이터
  */
 const SAMPLE_DATA: Record<string, string> = {
-  // 부대 정보
+  // === 부대 정보 (Unit) ===
   'unit.name': '제12사단',
-  'unit.region': '인제군',
+  'unit.unitType': '육군',
   'unit.wideArea': '강원도',
+  'unit.region': '인제군',
   'unit.addressDetail': '인제읍 이평로 255',
   'unit.detailAddress': '3층 대강당',
+
+  // === 교육기간 정보 (TrainingPeriod) ===
+  'period.name': '정규교육',
+  'period.startDate': '2024-11-17',
+  'period.endDate': '2024-11-19',
+  'period.startTime': '09:00',
+  'period.endTime': '16:00',
+  'period.lunchStartTime': '12:00',
+  'period.lunchEndTime': '13:00',
+  'period.officerName': '대위 이용준',
+  'period.officerPhone': '010-6640-9433',
+  'period.officerEmail': 'lee.yongjun@army.mil.kr',
+  'period.excludedDates': '2024-11-18 / 2024-11-20',
+  'period.hasCateredMeals': 'X',
+  'period.hasHallLodging': 'O',
+  'period.allowsPhoneBeforeAfter': '가능',
+
+  // === 본인 정보 ===
+  'self.name': '홍길동',
+  'self.phone': '010-1234-5678',
+  'self.category': '부강사',
+  'self.position': '책임강사',
+  'self.virtues': '협력, 정의',
+
+  // === 하위 호환용 (기존 unit.* 변수) ===
   'unit.officerName': '대위 이용준',
   'unit.officerPhone': '010-6640-9433',
   'unit.startDate': '2024-11-17',
@@ -21,7 +47,7 @@ const SAMPLE_DATA: Record<string, string> = {
   'unit.endTime': '16:00',
   'unit.excludedDates': '2024-11-18 / 2024-11-20',
 
-  // 교육장소
+  // === 하위 호환용 (기존 location.* 변수) ===
   'location.originalPlace': '교육관',
   'location.changedPlace': '체육관',
   'location.hasInstructorLounge': 'O',
@@ -32,13 +58,6 @@ const SAMPLE_DATA: Record<string, string> = {
   'location.plannedCount': '75',
   'location.actualCount': '75',
   'location.note': 'TV, 마이크 있음',
-
-  // 본인 정보
-  'self.name': '홍길동',
-  'self.phone': '010-1234-5678',
-  'self.category': '부강사',
-  'self.position': '책임강사',
-  'self.virtues': '협력, 정의',
 };
 
 /**
@@ -108,37 +127,66 @@ function renderFormatSample(key: string, format: string): string {
       .join('\n');
   }
 
-  // locations - 교육장소 목록
-  if (key === 'locations') {
-    const locations = [
+  // scheduleLocations - 날짜별 장소 세부정보
+  if (key === 'scheduleLocations') {
+    const scheduleLocations = [
       {
-        index: '1',
+        date: '2024-11-17',
+        dayOfWeek: '일',
         placeName: '교육관',
         actualCount: '75',
         hasInstructorLounge: 'O',
         hasWomenRestroom: 'O',
-        allowsPhoneBeforeAfter: '가능',
         note: 'TV 있음',
       },
       {
-        index: '2',
+        date: '2024-11-17',
+        dayOfWeek: '일',
         placeName: '체육관',
         actualCount: '48',
         hasInstructorLounge: 'X',
         hasWomenRestroom: 'O',
-        allowsPhoneBeforeAfter: '불가',
         note: '',
       },
+      {
+        date: '2024-11-18',
+        dayOfWeek: '월',
+        placeName: '교육관',
+        actualCount: '80',
+        hasInstructorLounge: 'O',
+        hasWomenRestroom: 'O',
+        note: '',
+      },
+      {
+        date: '2024-11-19',
+        dayOfWeek: '화',
+        placeName: '교육관',
+        actualCount: '70',
+        hasInstructorLounge: 'O',
+        hasWomenRestroom: 'O',
+        note: 'TV 있음',
+      },
     ];
-    return locations
-      .map((loc) => {
+    // 날짜별로 그룹핑하여 "[날짜 (요일)]" 헤더 + 들여쓰기 형태로 표시
+    const grouped = new Map<string, typeof scheduleLocations>();
+    for (const item of scheduleLocations) {
+      const key = `${item.date} (${item.dayOfWeek})`;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(item);
+    }
+
+    const lines: string[] = [];
+    for (const [dateKey, locations] of grouped) {
+      lines.push(`[${dateKey}]`);
+      for (const sl of locations) {
         let line = format;
-        Object.entries(loc).forEach(([k, v]) => {
+        Object.entries(sl).forEach(([k, v]) => {
           line = line.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
         });
-        return line;
-      })
-      .join('\n');
+        lines.push(`  ${line}`);
+      }
+    }
+    return lines.join('\n');
   }
 
   // instructors - 강사 목록 (세로)

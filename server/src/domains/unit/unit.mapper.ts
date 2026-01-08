@@ -37,14 +37,32 @@ function toMilitaryType(value: unknown): MilitaryType | undefined {
 }
 
 // 부대 생성용 데이터 변환 (CreateUnitDto 역할)
-// 주의: trainingLocations와 schedules는 createUnitWithNested에서 별도로 처리하므로 여기서는 제외
-export function toCreateUnitDto(rawData: RawUnitData = {}): Prisma.UnitCreateInput {
+// 주의: trainingPeriods는 createUnitWithTrainingPeriod에서 별도로 처리하므로 여기서는 제외
+// Unit은 기본 정보만 저장. 시간/날짜 필드들은 TrainingPeriod에 있음
+// @param overrideLectureYear 엑셀 메타데이터에서 추출한 강의년도 (우선 적용)
+export function toCreateUnitDto(
+  rawData: RawUnitData = {},
+  overrideLectureYear?: number,
+): Prisma.UnitCreateInput {
   // 필수값 검증 (Service 로직 단순화)
   if (!isNonEmptyString(rawData.name)) {
     throw new Error('부대명(name)은 필수입니다.');
   }
 
+  // lectureYear 결정: 1) 메타데이터 우선, 2) educationStart에서 추출, 3) 현재 년도
+  let lectureYear = overrideLectureYear;
+  if (!lectureYear && rawData.educationStart) {
+    const d = new Date(rawData.educationStart as string | Date);
+    if (!isNaN(d.getTime())) {
+      lectureYear = d.getFullYear();
+    }
+  }
+  if (!lectureYear) {
+    lectureYear = new Date().getFullYear();
+  }
+
   return {
+    lectureYear,
     name: rawData.name,
     unitType: toMilitaryType(rawData.unitType),
     wideArea: rawData.wideArea,
@@ -52,47 +70,42 @@ export function toCreateUnitDto(rawData: RawUnitData = {}): Prisma.UnitCreateInp
     addressDetail: rawData.addressDetail,
     detailAddress: rawData.detailAddress,
     // lat/lng는 의도적으로 무시 - 주소 기반 좌표 변환 로직을 통해 자동 계산됨
-    // 엑셀에 좌표가 포함되어 있어도 무시하고 주소로부터 새로 계산
-
-    // 시간/날짜 필드 변환
-    educationStart: toDateOrUndef(rawData.educationStart),
-    educationEnd: toDateOrUndef(rawData.educationEnd),
-    workStartTime: toDateOrUndef(rawData.workStartTime),
-    workEndTime: toDateOrUndef(rawData.workEndTime),
-    lunchStartTime: toDateOrUndef(rawData.lunchStartTime),
-    lunchEndTime: toDateOrUndef(rawData.lunchEndTime),
-
-    officerName: rawData.officerName,
-    officerPhone: rawData.officerPhone,
-    officerEmail: rawData.officerEmail,
-    excludedDates: rawData.excludedDates || [],
-    // trainingLocations와 schedules는 createUnitWithNested에서 처리
+    // 엘셀에 좌표가 포함되어 있어도 무시하고 주소로부터 새로 계산
+    // NOTE: educationStart, educationEnd, workStartTime 등은 이제 TrainingPeriod에 있음
+    // trainingPeriods는 createUnitWithTrainingPeriod에서 처리
   };
 }
 
 // 엑셀 Row -> 교육장소 데이터 추출
-function extractTrainingLocation(row: Record<string, unknown>): TrainingLocationInput | null {
-  const hasLocationData =
-    row.originalPlace || row.changedPlace || row.plannedCount || row.actualCount;
+// NOTE: plannedCount, actualCount는 ScheduleLocation에 저장되지만, location 생성 시 함께 전달
+function extractTrainingLocation(
+  row: Record<string, unknown>,
+): (TrainingLocationInput & { plannedCount?: number; actualCount?: number }) | null {
+  const hasLocationData = row.originalPlace || row.changedPlace;
   if (!hasLocationData) return null;
+
+  // plannedCount/actualCount 파싱
+  const parsedPlanned = row.plannedCount !== undefined ? Number(row.plannedCount) : undefined;
+  const parsedActual = row.actualCount !== undefined ? Number(row.actualCount) : undefined;
 
   return {
     originalPlace: row.originalPlace as string | undefined,
     changedPlace: row.changedPlace as string | undefined,
-    plannedCount: row.plannedCount as number | undefined,
-    actualCount: row.actualCount as number | undefined,
     hasInstructorLounge: row.hasInstructorLounge as boolean | undefined,
     hasWomenRestroom: row.hasWomenRestroom as boolean | undefined,
-    hasCateredMeals: row.hasCateredMeals as boolean | undefined,
-    hasHallLodging: row.hasHallLodging as boolean | undefined,
-    allowsPhoneBeforeAfter: row.allowsPhoneBeforeAfter as boolean | undefined,
     note: row.note as string | undefined,
+    plannedCount: parsedPlanned && !isNaN(parsedPlanned) ? parsedPlanned : undefined,
+    actualCount: parsedActual && !isNaN(parsedActual) ? parsedActual : undefined,
   };
 }
 
 // 엑셀 Row -> API Raw Data 변환
 // excel.service.ts에서 이미 내부 필드명으로 변환되어 오므로 직접 매핑
-export function excelRowToRawUnit(row: Record<string, unknown> = {}): RawUnitData {
+export function excelRowToRawUnit(row: Record<string, unknown> = {}): RawUnitData & {
+  hasCateredMeals?: boolean;
+  hasHallLodging?: boolean;
+  allowsPhoneBeforeAfter?: boolean;
+} {
   const trainingLocation = extractTrainingLocation(row);
   const trainingLocations: TrainingLocationInput[] = trainingLocation ? [trainingLocation] : [];
 
@@ -102,8 +115,6 @@ export function excelRowToRawUnit(row: Record<string, unknown> = {}): RawUnitDat
     wideArea: row.wideArea as string | undefined,
     region: row.region as string | undefined,
     addressDetail: row.addressDetail as string | undefined,
-    lat: row.lat as number | undefined,
-    lng: row.lng as number | undefined,
 
     // 날짜/시간 정보 (excel.service.ts에서 Date로 변환됨)
     educationStart: row.educationStart as Date | string | undefined,
@@ -120,6 +131,20 @@ export function excelRowToRawUnit(row: Record<string, unknown> = {}): RawUnitDat
     officerName: row.officerName as string | undefined,
     officerPhone: row.officerPhone as string | undefined,
     officerEmail: row.officerEmail as string | undefined,
+
+    // 시설 정보 (TrainingPeriod에 저장)
+    hasCateredMeals:
+      row.hasCateredMeals === true ||
+      row.hasCateredMeals === 'true' ||
+      String(row.hasCateredMeals).toUpperCase() === 'O',
+    hasHallLodging:
+      row.hasHallLodging === true ||
+      row.hasHallLodging === 'true' ||
+      String(row.hasHallLodging).toUpperCase() === 'O',
+    allowsPhoneBeforeAfter:
+      row.allowsPhoneBeforeAfter === true ||
+      row.allowsPhoneBeforeAfter === 'true' ||
+      String(row.allowsPhoneBeforeAfter).toUpperCase() === 'O',
 
     trainingLocations,
   };

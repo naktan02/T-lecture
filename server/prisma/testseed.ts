@@ -33,15 +33,15 @@ async function main() {
     console.log('\n[2/8] 핵심 메타데이터 생성...');
     await runSeedCore();
 
-    // 3. 유저 데이터 (강사 90명, 일반유저 10명)
+    // 3. 유저 데이터 (강사 80명, 일반유저 10명, 가입대기 10명)
     console.log('\n[3/8] 유저 데이터 생성...');
     await runSeedUsers();
 
-    // 4. 부대 데이터 (1000개)
+    // 4. 부대 데이터 (2025년 1000개 + 2026년 100개)
     console.log('\n[4/8] 부대 데이터 생성...');
     await runSeedUnits();
 
-    // 5. 배정 데이터 (400세트 + 거리)
+    // 5. 배정 데이터 (TrainingPeriod별 3일 연속)
     console.log('\n[5/8] 배정 데이터 생성...');
     await runSeedAssignments();
 
@@ -65,18 +65,17 @@ async function main() {
     console.log('╠════════════════════════════════════════════════════════════╣');
     console.log(`║  소요 시간: ${elapsedTime}초`.padEnd(61) + '║');
     console.log('╠════════════════════════════════════════════════════════════╣');
-    console.log('║  다음 단계:                                               ║');
-    console.log('║  1. 통계 배치 실행:                                       ║');
-    console.log('║     npx tsx src/jobs/statsBatch.job.ts                    ║');
-    console.log('║                                                            ║');
-    console.log('║  2. (선택) 엑셀 업로드 테스트용 파일 생성:                ║');
-    console.log('║     npx tsx scripts/generateUnitsExcel.ts                 ║');
+    console.log('║  생성 데이터:                                              ║');
+    console.log('║  - 팀: 7개, 덕목: 15개                                     ║');
+    console.log('║  - 유저: 강사 80명 + 일반 10명 + 가입대기 10명            ║');
+    console.log('║  - 부대: 2025년 1000개 + 2026년 100개                     ║');
     console.log('╚════════════════════════════════════════════════════════════╝');
     console.log('');
     console.log('📋 테스트 계정:');
     console.log('   - 관리자: SUPER_ADMIN_EMAIL / SUPER_ADMIN_PASSWORD (from .env)');
-    console.log('   - 강사: instructor001@test.com ~ instructor090@test.com / test1234');
-    console.log('   - 예비강사: user001@test.com ~ user010@test.com / test1234');
+    console.log('   - 강사: instructor001@test.com ~ instructor080@test.com / test1234');
+    console.log('   - 일반유저: user001@test.com ~ user010@test.com / test1234');
+    console.log('   - 가입대기: pending001@test.com ~ pending010@test.com / test1234');
     console.log('');
   } catch (error) {
     console.error('\n❌ 시드 실행 중 오류 발생:', error);

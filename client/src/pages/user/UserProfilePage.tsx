@@ -75,7 +75,10 @@ const UserProfilePage: React.FC = () => {
   // 프로필 미완성 감지 및 자동 편집 모드 활성화 (최초 1회만)
   const autoEditTriggered = React.useRef(false);
   useEffect(() => {
-    if (user?.instructor && !user.instructor.profileCompleted) {
+    // 강사인데 주소가 없거나 덕목이 없으면 프로필 미완성
+    const hasLocation = !!user?.instructor?.location;
+    const hasVirtues = (user?.instructor?.virtues?.length ?? 0) > 0;
+    if (user?.instructor && (!hasLocation || !hasVirtues)) {
       setIsProfileIncomplete(true);
       // 자동으로 편집 모드 활성화 (최초 1회만)
       if (!autoEditTriggered.current) {
@@ -577,7 +580,7 @@ const UserProfilePage: React.FC = () => {
                       <h4 className="text-sm font-semibold text-gray-900 mb-4">강사 활동 정보</h4>
                     </div>
 
-                    <div className="sm:col-span-3">
+                    <div className="sm:col-span-full">
                       <label className="block text-sm font-medium text-gray-700">주소</label>
                       {isEditing ? (
                         <div className="space-y-2">
@@ -588,27 +591,27 @@ const UserProfilePage: React.FC = () => {
                               readOnly
                               value={formData.address || ''}
                               onChange={handleInputChange}
-                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-50 sm:text-sm p-2 border cursor-pointer"
+                              className="mt-1 flex-1 min-w-0 rounded-md border-gray-300 shadow-sm bg-gray-50 sm:text-sm p-2 border cursor-pointer"
                               onClick={handleAddressSearch}
                             />
                             <button
                               type="button"
                               onClick={handleAddressSearch}
-                              className="mt-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap"
+                              className="mt-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-2 py-2 rounded-md text-xs font-medium whitespace-nowrap"
                             >
-                              주소 검색
+                              검색
                             </button>
                             <button
                               type="button"
                               onClick={handleSaveAddress}
                               disabled={!isAddressChanged || isSavingAddress}
-                              className={`mt-1 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
+                              className={`mt-1 px-2 py-2 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
                                 isAddressChanged
                                   ? 'bg-green-600 text-white hover:bg-green-700'
                                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                               }`}
                             >
-                              {isSavingAddress ? '저장중...' : '💾 주소 저장'}
+                              {isSavingAddress ? '...' : '저장'}
                             </button>
                           </div>
                           {isAddressChanged && (
@@ -620,24 +623,6 @@ const UserProfilePage: React.FC = () => {
                       ) : (
                         <div className="mt-1 text-sm text-gray-900">
                           {user.instructor?.location || '-'}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="sm:col-span-3">
-                      <label className="block text-sm font-medium text-gray-700">제한 지역</label>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          name="restrictedArea"
-                          value={formData.restrictedArea || ''}
-                          onChange={handleInputChange}
-                          placeholder="예: 서울 강남구"
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-                        />
-                      ) : (
-                        <div className="mt-1 text-sm text-gray-900">
-                          {user.instructor?.restrictedArea || '없음'}
                         </div>
                       )}
                     </div>
@@ -662,6 +647,24 @@ const UserProfilePage: React.FC = () => {
                       ) : (
                         <div className="mt-1 text-sm text-gray-900">
                           {user.instructor?.hasCar ? '보유' : '미보유'}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <label className="block text-sm font-medium text-gray-700">제한 지역</label>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          name="restrictedArea"
+                          value={formData.restrictedArea || ''}
+                          onChange={handleInputChange}
+                          placeholder="예: 서울 강남구"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                        />
+                      ) : (
+                        <div className="mt-1 text-sm text-gray-900">
+                          {user.instructor?.restrictedArea || '없음'}
                         </div>
                       )}
                     </div>

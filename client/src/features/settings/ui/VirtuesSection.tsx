@@ -53,11 +53,13 @@ export const VirtuesSection = (): ReactElement => {
     setNewVirtueName('');
   };
 
-  const handleDelete = (id: number, name: string | null) => {
-    showConfirm(
+  const handleDelete = async (id: number, name: string | null) => {
+    const confirmed = await showConfirm(
       `"${name || '이름 없음'}" 덕목을 삭제하시겠습니까?\n\n해당 덕목을 수강 가능한 강사들의 연결도 함께 삭제됩니다.`,
-      () => deleteVirtue(id),
     );
+    if (confirmed) {
+      deleteVirtue(id);
+    }
   };
 
   if (isLoading) {

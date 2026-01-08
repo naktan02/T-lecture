@@ -156,6 +156,7 @@ class InstructorRepository {
   }
 
   // 2. 강의 시간 계산용 데이터 조회 (단순 조회)
+  // NOTE: workStartTime/workEndTime은 이제 TrainingPeriod에 있음
   async findAssignmentsForCalc(instructorId: number) {
     return await prisma.instructorUnitAssignment.findMany({
       where: {
@@ -166,7 +167,7 @@ class InstructorRepository {
       select: {
         UnitSchedule: {
           select: {
-            unit: {
+            trainingPeriod: {
               select: { workStartTime: true, workEndTime: true },
             },
           },

@@ -350,6 +350,14 @@ class AdminRepository {
     });
     return count > 0;
   }
+
+  // 강사 좌표 업데이트 (승인 시 주소 → 좌표 변환 결과 저장)
+  async updateInstructorCoords(userId: number | string, lat: number, lng: number) {
+    return await prisma.instructor.update({
+      where: { userId: Number(userId) },
+      data: { lat, lng },
+    });
+  }
 }
 
 export default new AdminRepository();

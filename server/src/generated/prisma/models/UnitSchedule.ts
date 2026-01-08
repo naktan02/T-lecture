@@ -28,29 +28,29 @@ export type AggregateUnitSchedule = {
 
 export type UnitScheduleAvgAggregateOutputType = {
   id: number | null
-  unitId: number | null
+  trainingPeriodId: number | null
 }
 
 export type UnitScheduleSumAggregateOutputType = {
   id: number | null
-  unitId: number | null
+  trainingPeriodId: number | null
 }
 
 export type UnitScheduleMinAggregateOutputType = {
   id: number | null
-  unitId: number | null
+  trainingPeriodId: number | null
   date: Date | null
 }
 
 export type UnitScheduleMaxAggregateOutputType = {
   id: number | null
-  unitId: number | null
+  trainingPeriodId: number | null
   date: Date | null
 }
 
 export type UnitScheduleCountAggregateOutputType = {
   id: number
-  unitId: number
+  trainingPeriodId: number
   date: number
   _all: number
 }
@@ -58,29 +58,29 @@ export type UnitScheduleCountAggregateOutputType = {
 
 export type UnitScheduleAvgAggregateInputType = {
   id?: true
-  unitId?: true
+  trainingPeriodId?: true
 }
 
 export type UnitScheduleSumAggregateInputType = {
   id?: true
-  unitId?: true
+  trainingPeriodId?: true
 }
 
 export type UnitScheduleMinAggregateInputType = {
   id?: true
-  unitId?: true
+  trainingPeriodId?: true
   date?: true
 }
 
 export type UnitScheduleMaxAggregateInputType = {
   id?: true
-  unitId?: true
+  trainingPeriodId?: true
   date?: true
 }
 
 export type UnitScheduleCountAggregateInputType = {
   id?: true
-  unitId?: true
+  trainingPeriodId?: true
   date?: true
   _all?: true
 }
@@ -173,7 +173,7 @@ export type UnitScheduleGroupByArgs<ExtArgs extends runtime.Types.Extensions.Int
 
 export type UnitScheduleGroupByOutputType = {
   id: number
-  unitId: number
+  trainingPeriodId: number
   date: Date | null
   _count: UnitScheduleCountAggregateOutputType | null
   _avg: UnitScheduleAvgAggregateOutputType | null
@@ -202,17 +202,19 @@ export type UnitScheduleWhereInput = {
   OR?: Prisma.UnitScheduleWhereInput[]
   NOT?: Prisma.UnitScheduleWhereInput | Prisma.UnitScheduleWhereInput[]
   id?: Prisma.IntFilter<"UnitSchedule"> | number
-  unitId?: Prisma.IntFilter<"UnitSchedule"> | number
+  trainingPeriodId?: Prisma.IntFilter<"UnitSchedule"> | number
   date?: Prisma.DateTimeNullableFilter<"UnitSchedule"> | Date | string | null
-  unit?: Prisma.XOR<Prisma.UnitScalarRelationFilter, Prisma.UnitWhereInput>
+  trainingPeriod?: Prisma.XOR<Prisma.TrainingPeriodScalarRelationFilter, Prisma.TrainingPeriodWhereInput>
+  scheduleLocations?: Prisma.ScheduleLocationListRelationFilter
   assignments?: Prisma.InstructorUnitAssignmentListRelationFilter
 }
 
 export type UnitScheduleOrderByWithRelationInput = {
   id?: Prisma.SortOrder
-  unitId?: Prisma.SortOrder
+  trainingPeriodId?: Prisma.SortOrder
   date?: Prisma.SortOrderInput | Prisma.SortOrder
-  unit?: Prisma.UnitOrderByWithRelationInput
+  trainingPeriod?: Prisma.TrainingPeriodOrderByWithRelationInput
+  scheduleLocations?: Prisma.ScheduleLocationOrderByRelationAggregateInput
   assignments?: Prisma.InstructorUnitAssignmentOrderByRelationAggregateInput
 }
 
@@ -221,15 +223,16 @@ export type UnitScheduleWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.UnitScheduleWhereInput | Prisma.UnitScheduleWhereInput[]
   OR?: Prisma.UnitScheduleWhereInput[]
   NOT?: Prisma.UnitScheduleWhereInput | Prisma.UnitScheduleWhereInput[]
-  unitId?: Prisma.IntFilter<"UnitSchedule"> | number
+  trainingPeriodId?: Prisma.IntFilter<"UnitSchedule"> | number
   date?: Prisma.DateTimeNullableFilter<"UnitSchedule"> | Date | string | null
-  unit?: Prisma.XOR<Prisma.UnitScalarRelationFilter, Prisma.UnitWhereInput>
+  trainingPeriod?: Prisma.XOR<Prisma.TrainingPeriodScalarRelationFilter, Prisma.TrainingPeriodWhereInput>
+  scheduleLocations?: Prisma.ScheduleLocationListRelationFilter
   assignments?: Prisma.InstructorUnitAssignmentListRelationFilter
 }, "id">
 
 export type UnitScheduleOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
-  unitId?: Prisma.SortOrder
+  trainingPeriodId?: Prisma.SortOrder
   date?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.UnitScheduleCountOrderByAggregateInput
   _avg?: Prisma.UnitScheduleAvgOrderByAggregateInput
@@ -243,39 +246,43 @@ export type UnitScheduleScalarWhereWithAggregatesInput = {
   OR?: Prisma.UnitScheduleScalarWhereWithAggregatesInput[]
   NOT?: Prisma.UnitScheduleScalarWhereWithAggregatesInput | Prisma.UnitScheduleScalarWhereWithAggregatesInput[]
   id?: Prisma.IntWithAggregatesFilter<"UnitSchedule"> | number
-  unitId?: Prisma.IntWithAggregatesFilter<"UnitSchedule"> | number
+  trainingPeriodId?: Prisma.IntWithAggregatesFilter<"UnitSchedule"> | number
   date?: Prisma.DateTimeNullableWithAggregatesFilter<"UnitSchedule"> | Date | string | null
 }
 
 export type UnitScheduleCreateInput = {
   date?: Date | string | null
-  unit: Prisma.UnitCreateNestedOneWithoutSchedulesInput
+  trainingPeriod: Prisma.TrainingPeriodCreateNestedOneWithoutSchedulesInput
+  scheduleLocations?: Prisma.ScheduleLocationCreateNestedManyWithoutScheduleInput
   assignments?: Prisma.InstructorUnitAssignmentCreateNestedManyWithoutUnitScheduleInput
 }
 
 export type UnitScheduleUncheckedCreateInput = {
   id?: number
-  unitId: number
+  trainingPeriodId: number
   date?: Date | string | null
+  scheduleLocations?: Prisma.ScheduleLocationUncheckedCreateNestedManyWithoutScheduleInput
   assignments?: Prisma.InstructorUnitAssignmentUncheckedCreateNestedManyWithoutUnitScheduleInput
 }
 
 export type UnitScheduleUpdateInput = {
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  unit?: Prisma.UnitUpdateOneRequiredWithoutSchedulesNestedInput
+  trainingPeriod?: Prisma.TrainingPeriodUpdateOneRequiredWithoutSchedulesNestedInput
+  scheduleLocations?: Prisma.ScheduleLocationUpdateManyWithoutScheduleNestedInput
   assignments?: Prisma.InstructorUnitAssignmentUpdateManyWithoutUnitScheduleNestedInput
 }
 
 export type UnitScheduleUncheckedUpdateInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
-  unitId?: Prisma.IntFieldUpdateOperationsInput | number
+  trainingPeriodId?: Prisma.IntFieldUpdateOperationsInput | number
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  scheduleLocations?: Prisma.ScheduleLocationUncheckedUpdateManyWithoutScheduleNestedInput
   assignments?: Prisma.InstructorUnitAssignmentUncheckedUpdateManyWithoutUnitScheduleNestedInput
 }
 
 export type UnitScheduleCreateManyInput = {
   id?: number
-  unitId: number
+  trainingPeriodId: number
   date?: Date | string | null
 }
 
@@ -285,7 +292,7 @@ export type UnitScheduleUpdateManyMutationInput = {
 
 export type UnitScheduleUncheckedUpdateManyInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
-  unitId?: Prisma.IntFieldUpdateOperationsInput | number
+  trainingPeriodId?: Prisma.IntFieldUpdateOperationsInput | number
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
@@ -306,30 +313,30 @@ export type UnitScheduleOrderByRelationAggregateInput = {
 
 export type UnitScheduleCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  unitId?: Prisma.SortOrder
+  trainingPeriodId?: Prisma.SortOrder
   date?: Prisma.SortOrder
 }
 
 export type UnitScheduleAvgOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  unitId?: Prisma.SortOrder
+  trainingPeriodId?: Prisma.SortOrder
 }
 
 export type UnitScheduleMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  unitId?: Prisma.SortOrder
+  trainingPeriodId?: Prisma.SortOrder
   date?: Prisma.SortOrder
 }
 
 export type UnitScheduleMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  unitId?: Prisma.SortOrder
+  trainingPeriodId?: Prisma.SortOrder
   date?: Prisma.SortOrder
 }
 
 export type UnitScheduleSumOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  unitId?: Prisma.SortOrder
+  trainingPeriodId?: Prisma.SortOrder
 }
 
 export type UnitScheduleCreateNestedOneWithoutAssignmentsInput = {
@@ -346,57 +353,73 @@ export type UnitScheduleUpdateOneRequiredWithoutAssignmentsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UnitScheduleUpdateToOneWithWhereWithoutAssignmentsInput, Prisma.UnitScheduleUpdateWithoutAssignmentsInput>, Prisma.UnitScheduleUncheckedUpdateWithoutAssignmentsInput>
 }
 
-export type UnitScheduleCreateNestedManyWithoutUnitInput = {
-  create?: Prisma.XOR<Prisma.UnitScheduleCreateWithoutUnitInput, Prisma.UnitScheduleUncheckedCreateWithoutUnitInput> | Prisma.UnitScheduleCreateWithoutUnitInput[] | Prisma.UnitScheduleUncheckedCreateWithoutUnitInput[]
-  connectOrCreate?: Prisma.UnitScheduleCreateOrConnectWithoutUnitInput | Prisma.UnitScheduleCreateOrConnectWithoutUnitInput[]
-  createMany?: Prisma.UnitScheduleCreateManyUnitInputEnvelope
+export type UnitScheduleCreateNestedManyWithoutTrainingPeriodInput = {
+  create?: Prisma.XOR<Prisma.UnitScheduleCreateWithoutTrainingPeriodInput, Prisma.UnitScheduleUncheckedCreateWithoutTrainingPeriodInput> | Prisma.UnitScheduleCreateWithoutTrainingPeriodInput[] | Prisma.UnitScheduleUncheckedCreateWithoutTrainingPeriodInput[]
+  connectOrCreate?: Prisma.UnitScheduleCreateOrConnectWithoutTrainingPeriodInput | Prisma.UnitScheduleCreateOrConnectWithoutTrainingPeriodInput[]
+  createMany?: Prisma.UnitScheduleCreateManyTrainingPeriodInputEnvelope
   connect?: Prisma.UnitScheduleWhereUniqueInput | Prisma.UnitScheduleWhereUniqueInput[]
 }
 
-export type UnitScheduleUncheckedCreateNestedManyWithoutUnitInput = {
-  create?: Prisma.XOR<Prisma.UnitScheduleCreateWithoutUnitInput, Prisma.UnitScheduleUncheckedCreateWithoutUnitInput> | Prisma.UnitScheduleCreateWithoutUnitInput[] | Prisma.UnitScheduleUncheckedCreateWithoutUnitInput[]
-  connectOrCreate?: Prisma.UnitScheduleCreateOrConnectWithoutUnitInput | Prisma.UnitScheduleCreateOrConnectWithoutUnitInput[]
-  createMany?: Prisma.UnitScheduleCreateManyUnitInputEnvelope
+export type UnitScheduleUncheckedCreateNestedManyWithoutTrainingPeriodInput = {
+  create?: Prisma.XOR<Prisma.UnitScheduleCreateWithoutTrainingPeriodInput, Prisma.UnitScheduleUncheckedCreateWithoutTrainingPeriodInput> | Prisma.UnitScheduleCreateWithoutTrainingPeriodInput[] | Prisma.UnitScheduleUncheckedCreateWithoutTrainingPeriodInput[]
+  connectOrCreate?: Prisma.UnitScheduleCreateOrConnectWithoutTrainingPeriodInput | Prisma.UnitScheduleCreateOrConnectWithoutTrainingPeriodInput[]
+  createMany?: Prisma.UnitScheduleCreateManyTrainingPeriodInputEnvelope
   connect?: Prisma.UnitScheduleWhereUniqueInput | Prisma.UnitScheduleWhereUniqueInput[]
 }
 
-export type UnitScheduleUpdateManyWithoutUnitNestedInput = {
-  create?: Prisma.XOR<Prisma.UnitScheduleCreateWithoutUnitInput, Prisma.UnitScheduleUncheckedCreateWithoutUnitInput> | Prisma.UnitScheduleCreateWithoutUnitInput[] | Prisma.UnitScheduleUncheckedCreateWithoutUnitInput[]
-  connectOrCreate?: Prisma.UnitScheduleCreateOrConnectWithoutUnitInput | Prisma.UnitScheduleCreateOrConnectWithoutUnitInput[]
-  upsert?: Prisma.UnitScheduleUpsertWithWhereUniqueWithoutUnitInput | Prisma.UnitScheduleUpsertWithWhereUniqueWithoutUnitInput[]
-  createMany?: Prisma.UnitScheduleCreateManyUnitInputEnvelope
+export type UnitScheduleUpdateManyWithoutTrainingPeriodNestedInput = {
+  create?: Prisma.XOR<Prisma.UnitScheduleCreateWithoutTrainingPeriodInput, Prisma.UnitScheduleUncheckedCreateWithoutTrainingPeriodInput> | Prisma.UnitScheduleCreateWithoutTrainingPeriodInput[] | Prisma.UnitScheduleUncheckedCreateWithoutTrainingPeriodInput[]
+  connectOrCreate?: Prisma.UnitScheduleCreateOrConnectWithoutTrainingPeriodInput | Prisma.UnitScheduleCreateOrConnectWithoutTrainingPeriodInput[]
+  upsert?: Prisma.UnitScheduleUpsertWithWhereUniqueWithoutTrainingPeriodInput | Prisma.UnitScheduleUpsertWithWhereUniqueWithoutTrainingPeriodInput[]
+  createMany?: Prisma.UnitScheduleCreateManyTrainingPeriodInputEnvelope
   set?: Prisma.UnitScheduleWhereUniqueInput | Prisma.UnitScheduleWhereUniqueInput[]
   disconnect?: Prisma.UnitScheduleWhereUniqueInput | Prisma.UnitScheduleWhereUniqueInput[]
   delete?: Prisma.UnitScheduleWhereUniqueInput | Prisma.UnitScheduleWhereUniqueInput[]
   connect?: Prisma.UnitScheduleWhereUniqueInput | Prisma.UnitScheduleWhereUniqueInput[]
-  update?: Prisma.UnitScheduleUpdateWithWhereUniqueWithoutUnitInput | Prisma.UnitScheduleUpdateWithWhereUniqueWithoutUnitInput[]
-  updateMany?: Prisma.UnitScheduleUpdateManyWithWhereWithoutUnitInput | Prisma.UnitScheduleUpdateManyWithWhereWithoutUnitInput[]
+  update?: Prisma.UnitScheduleUpdateWithWhereUniqueWithoutTrainingPeriodInput | Prisma.UnitScheduleUpdateWithWhereUniqueWithoutTrainingPeriodInput[]
+  updateMany?: Prisma.UnitScheduleUpdateManyWithWhereWithoutTrainingPeriodInput | Prisma.UnitScheduleUpdateManyWithWhereWithoutTrainingPeriodInput[]
   deleteMany?: Prisma.UnitScheduleScalarWhereInput | Prisma.UnitScheduleScalarWhereInput[]
 }
 
-export type UnitScheduleUncheckedUpdateManyWithoutUnitNestedInput = {
-  create?: Prisma.XOR<Prisma.UnitScheduleCreateWithoutUnitInput, Prisma.UnitScheduleUncheckedCreateWithoutUnitInput> | Prisma.UnitScheduleCreateWithoutUnitInput[] | Prisma.UnitScheduleUncheckedCreateWithoutUnitInput[]
-  connectOrCreate?: Prisma.UnitScheduleCreateOrConnectWithoutUnitInput | Prisma.UnitScheduleCreateOrConnectWithoutUnitInput[]
-  upsert?: Prisma.UnitScheduleUpsertWithWhereUniqueWithoutUnitInput | Prisma.UnitScheduleUpsertWithWhereUniqueWithoutUnitInput[]
-  createMany?: Prisma.UnitScheduleCreateManyUnitInputEnvelope
+export type UnitScheduleUncheckedUpdateManyWithoutTrainingPeriodNestedInput = {
+  create?: Prisma.XOR<Prisma.UnitScheduleCreateWithoutTrainingPeriodInput, Prisma.UnitScheduleUncheckedCreateWithoutTrainingPeriodInput> | Prisma.UnitScheduleCreateWithoutTrainingPeriodInput[] | Prisma.UnitScheduleUncheckedCreateWithoutTrainingPeriodInput[]
+  connectOrCreate?: Prisma.UnitScheduleCreateOrConnectWithoutTrainingPeriodInput | Prisma.UnitScheduleCreateOrConnectWithoutTrainingPeriodInput[]
+  upsert?: Prisma.UnitScheduleUpsertWithWhereUniqueWithoutTrainingPeriodInput | Prisma.UnitScheduleUpsertWithWhereUniqueWithoutTrainingPeriodInput[]
+  createMany?: Prisma.UnitScheduleCreateManyTrainingPeriodInputEnvelope
   set?: Prisma.UnitScheduleWhereUniqueInput | Prisma.UnitScheduleWhereUniqueInput[]
   disconnect?: Prisma.UnitScheduleWhereUniqueInput | Prisma.UnitScheduleWhereUniqueInput[]
   delete?: Prisma.UnitScheduleWhereUniqueInput | Prisma.UnitScheduleWhereUniqueInput[]
   connect?: Prisma.UnitScheduleWhereUniqueInput | Prisma.UnitScheduleWhereUniqueInput[]
-  update?: Prisma.UnitScheduleUpdateWithWhereUniqueWithoutUnitInput | Prisma.UnitScheduleUpdateWithWhereUniqueWithoutUnitInput[]
-  updateMany?: Prisma.UnitScheduleUpdateManyWithWhereWithoutUnitInput | Prisma.UnitScheduleUpdateManyWithWhereWithoutUnitInput[]
+  update?: Prisma.UnitScheduleUpdateWithWhereUniqueWithoutTrainingPeriodInput | Prisma.UnitScheduleUpdateWithWhereUniqueWithoutTrainingPeriodInput[]
+  updateMany?: Prisma.UnitScheduleUpdateManyWithWhereWithoutTrainingPeriodInput | Prisma.UnitScheduleUpdateManyWithWhereWithoutTrainingPeriodInput[]
   deleteMany?: Prisma.UnitScheduleScalarWhereInput | Prisma.UnitScheduleScalarWhereInput[]
+}
+
+export type UnitScheduleCreateNestedOneWithoutScheduleLocationsInput = {
+  create?: Prisma.XOR<Prisma.UnitScheduleCreateWithoutScheduleLocationsInput, Prisma.UnitScheduleUncheckedCreateWithoutScheduleLocationsInput>
+  connectOrCreate?: Prisma.UnitScheduleCreateOrConnectWithoutScheduleLocationsInput
+  connect?: Prisma.UnitScheduleWhereUniqueInput
+}
+
+export type UnitScheduleUpdateOneRequiredWithoutScheduleLocationsNestedInput = {
+  create?: Prisma.XOR<Prisma.UnitScheduleCreateWithoutScheduleLocationsInput, Prisma.UnitScheduleUncheckedCreateWithoutScheduleLocationsInput>
+  connectOrCreate?: Prisma.UnitScheduleCreateOrConnectWithoutScheduleLocationsInput
+  upsert?: Prisma.UnitScheduleUpsertWithoutScheduleLocationsInput
+  connect?: Prisma.UnitScheduleWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UnitScheduleUpdateToOneWithWhereWithoutScheduleLocationsInput, Prisma.UnitScheduleUpdateWithoutScheduleLocationsInput>, Prisma.UnitScheduleUncheckedUpdateWithoutScheduleLocationsInput>
 }
 
 export type UnitScheduleCreateWithoutAssignmentsInput = {
   date?: Date | string | null
-  unit: Prisma.UnitCreateNestedOneWithoutSchedulesInput
+  trainingPeriod: Prisma.TrainingPeriodCreateNestedOneWithoutSchedulesInput
+  scheduleLocations?: Prisma.ScheduleLocationCreateNestedManyWithoutScheduleInput
 }
 
 export type UnitScheduleUncheckedCreateWithoutAssignmentsInput = {
   id?: number
-  unitId: number
+  trainingPeriodId: number
   date?: Date | string | null
+  scheduleLocations?: Prisma.ScheduleLocationUncheckedCreateNestedManyWithoutScheduleInput
 }
 
 export type UnitScheduleCreateOrConnectWithoutAssignmentsInput = {
@@ -417,50 +440,54 @@ export type UnitScheduleUpdateToOneWithWhereWithoutAssignmentsInput = {
 
 export type UnitScheduleUpdateWithoutAssignmentsInput = {
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  unit?: Prisma.UnitUpdateOneRequiredWithoutSchedulesNestedInput
+  trainingPeriod?: Prisma.TrainingPeriodUpdateOneRequiredWithoutSchedulesNestedInput
+  scheduleLocations?: Prisma.ScheduleLocationUpdateManyWithoutScheduleNestedInput
 }
 
 export type UnitScheduleUncheckedUpdateWithoutAssignmentsInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
-  unitId?: Prisma.IntFieldUpdateOperationsInput | number
+  trainingPeriodId?: Prisma.IntFieldUpdateOperationsInput | number
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  scheduleLocations?: Prisma.ScheduleLocationUncheckedUpdateManyWithoutScheduleNestedInput
 }
 
-export type UnitScheduleCreateWithoutUnitInput = {
+export type UnitScheduleCreateWithoutTrainingPeriodInput = {
   date?: Date | string | null
+  scheduleLocations?: Prisma.ScheduleLocationCreateNestedManyWithoutScheduleInput
   assignments?: Prisma.InstructorUnitAssignmentCreateNestedManyWithoutUnitScheduleInput
 }
 
-export type UnitScheduleUncheckedCreateWithoutUnitInput = {
+export type UnitScheduleUncheckedCreateWithoutTrainingPeriodInput = {
   id?: number
   date?: Date | string | null
+  scheduleLocations?: Prisma.ScheduleLocationUncheckedCreateNestedManyWithoutScheduleInput
   assignments?: Prisma.InstructorUnitAssignmentUncheckedCreateNestedManyWithoutUnitScheduleInput
 }
 
-export type UnitScheduleCreateOrConnectWithoutUnitInput = {
+export type UnitScheduleCreateOrConnectWithoutTrainingPeriodInput = {
   where: Prisma.UnitScheduleWhereUniqueInput
-  create: Prisma.XOR<Prisma.UnitScheduleCreateWithoutUnitInput, Prisma.UnitScheduleUncheckedCreateWithoutUnitInput>
+  create: Prisma.XOR<Prisma.UnitScheduleCreateWithoutTrainingPeriodInput, Prisma.UnitScheduleUncheckedCreateWithoutTrainingPeriodInput>
 }
 
-export type UnitScheduleCreateManyUnitInputEnvelope = {
-  data: Prisma.UnitScheduleCreateManyUnitInput | Prisma.UnitScheduleCreateManyUnitInput[]
+export type UnitScheduleCreateManyTrainingPeriodInputEnvelope = {
+  data: Prisma.UnitScheduleCreateManyTrainingPeriodInput | Prisma.UnitScheduleCreateManyTrainingPeriodInput[]
   skipDuplicates?: boolean
 }
 
-export type UnitScheduleUpsertWithWhereUniqueWithoutUnitInput = {
+export type UnitScheduleUpsertWithWhereUniqueWithoutTrainingPeriodInput = {
   where: Prisma.UnitScheduleWhereUniqueInput
-  update: Prisma.XOR<Prisma.UnitScheduleUpdateWithoutUnitInput, Prisma.UnitScheduleUncheckedUpdateWithoutUnitInput>
-  create: Prisma.XOR<Prisma.UnitScheduleCreateWithoutUnitInput, Prisma.UnitScheduleUncheckedCreateWithoutUnitInput>
+  update: Prisma.XOR<Prisma.UnitScheduleUpdateWithoutTrainingPeriodInput, Prisma.UnitScheduleUncheckedUpdateWithoutTrainingPeriodInput>
+  create: Prisma.XOR<Prisma.UnitScheduleCreateWithoutTrainingPeriodInput, Prisma.UnitScheduleUncheckedCreateWithoutTrainingPeriodInput>
 }
 
-export type UnitScheduleUpdateWithWhereUniqueWithoutUnitInput = {
+export type UnitScheduleUpdateWithWhereUniqueWithoutTrainingPeriodInput = {
   where: Prisma.UnitScheduleWhereUniqueInput
-  data: Prisma.XOR<Prisma.UnitScheduleUpdateWithoutUnitInput, Prisma.UnitScheduleUncheckedUpdateWithoutUnitInput>
+  data: Prisma.XOR<Prisma.UnitScheduleUpdateWithoutTrainingPeriodInput, Prisma.UnitScheduleUncheckedUpdateWithoutTrainingPeriodInput>
 }
 
-export type UnitScheduleUpdateManyWithWhereWithoutUnitInput = {
+export type UnitScheduleUpdateManyWithWhereWithoutTrainingPeriodInput = {
   where: Prisma.UnitScheduleScalarWhereInput
-  data: Prisma.XOR<Prisma.UnitScheduleUpdateManyMutationInput, Prisma.UnitScheduleUncheckedUpdateManyWithoutUnitInput>
+  data: Prisma.XOR<Prisma.UnitScheduleUpdateManyMutationInput, Prisma.UnitScheduleUncheckedUpdateManyWithoutTrainingPeriodInput>
 }
 
 export type UnitScheduleScalarWhereInput = {
@@ -468,27 +495,71 @@ export type UnitScheduleScalarWhereInput = {
   OR?: Prisma.UnitScheduleScalarWhereInput[]
   NOT?: Prisma.UnitScheduleScalarWhereInput | Prisma.UnitScheduleScalarWhereInput[]
   id?: Prisma.IntFilter<"UnitSchedule"> | number
-  unitId?: Prisma.IntFilter<"UnitSchedule"> | number
+  trainingPeriodId?: Prisma.IntFilter<"UnitSchedule"> | number
   date?: Prisma.DateTimeNullableFilter<"UnitSchedule"> | Date | string | null
 }
 
-export type UnitScheduleCreateManyUnitInput = {
-  id?: number
+export type UnitScheduleCreateWithoutScheduleLocationsInput = {
   date?: Date | string | null
+  trainingPeriod: Prisma.TrainingPeriodCreateNestedOneWithoutSchedulesInput
+  assignments?: Prisma.InstructorUnitAssignmentCreateNestedManyWithoutUnitScheduleInput
 }
 
-export type UnitScheduleUpdateWithoutUnitInput = {
+export type UnitScheduleUncheckedCreateWithoutScheduleLocationsInput = {
+  id?: number
+  trainingPeriodId: number
+  date?: Date | string | null
+  assignments?: Prisma.InstructorUnitAssignmentUncheckedCreateNestedManyWithoutUnitScheduleInput
+}
+
+export type UnitScheduleCreateOrConnectWithoutScheduleLocationsInput = {
+  where: Prisma.UnitScheduleWhereUniqueInput
+  create: Prisma.XOR<Prisma.UnitScheduleCreateWithoutScheduleLocationsInput, Prisma.UnitScheduleUncheckedCreateWithoutScheduleLocationsInput>
+}
+
+export type UnitScheduleUpsertWithoutScheduleLocationsInput = {
+  update: Prisma.XOR<Prisma.UnitScheduleUpdateWithoutScheduleLocationsInput, Prisma.UnitScheduleUncheckedUpdateWithoutScheduleLocationsInput>
+  create: Prisma.XOR<Prisma.UnitScheduleCreateWithoutScheduleLocationsInput, Prisma.UnitScheduleUncheckedCreateWithoutScheduleLocationsInput>
+  where?: Prisma.UnitScheduleWhereInput
+}
+
+export type UnitScheduleUpdateToOneWithWhereWithoutScheduleLocationsInput = {
+  where?: Prisma.UnitScheduleWhereInput
+  data: Prisma.XOR<Prisma.UnitScheduleUpdateWithoutScheduleLocationsInput, Prisma.UnitScheduleUncheckedUpdateWithoutScheduleLocationsInput>
+}
+
+export type UnitScheduleUpdateWithoutScheduleLocationsInput = {
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  trainingPeriod?: Prisma.TrainingPeriodUpdateOneRequiredWithoutSchedulesNestedInput
   assignments?: Prisma.InstructorUnitAssignmentUpdateManyWithoutUnitScheduleNestedInput
 }
 
-export type UnitScheduleUncheckedUpdateWithoutUnitInput = {
+export type UnitScheduleUncheckedUpdateWithoutScheduleLocationsInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  trainingPeriodId?: Prisma.IntFieldUpdateOperationsInput | number
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   assignments?: Prisma.InstructorUnitAssignmentUncheckedUpdateManyWithoutUnitScheduleNestedInput
 }
 
-export type UnitScheduleUncheckedUpdateManyWithoutUnitInput = {
+export type UnitScheduleCreateManyTrainingPeriodInput = {
+  id?: number
+  date?: Date | string | null
+}
+
+export type UnitScheduleUpdateWithoutTrainingPeriodInput = {
+  date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  scheduleLocations?: Prisma.ScheduleLocationUpdateManyWithoutScheduleNestedInput
+  assignments?: Prisma.InstructorUnitAssignmentUpdateManyWithoutUnitScheduleNestedInput
+}
+
+export type UnitScheduleUncheckedUpdateWithoutTrainingPeriodInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  scheduleLocations?: Prisma.ScheduleLocationUncheckedUpdateManyWithoutScheduleNestedInput
+  assignments?: Prisma.InstructorUnitAssignmentUncheckedUpdateManyWithoutUnitScheduleNestedInput
+}
+
+export type UnitScheduleUncheckedUpdateManyWithoutTrainingPeriodInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
@@ -499,10 +570,12 @@ export type UnitScheduleUncheckedUpdateManyWithoutUnitInput = {
  */
 
 export type UnitScheduleCountOutputType = {
+  scheduleLocations: number
   assignments: number
 }
 
 export type UnitScheduleCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  scheduleLocations?: boolean | UnitScheduleCountOutputTypeCountScheduleLocationsArgs
   assignments?: boolean | UnitScheduleCountOutputTypeCountAssignmentsArgs
 }
 
@@ -519,6 +592,13 @@ export type UnitScheduleCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types
 /**
  * UnitScheduleCountOutputType without action
  */
+export type UnitScheduleCountOutputTypeCountScheduleLocationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ScheduleLocationWhereInput
+}
+
+/**
+ * UnitScheduleCountOutputType without action
+ */
 export type UnitScheduleCountOutputTypeCountAssignmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.InstructorUnitAssignmentWhereInput
 }
@@ -526,55 +606,58 @@ export type UnitScheduleCountOutputTypeCountAssignmentsArgs<ExtArgs extends runt
 
 export type UnitScheduleSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  unitId?: boolean
+  trainingPeriodId?: boolean
   date?: boolean
-  unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
+  trainingPeriod?: boolean | Prisma.TrainingPeriodDefaultArgs<ExtArgs>
+  scheduleLocations?: boolean | Prisma.UnitSchedule$scheduleLocationsArgs<ExtArgs>
   assignments?: boolean | Prisma.UnitSchedule$assignmentsArgs<ExtArgs>
   _count?: boolean | Prisma.UnitScheduleCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["unitSchedule"]>
 
 export type UnitScheduleSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  unitId?: boolean
+  trainingPeriodId?: boolean
   date?: boolean
-  unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
+  trainingPeriod?: boolean | Prisma.TrainingPeriodDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["unitSchedule"]>
 
 export type UnitScheduleSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  unitId?: boolean
+  trainingPeriodId?: boolean
   date?: boolean
-  unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
+  trainingPeriod?: boolean | Prisma.TrainingPeriodDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["unitSchedule"]>
 
 export type UnitScheduleSelectScalar = {
   id?: boolean
-  unitId?: boolean
+  trainingPeriodId?: boolean
   date?: boolean
 }
 
-export type UnitScheduleOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "unitId" | "date", ExtArgs["result"]["unitSchedule"]>
+export type UnitScheduleOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "trainingPeriodId" | "date", ExtArgs["result"]["unitSchedule"]>
 export type UnitScheduleInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
+  trainingPeriod?: boolean | Prisma.TrainingPeriodDefaultArgs<ExtArgs>
+  scheduleLocations?: boolean | Prisma.UnitSchedule$scheduleLocationsArgs<ExtArgs>
   assignments?: boolean | Prisma.UnitSchedule$assignmentsArgs<ExtArgs>
   _count?: boolean | Prisma.UnitScheduleCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UnitScheduleIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
+  trainingPeriod?: boolean | Prisma.TrainingPeriodDefaultArgs<ExtArgs>
 }
 export type UnitScheduleIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
+  trainingPeriod?: boolean | Prisma.TrainingPeriodDefaultArgs<ExtArgs>
 }
 
 export type $UnitSchedulePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "UnitSchedule"
   objects: {
-    unit: Prisma.$UnitPayload<ExtArgs>
+    trainingPeriod: Prisma.$TrainingPeriodPayload<ExtArgs>
+    scheduleLocations: Prisma.$ScheduleLocationPayload<ExtArgs>[]
     assignments: Prisma.$InstructorUnitAssignmentPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
-    unitId: number
+    trainingPeriodId: number
     date: Date | null
   }, ExtArgs["result"]["unitSchedule"]>
   composites: {}
@@ -970,7 +1053,8 @@ readonly fields: UnitScheduleFieldRefs;
  */
 export interface Prisma__UnitScheduleClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
-  unit<T extends Prisma.UnitDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UnitDefaultArgs<ExtArgs>>): Prisma.Prisma__UnitClient<runtime.Types.Result.GetResult<Prisma.$UnitPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  trainingPeriod<T extends Prisma.TrainingPeriodDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.TrainingPeriodDefaultArgs<ExtArgs>>): Prisma.Prisma__TrainingPeriodClient<runtime.Types.Result.GetResult<Prisma.$TrainingPeriodPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  scheduleLocations<T extends Prisma.UnitSchedule$scheduleLocationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UnitSchedule$scheduleLocationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ScheduleLocationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   assignments<T extends Prisma.UnitSchedule$assignmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UnitSchedule$assignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$InstructorUnitAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -1002,7 +1086,7 @@ export interface Prisma__UnitScheduleClient<T, Null = never, ExtArgs extends run
  */
 export interface UnitScheduleFieldRefs {
   readonly id: Prisma.FieldRef<"UnitSchedule", 'Int'>
-  readonly unitId: Prisma.FieldRef<"UnitSchedule", 'Int'>
+  readonly trainingPeriodId: Prisma.FieldRef<"UnitSchedule", 'Int'>
   readonly date: Prisma.FieldRef<"UnitSchedule", 'DateTime'>
 }
     
@@ -1397,6 +1481,30 @@ export type UnitScheduleDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.
    * Limit how many UnitSchedules to delete.
    */
   limit?: number
+}
+
+/**
+ * UnitSchedule.scheduleLocations
+ */
+export type UnitSchedule$scheduleLocationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ScheduleLocation
+   */
+  select?: Prisma.ScheduleLocationSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ScheduleLocation
+   */
+  omit?: Prisma.ScheduleLocationOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ScheduleLocationInclude<ExtArgs> | null
+  where?: Prisma.ScheduleLocationWhereInput
+  orderBy?: Prisma.ScheduleLocationOrderByWithRelationInput | Prisma.ScheduleLocationOrderByWithRelationInput[]
+  cursor?: Prisma.ScheduleLocationWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ScheduleLocationScalarFieldEnum | Prisma.ScheduleLocationScalarFieldEnum[]
 }
 
 /**

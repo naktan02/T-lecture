@@ -4,10 +4,10 @@
 /**
  * Boolean 값을 한글 표시로 변환
  * @param val - boolean 또는 falsy/truthy 값
- * @returns 'O (가능/있음)' 또는 'X (불가/없음)'
+ * @returns 'O' 또는 'X'
  */
 export const formatBool = (val: unknown): string => {
-  return val ? 'O (가능/있음)' : 'X (불가/없음)';
+  return val ? 'O' : 'X';
 };
 
 /**

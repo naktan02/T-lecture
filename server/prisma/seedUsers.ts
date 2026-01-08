@@ -1,5 +1,5 @@
 // server/prisma/seedUsers.ts
-// 유저 테스트 데이터 생성 - 강사 90명 + 일반유저 10명
+// 유저 테스트 데이터 생성 - 강사 80명 + 일반유저 10명 + 가입대기 10명
 // 실행: npx tsx prisma/seedUsers.ts
 
 /* eslint-disable no-console */
@@ -114,35 +114,44 @@ const LOCATIONS = [
   { address: '서울특별시 송파구 올림픽로 789', lat: 37.5145, lng: 127.1059 },
   { address: '서울특별시 마포구 월드컵북로 100', lat: 37.5665, lng: 126.9012 },
   { address: '서울특별시 영등포구 여의대로 200', lat: 37.5259, lng: 126.9249 },
+  { address: '서울특별시 종로구 세종대로 201', lat: 37.572, lng: 126.977 },
+  { address: '서울특별시 용산구 이태원로 302', lat: 37.534, lng: 126.994 },
   { address: '경기도 성남시 분당구 판교로 111', lat: 37.3947, lng: 127.1112 },
   { address: '경기도 수원시 영통구 광교로 222', lat: 37.2912, lng: 127.0478 },
   { address: '경기도 용인시 기흥구 구갈로 333', lat: 37.2754, lng: 127.1155 },
   { address: '경기도 고양시 일산동구 중앙로 444', lat: 37.6584, lng: 126.7693 },
   { address: '경기도 파주시 금릉역로 555', lat: 37.7606, lng: 126.7804 },
-  { address: '인천광역시 연수구 컨벤시아대로 666', lat: 37.3894, lng: 126.6413 },
-  { address: '인천광역시 남동구 논현로 777', lat: 37.4116, lng: 126.7331 },
-  { address: '강원도 춘천시 중앙로 888', lat: 37.8813, lng: 127.7298 },
-  { address: '강원도 원주시 단계로 999', lat: 37.3422, lng: 127.9202 },
-  { address: '충청남도 천안시 서북구 불당로 111', lat: 36.8151, lng: 127.1139 },
-  { address: '충청북도 청주시 흥덕구 복대로 222', lat: 36.6357, lng: 127.4913 },
-  { address: '대전광역시 유성구 대학로 333', lat: 36.3623, lng: 127.3561 },
-  { address: '전라북도 전주시 완산구 홍산로 444', lat: 35.8242, lng: 127.1489 },
-  { address: '전라남도 광주시 북구 용봉로 555', lat: 35.1756, lng: 126.9121 },
-  { address: '경상북도 대구시 수성구 동대구로 666', lat: 35.8588, lng: 128.6321 },
-  { address: '경상남도 부산시 해운대구 해운대로 777', lat: 35.1631, lng: 129.1637 },
-  { address: '경상남도 창원시 성산구 중앙대로 888', lat: 35.227, lng: 128.6811 },
+  { address: '경기도 화성시 동탄대로 666', lat: 37.206, lng: 127.074 },
+  { address: '인천광역시 연수구 컨벤시아대로 777', lat: 37.3894, lng: 126.6413 },
+  { address: '인천광역시 남동구 논현로 888', lat: 37.4116, lng: 126.7331 },
+  { address: '강원도 춘천시 중앙로 999', lat: 37.8813, lng: 127.7298 },
+  { address: '강원도 원주시 단계로 100', lat: 37.3422, lng: 127.9202 },
+  { address: '강원도 강릉시 경포로 200', lat: 37.7519, lng: 128.8761 },
+  { address: '충청남도 천안시 서북구 불당로 300', lat: 36.8151, lng: 127.1139 },
+  { address: '충청북도 청주시 흥덕구 복대로 400', lat: 36.6357, lng: 127.4913 },
+  { address: '대전광역시 유성구 대학로 500', lat: 36.3623, lng: 127.3561 },
+  { address: '전라북도 전주시 완산구 홍산로 600', lat: 35.8242, lng: 127.1489 },
+  { address: '전라남도 광주시 북구 용봉로 700', lat: 35.1756, lng: 126.9121 },
+  { address: '경상북도 대구시 수성구 동대구로 800', lat: 35.8588, lng: 128.6321 },
+  { address: '경상남도 부산시 해운대구 해운대로 900', lat: 35.1631, lng: 129.1637 },
+  { address: '경상남도 창원시 성산구 중앙대로 1000', lat: 35.227, lng: 128.6811 },
 ];
 
 const RESTRICTED_AREAS = [
+  null,
+  null,
+  null,
+  null,
   null,
   '강원도',
   '제주도',
   '경상북도 울릉군',
   '전라남도 신안군',
-  null,
   '강원도 고성군',
-  null,
   '경기도 파주시',
+  null,
+  null,
+  null,
   null,
 ];
 
@@ -166,22 +175,35 @@ function generatePhoneNumber(): string {
   return `010-${randomInt(1000, 9999)}-${randomInt(1000, 9999)}`;
 }
 
-// 교육가능일 생성 (2025년 6월 ~ 2026년 2월, 9개월)
-function generateAvailableDates(count: number): Date[] {
+// 교육가능일 생성 (2025년 전체 + 2026년 1~2월)
+// 3일 연속 가능하도록 블록 단위로 생성
+function generateAvailableDates(): Date[] {
   const dates: Date[] = [];
-  const startDate = new Date(Date.UTC(2025, 5, 1)); // 2025-06-01
-  const endDate = new Date(Date.UTC(2026, 1, 28)); // 2026-02-28
+  const periods = [
+    { start: new Date(Date.UTC(2025, 0, 1)), end: new Date(Date.UTC(2025, 11, 31)) }, // 2025년 전체
+    { start: new Date(Date.UTC(2026, 0, 1)), end: new Date(Date.UTC(2026, 1, 28)) }, // 2026년 1~2월
+  ];
 
-  const allDates: Date[] = [];
-  const current = new Date(startDate);
-  while (current <= endDate) {
-    allDates.push(new Date(current));
-    current.setUTCDate(current.getUTCDate() + 1);
+  for (const period of periods) {
+    const current = new Date(period.start);
+    while (current <= period.end) {
+      // 80% 확률로 해당 날짜 가능
+      if (Math.random() > 0.2) {
+        // 3일 연속으로 추가 (2박3일 교육 대응)
+        for (let d = 0; d < 3 && new Date(current.getTime() + d * 86400000) <= period.end; d++) {
+          const date = new Date(current.getTime() + d * 86400000);
+          if (!dates.some((existing) => existing.getTime() === date.getTime())) {
+            dates.push(date);
+          }
+        }
+        current.setUTCDate(current.getUTCDate() + 3); // 3일 건너뛰기
+      } else {
+        current.setUTCDate(current.getUTCDate() + 1);
+      }
+    }
   }
 
-  // 랜덤하게 선택
-  const shuffled = allDates.sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
+  return dates;
 }
 
 export async function runSeedUsers() {
@@ -198,35 +220,34 @@ export async function runSeedUsers() {
     return;
   }
 
-  // 강사 분류별 배열 (총 5명)
+  // 강사 분류별 배열 (총 80명)
   const categories: { type: UserCategory; count: number }[] = [
-    { type: 'Main', count: 2 }, // 주강사 2명
-    { type: 'Co', count: 2 }, // 부강사 2명
-    { type: 'Assistant', count: 1 }, // 보조강사 1명
+    { type: 'Main', count: 30 }, // 주강사 30명
+    { type: 'Co', count: 25 }, // 부강사 25명
+    { type: 'Assistant', count: 15 }, // 보조강사 15명
+    { type: 'Practicum', count: 10 }, // 실습강 10명
   ];
 
+  const totalInstructors = 80;
   let instructorIndex = 0;
   const instructorIds: number[] = [];
 
-  // 팀 배정 계획: 있는 팀 수에 따라 배분, 나머지는 미소속
+  // 팀 배정 계획: 70% 팀 소속, 30% 미소속
   const teamAssignments: (number | null)[] = [];
-  const totalInstructors = 90;
   const teamCount = teams.length;
-  const instructorsPerTeam = Math.floor((totalInstructors * 0.7) / teamCount); // 70%는 팀 소속
+  const instructorsPerTeam = Math.floor((totalInstructors * 0.7) / teamCount);
 
   for (let t = 0; t < teamCount; t++) {
     for (let i = 0; i < instructorsPerTeam; i++) {
       teamAssignments.push(teams[t].id);
     }
   }
-  // 나머지는 미소속
   while (teamAssignments.length < totalInstructors) {
     teamAssignments.push(null);
   }
-  // 섞기
   teamAssignments.sort(() => Math.random() - 0.5);
 
-  console.log('👨‍🏫 강사 90명 생성 중...');
+  console.log('👨‍🏫 강사 80명 생성 중...');
 
   for (const { type, count } of categories) {
     for (let i = 0; i < count; i++) {
@@ -263,7 +284,7 @@ export async function runSeedUsers() {
                 location: location.address,
                 lat: location.lat,
                 lng: location.lng,
-                generation: randomInt(1, 20),
+                generation: randomInt(1, 25),
                 restrictedArea: randomChoice(RESTRICTED_AREAS),
                 hasCar: Math.random() > 0.3,
                 profileCompleted: true,
@@ -279,9 +300,11 @@ export async function runSeedUsers() {
         if (type === 'Main') {
           virtueCount = 15; // 주강사는 전체 15개
         } else if (type === 'Co') {
-          virtueCount = randomInt(8, 12);
+          virtueCount = randomInt(10, 13);
+        } else if (type === 'Assistant') {
+          virtueCount = randomInt(6, 9);
         } else {
-          virtueCount = randomInt(8, 10);
+          virtueCount = randomInt(3, 6); // 실습강
         }
 
         const shuffledVirtues = [...virtues].sort(() => Math.random() - 0.5);
@@ -293,8 +316,8 @@ export async function runSeedUsers() {
             .catch(() => {}); // 중복 무시
         }
 
-        // 교육가능일 생성 (60~90일, 9개월 기간에 맞춤)
-        const availableDates = generateAvailableDates(randomInt(60, 90));
+        // 교육가능일 생성 (2025년 전체 + 2026년 1~2월)
+        const availableDates = generateAvailableDates();
         for (const date of availableDates) {
           await prisma.instructorAvailability
             .create({
@@ -308,30 +331,26 @@ export async function runSeedUsers() {
           .create({
             data: {
               instructorId: user.id,
-              legacyPracticumCount: 0,
+              legacyPracticumCount: type === 'Practicum' ? randomInt(0, 5) : 0,
               autoPromotionEnabled: true,
-              totalWorkHours: 0,
-              totalDistance: 0,
-              totalWorkDays: 0,
-              acceptedCount: 0,
-              totalAssignmentsCount: 0,
             },
           })
           .catch(() => {});
 
-        const teamLabel = teamId ? `팀${teamId}` : '미소속';
-        const leaderLabel = isTeamLeader ? '👑' : '';
-        console.log(`  ${type.padEnd(10)} ${leaderLabel}${name} (${email}) - ${teamLabel}`);
+        if ((instructorIndex + 1) % 10 === 0) {
+          console.log(`  ✅ 강사 ${instructorIndex + 1}/80 생성 완료`);
+        }
 
         instructorIndex++;
-      } catch (error: any) {
-        console.error(`  ❌ 생성 실패: ${email}`, error.message);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`  ❌ 생성 실패: ${email}`, message);
       }
     }
   }
-  console.log(`  ✅ 강사 ${instructorIndex}명 생성 완료\n`);
+  console.log(`  ✅ 강사 총 ${instructorIndex}명 생성 완료\n`);
 
-  // 일반 유저 10명 생성
+  // 일반 유저 10명 생성 (APPROVED, Instructor 없음)
   console.log('👤 일반 유저 10명 생성 중...');
   for (let i = 1; i <= 10; i++) {
     const name = generateKoreanName();
@@ -348,22 +367,47 @@ export async function runSeedUsers() {
           status: 'APPROVED',
         },
       });
-      console.log(`  ✅ ${name} (${email})`);
-    } catch (error: any) {
-      console.error(`  ❌ 생성 실패: ${email}`, error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`  ❌ 생성 실패: ${email}`, message);
     }
   }
   console.log('  ✅ 일반 유저 10명 생성 완료\n');
+
+  // 가입 대기 유저 10명 생성 (PENDING, Instructor 없음)
+  console.log('⏳ 가입 대기 유저 10명 생성 중...');
+  for (let i = 1; i <= 10; i++) {
+    const name = generateKoreanName();
+    const email = `pending${String(i).padStart(3, '0')}@test.com`;
+    const phone = generatePhoneNumber();
+
+    try {
+      await prisma.user.create({
+        data: {
+          userEmail: email,
+          password: password,
+          name: name,
+          userphoneNumber: phone,
+          status: 'PENDING',
+        },
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`  ❌ 생성 실패: ${email}`, message);
+    }
+  }
+  console.log('  ✅ 가입 대기 유저 10명 생성 완료\n');
 
   console.log('='.repeat(50));
   console.log('📊 유저 생성 결과');
   console.log('='.repeat(50));
   console.log(`강사: ${instructorIndex}명`);
-  console.log('  - 주강사(Main): 40명');
-  console.log('  - 부강사(Co): 30명');
-  console.log('  - 보조강사(Assistant): 10명');
+  console.log('  - 주강사(Main): 30명');
+  console.log('  - 부강사(Co): 25명');
+  console.log('  - 보조강사(Assistant): 15명');
   console.log('  - 실습강(Practicum): 10명');
-  console.log('일반 유저: 10명');
+  console.log('일반 유저: 10명 (APPROVED)');
+  console.log('가입 대기: 10명 (PENDING)');
   console.log('='.repeat(50));
   console.log('🔐 테스트 비밀번호: test1234\n');
 }

@@ -91,10 +91,12 @@ class InstructorService {
     let totalMilliseconds = 0;
 
     rawAssignments.forEach((a) => {
-      const unit = a.UnitSchedule?.unit;
-      if (unit?.workStartTime && unit?.workEndTime) {
+      // NOTE: workStartTime/workEndTime는 이제 TrainingPeriod에 있음
+      const trainingPeriod = a.UnitSchedule?.trainingPeriod;
+      if (trainingPeriod?.workStartTime && trainingPeriod?.workEndTime) {
         totalMilliseconds +=
-          new Date(unit.workEndTime).getTime() - new Date(unit.workStartTime).getTime();
+          new Date(trainingPeriod.workEndTime).getTime() -
+          new Date(trainingPeriod.workStartTime).getTime();
       }
     });
 

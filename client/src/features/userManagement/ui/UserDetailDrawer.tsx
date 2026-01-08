@@ -81,7 +81,7 @@ const CATEGORY_OPTIONS = [
   { value: '', label: '미지정' },
   { value: 'Main', label: '주강사' },
   { value: 'Co', label: '보조강사' },
-  { value: 'Assistant', label: '조교' },
+  { value: 'Assistant', label: '부강사' },
   { value: 'Practicum', label: '실습' },
 ];
 
@@ -599,7 +599,7 @@ export const UserDetailDrawer = ({
                         onChange={handleChange}
                         className="w-full mt-1 p-2 border rounded-lg"
                       >
-                        <option value="">미지정</option>
+                        <option value="">무소속</option>
                         {teams.map((team) => (
                           <option key={team.id} value={team.id.toString()}>
                             {team.name || `팀 ${team.id}`}

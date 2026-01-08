@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs';
 import { AppError } from '../common/errors/AppError';
 
 // DB 필드명 (한글) → 내부 필드명 매핑
+// NOTE: 위도/경도는 주소 기반 API로 자동 계산되므로 엑셀에서 읽지 않음
 const COLUMN_MAPPING: Record<string, string> = {
   // Unit 기본 정보
   부대명: 'name',
@@ -12,8 +13,6 @@ const COLUMN_MAPPING: Record<string, string> = {
   부대주소: 'addressDetail',
   '부대주소(상세)': 'detailAddress',
   부대상세주소: 'detailAddress',
-  위도: 'lat',
-  경도: 'lng',
 
   // 교육 일정
   교육시작일자: 'educationStart',
@@ -52,6 +51,19 @@ class ExcelService {
    * - 데이터 타입 자동 변환
    */
   async bufferToJson(fileBuffer: Buffer | ArrayBuffer): Promise<Record<string, unknown>[]> {
+    const result = await this.bufferToJsonWithMeta(fileBuffer);
+    return result.rows;
+  }
+
+  /**
+   * 엑셀 파일 버퍼를 JSON 배열로 변환 (메타데이터 포함)
+   * - 헤더 행 이전의 메타데이터 행에서 강의년도(lectureYear) 추출
+   * - 메타데이터: "강의년도: 2026" 또는 "2026년" 형태 인식
+   */
+  async bufferToJsonWithMeta(fileBuffer: Buffer | ArrayBuffer): Promise<{
+    rows: Record<string, unknown>[];
+    meta: { lectureYear?: number };
+  }> {
     if (!fileBuffer) {
       throw new AppError('파일 데이터가 없습니다.', 400, 'INVALID_FILE_DATA');
     }
@@ -75,7 +87,55 @@ class ExcelService {
       );
     }
 
-    // 2. 데이터 행 파싱
+    // 2. 헤더 이전 행에서 강의년도 추출
+    // 형식: A열에 '강의년도' 라벨, B열에 '2026' 값 (또는 같은 행 인접 셀)
+    let lectureYear: number | undefined;
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber >= headerRowNum) return; // 헤더 이후는 무시
+      if (lectureYear !== undefined) return; // 이미 찾았으면 스킵
+
+      // 방법 1: '강의년도' 라벨을 찾고 옆 셀에서 년도 읽기
+      let lectureYearLabelCol: number | null = null;
+      row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+        const cellValue = String(cell.value || '').trim();
+        if (cellValue === '강의년도' || cellValue === '강의연도') {
+          lectureYearLabelCol = colNumber;
+        }
+      });
+
+      if (lectureYearLabelCol !== null) {
+        // 옆 셀(B열)에서 년도 읽기
+        const yearCell = row.getCell(lectureYearLabelCol + 1);
+        const yearValue = String(yearCell.value || '').trim();
+        const yearMatch = yearValue.match(/^(\d{4})년?$/);
+        if (yearMatch) {
+          lectureYear = parseInt(yearMatch[1], 10);
+        } else if (/^\d{4}$/.test(yearValue)) {
+          lectureYear = parseInt(yearValue, 10);
+        }
+        return;
+      }
+
+      // 방법 2: 기존 형식 지원 ('강의년도: 2026' 또는 '2026년')
+      row.eachCell({ includeEmpty: false }, (cell) => {
+        if (lectureYear !== undefined) return;
+        const cellValue = String(cell.value || '').trim();
+
+        const match1 = cellValue.match(/강의년도\s*[:：]?\s*(\d{4})/);
+        if (match1) {
+          lectureYear = parseInt(match1[1], 10);
+          return;
+        }
+
+        const match2 = cellValue.match(/^(\d{4})년?$/);
+        if (match2) {
+          lectureYear = parseInt(match2[1], 10);
+          return;
+        }
+      });
+    });
+
+    // 3. 데이터 행 파싱
     const rows: Record<string, unknown>[] = [];
     worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
       if (rowNumber <= headerRowNum) return; // 헤더 이전/헤더 행 스킵
@@ -103,7 +163,10 @@ class ExcelService {
       throw new AppError('엑셀 파일에 데이터가 없습니다.', 400, 'EMPTY_EXCEL_FILE');
     }
 
-    return rows;
+    return {
+      rows,
+      meta: { lectureYear },
+    };
   }
 
   /**

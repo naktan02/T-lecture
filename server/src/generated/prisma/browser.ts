@@ -98,6 +98,11 @@ export type InstructorPenalty = Prisma.InstructorPenaltyModel
  */
 export type Unit = Prisma.UnitModel
 /**
+ * Model TrainingPeriod
+ * 
+ */
+export type TrainingPeriod = Prisma.TrainingPeriodModel
+/**
  * Model TrainingLocation
  * 
  */
@@ -107,6 +112,11 @@ export type TrainingLocation = Prisma.TrainingLocationModel
  * 
  */
 export type UnitSchedule = Prisma.UnitScheduleModel
+/**
+ * Model ScheduleLocation
+ * 
+ */
+export type ScheduleLocation = Prisma.ScheduleLocationModel
 /**
  * Model User
  * 

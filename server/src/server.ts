@@ -1,5 +1,11 @@
 // src/server.ts
+// dotenv must be loaded first to read environment variables
 import 'dotenv/config';
+
+// New Relic: only load if license key is configured (prevents errors in local dev)
+if (process.env.NEW_RELIC_LICENSE_KEY) {
+  require('newrelic');
+}
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -9,10 +15,13 @@ import { requestLogger, rateLimiter } from './common/middlewares';
 import v1Router from './api/v1';
 import errorHandler from './common/middlewares/errorHandler';
 import logger from './config/logger';
-import './jobs/statsBatch.job';
 import prisma from './libs/prisma';
+import { initSentry } from './config/sentry';
 
 const app = express();
+
+// Sentry 초기화 (에러 핸들러보다 먼저 설정해야 함)
+initSentry(app);
 
 const isProd = process.env.NODE_ENV === 'production';
 

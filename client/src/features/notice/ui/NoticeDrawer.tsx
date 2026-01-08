@@ -3,6 +3,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { Notice } from '../api/noticeApi';
 import { NoticeForm } from './NoticeForm';
+import { showConfirm } from '../../../shared/utils/toast';
 
 interface NoticeDrawerProps {
   isOpen: boolean;
@@ -77,8 +78,9 @@ export const NoticeDrawer = ({
                       {isEditMode && onDelete && (
                         <div className="mt-8 pt-6 border-t border-gray-200">
                           <button
-                            onClick={() => {
-                              if (confirm('정말 삭제하시겠습니까?')) {
+                            onClick={async () => {
+                              const confirmed = await showConfirm('정말 삭제하시겠습니까?');
+                              if (confirmed) {
                                 onDelete(notice.id);
                               }
                             }}

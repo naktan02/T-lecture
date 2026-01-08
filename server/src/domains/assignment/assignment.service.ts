@@ -63,7 +63,8 @@ class AssignmentService {
     let minScheduleDate = start;
     let maxScheduleDate = end;
     for (const unit of unitsRaw) {
-      for (const schedule of unit.schedules || []) {
+      const schedules = unit.trainingPeriods?.[0]?.schedules || [];
+      for (const schedule of schedules) {
         if (!schedule.date) continue;
         const scheduleDate = new Date(schedule.date);
         if (scheduleDate < minScheduleDate) minScheduleDate = scheduleDate;
@@ -108,7 +109,8 @@ class AssignmentService {
     let minScheduleDate = start;
     let maxScheduleDate = end;
     for (const unit of units) {
-      for (const schedule of unit.schedules || []) {
+      const schedules = unit.trainingPeriods?.flatMap((p) => p.schedules) || [];
+      for (const schedule of schedules) {
         if (!schedule.date) continue;
         const scheduleDate = new Date(schedule.date);
         if (scheduleDate < minScheduleDate) minScheduleDate = scheduleDate;
@@ -129,7 +131,11 @@ class AssignmentService {
     const traineesPerInstructor = await this.getSystemConfigNumber('TRAINEES_PER_INSTRUCTOR', 36);
 
     const scheduleIds = Array.from(
-      new Set(units.flatMap((u) => (u.schedules || []).map((s) => s.id))),
+      new Set(
+        units.flatMap((u) =>
+          (u.trainingPeriods?.flatMap((p) => p.schedules) || []).map((s) => s.id),
+        ),
+      ),
     );
     const blockedInstructorIdsBySchedule =
       await assignmentRepository.findCanceledInstructorIdsByScheduleIds(scheduleIds);
@@ -191,6 +197,152 @@ class AssignmentService {
   }
 
   /**
+   * ID 기반 자동 배정 (하이브리드 방식)
+   * - 클라이언트에서 scheduleIds, instructorIds 전달받음
+   * - 기배정 상태는 서버에서 실시간 조회
+   */
+  async createAutoAssignmentsByIds(scheduleIds: number[], instructorIds: number[]) {
+    if (!scheduleIds || scheduleIds.length === 0) {
+      throw new AppError('배정할 스케줄 ID가 없습니다.', 400, 'VALIDATION_ERROR');
+    }
+    if (!instructorIds || instructorIds.length === 0) {
+      throw new AppError('배정할 강사 ID가 없습니다.', 400, 'VALIDATION_ERROR');
+    }
+
+    // 1) 스케줄 조회 (기배정 상태 포함)
+    const schedules = await assignmentRepository.findSchedulesByIds(scheduleIds);
+
+    if (!schedules || schedules.length === 0) {
+      throw new AppError('조회되는 스케줄이 없습니다.', 404, 'NO_SCHEDULES');
+    }
+
+    // 2) 스케줄 날짜 범위 계산 (강사 가용일 조회용)
+    const validSchedules = schedules.filter((s) => s.date !== null);
+    if (validSchedules.length === 0) {
+      throw new AppError('유효한 날짜가 있는 스케줄이 없습니다.', 404, 'NO_VALID_SCHEDULES');
+    }
+
+    let minDate = new Date(validSchedules[0].date!);
+    let maxDate = new Date(validSchedules[0].date!);
+    for (const schedule of validSchedules) {
+      const d = new Date(schedule.date!);
+      if (d < minDate) minDate = d;
+      if (d > maxDate) maxDate = d;
+    }
+
+    // 3) 강사 조회 (ID 필터링 + 가용일 조회)
+    const allInstructors = await instructorRepository.findAvailableInPeriod(
+      minDate.toISOString(),
+      maxDate.toISOString(),
+    );
+    // 클라이언트에서 전달받은 ID로 필터링
+    const instructors = allInstructors.filter((i: any) => instructorIds.includes(i.userId));
+
+    if (!instructors || instructors.length === 0) {
+      throw new AppError('배정 가능한 강사가 없습니다.', 404, 'NO_INSTRUCTORS');
+    }
+
+    // 4) 스케줄 데이터를 기존 알고리즘 형식으로 변환 (Unit 기반)
+    // 알고리즘 인터페이스: { id, name, region, wideArea, schedules, trainingLocations, isStaffLocked }
+    const unitMap = new Map<number, any>();
+    for (const schedule of schedules) {
+      const unitId = schedule.trainingPeriod?.unitId;
+      if (!unitId) continue;
+
+      if (!unitMap.has(unitId)) {
+        // 장소 정보 추출 (scheduleLocations에서 actualCount/plannedCount 포함)
+        const locations =
+          schedule.trainingPeriod?.locations?.map((loc: any) => {
+            // scheduleLocations에서 해당 장소의 인원 정보 가져오기
+            const schedLoc = schedule.scheduleLocations?.find(
+              (sl: any) => sl.trainingLocationId === loc.id,
+            );
+            return {
+              id: loc.id,
+              originalPlace: loc.originalPlace,
+              actualCount: schedLoc?.actualCount ?? null,
+              plannedCount: schedLoc?.plannedCount ?? null,
+              requiredCount: schedLoc?.requiredCount ?? null,
+            };
+          }) || [];
+
+        unitMap.set(unitId, {
+          id: unitId,
+          name: schedule.trainingPeriod?.unit?.name,
+          region: schedule.trainingPeriod?.unit?.region,
+          wideArea: schedule.trainingPeriod?.unit?.wideArea,
+          trainingLocations: locations,
+          schedules: [],
+          isStaffLocked: schedule.trainingPeriod?.isStaffLocked ?? false,
+        });
+      }
+
+      // 스케줄 추가 (assignments 포함)
+      unitMap.get(unitId).schedules.push({
+        id: schedule.id,
+        date: schedule.date,
+        assignments: schedule.assignments || [],
+      });
+    }
+    const units = Array.from(unitMap.values());
+
+    // 5) 취소된 강사 조회 (재배정 방지)
+    const blockedInstructorIdsBySchedule =
+      await assignmentRepository.findCanceledInstructorIdsByScheduleIds(scheduleIds);
+
+    // 6) 공정성/패널티 통계
+    const traineesPerInstructor = await this.getSystemConfigNumber('TRAINEES_PER_INSTRUCTOR', 36);
+    const fairnessLookbackMonths = await this.getSystemConfigNumber(
+      'FAIRNESS_LOOKBACK_MONTHS',
+      DEFAULT_ASSIGNMENT_CONFIG.fairnessLookbackMonths,
+    );
+    const rejectionPenaltyMonths = await this.getSystemConfigNumber(
+      'REJECTION_PENALTY_MONTHS',
+      DEFAULT_ASSIGNMENT_CONFIG.rejectionPenaltyMonths,
+    );
+
+    const assignmentSince = this.subtractMonths(minDate, fairnessLookbackMonths);
+    const rejectionSince = this.subtractMonths(minDate, rejectionPenaltyMonths);
+
+    const { recentAssignmentCountByInstructorId, recentRejectionCountByInstructorId } =
+      await assignmentRepository.getInstructorRecentStats(
+        instructorIds,
+        assignmentSince,
+        rejectionSince,
+      );
+
+    // 7) 배정 알고리즘 실행
+    const matchResult = assignmentAlgorithm.execute(units as any, instructors as any, {
+      traineesPerInstructor,
+      blockedInstructorIdsBySchedule,
+      recentAssignmentCountByInstructorId,
+      recentRejectionCountByInstructorId,
+    });
+
+    const { assignments: matchResults } = matchResult;
+
+    if (!matchResults || matchResults.length === 0) {
+      throw new AppError('배정 가능한 매칭 결과가 없습니다.', 404, 'NO_MATCHES');
+    }
+
+    // 8) 배정 저장
+    const summary = await assignmentRepository.createAssignmentsBulk(matchResults);
+
+    // 9) 크레딧 소모 및 역할 재계산
+    const assignedInstructorIds = new Set(matchResults.map((m) => m.instructorId));
+    for (const instructorId of assignedInstructorIds) {
+      await this.consumePriorityCredit(instructorId);
+    }
+
+    const affectedUnitIds = new Set(units.map((u) => u.id));
+    for (const unitId of affectedUnitIds) {
+      await assignmentRepository.recalculateRolesForUnit(unitId);
+    }
+
+    return { summary };
+  }
+
+  /**
    * 자동 배정 미리보기 (저장 안 함)
    * @param startDate 시작일
    * @param endDate 종료일
@@ -217,7 +369,8 @@ class AssignmentService {
     let minScheduleDate = start;
     let maxScheduleDate = end;
     for (const unit of units) {
-      for (const schedule of unit.schedules || []) {
+      const schedules = unit.trainingPeriods?.flatMap((p) => p.schedules) || [];
+      for (const schedule of schedules) {
         if (!schedule.date) continue;
         const scheduleDate = new Date(schedule.date);
         if (scheduleDate < minScheduleDate) minScheduleDate = scheduleDate;
@@ -237,7 +390,11 @@ class AssignmentService {
 
     const traineesPerInstructor = await this.getSystemConfigNumber('TRAINEES_PER_INSTRUCTOR', 36);
     const scheduleIds = Array.from(
-      new Set(units.flatMap((u) => (u.schedules || []).map((s) => s.id))),
+      new Set(
+        units.flatMap((u) =>
+          (u.trainingPeriods?.flatMap((p) => p.schedules) || []).map((s) => s.id),
+        ),
+      ),
     );
     const blockedInstructorIdsBySchedule =
       await assignmentRepository.findCanceledInstructorIdsByScheduleIds(scheduleIds);
@@ -349,9 +506,9 @@ class AssignmentService {
       // 배정 정보에서 부대/날짜 가져오기
       const schedule = await prisma.unitSchedule.findUnique({
         where: { id: Number(unitScheduleId) },
-        include: { unit: { select: { name: true } } },
+        include: { trainingPeriod: { include: { unit: { select: { name: true } } } } },
       });
-      const unitName = schedule?.unit?.name || 'unknown';
+      const unitName = schedule?.trainingPeriod?.unit?.name || 'unknown';
       const dateStr = schedule?.date
         ? new Date(schedule.date).toISOString().split('T')[0]
         : 'unknown';
@@ -444,25 +601,32 @@ class AssignmentService {
     const unit = await assignmentRepository.getUnitWithAssignments(unitId);
     if (!unit) return;
 
+    // 첫 번째 TrainingPeriod에서 정보 추출 (TrainingPeriod 기반 구조)
+    const firstPeriod = unit.trainingPeriods[0];
+    if (!firstPeriod) return;
+
+    const allSchedules = firstPeriod.schedules;
+    const allLocations = firstPeriod.locations;
+
     // 3. 배정이 하나라도 있는지 확인
-    const hasAnyAssignment = unit.schedules.some((s) => s.assignments.length > 0);
+    const hasAnyAssignment = allSchedules.some((s) => s.assignments.length > 0);
     if (!hasAnyAssignment) return;
 
     // 4. 부대의 인원고정 여부
-    const isStaffLocked = (unit as { isStaffLocked?: boolean }).isStaffLocked ?? false;
+    const isStaffLocked = firstPeriod.isStaffLocked ?? false;
 
     // 5. 장소별 필요 인원 합계 (동적 계산)
     const traineesPerInstructor = await this.getTraineesPerInstructor();
-    const totalRequiredPerSchedule = unit.trainingLocations.reduce(
-      (sum, loc) =>
-        sum + (Math.floor((loc.actualCount || 0) / Math.max(1, traineesPerInstructor)) || 1),
-      0,
-    );
+    const totalRequiredPerSchedule = allLocations.reduce((sum, loc) => {
+      // scheduleLocations에서 actualCount 가져오기
+      const actualCount = loc.scheduleLocations?.[0]?.actualCount || 0;
+      return sum + (Math.floor(actualCount / Math.max(1, traineesPerInstructor)) || 1);
+    }, 0);
 
     // 6. 모든 스케줄 충족 여부 확인
     let allSchedulesFilled = true;
 
-    for (const schedule of unit.schedules) {
+    for (const schedule of allSchedules) {
       const acceptedCount = schedule.assignments.filter((a) => a.state === 'Accepted').length;
       const pendingCount = schedule.assignments.filter((a) => a.state === 'Pending').length;
 
@@ -480,7 +644,7 @@ class AssignmentService {
     }
 
     // 7. 모든 조건 충족 시 부대 전체 확정
-    if (allSchedulesFilled && unit.schedules.length > 0) {
+    if (allSchedulesFilled && allSchedules.length > 0) {
       await assignmentRepository.updateClassificationByUnit(unitId, 'Confirmed');
     }
   }
@@ -577,7 +741,7 @@ class AssignmentService {
     const result = await assignmentRepository.toggleStaffLock(unitId, isStaffLocked);
     // 인원고정 후 자동 확정 체크
     const firstSchedule = await prisma.unitSchedule.findFirst({
-      where: { unitId },
+      where: { trainingPeriod: { unitId } },
       select: { id: true },
     });
     if (firstSchedule) {
