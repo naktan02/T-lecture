@@ -87,31 +87,32 @@ export const DataBackupSection = (): ReactElement => {
       return;
     }
 
-    showConfirm(
+    const confirmed = await showConfirm(
       `정말로 ${targetYear}년 데이터를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`,
-      async () => {
-        setIsDeleting(true);
-        try {
-          await apiClient(`/api/v1/data-backup/cleanup?year=${targetYear}`, {
-            method: 'DELETE',
-          });
-          showSuccess(`${targetYear}년 데이터가 삭제되었습니다.`);
-          setPreview(null);
-          setBackupConfirmed(false);
-          // 용량 새로고침
-          try {
-            const size = await apiClientJson<DatabaseSize>('/api/v1/data-backup/db-size');
-            setDbSize(size);
-          } catch {
-            // ignore
-          }
-        } catch {
-          showError('데이터 삭제에 실패했습니다.');
-        } finally {
-          setIsDeleting(false);
-        }
-      },
     );
+
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      await apiClient(`/api/v1/data-backup/cleanup?year=${targetYear}`, {
+        method: 'DELETE',
+      });
+      showSuccess(`${targetYear}년 데이터가 삭제되었습니다.`);
+      setPreview(null);
+      setBackupConfirmed(false);
+      // 용량 새로고침
+      try {
+        const size = await apiClientJson<DatabaseSize>('/api/v1/data-backup/db-size');
+        setDbSize(size);
+      } catch {
+        // ignore
+      }
+    } catch {
+      showError('데이터 삭제에 실패했습니다.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // 용량 바 색상 결정
