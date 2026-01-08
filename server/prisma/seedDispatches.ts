@@ -1,245 +1,260 @@
 // server/prisma/seedDispatches.ts
 // Dispatch(배정 메시지) 데이터 생성
+// 규칙:
+// - 임시 배정: Pending 상태일 때 발송 (응답 대기)
+// - 확정 배정: Accepted 상태일 때 발송
+// - 직책별 메시지 내용 차별화 (Head/Supervisor)
 // 실행: npx tsx prisma/seedDispatches.ts
 
 /* eslint-disable no-console */
 
 import prisma from '../src/libs/prisma.js';
 
-const CURRENT_DATE = new Date(Date.UTC(2026, 0, 6)); // 2026-01-06
+const CURRENT_DATE = new Date(Date.UTC(2026, 0, 8)); // 2026-01-08
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function formatDate(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
 export async function runSeedDispatches() {
   console.log('📨 Dispatch(메시지) 데이터 생성 시작...\n');
 
-  // 배정된 모든 부대의 첫 번째 일정 조회 (그룹화)
-  const assignments = await prisma.instructorUnitAssignment.findMany({
+  // TrainingPeriod별로 배정 그룹화
+  const trainingPeriods = await prisma.trainingPeriod.findMany({
     include: {
-      User: {
+      unit: true,
+      locations: true,
+      schedules: {
         include: {
-          instructor: true,
-        },
-      },
-      UnitSchedule: {
-        include: {
-          // NOTE: unit과 trainingLocations는 이제 trainingPeriod를 통해 접근
-          trainingPeriod: {
+          assignments: {
             include: {
-              unit: true,
-              locations: true,
+              User: { include: { instructor: true } },
             },
           },
         },
+        orderBy: { date: 'asc' },
       },
     },
-    orderBy: [{ unitScheduleId: 'asc' }, { userId: 'asc' }],
   });
 
-  if (assignments.length === 0) {
-    console.error('❌ 배정 데이터가 없습니다. seedAssignments.ts를 먼저 실행하세요.');
-    return;
-  }
-  console.log(`📊 배정 레코드 ${assignments.length}개 로드됨`);
-
-  // 부대(편의상 UnitSchedule의 trainingPeriod.unitId 기준) 별로 그룹화
-  const assignmentsByUnit = new Map<number, typeof assignments>();
-  for (const assignment of assignments) {
-    const unitId = assignment.UnitSchedule.trainingPeriod.unitId;
-    if (!assignmentsByUnit.has(unitId)) {
-      assignmentsByUnit.set(unitId, []);
-    }
-    assignmentsByUnit.get(unitId)!.push(assignment);
-  }
-  console.log(`📊 부대 ${assignmentsByUnit.size}개에 대해 메시지 생성\n`);
+  console.log(`📊 TrainingPeriod ${trainingPeriods.length}개 로드됨`);
 
   let temporaryCount = 0;
   let confirmedMemberCount = 0;
   let confirmedLeaderCount = 0;
   let dispatchAssignmentCount = 0;
 
-  for (const [, unitAssignments] of assignmentsByUnit) {
-    const firstAssignment = unitAssignments[0];
-    const trainingPeriod = firstAssignment.UnitSchedule.trainingPeriod;
-    const unit = trainingPeriod.unit;
-    const educationStart = trainingPeriod.educationStart;
-    const educationEnd = trainingPeriod.educationEnd;
+  for (const period of trainingPeriods) {
+    const unit = period.unit;
+    const schedules = period.schedules.filter((s) => s.date);
+    if (schedules.length === 0) continue;
 
-    if (!educationStart || !educationEnd) continue;
+    // 교육 기간 계산 (첫 번째 ~ 마지막 일정)
+    const educationStart = schedules[0].date!;
+    const educationEnd = schedules[schedules.length - 1].date!;
 
-    // 임시 배정 메시지 생성 (모든 배정에 대해)
-    // 발송 시점: 교육 시작 2주 전
-    const tempSentDate = new Date(educationStart);
-    tempSentDate.setDate(tempSentDate.getDate() - 14);
+    // 해당 기간의 모든 배정 수집
+    const allAssignments = schedules.flatMap((s) => s.assignments);
+    if (allAssignments.length === 0) continue;
 
-    // 각 강사에게 개별 메시지 발송
-    const uniqueUserIds = [...new Set(unitAssignments.map((a) => a.userId))];
+    // 유저별 배정 그룹화
+    const assignmentsByUser = new Map<number, typeof allAssignments>();
+    for (const assignment of allAssignments) {
+      if (!assignmentsByUser.has(assignment.userId)) {
+        assignmentsByUser.set(assignment.userId, []);
+      }
+      assignmentsByUser.get(assignment.userId)!.push(assignment);
+    }
 
-    // 배정된 강사 명단 생성 (팀장 메시지용)
-    const allInstructorNames = uniqueUserIds
-      .map((uid, idx) => {
-        const assignment = unitAssignments.find((a) => a.userId === uid);
-        const user = assignment?.User;
-        return `${idx + 1}. ${user?.name || ''}`;
+    // 배정 강사 명단 (확정 메시지용)
+    const instructorNames = [...assignmentsByUser.entries()]
+      .map(([, assignments], idx) => {
+        const user = assignments[0].User;
+        const category = user.instructor?.category || '';
+        return `${idx + 1}. ${user.name || ''}(${category})`;
       })
       .join('\n');
 
-    for (const userId of uniqueUserIds) {
-      const userAssignments = unitAssignments.filter((a) => a.userId === userId);
-      const userFirstAssignment = userAssignments[0];
-      const user = userFirstAssignment.User;
+    // 발송 시점: 교육 시작 2주 전
+    const baseSentDate = new Date(educationStart);
+    baseSentDate.setUTCDate(baseSentDate.getUTCDate() - 14);
+
+    for (const [userId, userAssignments] of assignmentsByUser) {
+      const firstAssignment = userAssignments[0];
+      const user = firstAssignment.User;
       const instructor = user.instructor;
-      const isTeamLeader = instructor?.isTeamLeader || userFirstAssignment.role === 'Head';
+      const isHead = firstAssignment.role === 'Head';
+      const isTeamLeader = instructor?.isTeamLeader || false;
 
-      // 임시 배정 메시지 - 모두 동일
-      const tempTitle = `${unit?.name || '부대'} : ${educationStart.toISOString().split('T')[0]} ~ ${educationEnd.toISOString().split('T')[0]}`;
-      const tempBody = `[임시 배정 알림]
+      // 상태 확인
+      const state = firstAssignment.state;
+      const classification = firstAssignment.classification;
+      const isCompleted = educationEnd < CURRENT_DATE;
+
+      // 제목 공통
+      const title = `${unit.name} : ${formatDate(educationStart)} ~ ${formatDate(educationEnd)}`;
+
+      // 1. 임시 배정 메시지 (Pending 또는 Temporary)
+      if (state === 'Pending' || classification === 'Temporary') {
+        const tempBody = isHead
+          ? `[임시 배정 알림 - 총괄강사]
+${user.name} 강사님, 총괄강사로 임시 배정되었습니다.
+- 부대명: ${unit.name}
+- 광역: ${unit.wideArea || ''}
+- 지역: ${unit.region || ''}
+- 교육일정: ${formatDate(educationStart)} ~ ${formatDate(educationEnd)}
+
+📋 배정 강사:
+${instructorNames}
+
+* 하단의 버튼을 통해 [수락] 또는 [거절]을 선택해주세요.`
+          : `[임시 배정 알림]
 ${user.name} 강사님, 교육 일정이 임시 배정되었습니다.
-- 부대명: ${unit?.name}
-- 광역: ${unit?.wideArea}
-- 지역: ${unit?.region}
-
-- 교육일정:
-- ${educationStart.toISOString().split('T')[0]} ~ ${educationEnd.toISOString().split('T')[0]}
+- 부대명: ${unit.name}
+- 광역: ${unit.wideArea || ''}
+- 지역: ${unit.region || ''}
+- 교육일정: ${formatDate(educationStart)} ~ ${formatDate(educationEnd)}
 
 * 하단의 버튼을 통해 [수락] 또는 [거절]을 선택해주세요.`;
 
-      // 읽음 처리: 완료된 배정은 모두 읽음, 미래 배정은 일부 읽음
-      const isCompleted = educationEnd < CURRENT_DATE;
-      let tempReadAt: Date | null = null;
-      if (isCompleted || Math.random() > 0.3) {
-        tempReadAt = new Date(tempSentDate);
-        tempReadAt.setHours(tempReadAt.getHours() + randomInt(1, 48));
-      }
-
-      try {
-        const tempDispatch = await prisma.dispatch.create({
-          data: {
-            type: 'Temporary',
-            title: tempTitle,
-            body: tempBody,
-            status: 'Sent',
-            userId: userId,
-            createdAt: tempSentDate,
-            readAt: tempReadAt,
-          },
-        });
-        temporaryCount++;
-
-        // DispatchAssignment 연결
-        for (const assignment of userAssignments) {
-          try {
-            await prisma.dispatchAssignment.create({
-              data: {
-                dispatchId: tempDispatch.id,
-                unitScheduleId: assignment.unitScheduleId,
-                userId: assignment.userId,
-              },
-            });
-            dispatchAssignmentCount++;
-          } catch {
-            // 중복 무시
-          }
+        // 읽음 처리 (응답 대기 = 일부만 읽음)
+        let tempReadAt: Date | null = null;
+        if (Math.random() > 0.5) {
+          tempReadAt = new Date(baseSentDate);
+          tempReadAt.setUTCHours(tempReadAt.getUTCHours() + randomInt(1, 48));
         }
 
-        // 확정 메시지 (Accepted 상태만)
-        if (userFirstAssignment.state === 'Accepted') {
-          const confSentDate = new Date(tempSentDate);
-          confSentDate.setDate(confSentDate.getDate() + randomInt(1, 3));
-
-          const confTitle = `${unit?.name || '부대'} : ${educationStart.toISOString().split('T')[0]} ~ ${educationEnd.toISOString().split('T')[0]}`;
-
-          // 팀장용 vs 팀원용 메시지 구분
-          let confBody: string;
-          if (isTeamLeader) {
-            // 팀장용: 상세 정보 포함 - locations를 trainingPeriod에서 가져옴
-            const location = trainingPeriod.locations?.[0];
-            confBody = `[확정 배정 알림]
-${user.name} 강사님, 배정이 확정되었습니다.
-- 부대: ${unit?.name}
-- 지역: ${unit?.region}
-- 광역: ${unit?.wideArea}
-- 주소: ${unit?.addressDetail}
-- 상세주소: ${unit?.detailAddress || ''}
-- 교육일정: ${educationStart.toISOString().split('T')[0]} ~ ${educationEnd.toISOString().split('T')[0]}
-- 교육불가일: ${trainingPeriod.excludedDates?.join(', ') || '없음'}
-
-- 교육장소
-장소명: ${location?.originalPlace || ''}
-강사휴게실: ${location?.hasInstructorLounge ? 'O' : 'X'}, 여자화장실: ${location?.hasWomenRestroom ? 'O' : 'X'}
--------------------------------------------------------
-
-[배정 강사]
-${allInstructorNames}
-
-부대 담당자: ${trainingPeriod.officerName || ''} / ${trainingPeriod.officerPhone || ''}
-수탁급식여부: ${trainingPeriod.hasCateredMeals ? 'O' : 'X'}
-회관숙박여부: ${trainingPeriod.hasHallLodging ? 'O' : 'X'}`;
-            confirmedLeaderCount++;
-          } else {
-            // 팀원용: 간단한 정보
-            confBody = `[확정 배정 알림]
-${user.name} 강사님, 배정이 확정되었습니다.
-- 부대: ${unit?.name}
-- 광역: ${unit?.wideArea}
-- 지역: ${unit?.region}
-- 주소: ${unit?.addressDetail}
-- 상세주소: ${unit?.detailAddress || ''}
-
-강의 일정:
-- ${educationStart.toISOString().split('T')[0]} ~ ${educationEnd.toISOString().split('T')[0]}`;
-            confirmedMemberCount++;
-          }
-
-          // 읽음 처리
-          let confReadAt: Date | null = null;
-          if (isCompleted || Math.random() > 0.2) {
-            confReadAt = new Date(confSentDate);
-            confReadAt.setHours(confReadAt.getHours() + randomInt(1, 24));
-          }
-
-          const confDispatch = await prisma.dispatch.create({
+        try {
+          const dispatch = await prisma.dispatch.create({
             data: {
-              type: 'Confirmed',
-              title: confTitle,
-              body: confBody,
+              type: 'Temporary',
+              title,
+              body: tempBody,
               status: 'Sent',
-              userId: userId,
-              createdAt: confSentDate,
-              readAt: confReadAt,
+              userId,
+              createdAt: baseSentDate,
+              readAt: tempReadAt,
             },
           });
+          temporaryCount++;
 
           // DispatchAssignment 연결
           for (const assignment of userAssignments) {
             try {
               await prisma.dispatchAssignment.create({
                 data: {
-                  dispatchId: confDispatch.id,
+                  dispatchId: dispatch.id,
                   unitScheduleId: assignment.unitScheduleId,
                   userId: assignment.userId,
                 },
               });
               dispatchAssignmentCount++;
             } catch {
-              // 중복 무시
+              /* 중복 무시 */
             }
           }
+        } catch {
+          /* 오류 무시 */
         }
-      } catch {
-        // 오류 무시
+      }
+
+      // 2. 확정 메시지 (Accepted 상태만)
+      if (state === 'Accepted') {
+        const confSentDate = new Date(baseSentDate);
+        confSentDate.setUTCDate(confSentDate.getUTCDate() + randomInt(1, 3));
+
+        // 팀장/총괄강사: 상세 정보
+        // 일반 강사: 간단한 정보
+        const location = period.locations[0];
+
+        let confBody: string;
+        if (isHead || isTeamLeader) {
+          confBody = `[확정 배정 알림 - 총괄강사]
+${user.name} 강사님, 배정이 확정되었습니다.
+- 부대: ${unit.name}
+- 광역: ${unit.wideArea || ''}
+- 지역: ${unit.region || ''}
+- 주소: ${unit.addressDetail || ''}
+- 상세주소: ${unit.detailAddress || ''}
+- 교육일정: ${formatDate(educationStart)} ~ ${formatDate(educationEnd)}
+- 교육불가일: ${period.excludedDates?.join(', ') || '없음'}
+
+📍 교육장소
+장소명: ${location?.originalPlace || ''}
+강사휴게실: ${location?.hasInstructorLounge ? 'O' : 'X'}
+여자화장실: ${location?.hasWomenRestroom ? 'O' : 'X'}
+
+📋 배정 강사
+${instructorNames}
+
+👤 부대 담당자
+${period.officerName || ''} / ${period.officerPhone || ''}
+수탁급식: ${period.hasCateredMeals ? 'O' : 'X'}
+회관숙박: ${period.hasHallLodging ? 'O' : 'X'}`;
+          confirmedLeaderCount++;
+        } else {
+          confBody = `[확정 배정 알림]
+${user.name} 강사님, 배정이 확정되었습니다.
+- 부대: ${unit.name}
+- 광역: ${unit.wideArea || ''}
+- 지역: ${unit.region || ''}
+- 교육일정: ${formatDate(educationStart)} ~ ${formatDate(educationEnd)}
+
+📍 교육장소: ${location?.originalPlace || ''}`;
+          confirmedMemberCount++;
+        }
+
+        // 읽음 처리 (확정 = 대부분 읽음)
+        let confReadAt: Date | null = null;
+        if (isCompleted || Math.random() > 0.2) {
+          confReadAt = new Date(confSentDate);
+          confReadAt.setUTCHours(confReadAt.getUTCHours() + randomInt(1, 24));
+        }
+
+        try {
+          const dispatch = await prisma.dispatch.create({
+            data: {
+              type: 'Confirmed',
+              title,
+              body: confBody,
+              status: 'Sent',
+              userId,
+              createdAt: confSentDate,
+              readAt: confReadAt,
+            },
+          });
+
+          for (const assignment of userAssignments) {
+            try {
+              await prisma.dispatchAssignment.create({
+                data: {
+                  dispatchId: dispatch.id,
+                  unitScheduleId: assignment.unitScheduleId,
+                  userId: assignment.userId,
+                },
+              });
+              dispatchAssignmentCount++;
+            } catch {
+              /* 중복 무시 */
+            }
+          }
+        } catch {
+          /* 오류 무시 */
+        }
       }
     }
   }
 
-  console.log(`\n✅ Dispatch 생성 완료!`);
+  console.log('\n✅ Dispatch 생성 완료!');
   console.log('='.repeat(50));
-  console.log(`📊 생성 결과:`);
+  console.log('📊 생성 결과:');
   console.log(`  - 임시 배정 메시지: ${temporaryCount}개`);
-  console.log(`  - 확정 메시지 (팀원용): ${confirmedMemberCount}개`);
-  console.log(`  - 확정 메시지 (팀장용): ${confirmedLeaderCount}개`);
+  console.log(`  - 확정 메시지 (일반): ${confirmedMemberCount}개`);
+  console.log(`  - 확정 메시지 (총괄): ${confirmedLeaderCount}개`);
   console.log(`  - 메시지-배정 연결: ${dispatchAssignmentCount}개`);
   console.log('='.repeat(50));
 }
