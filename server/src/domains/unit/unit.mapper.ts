@@ -39,19 +39,26 @@ function toMilitaryType(value: unknown): MilitaryType | undefined {
 // 부대 생성용 데이터 변환 (CreateUnitDto 역할)
 // 주의: trainingPeriods는 createUnitWithTrainingPeriod에서 별도로 처리하므로 여기서는 제외
 // Unit은 기본 정보만 저장. 시간/날짜 필드들은 TrainingPeriod에 있음
-export function toCreateUnitDto(rawData: RawUnitData = {}): Prisma.UnitCreateInput {
+// @param overrideLectureYear 엑셀 메타데이터에서 추출한 강의년도 (우선 적용)
+export function toCreateUnitDto(
+  rawData: RawUnitData = {},
+  overrideLectureYear?: number,
+): Prisma.UnitCreateInput {
   // 필수값 검증 (Service 로직 단순화)
   if (!isNonEmptyString(rawData.name)) {
     throw new Error('부대명(name)은 필수입니다.');
   }
 
-  // lectureYear 계산: educationStart에서 년도 추출, 없으면 현재 년도
-  let lectureYear = new Date().getFullYear();
-  if (rawData.educationStart) {
+  // lectureYear 결정: 1) 메타데이터 우선, 2) educationStart에서 추출, 3) 현재 년도
+  let lectureYear = overrideLectureYear;
+  if (!lectureYear && rawData.educationStart) {
     const d = new Date(rawData.educationStart as string | Date);
     if (!isNaN(d.getTime())) {
       lectureYear = d.getFullYear();
     }
+  }
+  if (!lectureYear) {
+    lectureYear = new Date().getFullYear();
   }
 
   return {
@@ -86,7 +93,11 @@ function extractTrainingLocation(row: Record<string, unknown>): TrainingLocation
 
 // 엑셀 Row -> API Raw Data 변환
 // excel.service.ts에서 이미 내부 필드명으로 변환되어 오므로 직접 매핑
-export function excelRowToRawUnit(row: Record<string, unknown> = {}): RawUnitData {
+export function excelRowToRawUnit(row: Record<string, unknown> = {}): RawUnitData & {
+  hasCateredMeals?: boolean;
+  hasHallLodging?: boolean;
+  allowsPhoneBeforeAfter?: boolean;
+} {
   const trainingLocation = extractTrainingLocation(row);
   const trainingLocations: TrainingLocationInput[] = trainingLocation ? [trainingLocation] : [];
 
@@ -96,8 +107,6 @@ export function excelRowToRawUnit(row: Record<string, unknown> = {}): RawUnitDat
     wideArea: row.wideArea as string | undefined,
     region: row.region as string | undefined,
     addressDetail: row.addressDetail as string | undefined,
-    lat: row.lat as number | undefined,
-    lng: row.lng as number | undefined,
 
     // 날짜/시간 정보 (excel.service.ts에서 Date로 변환됨)
     educationStart: row.educationStart as Date | string | undefined,
@@ -114,6 +123,20 @@ export function excelRowToRawUnit(row: Record<string, unknown> = {}): RawUnitDat
     officerName: row.officerName as string | undefined,
     officerPhone: row.officerPhone as string | undefined,
     officerEmail: row.officerEmail as string | undefined,
+
+    // 시설 정보 (TrainingPeriod에 저장)
+    hasCateredMeals:
+      row.hasCateredMeals === true ||
+      row.hasCateredMeals === 'true' ||
+      String(row.hasCateredMeals).toUpperCase() === 'O',
+    hasHallLodging:
+      row.hasHallLodging === true ||
+      row.hasHallLodging === 'true' ||
+      String(row.hasHallLodging).toUpperCase() === 'O',
+    allowsPhoneBeforeAfter:
+      row.allowsPhoneBeforeAfter === true ||
+      row.allowsPhoneBeforeAfter === 'true' ||
+      String(row.allowsPhoneBeforeAfter).toUpperCase() === 'O',
 
     trainingLocations,
   };

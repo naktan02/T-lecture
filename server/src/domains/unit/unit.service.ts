@@ -58,9 +58,9 @@ class UnitService {
    * - educationStart ~ educationEnd 사이의 날짜를 일정으로 생성
    * - excludedDates는 제외하고 교육 가능한 날만 스케줄에 추가
    */
-  async registerSingleUnit(rawData: RawUnitInput) {
+  async registerSingleUnit(rawData: RawUnitInput, lectureYear?: number) {
     try {
-      const cleanData = toCreateUnitDto(rawData);
+      const cleanData = toCreateUnitDto(rawData, lectureYear);
 
       // 교육 기간에서 일정 자동 계산 (excludedDates 배열 직접 사용)
       const schedules = this._calculateSchedules(
@@ -69,9 +69,24 @@ class UnitService {
         rawData.excludedDates || [],
       );
 
-      // 부대 + 교육장소 + 일정 한 번에 생성
+      // 부대 + 교육기간(모든 필드) + 일정 한 번에 생성
       const unit = await unitRepository.createUnitWithTrainingPeriod(cleanData, {
         name: '정규교육',
+        // 근무 시간
+        workStartTime: rawData.workStartTime,
+        workEndTime: rawData.workEndTime,
+        lunchStartTime: rawData.lunchStartTime,
+        lunchEndTime: rawData.lunchEndTime,
+        // 담당관 정보
+        officerName: rawData.officerName,
+        officerPhone: rawData.officerPhone,
+        officerEmail: rawData.officerEmail,
+        // 시설 정보 (RawUnitInput에서 가져옴 - 확장 필요)
+        hasCateredMeals: (rawData as Record<string, unknown>).hasCateredMeals === true,
+        hasHallLodging: (rawData as Record<string, unknown>).hasHallLodging === true,
+        allowsPhoneBeforeAfter:
+          (rawData as Record<string, unknown>).allowsPhoneBeforeAfter === true,
+        // 교육장소 및 일정
         locations: rawData.trainingLocations || [],
         schedules,
       });
@@ -94,16 +109,17 @@ class UnitService {
    * 엑셀 파일 처리 및 일괄 등록 (Upsert 로직)
    * - 부대명이 DB에 없으면: 새 부대 생성
    * - 부대명이 DB에 있으면: 기존 부대에 새 교육장소만 추가 (중복 제외)
+   * @param lectureYear 메타데이터에서 추출한 강의년도 (모든 부대에 적용)
    */
-  async processExcelDataAndRegisterUnits(rawRows: Record<string, unknown>[]) {
+  async processExcelDataAndRegisterUnits(rawRows: Record<string, unknown>[], lectureYear?: number) {
     const rawDataList = groupExcelRowsByUnit(rawRows);
-    return await this.upsertMultipleUnits(rawDataList);
+    return await this.upsertMultipleUnits(rawDataList, lectureYear);
   }
 
   /**
    * Upsert 로직으로 부대 등록/업데이트
    */
-  async upsertMultipleUnits(dataArray: RawUnitInput[]) {
+  async upsertMultipleUnits(dataArray: RawUnitInput[], lectureYear?: number) {
     if (!Array.isArray(dataArray) || dataArray.length === 0) {
       throw new AppError('등록할 데이터가 없습니다.', 400, 'VALIDATION_ERROR');
     }
@@ -185,7 +201,7 @@ class UnitService {
       await Promise.all(
         chunk.map(async (data) => {
           try {
-            await this.registerSingleUnit(data);
+            await this.registerSingleUnit(data, lectureYear);
             created++;
             locationsAdded += data.trainingLocations?.length || 0;
           } catch (e) {

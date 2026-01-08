@@ -37,8 +37,9 @@ export const uploadExcelAndRegisterUnits = asyncHandler(async (req: Request, res
     throw new AppError('파일이 업로드되지 않았습니다.', 400, 'VALIDATION_ERROR');
   }
 
-  const rawRows = await excelService.bufferToJson(req.file.buffer);
-  const result = await unitService.processExcelDataAndRegisterUnits(rawRows);
+  // 메타데이터 포함 파싱 (강의년도 추출)
+  const { rows: rawRows, meta } = await excelService.bufferToJsonWithMeta(req.file.buffer);
+  const result = await unitService.processExcelDataAndRegisterUnits(rawRows, meta.lectureYear);
 
   // 메시지 구성
   const messages: string[] = [];
@@ -46,7 +47,10 @@ export const uploadExcelAndRegisterUnits = asyncHandler(async (req: Request, res
   if (result.updated > 0) messages.push(`${result.updated}개 부대 업데이트`);
   if (result.locationsSkipped > 0) messages.push(`${result.locationsSkipped}개 교육장소 중복 스킵`);
 
-  const message = messages.length > 0 ? messages.join(', ') + ' 완료' : '처리된 데이터가 없습니다.';
+  let message = messages.length > 0 ? messages.join(', ') + ' 완료' : '처리된 데이터가 없습니다.';
+  if (meta.lectureYear) {
+    message = `[${meta.lectureYear}년] ` + message;
+  }
 
   res.status(201).json({
     result: 'Success',

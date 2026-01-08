@@ -237,7 +237,7 @@ async function generateExcel() {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('부대정보');
 
-  // 헤더 (3행부터 시작)
+  // 헤더 (3행부터 시작) - 위도/경도는 주소 기반 API로 계산되므로 제외
   const headers = [
     '부대명',
     '군구분',
@@ -245,8 +245,6 @@ async function generateExcel() {
     '지역',
     '부대주소',
     '부대주소(상세)',
-    '위도',
-    '경도',
     '교육시작일자',
     '교육종료일자',
     '교육불가일자',
@@ -271,7 +269,10 @@ async function generateExcel() {
 
   // 1-2행은 메타정보
   worksheet.getCell('A1').value = '테스트용 부대 데이터 (2025년 1000개 + 2026년 100개)';
-  worksheet.getCell('A2').value = `생성일: ${formatDate(new Date())} | 기준일: 2026-01-08`;
+  worksheet.getCell('A2').value = '강의년도'; // 라벨
+  worksheet.getCell('B2').value = 2026; // 값 (사용자가 수정)
+  worksheet.getCell('C2').value = `생성일: ${formatDate(new Date())}`;
+  worksheet.getCell('D2').value = `기준일: 2026-01-08`;
 
   // 헤더 행 (3행)
   headers.forEach((header, index) => {
@@ -345,7 +346,7 @@ async function generateExcel() {
     const officerName = `${randomChoice(LAST_NAMES)}${randomChoice(FIRST_NAMES)}`;
     const plannedCount = Math.min(randomInt(40, 150), 200);
 
-    // 첫 번째 장소 (부대 정보 포함)
+    // 첫 번째 장소 (부대 정보 포함) - 위도/경도 제외
     const mainRow: (string | number | null)[] = [
       unitName,
       militaryType,
@@ -353,8 +354,6 @@ async function generateExcel() {
       region,
       `${regionData.wideArea} ${region} 군부대로 ${randomInt(1, 999)}`,
       `본관 ${randomInt(1, 5)}층`,
-      '', // lat - 빈값 (주소 변환 대상)
-      '', // lng - 빈값 (주소 변환 대상)
       formatDate(startDate),
       formatDate(endDate),
       excludedDates,
@@ -382,7 +381,7 @@ async function generateExcel() {
     });
     currentRow++;
 
-    // 추가 장소 (부대명 비움)
+    // 추가 장소 (부대명 비움) - 위도/경도 제외로 열 수 감소
     for (let loc = 1; loc < locationCount; loc++) {
       const additionalRow: (string | number | null)[] = [
         '',
@@ -390,19 +389,17 @@ async function generateExcel() {
         '',
         '',
         '',
+        '', // 부대명~부대주소(상세)
         '',
         '',
         '',
         '',
         '',
         '',
+        '', // 교육일자~점심종료
         '',
         '',
-        '',
-        '',
-        '',
-        '',
-        '',
+        '', // 간부명~이메일
         `추가장소${loc + 1}`,
         '',
         'O',

@@ -216,21 +216,55 @@ class UnitRepository {
 
   /**
    * 부대 + TrainingPeriod 함께 생성 (새 구조)
+   * - 모든 TrainingPeriod 필드 지원 (시간, 담당관, 시설 정보)
    */
   async createUnitWithTrainingPeriod(
     unitData: Prisma.UnitCreateInput,
     periodData: {
       name: string;
+      workStartTime?: Date | string | null;
+      workEndTime?: Date | string | null;
+      lunchStartTime?: Date | string | null;
+      lunchEndTime?: Date | string | null;
+      officerName?: string | null;
+      officerPhone?: string | null;
+      officerEmail?: string | null;
+      hasCateredMeals?: boolean;
+      hasHallLodging?: boolean;
+      allowsPhoneBeforeAfter?: boolean;
       locations?: TrainingLocationData[];
       schedules?: ScheduleData[];
     },
   ) {
+    // 시간 문자열을 Date로 변환 (HH:MM 형식 지원)
+    const parseTime = (t: Date | string | null | undefined): Date | null => {
+      if (!t) return null;
+      if (t instanceof Date) return t;
+      // HH:MM 형태면 임의 날짜에 시간 설정
+      if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(t)) {
+        return new Date(`2000-01-01T${t}:00.000Z`);
+      }
+      // ISO 문자열이면 시간만 추출
+      const d = new Date(t);
+      return isNaN(d.getTime()) ? null : d;
+    };
+
     return prisma.unit.create({
       data: {
         ...unitData,
         trainingPeriods: {
           create: {
             name: periodData.name,
+            workStartTime: parseTime(periodData.workStartTime),
+            workEndTime: parseTime(periodData.workEndTime),
+            lunchStartTime: parseTime(periodData.lunchStartTime),
+            lunchEndTime: parseTime(periodData.lunchEndTime),
+            officerName: periodData.officerName || null,
+            officerPhone: periodData.officerPhone || null,
+            officerEmail: periodData.officerEmail || null,
+            hasCateredMeals: periodData.hasCateredMeals ?? false,
+            hasHallLodging: periodData.hasHallLodging ?? false,
+            allowsPhoneBeforeAfter: periodData.allowsPhoneBeforeAfter ?? false,
             locations: {
               create: (periodData.locations || []).map((l) => {
                 const d = this._mapLocationData(l);
