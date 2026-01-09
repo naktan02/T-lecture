@@ -57,10 +57,34 @@ class UnitService {
    * 부대 단건 등록 (일정 자동 생성 포함)
    * - educationStart ~ educationEnd 사이의 날짜를 일정으로 생성
    * - excludedDates는 제외하고 교육 가능한 날만 스케줄에 추가
+   * - 주소를 좌표로 변환 (실패해도 부대 생성 진행)
    */
   async registerSingleUnit(rawData: RawUnitInput, lectureYear?: number) {
     try {
       const cleanData = toCreateUnitDto(rawData, lectureYear);
+
+      // 주소 → 좌표 변환 (일일 한도 체크 포함)
+      let lat: number | null = null;
+      let lng: number | null = null;
+      if (cleanData.addressDetail) {
+        const coords = await kakaoService.addressToCoordsWithLimit(cleanData.addressDetail);
+        if (coords && !coords.limitExceeded) {
+          lat = coords.lat;
+          lng = coords.lng;
+          logger.info(`[UnitService] Geocoded: ${cleanData.addressDetail} → (${lat}, ${lng})`);
+        } else if (coords?.limitExceeded) {
+          logger.warn(`[UnitService] Geocode limit exceeded for: ${cleanData.name}`);
+        } else {
+          logger.warn(`[UnitService] Geocode failed for: ${cleanData.addressDetail}`);
+        }
+      }
+
+      // 좌표를 Unit 데이터에 추가
+      const unitDataWithCoords = {
+        ...cleanData,
+        lat,
+        lng,
+      };
 
       // 교육 기간에서 일정 자동 계산 (excludedDates 배열 직접 사용)
       const schedules = this._calculateSchedules(
@@ -70,7 +94,7 @@ class UnitService {
       );
 
       // 부대 + 교육기간(모든 필드) + 일정 한 번에 생성
-      const unit = await unitRepository.createUnitWithTrainingPeriod(cleanData, {
+      const unit = await unitRepository.createUnitWithTrainingPeriod(unitDataWithCoords, {
         name: '정규교육',
         // 근무 시간
         workStartTime: rawData.workStartTime,

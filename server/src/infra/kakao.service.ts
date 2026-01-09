@@ -2,6 +2,7 @@
 import axios, { AxiosError } from 'axios';
 import logger from '../config/logger';
 import { AppError } from '../common/errors/AppError';
+import kakaoUsageRepository from '../domains/distance/kakaoUsage.repository';
 
 interface RouteResult {
   distance: number;
@@ -105,6 +106,35 @@ class KakaoService {
 
     try {
       const result = await this.addressToCoordinates(address);
+      return { lat: result.lat, lng: result.lng };
+    } catch {
+      logger.warn(`[KakaoService] Geocoding failed for address: ${address}`);
+      return null;
+    }
+  }
+
+  /**
+   * 주소를 좌표로 변환 (일일 한도 체크 + 사용량 기록)
+   * @returns 좌표 or null (한도 초과 또는 변환 실패 시)
+   */
+  async addressToCoordsWithLimit(
+    address: string,
+  ): Promise<{ lat: number; lng: number; limitExceeded?: boolean } | null> {
+    if (!address || address.trim().length === 0) {
+      return null;
+    }
+
+    // 일일 한도 체크
+    const canUse = await kakaoUsageRepository.canUseGeocode();
+    if (!canUse) {
+      logger.warn('[KakaoService] Daily geocode limit exceeded');
+      return { lat: 0, lng: 0, limitExceeded: true };
+    }
+
+    try {
+      const result = await this.addressToCoordinates(address);
+      // 성공 시 사용량 증가
+      await kakaoUsageRepository.incrementGeocodeCount();
       return { lat: result.lat, lng: result.lng };
     } catch {
       logger.warn(`[KakaoService] Geocoding failed for address: ${address}`);
