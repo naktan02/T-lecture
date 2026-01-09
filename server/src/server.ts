@@ -2,6 +2,21 @@
 // dotenv must be loaded first to read environment variables
 import 'dotenv/config';
 
+// Sentry: must be initialized BEFORE other imports for proper instrumentation
+import * as Sentry from '@sentry/node';
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    tracesSampleRate: process.env.NODE_ENV === 'production' ? 1.0 : 0.5,
+    profilesSampleRate: 0,
+    sampleRate: process.env.NODE_ENV === 'production' ? 0.5 : 1.0,
+  });
+  console.log('[Sentry] Initialized successfully (before Express).');
+} else {
+  console.log('[Sentry] SENTRY_DSN not set. Skipping.');
+}
+
 // New Relic: only load if license key is configured (prevents errors in local dev)
 if (process.env.NEW_RELIC_LICENSE_KEY) {
   console.log('[New Relic] Loading agent...');
@@ -10,6 +25,7 @@ if (process.env.NEW_RELIC_LICENSE_KEY) {
 } else {
   console.log('[New Relic] NEW_RELIC_LICENSE_KEY not set. Skipping.');
 }
+
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -20,12 +36,13 @@ import v1Router from './api/v1';
 import errorHandler from './common/middlewares/errorHandler';
 import logger from './config/logger';
 import prisma from './libs/prisma';
-import { initSentry } from './config/sentry';
 
 const app = express();
 
-// Sentry 초기화 (에러 핸들러보다 먼저 설정해야 함)
-initSentry(app);
+// Sentry Express 에러 핸들러 설정
+if (process.env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
+}
 
 const isProd = process.env.NODE_ENV === 'production';
 
