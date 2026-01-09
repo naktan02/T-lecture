@@ -56,6 +56,9 @@ async function main() {
   const superEmail = process.env.SUPER_ADMIN_EMAIL;
   const superPassword = process.env.SUPER_ADMIN_PASSWORD;
 
+  const generalEmail = process.env.GENERAL_ADMIN_EMAIL;
+  const generalPassword = process.env.GENERAL_ADMIN_PASSWORD;
+
   if (superEmail && superPassword) {
     const hashedPassword = await bcrypt.hash(superPassword, 10);
     const existingUser = await prisma.user.findUnique({ where: { userEmail: superEmail } });
@@ -77,6 +80,32 @@ async function main() {
     }
   } else {
     console.log('  ⚠️ SUPER_ADMIN_EMAIL/PASSWORD가 .env에 설정되지 않았습니다.');
+  }
+
+  // 3-2. 일반관리자 생성
+  console.log('👤 일반관리자 생성 중...');
+
+  if (generalEmail && generalPassword) {
+    const hashedPassword = await bcrypt.hash(generalPassword, 10);
+    const existingUser = await prisma.user.findUnique({ where: { userEmail: generalEmail } });
+
+    if (!existingUser) {
+      await prisma.user.create({
+        data: {
+          userEmail: generalEmail,
+          password: hashedPassword,
+          name: '일반관리자',
+          userphoneNumber: '010-0000-0002',
+          status: 'APPROVED',
+          admin: { create: { level: 'GENERAL' } },
+        },
+      });
+      console.log(`  ✅ 일반관리자 생성: ${generalEmail}`);
+    } else {
+      console.log(`  ⚠️ 일반관리자 이미 존재: ${generalEmail}`);
+    }
+  } else {
+    console.log('  ⚠️ GENERAL_ADMIN_EMAIL/PASSWORD가 .env에 설정되지 않았습니다.');
   }
 
   // 4. 시스템 설정 생성
@@ -288,7 +317,11 @@ async function main() {
 
       { type: 'newline' },
 
-      { key: 'instructors', type: 'format', format: '{index}. {name}({category}) / {phone} / {virtues}' },
+      {
+        key: 'instructors',
+        type: 'format',
+        format: '{index}. {name}({category}) / {phone} / {virtues}',
+      },
       { type: 'newline' },
     ],
   };
