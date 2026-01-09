@@ -39,11 +39,6 @@ import prisma from './libs/prisma';
 
 const app = express();
 
-// Sentry Express 에러 핸들러 설정
-if (process.env.SENTRY_DSN) {
-  Sentry.setupExpressErrorHandler(app);
-}
-
 const isProd = process.env.NODE_ENV === 'production';
 
 // Render 같은 리버스 프록시 뒤에서 실행될 때 필요 (rate-limit이 IP를 올바르게 인식하도록)
@@ -113,6 +108,12 @@ app.use('/api/v1', v1Router);
 app.get('/', (_req: Request, res: Response) => {
   res.send('Hello T-LECTURE!');
 });
+
+// ⭐️ Sentry 에러 핸들러: 라우터 뒤, 커스텀 에러 핸들러 전에 위치해야 함
+if (process.env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
+}
+
 app.use(errorHandler);
 
 // 서버 시작
