@@ -4,7 +4,11 @@ import 'dotenv/config';
 
 // New Relic: only load if license key is configured (prevents errors in local dev)
 if (process.env.NEW_RELIC_LICENSE_KEY) {
+  console.log('[New Relic] Loading agent...');
   require('newrelic');
+  console.log('[New Relic] Agent loaded successfully.');
+} else {
+  console.log('[New Relic] NEW_RELIC_LICENSE_KEY not set. Skipping.');
 }
 import express, { Request, Response } from 'express';
 import cors from 'cors';
