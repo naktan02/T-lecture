@@ -1,5 +1,8 @@
 // src/server.ts
-// dotenv must be loaded first to read environment variables
+// New Relic: MUST be the first import (before everything, including dotenv)
+import 'newrelic';
+
+// dotenv must be loaded next to read environment variables
 import 'dotenv/config';
 
 // Sentry: must be initialized BEFORE other imports for proper instrumentation
@@ -12,18 +15,9 @@ if (process.env.SENTRY_DSN) {
     profilesSampleRate: 0,
     sampleRate: process.env.NODE_ENV === 'production' ? 0.5 : 1.0,
   });
-  console.log('[Sentry] Initialized successfully (before Express).');
+  console.log('[Sentry] Initialized successfully.');
 } else {
   console.log('[Sentry] SENTRY_DSN not set. Skipping.');
-}
-
-// New Relic: only load if license key is configured (prevents errors in local dev)
-if (process.env.NEW_RELIC_LICENSE_KEY) {
-  console.log('[New Relic] Loading agent...');
-  require('newrelic');
-  console.log('[New Relic] Agent loaded successfully.');
-} else {
-  console.log('[New Relic] NEW_RELIC_LICENSE_KEY not set. Skipping.');
 }
 
 import express, { Request, Response } from 'express';
