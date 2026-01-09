@@ -108,6 +108,51 @@ async function main() {
     console.log('  ⚠️ GENERAL_ADMIN_EMAIL/PASSWORD가 .env에 설정되지 않았습니다.');
   }
 
+  // 3-3. 테스트용 강사 생성 (부하 테스트용)
+  console.log('User 강사 계정 생성 중...');
+
+  const instructorEmail = process.env.INSTRUCTOR_EMAIL || 'instructor@t-lecture.com';
+  const instructorPassword = process.env.INSTRUCTOR_PASSWORD || 'instructor';
+
+  const instructorUser = await prisma.user.findUnique({ where: { userEmail: instructorEmail } });
+  if (!instructorUser) {
+    const hashedPassword = await bcrypt.hash(instructorPassword, 10);
+    const newInstructor = await prisma.user.create({
+      data: {
+        userEmail: instructorEmail,
+        password: hashedPassword,
+        name: '테스트강사',
+        userphoneNumber: '010-0000-0003',
+        status: 'APPROVED',
+        instructor: {
+          create: {
+            category: 'Main',
+            teamId: TEAMS[0].id, // 첫번째 팀
+            isTeamLeader: false,
+            location: '서울특별시 강남구 테헤란로 123',
+            lat: 37.5012,
+            lng: 127.0396,
+            generation: 10,
+            hasCar: true,
+            profileCompleted: true,
+          },
+        },
+      },
+    });
+
+    // 덕목 할당
+    await prisma.instructorVirtue.create({
+      data: {
+        instructorId: newInstructor.id,
+        virtueId: VIRTUES[0].id,
+      },
+    });
+
+    console.log(`  ✅ 테스트 강사 생성: ${instructorEmail}`);
+  } else {
+    console.log(`  ⚠️ 테스트 강사 이미 존재: ${instructorEmail}`);
+  }
+
   // 4. 시스템 설정 생성
   console.log('⚙️ 시스템 설정 생성 중...');
   for (const config of SYSTEM_CONFIGS) {

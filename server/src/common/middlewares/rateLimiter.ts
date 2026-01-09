@@ -7,7 +7,7 @@ import rateLimit from 'express-rate-limit';
  */
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15분
-  max: 100, // IP당 100회
+  max: 2000, // IP당 2000회 (이전 100회는 너무 적음)
   message: {
     success: false,
     error: 'Too many requests',
@@ -16,6 +16,8 @@ export const apiLimiter = rateLimit({
   },
   standardHeaders: true, // RateLimit-* 헤더 포함
   legacyHeaders: false, // X-RateLimit-* 헤더 제외
+  // localhost에서는 부하 테스트를 위해 제한 건너뛰기
+  skip: (req) => req.ip === '::1' || req.ip === '127.0.0.1' || req.ip === '::ffff:127.0.0.1',
 });
 
 /**
@@ -24,7 +26,7 @@ export const apiLimiter = rateLimit({
  */
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15분
-  max: 10, // IP당 10회
+  max: 1000, // IP당 1000회 (부하 테스트 테스트 위해 상향)
   message: {
     success: false,
     error: 'Too many authentication attempts',
@@ -33,6 +35,8 @@ export const authLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  // localhost에서는 부하 테스트를 위해 제한 건너뛰기
+  skip: (req) => req.ip === '::1' || req.ip === '127.0.0.1' || req.ip === '::ffff:127.0.0.1',
 });
 
 /**

@@ -15,16 +15,42 @@ export const options = {
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
 
 export default function () {
-  // Health Check
+  // 1. Health Check (Auth X)
   let res = http.get(`${BASE_URL}/`);
   check(res, { 'health: status 200': (r) => r.status === 200 });
 
-  // 메타데이터
+  // 2. 메타데이터 (Auth X)
   res = http.get(`${BASE_URL}/api/v1/metadata/teams`);
   check(res, { 'teams: status 2xx': (r) => r.status >= 200 && r.status < 300 });
 
-  // 부대 목록
-  res = http.get(`${BASE_URL}/api/v1/units?page=1&limit=10`);
+  // 3. 로그인 (Auth Check)
+  const loginPayload = JSON.stringify({
+    email: 'admin@t-lecture.com',
+    password: 'admin',
+  });
+
+  res = http.post(`${BASE_URL}/api/v1/auth/login`, loginPayload, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  let params = {};
+  // 로그인 성공 시 토큰 사용
+  if (check(res, { 'login: status 200': (r) => r.status === 200 })) {
+    try {
+      const body = JSON.parse(res.body);
+      params = {
+        headers: {
+          Authorization: `Bearer ${body.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      };
+    } catch (e) {
+      console.log('Login failed parsing');
+    }
+  }
+
+  // 4. 부대 목록 (Auth Required)
+  res = http.get(`${BASE_URL}/api/v1/units?page=1&limit=10`, params);
   check(res, { 'units: status 2xx': (r) => r.status >= 200 && r.status < 400 });
 
   sleep(0.5);

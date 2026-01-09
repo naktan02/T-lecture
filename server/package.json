@@ -41,9 +41,10 @@
     "load:stress": "npx artillery run tests/load/stress-test.yml --output reports/stress-test-result.json",
     "load:report": "npx artillery report reports/load-test-result.json --output reports/load-test-report.html",
     "k6:quick": "node scripts/run-k6.js k6/quick-test.js",
-    "k6:full": "node scripts/run-k6.js k6/full-api-test.js",
+    "k6:full": "node scripts/run-k6.js k6/comprehensive-api-test.js",
+    "k6:role": "node scripts/run-k6.js k6/role-based-test.js",
     "k6:stress": "node scripts/run-k6.js k6/stress-test.js",
-    "k6:newrelic": "node scripts/run-k6.js k6/full-api-test.js --newrelic"
+    "k6:newrelic": "node scripts/run-k6.js k6/comprehensive-api-test.js --newrelic"
   },
   "dependencies": {
     "@getbrevo/brevo": "^3.0.1",
