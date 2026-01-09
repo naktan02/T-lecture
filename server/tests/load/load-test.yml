@@ -1,0 +1,47 @@
+# server/tests/load/load-test.yml
+# Artillery 부하 테스트 설정 파일
+
+config:
+  target: 'http://localhost:3000'
+  phases:
+    # 워밍업: 10초 동안 초당 2명 사용자
+    - duration: 10
+      arrivalRate: 2
+      name: 'Warm up'
+    # 램프업: 30초 동안 초당 2명 → 10명으로 증가
+    - duration: 30
+      arrivalRate: 2
+      rampTo: 10
+      name: 'Ramp up load'
+    # 유지: 60초 동안 초당 10명 사용자 유지
+    - duration: 60
+      arrivalRate: 10
+      name: 'Sustained load'
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+
+# 테스트 시나리오
+scenarios:
+  # 시나리오 1: 공개 API (인증 없음)
+  - name: 'Health Check'
+    weight: 1
+    flow:
+      - get:
+          url: '/'
+
+  # 시나리오 2: 부대 목록 조회 (가장 많이 사용되는 API)
+  - name: 'Get Units List'
+    weight: 3
+    flow:
+      - get:
+          url: '/api/v1/units?page=1&limit=20'
+
+  # 시나리오 3: 메타데이터 조회
+  - name: 'Get Metadata'
+    weight: 2
+    flow:
+      - get:
+          url: '/api/v1/metadata/teams'
+      - get:
+          url: '/api/v1/metadata/virtues'
