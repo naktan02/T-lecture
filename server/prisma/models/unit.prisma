@@ -66,11 +66,11 @@ model TrainingLocation {
   id               Int @id @default(autoincrement())
   trainingPeriodId Int @map("교육기간id")
 
-  originalPlace          String?  @map("기존교육장소")
-  changedPlace           String?  @map("변경교육장소")
-  hasInstructorLounge    Boolean? @map("강사휴게실 여부")
-  hasWomenRestroom       Boolean? @map("여자화장실 여부")
-  note                   String?  @map("특이사항")
+  originalPlace       String?  @map("기존교육장소")
+  changedPlace        String?  @map("변경교육장소")
+  hasInstructorLounge Boolean? @map("강사휴게실 여부")
+  hasWomenRestroom    Boolean? @map("여자화장실 여부")
+  note                String?  @map("특이사항")
 
   trainingPeriod    TrainingPeriod             @relation(fields: [trainingPeriodId], references: [id], onDelete: Cascade)
   scheduleLocations ScheduleLocation[]
