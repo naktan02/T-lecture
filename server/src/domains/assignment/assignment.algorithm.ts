@@ -9,6 +9,7 @@ import {
   ScheduleData,
   EngineResult,
 } from './engine';
+import logger from '../../config/logger';
 
 type ExecuteOptions = {
   traineesPerInstructor?: number;
@@ -204,8 +205,8 @@ class AssignmentAlgorithm {
           const required = Math.max(0, needed - existingAssignments);
 
           // DEBUG: 필요인원 계산 로그
-          console.log(
-            `[DEBUG Algorithm] Unit:${unit.id} Schedule:${schedule.id} Loc:${loc.id} - needed:${needed ?? 0} existing:${existingAssignments} required:${required > 0 ? required : 0}`,
+          logger.debug(
+            `[Algorithm] Unit:${unit.id} Schedule:${schedule.id} Loc:${loc.id} - needed:${needed ?? 0} existing:${existingAssignments} required:${required > 0 ? required : 0}`,
           );
 
           // isStaffLocked=true인 부대는 필요인원을 0으로 설정하여 배정 생략
