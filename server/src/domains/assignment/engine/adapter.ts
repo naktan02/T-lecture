@@ -1,5 +1,5 @@
-// server/src/domains/assignment/assignment.algorithm.ts
-// 배정 알고리즘 - 엔진 어댑터
+// server/src/domains/assignment/engine/adapter.ts
+// 배정 알고리즘 어댑터 - 서비스와 엔진 사이의 데이터 변환
 // 기존 service와의 호환성을 유지하면서 새 engine을 사용
 
 import {
@@ -8,8 +8,8 @@ import {
   UnitData,
   ScheduleData,
   EngineResult,
-} from './engine';
-import logger from '../../config/logger';
+} from './index';
+import logger from '../../../config/logger';
 
 type ExecuteOptions = {
   traineesPerInstructor?: number;
