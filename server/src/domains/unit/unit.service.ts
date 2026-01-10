@@ -6,6 +6,7 @@ import kakaoService from '../../infra/kakao.service';
 import distanceService from '../distance/distance.service';
 import AppError from '../../common/errors/AppError';
 import logger from '../../config/logger';
+import { invalidateUnit, cacheUnit, getCachedUnit } from '../../libs/cache';
 import { Prisma, MilitaryType } from '../../generated/prisma/client.js';
 import {
   ScheduleInput,
@@ -118,6 +119,17 @@ class UnitService {
       // 스케줄이 있으면 활성 강사들에 대해 거리 행 미리 생성
       if (unit && schedules.length > 0) {
         await distanceService.createDistanceRowsForNewUnit(unit.id);
+      }
+
+      // ✅ 부대 캐시 저장
+      if (unit) {
+        await cacheUnit({
+          id: unit.id,
+          name: unit.name,
+          region: unit.region,
+          wideArea: unit.wideArea,
+          trainingPeriods: unit.trainingPeriods || [],
+        });
       }
 
       return unit;
@@ -332,13 +344,31 @@ class UnitService {
   }
 
   /**
-   * 부대 상세 정보 조회
+   * 부대 상세 정보 조회 (Cache-First)
    */
   async getUnitDetailWithSchedules(id: number | string) {
+    // 캐시 우선 조회
+    const cached = await getCachedUnit(Number(id));
+    if (cached) {
+      logger.debug(`[UnitService] 캐시 HIT: unit:${id}`);
+      return cached;
+    }
+
+    // 캐시 MISS → DB 조회
     const unit = await unitRepository.findUnitWithRelations(id);
     if (!unit) {
       throw new AppError('해당 부대를 찾을 수 없습니다.', 404, 'UNIT_NOT_FOUND');
     }
+
+    // 캐시 저장
+    await cacheUnit({
+      id: unit.id,
+      name: unit.name,
+      region: unit.region,
+      wideArea: unit.wideArea,
+      trainingPeriods: unit.trainingPeriods || [],
+    });
+
     return unit;
   }
 
@@ -372,7 +402,12 @@ class UnitService {
       updateData.lng = null;
     }
 
-    return await unitRepository.updateUnitById(id, updateData);
+    const updated = await unitRepository.updateUnitById(id, updateData);
+
+    // ✅ 캐시 무효화
+    await invalidateUnit(Number(id));
+
+    return updated;
   }
 
   /**
@@ -401,6 +436,9 @@ class UnitService {
     if (Object.keys(unitUpdateData).length > 0) {
       await unitRepository.updateUnitById(unitId, unitUpdateData);
     }
+
+    // ✅ 캐시 무효화
+    await invalidateUnit(unitId);
 
     // 업데이트된 결과 반환
     return await unitRepository.findUnitWithRelations(unitId);
@@ -469,7 +507,12 @@ class UnitService {
       officerPhone: rawData.officerPhone === '' ? null : rawData.officerPhone,
       officerEmail: rawData.officerEmail === '' ? null : rawData.officerEmail,
     };
-    return await unitRepository.updateTrainingPeriod(targetPeriodId, updateData);
+    const updated = await unitRepository.updateTrainingPeriod(targetPeriodId, updateData);
+
+    // ✅ 캐시 무효화
+    await invalidateUnit(Number(id));
+
+    return updated;
   }
 
   /**
@@ -502,7 +545,7 @@ class UnitService {
       schedules = this._calculateSchedules(normalizedStart, normalizedEnd, normalizedExcludedDates);
     }
 
-    return unitRepository.createTrainingPeriod(unitId, {
+    const created = await unitRepository.createTrainingPeriod(unitId, {
       name: data.name,
       workStartTime: data.workStartTime
         ? new Date(`2000-01-01T${data.workStartTime}:00.000Z`)
@@ -520,6 +563,11 @@ class UnitService {
       allowsPhoneBeforeAfter: data.allowsPhoneBeforeAfter ?? false,
       schedules,
     });
+
+    // ✅ 캐시 무효화
+    await invalidateUnit(unitId);
+
+    return created;
   }
 
   async updateUnitAddress(id: number | string, addressDetail: string) {
@@ -557,6 +605,9 @@ class UnitService {
 
     // 주소 변경 시 해당 부대의 모든 거리 무효화 (재계산 대기열에 추가)
     await distanceService.invalidateDistancesForUnit(Number(id));
+
+    // ✅ 캐시 무효화
+    await invalidateUnit(Number(id));
 
     return updated;
   }
@@ -609,7 +660,12 @@ class UnitService {
    * 부대 영구 삭제
    */
   async removeUnitPermanently(id: number | string) {
-    return await unitRepository.deleteUnitById(id);
+    const result = await unitRepository.deleteUnitById(id);
+
+    // ✅ 부대 캐시 무효화
+    await invalidateUnit(Number(id));
+
+    return result;
   }
 
   /**
@@ -807,6 +863,9 @@ class UnitService {
       await unitRepository.syncScheduleLocations(schedule.id, scheduleInputs);
     }
 
+    // ✅ 부대 캐시 무효화 (장소 매칭 변경됨)
+    await invalidateUnit(period.unitId);
+
     return { updated: resolvedInputs.length };
   }
 
@@ -819,7 +878,12 @@ class UnitService {
       throw new AppError('교육기간을 찾을 수 없습니다.', 404, 'TRAINING_PERIOD_NOT_FOUND');
     }
 
+    const unitId = period.unitId;
     await unitRepository.deleteTrainingPeriod(trainingPeriodId);
+
+    // ✅ 부대 캐시 무효화
+    await invalidateUnit(unitId);
+
     return { deleted: true };
   }
 
@@ -897,6 +961,9 @@ class UnitService {
     if (datesToAdd.length > 0) {
       addResult = await unitRepository.addSchedulesToPeriod(trainingPeriodId, datesToAdd);
     }
+
+    // ✅ 부대 캐시 무효화 (일정 변경됨)
+    await invalidateUnit(period.unitId);
 
     return {
       deleted: deleteResult.deleted,

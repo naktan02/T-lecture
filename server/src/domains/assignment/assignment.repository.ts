@@ -117,7 +117,15 @@ class AssignmentRepository {
     return map;
   }
 
-  async findScheduleCandidates(startDate: Date | string, endDate: Date | string) {
+  /**
+   * 배정 후보 부대 조회
+   * @param unitIds 특정 ID만 조회 (캐시 MISS된 ID만 조회 시 사용)
+   */
+  async findScheduleCandidates(
+    startDate: Date | string,
+    endDate: Date | string,
+    options?: { unitIds?: number[] },
+  ) {
     // 입력: "YYYY-MM-DD" 형식의 문자열 또는 Date 객체
     const startStr =
       typeof startDate === 'string' ? startDate : startDate.toISOString().split('T')[0];
@@ -131,6 +139,8 @@ class AssignmentRepository {
     // 조회 날짜 범위에 해당하는 스케줄이 있는 TrainingPeriod만 포함
     return await prisma.unit.findMany({
       where: {
+        // unitIds가 있으면 해당 ID만, 없으면 전체
+        ...(options?.unitIds && options.unitIds.length > 0 ? { id: { in: options.unitIds } } : {}),
         trainingPeriods: {
           some: {
             schedules: {

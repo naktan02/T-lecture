@@ -50,6 +50,7 @@
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
     "@sentry/node": "^10.32.1",
+    "@upstash/redis": "^1.36.1",
     "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "compression": "^1.8.1",
