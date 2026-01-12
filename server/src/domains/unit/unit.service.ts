@@ -640,7 +640,12 @@ class UnitService {
       throw new AppError('유효하지 않은 날짜 형식입니다. (YYYY-MM-DD)', 400, 'VALIDATION_ERROR');
     }
 
-    return await unitRepository.insertUnitSchedule(unitId, dateOnly);
+    const result = await unitRepository.insertUnitSchedule(unitId, dateOnly);
+
+    // ✅ 부대 캐시 무효화 (일정 추가됨)
+    await invalidateUnit(Number(unitId));
+
+    return result;
   }
 
   /**
@@ -651,7 +656,18 @@ class UnitService {
       throw new AppError('유효하지 않은 일정 ID입니다.', 400, 'VALIDATION_ERROR');
     }
 
-    return await unitRepository.deleteUnitSchedule(scheduleId);
+    // 삭제 전 unitId 조회 (캐시 무효화용)
+    const schedule = await unitRepository.findScheduleById(Number(scheduleId));
+    const unitId = schedule?.trainingPeriod?.unitId;
+
+    const result = await unitRepository.deleteUnitSchedule(scheduleId);
+
+    // ✅ 부대 캐시 무효화 (일정 삭제됨)
+    if (unitId) {
+      await invalidateUnit(unitId);
+    }
+
+    return result;
   }
 
   // --- 삭제 ---

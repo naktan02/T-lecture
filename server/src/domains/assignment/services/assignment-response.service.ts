@@ -1,9 +1,12 @@
 // server/src/domains/assignment/services/assignment-response.service.ts
 // 배정 응답/확정 전용 서비스 (CQRS - Response)
 
-import assignmentRepository from '../assignment.repository';
+import {
+  assignmentQueryRepository,
+  assignmentCommandRepository,
+  assignmentConfigRepository,
+} from '../repositories';
 import AppError from '../../../common/errors/AppError';
-import prisma from '../../../libs/prisma';
 import { DEFAULT_ASSIGNMENT_CONFIG } from '../engine/config-loader';
 
 class AssignmentResponseService {
@@ -11,9 +14,9 @@ class AssignmentResponseService {
    * 시스템 설정 숫자 값 조회
    */
   private async getSystemConfigNumber(key: string, defaultValue: number): Promise<number> {
-    const cfg = await prisma.systemConfig.findUnique({ where: { key } });
-    if (!cfg?.value) return defaultValue;
-    const parsed = Number(cfg.value);
+    const value = await assignmentConfigRepository.getSystemConfigValue(key);
+    if (!value) return defaultValue;
+    const parsed = Number(value);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
   }
 
@@ -35,7 +38,7 @@ class AssignmentResponseService {
     unitScheduleId: number | string,
     response: string,
   ) {
-    const assignment = await assignmentRepository.findAssignmentByKey(
+    const assignment = await assignmentQueryRepository.findAssignmentByKey(
       instructorId,
       Number(unitScheduleId),
     );
@@ -60,7 +63,11 @@ class AssignmentResponseService {
       throw new AppError('잘못된 응답입니다. (ACCEPT 또는 REJECT)', 400, 'VALIDATION_ERROR');
     }
 
-    await assignmentRepository.updateStatusByKey(instructorId, Number(unitScheduleId), newState);
+    await assignmentCommandRepository.updateStatusByKey(
+      instructorId,
+      Number(unitScheduleId),
+      newState,
+    );
 
     // 수락 시: 자동 확정 체크
     if (newState === 'Accepted') {
@@ -71,16 +78,13 @@ class AssignmentResponseService {
     if (newState === 'Rejected') {
       const penaltyDays = await this.getSystemConfigNumber('REJECTION_PENALTY_DAYS', 15);
 
-      const schedule = await prisma.unitSchedule.findUnique({
-        where: { id: Number(unitScheduleId) },
-        include: { trainingPeriod: { include: { unit: { select: { name: true } } } } },
-      });
+      const schedule = await assignmentQueryRepository.getScheduleWithUnit(Number(unitScheduleId));
       const unitName = schedule?.trainingPeriod?.unit?.name || 'unknown';
       const dateStr = schedule?.date
         ? new Date(schedule.date).toISOString().split('T')[0]
         : 'unknown';
 
-      await this.addPenaltyToInstructor(instructorId, penaltyDays, {
+      await assignmentConfigRepository.addPenalty(instructorId, penaltyDays, {
         unit: unitName,
         date: dateStr,
         type: '거절',
@@ -100,47 +104,17 @@ class AssignmentResponseService {
     days: number,
     reason?: { unit: string; date: string; type: string },
   ) {
-    const now = new Date();
-    const existing = await prisma.instructorPenalty.findUnique({
-      where: { userId: instructorId },
-    });
-
-    if (existing) {
-      const baseDate = existing.expiresAt > now ? existing.expiresAt : now;
-      const newExpiresAt = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const existingReasons = ((existing as any)?.reasons as Array<unknown>) || [];
-
-      await prisma.instructorPenalty.update({
-        where: { userId: instructorId },
-        data: {
-          count: { increment: 1 },
-          expiresAt: newExpiresAt,
-          reasons: reason ? [...existingReasons, reason] : existingReasons,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any,
-      });
-    } else {
-      await prisma.instructorPenalty.create({
-        data: {
-          userId: instructorId,
-          count: 1,
-          expiresAt: new Date(now.getTime() + days * 24 * 60 * 60 * 1000),
-          reasons: reason ? [reason] : [],
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any,
-      });
-    }
+    await assignmentConfigRepository.addPenalty(instructorId, days, reason);
   }
 
   /**
    * 자동 확정 체크
    */
   async checkAndAutoConfirm(unitScheduleId: number) {
-    const unitId = await assignmentRepository.getUnitIdByScheduleId(unitScheduleId);
+    const unitId = await assignmentQueryRepository.getUnitIdByScheduleId(unitScheduleId);
     if (!unitId) return;
 
-    const unit = await assignmentRepository.getUnitWithAssignments(unitId);
+    const unit = await assignmentQueryRepository.getUnitWithAssignments(unitId);
     if (!unit) return;
 
     const firstPeriod = unit.trainingPeriods[0];
@@ -178,7 +152,7 @@ class AssignmentResponseService {
     }
 
     if (allSchedulesFilled && allSchedules.length > 0) {
-      await assignmentRepository.updateClassificationByUnit(unitId, 'Confirmed');
+      await assignmentCommandRepository.updateClassificationByUnit(unitId, 'Confirmed');
     }
   }
 
@@ -191,7 +165,7 @@ class AssignmentResponseService {
     targetInstructorId: number,
     unitScheduleId: number,
   ) {
-    const assignment = await assignmentRepository.findAssignmentByKey(
+    const assignment = await assignmentQueryRepository.findAssignmentByKey(
       targetInstructorId,
       unitScheduleId,
     );
@@ -207,13 +181,14 @@ class AssignmentResponseService {
 
     // 현재 상태가 Accepted 인 경우
     if (assignment.state === 'Accepted') {
-      await assignmentRepository.updateStatusByKey(targetInstructorId, unitScheduleId, 'Canceled');
+      await assignmentCommandRepository.updateStatusByKey(
+        targetInstructorId,
+        unitScheduleId,
+        'Canceled',
+      );
 
       const penaltyDays = await this.getSystemConfigNumber('CANCEL_PENALTY_DAYS', 15);
-      const schedule = await prisma.unitSchedule.findUnique({
-        where: { id: unitScheduleId },
-        include: { trainingPeriod: { include: { unit: { select: { name: true } } } } },
-      });
+      const schedule = await assignmentQueryRepository.getScheduleWithUnit(unitScheduleId);
       const unitName = schedule?.trainingPeriod?.unit?.name || 'unknown';
       const dateStr = schedule?.date
         ? new Date(schedule.date).toISOString().split('T')[0]
@@ -226,10 +201,14 @@ class AssignmentResponseService {
       });
 
       // 확정 상태면 해당 스케줄의 다른 배정들도 임시로 복귀
-      await assignmentRepository.updateClassificationBySchedule(unitScheduleId, 'Temporary');
+      await assignmentCommandRepository.updateClassificationBySchedule(unitScheduleId, 'Temporary');
     } else {
       // Pending or Rejected → 상태를 Canceled로 변경
-      await assignmentRepository.updateStatusByKey(targetInstructorId, unitScheduleId, 'Canceled');
+      await assignmentCommandRepository.updateStatusByKey(
+        targetInstructorId,
+        unitScheduleId,
+        'Canceled',
+      );
     }
 
     return { message: '배정이 취소되었습니다.' };

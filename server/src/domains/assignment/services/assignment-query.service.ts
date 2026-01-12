@@ -1,16 +1,15 @@
 // server/src/domains/assignment/services/assignment-query.service.ts
 // 배정 조회 전용 서비스 (CQRS - Query)
 
-import assignmentRepository from '../assignment.repository';
+import { assignmentQueryRepository, assignmentConfigRepository } from '../repositories';
 import instructorRepository from '../../instructor/instructor.repository';
-import prisma from '../../../libs/prisma';
+import { DEFAULT_ASSIGNMENT_CONFIG } from '../engine/config-loader';
 import {
   cacheInstructors,
   cacheUnits,
   getCachedInstructors,
   getCachedUnits,
 } from '../../../libs/cache';
-import { DEFAULT_ASSIGNMENT_CONFIG } from '../engine/config-loader';
 import type { UnitRaw, InstructorRaw } from '../../../types/assignment.types';
 
 // Helper: 오늘 UTC 자정 생성
@@ -21,12 +20,12 @@ function getTodayUTC(): Date {
 
 class AssignmentQueryService {
   /**
-   * 시스템 설정 숫자 값 조회 (DB 우선, 없으면 기본값)
+   * 시스템 설정 숫자 값 조회
    */
   async getSystemConfigNumber(key: string, defaultValue: number): Promise<number> {
-    const cfg = await prisma.systemConfig.findUnique({ where: { key } });
-    if (!cfg?.value) return defaultValue;
-    const parsed = Number(cfg.value);
+    const value = await assignmentConfigRepository.getSystemConfigValue(key);
+    if (!value) return defaultValue;
+    const parsed = Number(value);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
   }
 
@@ -48,21 +47,7 @@ class AssignmentQueryService {
     const end = new Date(`${endDate}T00:00:00.000Z`);
 
     // 1) 날짜 범위에 해당하는 부대 ID 목록 조회
-    const unitIdsResult = await prisma.unit.findMany({
-      where: {
-        trainingPeriods: {
-          some: {
-            schedules: {
-              some: {
-                date: { gte: start, lte: end },
-              },
-            },
-          },
-        },
-      },
-      select: { id: true },
-    });
-    const unitIds = unitIdsResult.map((u) => u.id);
+    const unitIds = await assignmentQueryRepository.findUnitIdsInDateRange(start, end);
 
     // 2) 캐시에서 부대 데이터 조회
     const { cached: cachedUnits, missingIds: missingUnitIds } = await getCachedUnits(unitIds);
@@ -70,16 +55,27 @@ class AssignmentQueryService {
     // 3) MISS된 부대만 DB 조회
     let unitsFromDb: typeof cachedUnits = [];
     if (missingUnitIds.length > 0) {
-      const dbUnits = await assignmentRepository.findScheduleCandidates(startDate, endDate, {
+      const dbUnits = await assignmentQueryRepository.findScheduleCandidates(startDate, endDate, {
         unitIds: missingUnitIds,
       });
+      // 캐시 저장 시 assignments 제외 (배정은 항상 fresh 조회)
       await cacheUnits(
         dbUnits.map((u) => ({
           id: u.id,
           name: u.name,
           region: u.region,
           wideArea: u.wideArea,
-          trainingPeriods: u.trainingPeriods,
+          addressDetail: u.addressDetail,
+          detailAddress: u.detailAddress,
+          trainingPeriods: u.trainingPeriods.map((p) => ({
+            ...p,
+            schedules: p.schedules?.map((s) => ({
+              id: s.id,
+              date: s.date,
+              scheduleLocations: s.scheduleLocations,
+              // assignments 제외
+            })),
+          })),
         })),
       );
       unitsFromDb = dbUnits as unknown as typeof cachedUnits;
@@ -109,19 +105,12 @@ class AssignmentQueryService {
       endDate: maxScheduleDate.toISOString().split('T')[0],
     };
 
-    // 6) 강사 ID 목록 조회
-    const instructorIdsResult = await prisma.instructor.findMany({
-      where: {
-        availabilities: {
-          some: {
-            availableOn: { gte: minScheduleDate, lte: maxScheduleDate },
-          },
-        },
-        user: { status: 'APPROVED' },
-      },
-      select: { userId: true },
-    });
-    const instructorIds = instructorIdsResult.map((i) => i.userId);
+    // 6) 강사 목록 조회 및 ID 추출
+    const allInstructorsRaw = await instructorRepository.findAvailableInPeriod(
+      actualDateRangeStr.startDate,
+      actualDateRangeStr.endDate,
+    );
+    const instructorIds = allInstructorsRaw.map((i) => i.userId);
 
     // 7) 캐시에서 강사 데이터 조회
     const { cached: cachedInstructors, missingIds: missingInstructorIds } =
@@ -167,7 +156,7 @@ class AssignmentQueryService {
    */
   async getWorkHistory(instructorId: number) {
     const today = getTodayUTC();
-    return await assignmentRepository.findAllByInstructorId(instructorId, {
+    return await assignmentQueryRepository.findAllByInstructorId(instructorId, {
       state: 'Accepted',
       UnitSchedule: { date: { lt: today } },
     });
@@ -178,7 +167,7 @@ class AssignmentQueryService {
    */
   async getUpcomingAssignments(instructorId: number) {
     const today = getTodayUTC();
-    return await assignmentRepository.findAllByInstructorId(instructorId, {
+    return await assignmentQueryRepository.findAllByInstructorId(instructorId, {
       state: { in: ['Pending', 'Accepted'] },
       UnitSchedule: { date: { gte: today } },
     });
@@ -188,7 +177,7 @@ class AssignmentQueryService {
    * 내 배정 목록 조회 (강사용 - 메시지함에서 사용)
    */
   async getMyAssignments(userId: number) {
-    return await assignmentRepository.getMyAssignments(userId);
+    return await assignmentQueryRepository.getMyAssignments(userId);
   }
 }
 

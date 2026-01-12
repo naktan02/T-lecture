@@ -628,6 +628,18 @@ class UnitRepository {
   }
 
   /**
+   * 일정 단건 조회 (unitId 조회용)
+   */
+  async findScheduleById(id: number) {
+    return prisma.unitSchedule.findUnique({
+      where: { id },
+      include: {
+        trainingPeriod: { select: { unitId: true } },
+      },
+    });
+  }
+
+  /**
    * 부대 일정 삭제
    */
   async deleteUnitSchedule(scheduleId: number | string) {

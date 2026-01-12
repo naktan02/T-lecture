@@ -1,12 +1,15 @@
 // server/src/domains/assignment/services/assignment-command.service.ts
 // 배정 실행/저장 전용 서비스 (CQRS - Command)
 
-import assignmentRepository from '../assignment.repository';
+import {
+  assignmentQueryRepository,
+  assignmentCommandRepository,
+  assignmentConfigRepository,
+} from '../repositories';
 import instructorRepository from '../../instructor/instructor.repository';
 import AppError from '../../../common/errors/AppError';
 import assignmentAlgorithm from '../engine/adapter';
 import { DEFAULT_ASSIGNMENT_CONFIG } from '../engine/config-loader';
-import prisma from '../../../libs/prisma';
 import { cacheInstructors, getCachedInstructors } from '../../../libs/cache';
 import type {
   InstructorRaw,
@@ -43,9 +46,9 @@ class AssignmentCommandService {
    * 시스템 설정 숫자 값 조회
    */
   private async getSystemConfigNumber(key: string, defaultValue: number): Promise<number> {
-    const cfg = await prisma.systemConfig.findUnique({ where: { key } });
-    if (!cfg?.value) return defaultValue;
-    const parsed = Number(cfg.value);
+    const value = await assignmentConfigRepository.getSystemConfigValue(key);
+    if (!value) return defaultValue;
+    const parsed = Number(value);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
   }
 
@@ -62,20 +65,7 @@ class AssignmentCommandService {
    * 우선배정 크레딧 소모
    */
   private async consumePriorityCredit(instructorId: number) {
-    const existing = await prisma.instructorPriorityCredit.findUnique({
-      where: { instructorId },
-    });
-
-    if (!existing || existing.credits <= 0) return;
-
-    if (existing.credits <= 1) {
-      await prisma.instructorPriorityCredit.delete({ where: { instructorId } });
-    } else {
-      await prisma.instructorPriorityCredit.update({
-        where: { instructorId },
-        data: { credits: existing.credits - 1 },
-      });
-    }
+    await assignmentConfigRepository.consumePriorityCredit(instructorId);
   }
 
   /**
@@ -90,7 +80,7 @@ class AssignmentCommandService {
     }
 
     // 1) 스케줄 조회
-    const schedules = await assignmentRepository.findSchedulesByIds(scheduleIds);
+    const schedules = await assignmentQueryRepository.findSchedulesByIds(scheduleIds);
     if (!schedules || schedules.length === 0) {
       throw new AppError('조회되는 스케줄이 없습니다.', 404, 'NO_SCHEDULES');
     }
@@ -188,7 +178,7 @@ class AssignmentCommandService {
 
     // 5) 통계 조회 및 알고리즘 실행
     const blockedInstructorIdsBySchedule =
-      await assignmentRepository.findCanceledInstructorIdsByScheduleIds(scheduleIds);
+      await assignmentQueryRepository.findCanceledInstructorIdsByScheduleIds(scheduleIds);
 
     const traineesPerInstructor = await this.getSystemConfigNumber('TRAINEES_PER_INSTRUCTOR', 36);
     const fairnessLookbackMonths = await this.getSystemConfigNumber(
@@ -204,7 +194,7 @@ class AssignmentCommandService {
     const rejectionSince = this.subtractMonths(minDate, rejectionPenaltyMonths);
 
     const { recentAssignmentCountByInstructorId, recentRejectionCountByInstructorId } =
-      await assignmentRepository.getInstructorRecentStats(
+      await assignmentQueryRepository.getInstructorRecentStats(
         instructorIds,
         assignmentSince,
         rejectionSince,
@@ -224,7 +214,7 @@ class AssignmentCommandService {
     }
 
     // 6) 저장 및 후처리
-    const summary = await assignmentRepository.createAssignmentsBulk(matchResults);
+    const summary = await assignmentCommandRepository.createAssignmentsBulk(matchResults);
 
     const assignedInstructorIds = new Set(matchResults.map((m) => m.instructorId));
     for (const instructorId of assignedInstructorIds) {
@@ -233,7 +223,7 @@ class AssignmentCommandService {
 
     const affectedUnitIds = new Set(units.map((u) => u.id));
     for (const unitId of affectedUnitIds) {
-      await assignmentRepository.recalculateRolesForUnit(unitId);
+      await assignmentCommandRepository.recalculateRolesForUnit(unitId);
     }
 
     return { summary };
@@ -253,7 +243,7 @@ class AssignmentCommandService {
       throw new AppError('시작일은 종료일보다 클 수 없습니다.', 400, 'VALIDATION_ERROR');
     }
 
-    const units = await assignmentRepository.findScheduleCandidates(start, end);
+    const units = await assignmentQueryRepository.findScheduleCandidates(start, end);
     if (!units || units.length === 0) {
       throw new AppError('해당 기간에 조회되는 부대 일정이 없습니다.', 404, 'NO_UNITS');
     }
@@ -289,7 +279,7 @@ class AssignmentCommandService {
       ),
     );
     const blockedInstructorIdsBySchedule =
-      await assignmentRepository.findCanceledInstructorIdsByScheduleIds(scheduleIds);
+      await assignmentQueryRepository.findCanceledInstructorIdsByScheduleIds(scheduleIds);
 
     const fairnessLookbackMonths = await this.getSystemConfigNumber(
       'FAIRNESS_LOOKBACK_MONTHS',
@@ -304,7 +294,7 @@ class AssignmentCommandService {
     const rejectionSince = this.subtractMonths(start, rejectionPenaltyMonths);
 
     const { recentAssignmentCountByInstructorId, recentRejectionCountByInstructorId } =
-      await assignmentRepository.getInstructorRecentStats(
+      await assignmentQueryRepository.getInstructorRecentStats(
         instructorIds,
         assignmentSince,
         rejectionSince,
@@ -344,7 +334,7 @@ class AssignmentCommandService {
     if (!assignments || assignments.length === 0) {
       throw new AppError('저장할 배정이 없습니다.', 400, 'VALIDATION_ERROR');
     }
-    const summary = await assignmentRepository.createAssignmentsBulk(assignments);
+    const summary = await assignmentCommandRepository.createAssignmentsBulk(assignments);
     return { summary };
   }
 
@@ -364,7 +354,7 @@ class AssignmentCommandService {
       isStaffLocked: boolean;
     }>;
   }) {
-    const result = await assignmentRepository.batchUpdateAssignments(changes);
+    const result = await assignmentCommandRepository.batchUpdateAssignments(changes);
 
     if (!changes.roleChanges || changes.roleChanges.length === 0) {
       const scheduleIds = [
@@ -375,12 +365,12 @@ class AssignmentCommandService {
       if (scheduleIds.length > 0) {
         const unitIds = new Set<number>();
         for (const scheduleId of scheduleIds) {
-          const unitId = await assignmentRepository.getUnitIdByScheduleId(scheduleId);
+          const unitId = await assignmentQueryRepository.getUnitIdByScheduleId(scheduleId);
           if (unitId) unitIds.add(unitId);
         }
 
         for (const unitId of unitIds) {
-          await assignmentRepository.recalculateRolesForUnit(unitId);
+          await assignmentCommandRepository.recalculateRolesForUnit(unitId);
         }
       }
     }
@@ -392,8 +382,7 @@ class AssignmentCommandService {
    * 부대 인원고정 설정/해제
    */
   async toggleStaffLock(unitId: number, isStaffLocked: boolean) {
-    const result = await assignmentRepository.toggleStaffLock(unitId, isStaffLocked);
-    // 자동 확정 체크는 response service에서 처리 필요
+    const result = await assignmentCommandRepository.toggleStaffLock(unitId, isStaffLocked);
     return result;
   }
 
@@ -405,7 +394,7 @@ class AssignmentCommandService {
     instructorId: number,
     role: 'Head' | 'Supervisor' | null,
   ) {
-    return await assignmentRepository.updateRoleForUnit(unitId, instructorId, role);
+    return await assignmentCommandRepository.updateRoleForUnit(unitId, instructorId, role);
   }
 }
 
