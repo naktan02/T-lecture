@@ -18,27 +18,47 @@ import type {
 } from '../../../types/assignment.types';
 
 // =============================================================================
-// Local Types
+// Local Types (TrainingPeriod 구조 반영)
 // =============================================================================
+
+interface AlgorithmScheduleLocation {
+  unitScheduleId: number;
+  trainingLocationId: number;
+  plannedCount?: number | null;
+  actualCount?: number | null;
+  requiredCount?: number | null;
+}
+
+interface AlgorithmTrainingLocation {
+  id: number | string;
+  originalPlace: string | null;
+  actualCount: number | null;
+  plannedCount: number | null;
+  requiredCount: number | null;
+  scheduleLocations?: AlgorithmScheduleLocation[];
+}
+
+interface AlgorithmSchedule {
+  id: number;
+  date: Date | null;
+  assignments?: unknown[];
+  scheduleLocations?: AlgorithmScheduleLocation[];
+}
+
+interface AlgorithmTrainingPeriod {
+  id: number;
+  isStaffLocked: boolean;
+  excludedDates: string[];
+  locations: AlgorithmTrainingLocation[];
+  schedules: AlgorithmSchedule[];
+}
 
 interface AlgorithmUnitData {
   id: number;
   name: string | null | undefined;
   region: string | null | undefined;
   wideArea: string | null | undefined;
-  trainingLocations: Array<{
-    id: number | string;
-    originalPlace: string | null;
-    actualCount: number | null;
-    plannedCount: number | null;
-    requiredCount: number | null;
-  }>;
-  schedules: Array<{
-    id: number;
-    date: Date | null;
-    assignments: unknown[];
-  }>;
-  isStaffLocked: boolean;
+  trainingPeriods: AlgorithmTrainingPeriod[];
 }
 
 class AssignmentCommandService {
@@ -133,15 +153,31 @@ class AssignmentCommandService {
       throw new AppError('배정 가능한 강사가 없습니다.', 404, 'NO_INSTRUCTORS');
     }
 
-    // 4) Unit Map 구성
+    // 4) Unit Map 구성 (TrainingPeriod 단위)
     const unitMap = new Map<number, AlgorithmUnitData>();
-    for (const schedule of schedules) {
-      const unitId = schedule.trainingPeriod?.unitId;
-      if (!unitId) continue;
+    const periodMap = new Map<number, AlgorithmTrainingPeriod>();
 
+    for (const schedule of schedules) {
+      const period = schedule.trainingPeriod;
+      const unitId = period?.unitId;
+      const periodId = period?.id;
+      if (!unitId || !periodId) continue;
+
+      // Unit 초기화
       if (!unitMap.has(unitId)) {
-        const locations =
-          schedule.trainingPeriod?.locations?.map((loc: TrainingLocationRaw) => {
+        unitMap.set(unitId, {
+          id: unitId,
+          name: period.unit?.name,
+          region: period.unit?.region,
+          wideArea: period.unit?.wideArea,
+          trainingPeriods: [],
+        });
+      }
+
+      // TrainingPeriod 초기화
+      if (!periodMap.has(periodId)) {
+        const locations: AlgorithmTrainingLocation[] =
+          period.locations?.map((loc: TrainingLocationRaw) => {
             const schedLoc = schedule.scheduleLocations?.find(
               (sl: ScheduleLocationRaw) => sl.trainingLocationId === loc.id,
             );
@@ -151,28 +187,32 @@ class AssignmentCommandService {
               actualCount: schedLoc?.actualCount ?? null,
               plannedCount: schedLoc?.plannedCount ?? null,
               requiredCount: schedLoc?.requiredCount ?? null,
+              scheduleLocations: loc.scheduleLocations || [],
             };
           }) || [];
 
-        unitMap.set(unitId, {
-          id: unitId,
-          name: schedule.trainingPeriod?.unit?.name,
-          region: schedule.trainingPeriod?.unit?.region,
-          wideArea: schedule.trainingPeriod?.unit?.wideArea,
-          trainingLocations: locations,
+        const periodData: AlgorithmTrainingPeriod = {
+          id: periodId,
+          isStaffLocked: period.isStaffLocked ?? false,
+          excludedDates: (period.excludedDates as string[]) || [],
+          locations,
           schedules: [],
-          isStaffLocked: schedule.trainingPeriod?.isStaffLocked ?? false,
-        });
+        };
+        periodMap.set(periodId, periodData);
+
+        // Unit에 period 추가
+        const unitData = unitMap.get(unitId)!;
+        unitData.trainingPeriods.push(periodData);
       }
 
-      const unitData = unitMap.get(unitId);
-      if (unitData) {
-        unitData.schedules.push({
-          id: schedule.id,
-          date: schedule.date,
-          assignments: schedule.assignments || [],
-        });
-      }
+      // Schedule 추가
+      const periodData = periodMap.get(periodId)!;
+      periodData.schedules.push({
+        id: schedule.id,
+        date: schedule.date,
+        assignments: schedule.assignments || [],
+        scheduleLocations: schedule.scheduleLocations || [],
+      });
     }
     const units = Array.from(unitMap.values());
 

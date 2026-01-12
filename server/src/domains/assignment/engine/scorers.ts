@@ -65,50 +65,78 @@ export const fairnessScorer: AssignmentScorer = {
 };
 
 /**
- * 연속 배정 스코어러 (2박3일 등 연속 일정 우선)
- * - 같은 부대에 연속으로 배정되면 매우 높은 보너스
- * - 연속 일수가 많을수록 더 높은 점수
+ * 연속 배정 스코어러 (TrainingPeriod 기준)
+ * - 같은 교육기간(TrainingPeriod)에 배정되면 매우 높은 보너스
+ * - excludedDates로 중간에 쉬는 날이 있어도 연속 보너스 유지
+ *
+ * 변경: 날짜 연속성 → TrainingPeriod ID 기준
  */
 export const consecutiveDaysScorer: AssignmentScorer = {
   id: 'CONSECUTIVE',
   name: '연속 배정 보너스',
-  description: '같은 부대에 연속으로 배정되면 보너스 (2박3일 우선)',
+  description: '같은 교육기간에 배정되면 보너스 (2박3일 우선)',
   defaultWeight: 100, // 가중치 대폭 증가 (연속 배정 최우선)
   calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
-    const { currentAssignments, currentScheduleDate, currentUnitId } = context;
+    const { currentAssignments, currentTrainingPeriodId } = context;
 
-    // 같은 부대에 이 강사가 이미 배정된 배정들
-    const sameUnitAssignments = currentAssignments.filter(
-      (a) => a.unitId === currentUnitId && a.instructorId === candidate.userId,
+    // TrainingPeriodId가 없으면 기존 로직 사용 (하위 호환)
+    if (!currentTrainingPeriodId) {
+      return calculateLegacyConsecutive(candidate, context);
+    }
+
+    // 같은 TrainingPeriod에 이 강사가 이미 배정된 배정들
+    const samePeriodAssignments = currentAssignments.filter(
+      (a) => a.trainingPeriodId === currentTrainingPeriodId && a.instructorId === candidate.userId,
     );
 
-    if (sameUnitAssignments.length === 0) return 0;
+    if (samePeriodAssignments.length === 0) return 0;
 
-    // 현재 날짜
-    const targetMs = new Date(currentScheduleDate).getTime();
-    const oneDayMs = 24 * 60 * 60 * 1000;
+    // TrainingPeriod 내 배정 일수에 따른 보너스
+    const daysAssigned = samePeriodAssignments.length + 1; // 현재 배정 포함
 
-    // 연속 일수 계산 (이전/이후 모두 체크)
-    let consecutiveDays = 1; // 자기 자신 포함
-    const assignedDatesMs = sameUnitAssignments.map((a) => new Date(a.date).getTime());
+    if (daysAssigned >= 3) return 10; // 3일 이상 → 최대 점수
+    if (daysAssigned >= 2) return 7; // 2일 → 높은 점수
 
-    // 전날에 배정이 있는지
-    const hasPrevDay = assignedDatesMs.some((d) => targetMs - d === oneDayMs);
-    // 다음날에 배정이 있는지
-    const hasNextDay = assignedDatesMs.some((d) => d - targetMs === oneDayMs);
-
-    if (hasPrevDay) consecutiveDays++;
-    if (hasNextDay) consecutiveDays++;
-
-    // 연속 일수에 따른 점수 (연속 2일이면 7점, 3일이면 10점)
-    // 2박3일 전체 연속이면 매우 높은 점수를 받아 거의 확정적으로 선택됨
-    if (consecutiveDays >= 3) return 10; // 3일 연속 → 최대 점수
-    if (consecutiveDays >= 2) return 7; // 2일 연속 → 높은 점수
-    if (hasPrevDay || hasNextDay) return 5; // 1일 연속 → 기본 보너스
-
-    return 0;
+    return 5; // 1일 배정 있음 → 기본 보너스
   },
 };
+
+/**
+ * @deprecated 하위 호환용 - 날짜 연속성 기반 계산
+ */
+function calculateLegacyConsecutive(
+  candidate: InstructorCandidate,
+  context: AssignmentContext,
+): number {
+  const { currentAssignments, currentScheduleDate, currentUnitId } = context;
+
+  // 같은 부대에 이 강사가 이미 배정된 배정들
+  const sameUnitAssignments = currentAssignments.filter(
+    (a) => a.unitId === currentUnitId && a.instructorId === candidate.userId,
+  );
+
+  if (sameUnitAssignments.length === 0) return 0;
+
+  // 현재 날짜
+  const targetMs = new Date(currentScheduleDate).getTime();
+  const oneDayMs = 24 * 60 * 60 * 1000;
+
+  // 연속 일수 계산 (이전/이후 모두 체크)
+  let consecutiveDays = 1;
+  const assignedDatesMs = sameUnitAssignments.map((a) => new Date(a.date).getTime());
+
+  const hasPrevDay = assignedDatesMs.some((d) => targetMs - d === oneDayMs);
+  const hasNextDay = assignedDatesMs.some((d) => d - targetMs === oneDayMs);
+
+  if (hasPrevDay) consecutiveDays++;
+  if (hasNextDay) consecutiveDays++;
+
+  if (consecutiveDays >= 3) return 10;
+  if (consecutiveDays >= 2) return 7;
+  if (hasPrevDay || hasNextDay) return 5;
+
+  return 0;
+}
 
 /**
  * 팀 매칭 스코어러

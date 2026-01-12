@@ -12,6 +12,7 @@ export interface AssignmentContext {
   currentScheduleId: number;
   currentScheduleDate: string; // 'YYYY-MM-DD'
   currentUnitId: number;
+  currentTrainingPeriodId: number; // TrainingPeriod ID (연속 판단용)
   currentUnitRegion: string;
   currentAssignments: AssignmentData[]; // 현재까지의 배정
   instructorDistances: Map<string, number>; // `${instructorId}-${unitId}` → km
@@ -64,6 +65,7 @@ export interface AssignmentData {
   unitScheduleId: number;
   scheduleId: number;
   unitId: number;
+  trainingPeriodId: number; // TrainingPeriod ID (연속 판단용)
   date: string;
   instructorId: number;
   category: 'Main' | 'Co' | 'Assistant' | 'Practicum' | null;
@@ -79,25 +81,45 @@ export interface AssignmentData {
 // Unit Data (부대 데이터)
 // =========================================
 
+/**
+ * 교육기간(TrainingPeriod) 단위 데이터
+ * - 배정의 기본 단위 (같은 TrainingPeriod = 같은 연속 일정)
+ */
+export interface TrainingPeriodData {
+  id: number;
+  unitId: number;
+  unitName: string;
+  region: string;
+  wideArea: string;
+  isStaffLocked: boolean; // 인원고정 여부
+  excludedDates: string[]; // 교육불가일자 (논리적 연속 판단용)
+  schedules: ScheduleData[];
+  locations: LocationData[];
+}
+
+/**
+ * 부대(Unit) 데이터
+ * - 하위에 여러 TrainingPeriod를 가짐
+ */
 export interface UnitData {
   id: number;
   name: string;
   region: string;
   wideArea: string;
-  schedules: ScheduleData[];
-  trainingLocations: LocationData[];
+  trainingPeriods: TrainingPeriodData[];
 }
 
 export interface ScheduleData {
   id: number;
   date: Date;
-  requiredCount: number; // 필요 강사 수
+  requiredCount: number; // 필요 강사 수 (모든 장소 합산)
   isBlocked?: boolean; // 배정막기 상태
 }
 
 export interface LocationData {
   id: number;
   name: string;
+  requiredCount?: number; // 장소별 필요 인원 (후처리용)
 }
 
 // =========================================
@@ -105,17 +127,21 @@ export interface LocationData {
 // =========================================
 
 /**
- * 연속 일정 묶음 (2박3일 등)
- * - 같은 부대의 연속된 날짜를 하나의 묶음으로 관리
+ * TrainingPeriod 단위 묶음
+ * - 같은 TrainingPeriod의 모든 일정을 하나의 묶음으로 관리
+ * - excludedDates가 있어도 논리적으로 연속된 일정으로 취급
  */
 export interface ScheduleBundle {
-  bundleId: string; // `${unitId}_${startDate}`
+  bundleId: string; // `tp_${trainingPeriodId}`
   unitId: number;
   unitName: string;
   region: string;
-  schedules: ScheduleData[]; // 연속된 스케줄들
+  trainingPeriodId: number; // TrainingPeriod ID (핵심)
+  isStaffLocked: boolean; // 인원고정 여부
+  excludedDates: string[]; // 교육불가일자
+  schedules: ScheduleData[]; // 해당 기간의 스케줄들
   dates: string[]; // 'YYYY-MM-DD' 배열
-  requiredPerDay: number; // 각 날짜별 필요 인원
+  requiredPerDay: number; // 각 날짜별 필요 인원 (평균)
   totalRequired: number; // 전체 필요 인원
   trainingLocations: LocationData[];
 }

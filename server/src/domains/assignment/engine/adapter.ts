@@ -1,12 +1,14 @@
 // server/src/domains/assignment/engine/adapter.ts
 // 배정 알고리즘 어댑터 - 서비스와 엔진 사이의 데이터 변환
-// 기존 service와의 호환성을 유지하면서 새 engine을 사용
+// 변경: TrainingPeriod 단위 배정으로 리팩토링
 
 import {
   AssignmentEngine,
   InstructorCandidate,
   UnitData,
+  TrainingPeriodData,
   ScheduleData,
+  LocationData,
   EngineResult,
 } from './index';
 import logger from '../../../config/logger';
@@ -21,15 +23,24 @@ type ExecuteOptions = {
 };
 
 // =========================================
-// 입력 타입 (기존 형태 유지)
+// 입력 타입 (기존 형태 유지 + TrainingPeriod 추가)
 // =========================================
+
+interface ScheduleLocation {
+  unitScheduleId: number;
+  trainingLocationId: number;
+  plannedCount?: number | null;
+  actualCount?: number | null;
+  requiredCount?: number | null;
+}
 
 interface TrainingLocation {
   id?: number;
   originalPlace?: string | null;
   actualCount?: number | null;
-  plannedCount?: number | null; // 참여인원이 없을 때 계획인원 사용
-  requiredCount?: number | null; // 수동 설정된 필요인원, 있으면 우선 사용
+  plannedCount?: number | null;
+  requiredCount?: number | null;
+  scheduleLocations?: ScheduleLocation[];
 }
 
 interface Assignment {
@@ -42,6 +53,15 @@ interface Schedule {
   id: number;
   date: Date;
   assignments?: Assignment[];
+  scheduleLocations?: ScheduleLocation[];
+}
+
+interface TrainingPeriod {
+  id: number;
+  isStaffLocked?: boolean;
+  excludedDates?: string[];
+  locations?: TrainingLocation[];
+  schedules?: Schedule[];
 }
 
 interface UnitWithSchedules {
@@ -49,8 +69,10 @@ interface UnitWithSchedules {
   name?: string | null;
   region?: string | null;
   wideArea?: string | null;
-  trainingLocations: TrainingLocation[];
-  schedules: Schedule[];
+  trainingPeriods?: TrainingPeriod[];
+  // Legacy 지원
+  trainingLocations?: TrainingLocation[];
+  schedules?: Schedule[];
   isStaffLocked?: boolean;
 }
 
@@ -94,8 +116,105 @@ interface ExecuteResult {
 // =========================================
 
 function toDateString(date: Date): string {
-  // UTC 기준 날짜 문자열로 변환 (DB 저장 형식과 일치)
   return date.toISOString().split('T')[0];
+}
+
+// =========================================
+// 장소 분배 유틸
+// =========================================
+
+interface LocationInfo {
+  id: number;
+  name: string;
+  requiredCount: number;
+}
+
+/**
+ * 강사를 장소별로 분배
+ * - 같은 TrainingPeriod 내에서 강사는 같은 장소에 배정
+ * - 이미 배정된 장소가 있으면 그 장소 유지
+ */
+function distributeToLocations(
+  assignments: { unitScheduleId: number; instructorId: number }[],
+  scheduleLocationMap: Map<number, LocationInfo[]>,
+  instructorLocationPreference: Map<string, number>,
+  trainingPeriodIdByScheduleId: Map<number, number>,
+): { unitScheduleId: number; instructorId: number; trainingLocationId: number | null }[] {
+  // 스케줄별로 그룹화
+  const bySchedule = new Map<number, typeof assignments>();
+  for (const a of assignments) {
+    if (!bySchedule.has(a.unitScheduleId)) {
+      bySchedule.set(a.unitScheduleId, []);
+    }
+    bySchedule.get(a.unitScheduleId)!.push(a);
+  }
+
+  const result: {
+    unitScheduleId: number;
+    instructorId: number;
+    trainingLocationId: number | null;
+  }[] = [];
+
+  for (const [scheduleId, scheduleAssignments] of bySchedule) {
+    const locations = scheduleLocationMap.get(scheduleId) || [];
+    const trainingPeriodId = trainingPeriodIdByScheduleId.get(scheduleId) || 0;
+
+    if (locations.length === 0) {
+      // 장소 없으면 null로
+      for (const a of scheduleAssignments) {
+        result.push({ ...a, trainingLocationId: null });
+      }
+      continue;
+    }
+
+    // 장소별 현재 배정 수 추적
+    const locationAssignmentCount = new Map<number, number>();
+    for (const loc of locations) {
+      locationAssignmentCount.set(loc.id, 0);
+    }
+
+    for (const a of scheduleAssignments) {
+      // 1. 이미 선호 장소가 있는지 확인 (같은 TrainingPeriod 내)
+      const prefKey = `${a.instructorId}_${trainingPeriodId}`;
+      const preferredLocationId = instructorLocationPreference.get(prefKey);
+
+      let assignedLocationId: number | null = null;
+
+      if (preferredLocationId && locations.some((l) => l.id === preferredLocationId)) {
+        // 선호 장소가 이 스케줄에도 존재하면 그 장소로
+        assignedLocationId = preferredLocationId;
+      } else {
+        // 2. 가장 여유 있는 장소에 배정
+        let bestLocation: LocationInfo | null = null;
+        let bestSlack = -Infinity;
+
+        for (const loc of locations) {
+          const current = locationAssignmentCount.get(loc.id) || 0;
+          const slack = loc.requiredCount - current;
+          if (slack > bestSlack) {
+            bestSlack = slack;
+            bestLocation = loc;
+          }
+        }
+
+        assignedLocationId = bestLocation?.id ?? locations[0]?.id ?? null;
+      }
+
+      // 배정 수 증가
+      if (assignedLocationId !== null) {
+        locationAssignmentCount.set(
+          assignedLocationId,
+          (locationAssignmentCount.get(assignedLocationId) || 0) + 1,
+        );
+        // 선호 장소 업데이트
+        instructorLocationPreference.set(prefKey, assignedLocationId);
+      }
+
+      result.push({ ...a, trainingLocationId: assignedLocationId });
+    }
+  }
+
+  return result;
 }
 
 // =========================================
@@ -106,7 +225,7 @@ class AssignmentAlgorithm {
   constructor() {}
 
   /**
-   * 자동 배정 알고리즘 실행
+   * 자동 배정 알고리즘 실행 (TrainingPeriod 단위)
    */
   execute(
     rawUnits: UnitWithSchedules[],
@@ -120,8 +239,12 @@ class AssignmentAlgorithm {
       rejectionPenaltyMonths: 6,
       fairnessLookbackMonths: 3,
     });
-    // 1. 데이터 변환
-    const units = this.transformUnits(rawUnits, traineesPerInstructor);
+
+    // 1. 데이터 변환 (TrainingPeriod 단위)
+    const { units, scheduleLocationMap, trainingPeriodIdByScheduleId } = this.transformUnits(
+      rawUnits,
+      traineesPerInstructor,
+    );
     const candidates = this.transformInstructors(rawInstructors, options);
 
     if (units.length === 0 || candidates.length === 0) {
@@ -134,35 +257,77 @@ class AssignmentAlgorithm {
       debugTopK: options?.debugTopK ?? 0,
     });
 
-    // 3. 결과 변환 (기존 형식으로 + 이름 정보 추가)
-    // uniqueScheduleId = (원본scheduleId * 1000) + locationIndex
+    // 3. 장소 분배 (같은 TrainingPeriod 내 일관성 유지)
+    const instructorLocationPreference = new Map<string, number>();
 
-    // 강사 ID → 이름 맵
+    // 기존 배정에서 선호 장소 추출
+    for (const unit of rawUnits) {
+      for (const period of unit.trainingPeriods || []) {
+        for (const schedule of period.schedules || []) {
+          for (const assignment of schedule.assignments || []) {
+            if (
+              assignment.trainingLocationId &&
+              ['Pending', 'Accepted'].includes(assignment.state)
+            ) {
+              const key = `${assignment.userId}_${period.id}`;
+              instructorLocationPreference.set(key, assignment.trainingLocationId);
+            }
+          }
+        }
+      }
+    }
+
+    const distributedAssignments = distributeToLocations(
+      result.assignments,
+      scheduleLocationMap,
+      instructorLocationPreference,
+      trainingPeriodIdByScheduleId,
+    );
+
+    // 4. 결과 변환 (이름 정보 추가)
     const instructorNameMap = new Map<number, string>();
     for (const inst of rawInstructors) {
       instructorNameMap.set(inst.userId, inst.User?.name || `강사_${inst.userId}`);
     }
 
-    const assignments = result.assignments.map((a) => {
-      const originalScheduleId = Math.floor(a.unitScheduleId / 1000);
-      const locationIndex = a.unitScheduleId % 1000;
+    // 스케줄 정보 맵
+    const scheduleInfoMap = new Map<
+      number,
+      { unitName: string; scheduleDate: string; trainingPeriodId: number }
+    >();
+    const locationNameMap = new Map<number, string>();
 
-      // 유닛 찾기
-      const unit = rawUnits.find((u) => u.schedules.some((s) => s.id === originalScheduleId));
-      const schedule = unit?.schedules.find((s) => s.id === originalScheduleId);
-      const trainingLocation = unit?.trainingLocations[locationIndex];
-      const trainingLocationId = trainingLocation?.id ?? null;
+    for (const unit of rawUnits) {
+      for (const period of unit.trainingPeriods || []) {
+        for (const schedule of period.schedules || []) {
+          scheduleInfoMap.set(schedule.id, {
+            unitName: unit.name || `부대_${unit.id}`,
+            scheduleDate: toDateString(schedule.date),
+            trainingPeriodId: period.id,
+          });
+        }
+        for (const loc of period.locations || []) {
+          if (loc.id) {
+            locationNameMap.set(loc.id, loc.originalPlace || '');
+          }
+        }
+      }
+    }
+
+    const assignments: AssignmentResult[] = distributedAssignments.map((a) => {
+      const scheduleInfo = scheduleInfoMap.get(a.unitScheduleId);
 
       return {
-        unitScheduleId: originalScheduleId,
+        unitScheduleId: a.unitScheduleId,
         instructorId: a.instructorId,
-        trainingLocationId,
-        role: a.role ?? null, // 엔진 결과의 role 사용 (Head/Supervisor/null)
-        // 이름 정보
+        trainingLocationId: a.trainingLocationId,
+        role: null, // 역할은 나중에 계산
         instructorName: instructorNameMap.get(a.instructorId) || `강사_${a.instructorId}`,
-        unitName: unit?.name || `부대_${unit?.id}`,
-        trainingLocationName: trainingLocation?.originalPlace || null,
-        scheduleDate: schedule ? toDateString(schedule.date) : '',
+        unitName: scheduleInfo?.unitName || '',
+        trainingLocationName: a.trainingLocationId
+          ? locationNameMap.get(a.trainingLocationId) || null
+          : null,
+        scheduleDate: scheduleInfo?.scheduleDate || '',
       };
     });
 
@@ -173,52 +338,109 @@ class AssignmentAlgorithm {
   }
 
   /**
-   * 부대 데이터 변환
-   * - 장소별로 스케줄 분리하여 배정
-   * - uniqueScheduleId = (원본scheduleId * 1000) + locationIndex
+   * 부대 데이터 변환 (TrainingPeriod 단위)
+   * - 장소별 분리 제거
+   * - TrainingPeriod별 총 필요인원 계산
    */
-  private transformUnits(rawUnits: UnitWithSchedules[], traineesPerInstructor: number): UnitData[] {
-    return rawUnits.map((unit) => {
-      // 장소별로 스케줄 분리
-      const schedules: ScheduleData[] = [];
+  private transformUnits(
+    rawUnits: UnitWithSchedules[],
+    traineesPerInstructor: number,
+  ): {
+    units: UnitData[];
+    scheduleLocationMap: Map<number, LocationInfo[]>;
+    trainingPeriodIdByScheduleId: Map<number, number>;
+  } {
+    const scheduleLocationMap = new Map<number, LocationInfo[]>();
+    const trainingPeriodIdByScheduleId = new Map<number, number>();
 
-      for (const schedule of unit.schedules) {
-        for (let locIdx = 0; locIdx < unit.trainingLocations.length; locIdx++) {
-          const loc = unit.trainingLocations[locIdx];
-          // 장소별 고유 스케줄 ID: (원본ID * 1000) + 장소인덱스
-          const uniqueScheduleId = schedule.id * 1000 + locIdx;
+    const units: UnitData[] = rawUnits.map((unit) => {
+      const trainingPeriods: TrainingPeriodData[] = [];
 
-          // 기존 배정 수 계산 (Pending + Accepted를 포함해야 "부족분만 추가 배정"이 안정적임)
-          const existingAssignments = (schedule.assignments || []).filter(
-            (a) =>
-              ['Pending', 'Accepted'].includes(a.state) &&
-              (a.trainingLocationId === loc.id || a.trainingLocationId === null),
-          ).length;
+      for (const period of unit.trainingPeriods || []) {
+        const schedules: ScheduleData[] = [];
+        const locations: LocationData[] = [];
 
-          // 필요인원 계산: requiredCount 우선, 없으면 자동 계산
-          const headcount = loc.actualCount ?? loc.plannedCount ?? 0;
-          const calculatedNeeded = Math.floor(headcount / Math.max(1, traineesPerInstructor)) || 1;
-          // requiredCount가 있으면 바로 사용, 없으면 자동 계산
-          const computedNeeded = loc.requiredCount ?? calculatedNeeded;
-          const needed = computedNeeded;
-
-          const required = Math.max(0, needed - existingAssignments);
-
-          // DEBUG: 필요인원 계산 로그
-          logger.debug(
-            `[Algorithm] Unit:${unit.id} Schedule:${schedule.id} Loc:${loc.id} - needed:${needed ?? 0} existing:${existingAssignments} required:${required > 0 ? required : 0}`,
-          );
-
-          // isStaffLocked=true인 부대는 필요인원을 0으로 설정하여 배정 생략
-          const finalRequired = unit.isStaffLocked ? 0 : required > 0 ? required : 0;
-
-          schedules.push({
-            id: uniqueScheduleId,
-            date: schedule.date,
-            requiredCount: finalRequired,
-            isBlocked: unit.isStaffLocked,
+        // 장소 정보 변환
+        for (const loc of period.locations || []) {
+          locations.push({
+            id: loc.id || 0,
+            name: loc.originalPlace || '',
           });
         }
+
+        for (const schedule of period.schedules || []) {
+          // TrainingPeriod ID 매핑
+          trainingPeriodIdByScheduleId.set(schedule.id, period.id);
+
+          // 스케줄별 장소 정보 구성
+          const locInfos: LocationInfo[] = [];
+          let totalRequired = 0;
+
+          for (const loc of period.locations || []) {
+            // 스케줄-장소별 인원 정보 찾기
+            const schedLoc = schedule.scheduleLocations?.find(
+              (sl) => sl.trainingLocationId === loc.id,
+            );
+
+            // 필요인원 계산
+            const headcount =
+              schedLoc?.actualCount ??
+              schedLoc?.plannedCount ??
+              loc.actualCount ??
+              loc.plannedCount ??
+              0;
+            const calculatedNeeded =
+              Math.floor(headcount / Math.max(1, traineesPerInstructor)) || 1;
+            const locRequired = schedLoc?.requiredCount ?? loc.requiredCount ?? calculatedNeeded;
+
+            totalRequired += locRequired;
+
+            locInfos.push({
+              id: loc.id || 0,
+              name: loc.originalPlace || '',
+              requiredCount: locRequired,
+            });
+          }
+
+          // 장소가 없으면 기본값 사용
+          if (locInfos.length === 0) {
+            totalRequired = 2;
+          }
+
+          scheduleLocationMap.set(schedule.id, locInfos);
+
+          // 기존 배정 수 계산
+          const existingAssignments = (schedule.assignments || []).filter((a) =>
+            ['Pending', 'Accepted'].includes(a.state),
+          ).length;
+
+          const required = Math.max(0, totalRequired - existingAssignments);
+
+          // 로그
+          logger.debug(
+            `[Algorithm] Unit:${unit.id} Period:${period.id} Schedule:${schedule.id} - ` +
+              `totalRequired:${totalRequired} existing:${existingAssignments} needed:${required}`,
+          );
+
+          schedules.push({
+            id: schedule.id, // 원본 ID 그대로 사용 (인코딩 제거)
+            date: schedule.date,
+            requiredCount: period.isStaffLocked ? 0 : required,
+            isBlocked: period.isStaffLocked,
+          });
+        }
+
+        trainingPeriods.push({
+          id: period.id,
+          unitId: unit.id,
+          unitName: unit.name || `부대_${unit.id}`,
+          region: unit.region || '',
+          wideArea: unit.wideArea || '',
+          isStaffLocked: period.isStaffLocked ?? false,
+          excludedDates: period.excludedDates || [],
+          schedules,
+          locations,
+        });
       }
 
       return {
@@ -226,13 +448,11 @@ class AssignmentAlgorithm {
         name: unit.name || `부대_${unit.id}`,
         region: unit.region || '',
         wideArea: unit.wideArea || '',
-        schedules,
-        trainingLocations: unit.trainingLocations.map((loc) => ({
-          id: loc.id || 0,
-          name: loc.originalPlace || '',
-        })),
+        trainingPeriods,
       };
     });
+
+    return { units, scheduleLocationMap, trainingPeriodIdByScheduleId };
   }
 
   /**
@@ -257,7 +477,7 @@ class AssignmentAlgorithm {
         isTeamLeader: instructor.isTeamLeader ?? false,
         generation: instructor.generation ?? null,
         restrictedArea: instructor.restrictedArea ?? null,
-        maxDistanceKm: null, // 추후 활용
+        maxDistanceKm: null,
         location: instructor.location ?? null,
         availableDates,
         priorityCredits: instructor.priorityCredit?.credits ?? 0,
