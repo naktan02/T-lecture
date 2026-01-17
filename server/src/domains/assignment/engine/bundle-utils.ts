@@ -1,8 +1,10 @@
 // server/src/domains/assignment/engine/bundle-utils.ts
 // Slack 기반 배정을 위한 Bundle 유틸리티
+// 변경: TrainingPeriod 단위로 Bundle 생성 (날짜 연속성 대신)
 
 import {
   UnitData,
+  TrainingPeriodData,
   ScheduleBundle,
   BundleSlackInfo,
   InstructorCandidate,
@@ -17,6 +19,7 @@ function toDateString(date: Date): string {
 }
 
 /**
+ * @deprecated TrainingPeriod 단위로 변경되어 더 이상 사용하지 않음
  * 두 날짜가 연속인지 확인 (하루 차이)
  */
 function isConsecutive(date1: string, date2: string): boolean {
@@ -27,39 +30,28 @@ function isConsecutive(date1: string, date2: string): boolean {
 }
 
 /**
- * 부대 데이터에서 연속 일정 묶음(Bundle) 생성
- * - 같은 부대의 연속된 날짜들을 하나의 묶음으로
+ * TrainingPeriod 단위로 Bundle 생성
+ * - 기존: 날짜 연속성 기반
+ * - 변경: TrainingPeriod ID 기반 (excludedDates가 있어도 같은 Bundle)
+ *
+ * @param units 부대 데이터 (trainingPeriods 포함)
+ * @returns ScheduleBundle 배열
  */
 export function createBundles(units: UnitData[]): ScheduleBundle[] {
   const bundles: ScheduleBundle[] = [];
 
   for (const unit of units) {
-    if (!unit.schedules || unit.schedules.length === 0) continue;
+    if (!unit.trainingPeriods || unit.trainingPeriods.length === 0) continue;
 
-    // 날짜 순 정렬
-    const sortedSchedules = [...unit.schedules].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-    );
+    for (const period of unit.trainingPeriods) {
+      // isStaffLocked=true인 교육기간은 Bundle에서 제외
+      if (period.isStaffLocked) continue;
+      if (!period.schedules || period.schedules.length === 0) continue;
 
-    let currentBundle: ScheduleData[] = [sortedSchedules[0]];
-
-    for (let i = 1; i < sortedSchedules.length; i++) {
-      const prevDate = toDateString(sortedSchedules[i - 1].date);
-      const currDate = toDateString(sortedSchedules[i].date);
-
-      if (isConsecutive(prevDate, currDate)) {
-        // 연속이면 현재 묶음에 추가
-        currentBundle.push(sortedSchedules[i]);
-      } else {
-        // 연속 아니면 현재 묶음 저장 후 새 묶음 시작
-        bundles.push(createBundleFromSchedules(unit, currentBundle));
-        currentBundle = [sortedSchedules[i]];
+      const bundle = createBundleFromPeriod(period);
+      if (bundle.schedules.length > 0) {
+        bundles.push(bundle);
       }
-    }
-
-    // 마지막 묶음 저장
-    if (currentBundle.length > 0) {
-      bundles.push(createBundleFromSchedules(unit, currentBundle));
     }
   }
 
@@ -67,9 +59,46 @@ export function createBundles(units: UnitData[]): ScheduleBundle[] {
 }
 
 /**
+ * TrainingPeriod로부터 Bundle 객체 생성
+ */
+function createBundleFromPeriod(period: TrainingPeriodData): ScheduleBundle {
+  // 날짜 순 정렬
+  const sortedSchedules = [...period.schedules].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+  );
+
+  const dates = sortedSchedules.map((s) => toDateString(s.date));
+
+  // 필요 인원: 각 스케줄의 requiredCount 평균
+  const totalRequired = sortedSchedules.reduce((sum, s) => sum + s.requiredCount, 0);
+  const requiredPerDay =
+    sortedSchedules.length > 0 ? Math.ceil(totalRequired / sortedSchedules.length) : 2;
+
+  return {
+    bundleId: `tp_${period.id}`, // TrainingPeriod ID 기반
+    unitId: period.unitId,
+    unitName: period.unitName,
+    region: period.region,
+    trainingPeriodId: period.id, // 핵심: TrainingPeriod ID
+    isStaffLocked: period.isStaffLocked,
+    excludedDates: period.excludedDates || [],
+    schedules: sortedSchedules,
+    dates,
+    requiredPerDay,
+    totalRequired,
+    trainingLocations: period.locations,
+  };
+}
+
+/**
+ * @deprecated 하위 호환성을 위해 유지 (기존 방식)
  * 스케줄 배열로부터 Bundle 객체 생성
  */
-function createBundleFromSchedules(unit: UnitData, schedules: ScheduleData[]): ScheduleBundle {
+function createBundleFromSchedules(
+  unit: { id: number; name: string; region: string },
+  schedules: ScheduleData[],
+  trainingPeriodId: number = 0,
+): ScheduleBundle {
   const dates = schedules.map((s) => toDateString(s.date));
   const requiredPerDay = schedules[0]?.requiredCount ?? 2;
 
@@ -78,11 +107,14 @@ function createBundleFromSchedules(unit: UnitData, schedules: ScheduleData[]): S
     unitId: unit.id,
     unitName: unit.name,
     region: unit.region,
+    trainingPeriodId, // 기본값 0 (레거시 호환)
+    isStaffLocked: false,
+    excludedDates: [],
     schedules,
     dates,
     requiredPerDay,
     totalRequired: requiredPerDay * schedules.length,
-    trainingLocations: unit.trainingLocations,
+    trainingLocations: [],
   };
 }
 

@@ -6,6 +6,7 @@ export default defineConfig({
   schema: 'prisma', // 디렉터리 전체를 스키마로 사용
   migrations: {
     path: 'prisma/migrations',
+    seed: 'tsx prisma/seed.ts',
   },
   datasource: {
     // CLI (마이그레이션 등)에서 사용할 URL

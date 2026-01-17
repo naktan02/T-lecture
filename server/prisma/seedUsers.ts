@@ -228,6 +228,53 @@ export async function runSeedUsers() {
     { type: 'Practicum', count: 10 }, // 실습강 10명
   ];
 
+  // 1. 부하 테스트용 고정 강사 계정 생성 (instructor@t-lecture.com)
+  const testInstructorEmail = process.env.INSTRUCTOR_EMAIL || 'instructor@t-lecture.com';
+  const testInstructorPassword = process.env.INSTRUCTOR_PASSWORD || 'instructor';
+  const testHashPwd = await bcrypt.hash(testInstructorPassword, 10);
+
+  try {
+    const existing = await prisma.user.findUnique({ where: { userEmail: testInstructorEmail } });
+    if (!existing) {
+      console.log(`👨‍🏫 테스트용 강사(${testInstructorEmail}) 생성 중...`);
+      const testLoc = LOCATIONS[0];
+      const testUser = await prisma.user.create({
+        data: {
+          userEmail: testInstructorEmail,
+          password: testHashPwd,
+          name: '테스트강사',
+          userphoneNumber: '010-0000-0000',
+          status: 'APPROVED',
+          instructor: {
+            create: {
+              category: 'Main',
+              teamId: teams[0].id,
+              isTeamLeader: false,
+              location: testLoc.address,
+              lat: testLoc.lat,
+              lng: testLoc.lng,
+              generation: 10,
+              restrictedArea: null,
+              hasCar: true,
+              profileCompleted: true,
+            },
+          },
+        },
+      });
+      // 덕목 하나 추가
+      if (virtues.length > 0) {
+        await prisma.instructorVirtue.create({
+          data: { instructorId: testUser.id, virtueId: virtues[0].id },
+        });
+      }
+      console.log('  ✅ 테스트용 강사 생성 완료');
+    } else {
+      console.log('  ℹ️ 테스트용 강사가 이미 존재합니다.');
+    }
+  } catch (e) {
+    console.error('  ❌ 테스트용 강사 생성 실패:', e);
+  }
+
   const totalInstructors = 80;
   let instructorIndex = 0;
   const instructorIds: number[] = [];

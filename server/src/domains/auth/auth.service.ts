@@ -11,6 +11,7 @@ import { sendAuthCode } from '../../infra/email';
 import distanceService from '../distance/distance.service';
 import AppError from '../../common/errors/AppError';
 import { RegisterDto, JwtPayload } from '../../types/auth.types';
+import { cacheRefreshToken, getCachedRefreshToken, invalidateRefreshToken } from '../../libs/cache';
 
 const SALT_ROUNDS = 10;
 
@@ -143,9 +144,10 @@ class AuthService {
     const refreshToken = jwt.sign(payload, REFRESH_SECRET, { expiresIn: '7d' });
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    // 해시화하여 저장
+    // 해시화하여 DB + Redis 저장
     const tokenHash = this.hashToken(refreshToken);
     await authRepository.saveRefreshToken(user.id, tokenHash, expiresAt, deviceId);
+    await cacheRefreshToken(tokenHash, { userId: user.id, deviceId, expiresAt });
 
     const isInstructor = !!user.instructor;
     const isAdmin = !!user.admin;
@@ -187,38 +189,49 @@ class AuthService {
       throw new AppError('리프레시 토큰이 만료되었거나 유효하지 않습니다.', 401, 'TOKEN_INVALID');
     }
 
-    // 해시값으로 DB 조회
+    // 1. Redis 먼저 조회 (빠름)
     const incomingTokenHash = this.hashToken(incomingRefreshToken);
-    const dbToken = await authRepository.findRefreshToken(incomingTokenHash);
+    const cachedToken = await getCachedRefreshToken(incomingTokenHash);
+    let deviceId: string | null = null;
 
-    if (!dbToken) {
-      // DB에 없는데 JWT 검증은 통과함 -> 이미 사용된(회전된) 토큰 재사용 시도일 가능성 높음 (Reuse Detection)
-      // 보안을 위해 해당 유저의 모든 토큰을 무효화하는 것이 좋으나, 여기서는 일단 에러만 반환
-      throw new AppError(
-        '유효하지 않은 리프레시 토큰입니다. (재로그인 필요)',
-        401,
-        'TOKEN_NOT_FOUND',
-      );
+    if (cachedToken) {
+      // Redis HIT
+      deviceId = cachedToken.deviceId;
+    } else {
+      // 2. Redis MISS → DB 조회
+      const dbToken = await authRepository.findRefreshToken(incomingTokenHash);
+
+      if (!dbToken) {
+        // DB에도 없음 → 토큰 재사용 시도 (Reuse Detection)
+        throw new AppError(
+          '유효하지 않은 리프레시 토큰입니다. (재로그인 필요)',
+          401,
+          'TOKEN_NOT_FOUND',
+        );
+      }
+      deviceId = dbToken.deviceId;
     }
 
-    // 1. Rotation: 기존 토큰 삭제 (소각)
+    // 3. Rotation: 기존 토큰 삭제 (DB + Redis)
     await authRepository.deleteByTokenHash(incomingTokenHash);
+    await invalidateRefreshToken(incomingTokenHash);
 
-    // 2. 새로운 토큰 쌍 발급
+    // 4. 새로운 토큰 쌍 발급
     const newAccessToken = jwt.sign({ userId: payload.userId }, JWT_SECRET, { expiresIn: '1h' });
     const newRefreshToken = jwt.sign({ userId: payload.userId }, REFRESH_SECRET, {
       expiresIn: '7d',
     });
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    // 3. 새로운 토큰 해시 저장
+    // 5. 새로운 토큰 해시 저장 (DB + Redis)
     const newTokenHash = this.hashToken(newRefreshToken);
     await authRepository.saveRefreshToken(
       payload.userId,
       newTokenHash,
       expiresAt,
-      dbToken.deviceId, // 기존 기기정보 유지
+      deviceId, // 기존 기기정보 유지
     );
+    await cacheRefreshToken(newTokenHash, { userId: payload.userId, deviceId, expiresAt });
 
     return { accessToken: newAccessToken, refreshToken: newRefreshToken };
   }

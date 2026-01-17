@@ -87,10 +87,21 @@ class InstructorRepository {
     });
   }
 
-  // 기간 내 가용 강사 조회
-  async findAvailableInPeriod(startDate: string, endDate: string) {
+  /**
+   * 기간 내 가용 강사 조회
+   * @param userIds 특정 ID만 조회 (캐시 MISS된 ID만 조회 시 사용)
+   */
+  async findAvailableInPeriod(
+    startDate: string,
+    endDate: string,
+    options?: { userIds?: number[] },
+  ) {
     return await prisma.instructor.findMany({
       where: {
+        // userIds가 있으면 해당 ID만, 없으면 전체
+        ...(options?.userIds && options.userIds.length > 0
+          ? { userId: { in: options.userIds } }
+          : {}),
         availabilities: {
           some: {
             availableOn: { gte: new Date(startDate), lte: new Date(endDate) },

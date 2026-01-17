@@ -2,11 +2,11 @@
 // dotenv must be loaded first to read environment variables
 import 'dotenv/config';
 
-// New Relic: only load if license key is configured (prevents errors in local dev)
-if (process.env.NEW_RELIC_LICENSE_KEY) {
-  require('newrelic');
-}
-import express, { Request, Response } from 'express';
+// Sentry: setupSentryErrorHandler is still needed for Express error handling
+import { setupSentryErrorHandler } from './config/sentry';
+
+import express, { Request, Response, NextFunction } from 'express';
+import compression from 'compression';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -16,14 +16,26 @@ import v1Router from './api/v1';
 import errorHandler from './common/middlewares/errorHandler';
 import logger from './config/logger';
 import prisma from './libs/prisma';
-import { initSentry } from './config/sentry';
 
 const app = express();
 
-// Sentry 초기화 (에러 핸들러보다 먼저 설정해야 함)
-initSentry(app);
-
 const isProd = process.env.NODE_ENV === 'production';
+
+// ✅ gzip 압축 (가장 먼저 적용 - 모든 응답 압축)
+app.use(compression());
+
+// ✅ Cache-Control 및 ETag 미들웨어 (API 응답용)
+const cacheMiddleware = (_req: Request, res: Response, next: NextFunction) => {
+  // API 응답에 ETag 활성화 (Express 기본 지원)
+  res.set('ETag', 'true');
+
+  // 정적 자원이 아닌 API는 짧은 캐시 또는 no-cache
+  // 클라이언트가 ETag로 304 응답 받을 수 있도록 must-revalidate 사용
+  res.set('Cache-Control', 'private, no-cache, must-revalidate');
+
+  next();
+};
+app.use('/api', cacheMiddleware);
 
 // Render 같은 리버스 프록시 뒤에서 실행될 때 필요 (rate-limit이 IP를 올바르게 인식하도록)
 if (isProd) {
@@ -92,6 +104,10 @@ app.use('/api/v1', v1Router);
 app.get('/', (_req: Request, res: Response) => {
   res.send('Hello T-LECTURE!');
 });
+
+// ⭐️ Sentry 에러 핸들러: 라우터 뒤, 커스텀 에러 핸들러 전에 위치해야 함
+setupSentryErrorHandler(app);
+
 app.use(errorHandler);
 
 // 서버 시작

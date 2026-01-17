@@ -93,5 +93,10 @@ export const groupUnassignedUnits = (units: UnitSchedule[]): GroupedUnassignedUn
     }
   }
 
-  return Array.from(unitMap.values());
+  // 첫 날짜 기준으로 부대 정렬 (서버에서 정렬되어 왔지만 Map 순서 보장을 위해)
+  return Array.from(unitMap.values()).sort((a, b) => {
+    const aFirstDate = a.uniqueDates[0] || '';
+    const bFirstDate = b.uniqueDates[0] || '';
+    return aFirstDate.localeCompare(bFirstDate);
+  });
 };

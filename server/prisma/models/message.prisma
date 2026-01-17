@@ -23,10 +23,10 @@ model Dispatch {
   body      String?         @map("본문") @db.Text
   status    DispatchStatus? @map("상태")
   createdAt DateTime?       @default(now()) @map("생성일시")
-  
+
   // 수신자 정보 (DispatchReceipt에서 통합)
-  userId    Int             @map("수신자id")
-  readAt    DateTime?       @map("읽은일시")
+  userId Int       @map("수신자id")
+  readAt DateTime? @map("읽은일시")
 
   // 관계
   user        User                 @relation(fields: [userId], references: [id])
@@ -63,14 +63,14 @@ model MessageTemplate {
 // ==========================================
 
 model Notice {
-  id        Int       @id @default(autoincrement())
-  title     String    @map("제목")
-  body      String    @map("본문") @db.Text
-  authorId  Int       @map("작성자id")
-  viewCount Int       @default(0) @map("조회수")
-  isPinned  Boolean   @default(false) @map("상단고정")
-  createdAt DateTime  @default(now()) @map("생성일시")
-  updatedAt DateTime  @updatedAt @map("수정일시")
+  id        Int      @id @default(autoincrement())
+  title     String   @map("제목")
+  body      String   @map("본문") @db.Text
+  authorId  Int      @map("작성자id")
+  viewCount Int      @default(0) @map("조회수")
+  isPinned  Boolean  @default(false) @map("상단고정")
+  createdAt DateTime @default(now()) @map("생성일시")
+  updatedAt DateTime @updatedAt @map("수정일시")
 
   // 관계
   author   User            @relation("NoticeAuthor", fields: [authorId], references: [id])
@@ -97,7 +97,7 @@ model NoticeReceipt {
 // ==========================================
 
 enum InquiryStatus {
-  Waiting  // 답변 대기
+  Waiting // 답변 대기
   Answered // 답변 완료
 
   @@map("문의상태__t")

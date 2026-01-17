@@ -238,6 +238,8 @@ async function generateExcel() {
   const worksheet = workbook.addWorksheet('부대정보');
 
   // 헤더 (3행부터 시작) - 위도/경도는 주소 기반 API로 계산되므로 제외
+  // NOTE: 수탁급식/회관숙박/휴대폰불출은 TrainingPeriod 필드 (부대당 1개)
+  //       강사휴게실/여자화장실은 TrainingLocation 필드 (장소당 1개)
   const headers = [
     '부대명',
     '군구분',
@@ -255,13 +257,15 @@ async function generateExcel() {
     '간부명',
     '간부 전화번호',
     '간부 이메일 주소',
+    // TrainingPeriod 시설 정보 (부대당 1개 - 첫 행에서만 읽음)
+    '수탁급식여부',
+    '회관숙박여부',
+    '사전사후 휴대폰 불출 여부',
+    // TrainingLocation 정보 (장소별)
     '기존교육장소',
     '변경교육장소',
     '강사휴게실 여부',
     '여자화장실 여부',
-    '수탁급식여부',
-    '회관숙박여부',
-    '사전사후 휴대폰 불출 여부',
     '계획인원',
     '참여인원',
     '특이사항',
@@ -350,7 +354,12 @@ async function generateExcel() {
     // 참여인원은 계획의 70~100% (일부는 계획보다 적음)
     const actualCount1 = Math.floor(plannedCount1 * (0.7 + Math.random() * 0.3));
 
-    // 첫 번째 장소 (부대 정보 포함) - 위도/경도 제외
+    // TrainingPeriod 시설 정보 (부대당 1개, 첫 행에서만 설정)
+    const hasCateredMeals = Math.random() > 0.3 ? 'O' : 'X';
+    const hasHallLodging = Math.random() > 0.4 ? 'O' : 'X';
+    const allowsPhone = 'O';
+
+    // 첫 번째 장소 (부대 정보 포함)
     const mainRow: (string | number | null)[] = [
       unitName,
       militaryType,
@@ -368,16 +377,18 @@ async function generateExcel() {
       officerName,
       `010-${randomInt(1000, 9999)}-${randomInt(1000, 9999)}`,
       `officer${i}@army.mil.kr`,
+      // TrainingPeriod 시설 정보
+      hasCateredMeals,
+      hasHallLodging,
+      allowsPhone,
+      // TrainingLocation 정보
       randomChoice(PLACES),
-      '',
-      'O',
-      'O',
-      Math.random() > 0.3 ? 'O' : 'X',
-      Math.random() > 0.4 ? 'O' : 'X',
-      'O',
+      '', // 변경교육장소
+      'O', // 강사휴게실 여부
+      'O', // 여자화장실 여부
       plannedCount1,
       actualCount1,
-      '',
+      '', // 특이사항
     ];
 
     headers.forEach((_, colIndex) => {
@@ -405,20 +416,21 @@ async function generateExcel() {
         '',
         '',
         '',
-        '', // 교육일자~점심종료
+        '', // 교육시작~점심종료
         '',
         '',
         '', // 간부명~이메일
-        randomChoice(PLACES), // 실제 장소명 사용
         '',
-        'O',
-        'O',
-        Math.random() > 0.3 ? 'O' : 'X',
-        Math.random() > 0.4 ? 'O' : 'X',
-        'O',
+        '',
+        '', // TrainingPeriod 시설 정보 (추가 행에서는 비움)
+        // TrainingLocation 정보
+        randomChoice(PLACES), // 기존교육장소
+        '', // 변경교육장소
+        'O', // 강사휴게실 여부
+        'O', // 여자화장실 여부
         plannedCountN,
         actualCountN,
-        '',
+        '', // 특이사항
       ];
 
       headers.forEach((_, colIndex) => {

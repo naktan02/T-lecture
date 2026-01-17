@@ -31,17 +31,16 @@ model User {
   instructor        Instructor?
   admin             Admin?
   dispatches        Dispatch[]
-  noticeReceipts    NoticeReceipt[] @relation("NoticeRecipient")
-  authoredNotices   Notice[]        @relation("NoticeAuthor")
-  authoredInquiries Inquiry[]       @relation("InquiryAuthor")
-  answeredInquiries Inquiry[]       @relation("InquiryAnswerer")
+  noticeReceipts    NoticeReceipt[]            @relation("NoticeRecipient")
+  authoredNotices   Notice[]                   @relation("NoticeAuthor")
+  authoredInquiries Inquiry[]                  @relation("InquiryAuthor")
+  answeredInquiries Inquiry[]                  @relation("InquiryAnswerer")
   unitAssignments   InstructorUnitAssignment[]
   refreshTokens     RefreshToken[]
   penalty           InstructorPenalty?
 
   @@map("user")
 }
-
 
 model Admin {
   id     Int        @id @default(autoincrement())

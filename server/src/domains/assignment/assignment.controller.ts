@@ -43,6 +43,7 @@ export const respondAssignment = asyncHandler(async (req: Request, res: Response
 });
 
 // [배정 후보 데이터 조회] (부대 + 강사 + 기존 배정)
+// ✅ Redis 캐시에 저장하여 나중에 배정 시 재사용
 export const getCandidates = asyncHandler(async (req: Request, res: Response) => {
   const { startDate, endDate } = req.query || {};
 
@@ -50,8 +51,13 @@ export const getCandidates = asyncHandler(async (req: Request, res: Response) =>
     throw new AppError('조회 기간이 필요합니다. (startDate, endDate)', 400, 'VALIDATION_ERROR');
   }
 
+  // 캐시 저장 버전 사용 (userId로 캐시 키 구분)
   const { unitsRaw, instructorsRaw, actualDateRange } =
-    await assignmentService.getAssignmentCandidatesRaw(startDate as string, endDate as string);
+    await assignmentService.getAssignmentCandidatesWithCache(
+      startDate as string,
+      endDate as string,
+      req.user!.id,
+    );
 
   // 설정에서 강사당 교육생 수 조회
   const traineesPerInstructor = await assignmentService.getTraineesPerInstructor();

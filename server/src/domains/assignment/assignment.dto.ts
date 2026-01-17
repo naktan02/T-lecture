@@ -160,17 +160,22 @@ class AssignmentDTO {
   // 내부 로직: 강사 -> 카드 변환
   mapInstructorsToCards(instructors: InstructorRaw[]) {
     return instructors.map((inst) => {
-      const availableDates = inst.availabilities.map((a: AvailabilityRaw) =>
-        toKSTDateString(a.availableOn),
-      );
+      // 캐시 데이터: availableDates, DB 데이터: availabilities
+      const availableDates = (inst as unknown as { availableDates?: (Date | string)[] })
+        .availableDates
+        ? ((inst as unknown as { availableDates: (Date | string)[] }).availableDates || []).map(
+            (d) => toKSTDateString(d),
+          )
+        : (inst.availabilities || []).map((a: AvailabilityRaw) => toKSTDateString(a.availableOn));
 
       return {
         type: 'INSTRUCTOR',
         id: inst.userId,
 
         // [Card UI]
-        name: inst.user.name,
-        teamName: inst.team?.name || '소속없음',
+        name: inst.user?.name ?? (inst as unknown as { name?: string }).name ?? 'Unknown',
+        teamName:
+          inst.team?.name || (inst as unknown as { teamName?: string }).teamName || '소속없음',
         category: inst.category,
         location: inst.location
           ? inst.location.split(' ')[0] + ' ' + (inst.location.split(' ')[1] || '')
@@ -179,15 +184,15 @@ class AssignmentDTO {
 
         // [Modal Detail]
         detail: {
-          teamName: inst.team?.name,
+          teamName: inst.team?.name || (inst as unknown as { teamName?: string }).teamName,
           category: inst.category,
-          phoneNumber: inst.user.userphoneNumber,
-          email: inst.user.userEmail,
+          phoneNumber: inst.user?.userphoneNumber,
+          email: inst.user?.userEmail,
           address: inst.location,
           generation: inst.generation,
           isTeamLeader: inst.isTeamLeader,
           restrictedArea: inst.restrictedArea,
-          virtues: inst.virtues
+          virtues: (inst.virtues || [])
             .map((v: VirtueRaw) => (v.virtue ? v.virtue.name : ''))
             .filter(Boolean)
             .join(', '),

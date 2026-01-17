@@ -17,6 +17,7 @@ import dashboardUserRoutes from '../../domains/dashboard/routes/dashboard.user.r
 import dashboardAdminRoutes from '../../domains/dashboard/routes/dashboard.admin.routes';
 import batchRoutes from '../../domains/batch/batch.routes';
 import dataBackupRoutes from '../../domains/data-backup/data-backup.routes';
+import testErrorRoutes from './test-error.routes';
 
 const router = Router();
 
@@ -35,5 +36,10 @@ router.use('/dashboard', dashboardUserRoutes);
 router.use('/dashboard', dashboardAdminRoutes);
 router.use('/batch', batchRoutes);
 router.use('/data-backup', dataBackupRoutes);
+
+// Sentry 테스트용 (개발 환경)
+if (process.env.NODE_ENV !== 'production') {
+  router.use('/test-error', testErrorRoutes);
+}
 
 export default router;

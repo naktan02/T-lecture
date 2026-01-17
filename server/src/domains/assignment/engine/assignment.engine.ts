@@ -190,6 +190,7 @@ export class AssignmentEngine {
       unit: UnitData;
       schedule: { id: number; date: Date; requiredCount: number; isBlocked?: boolean };
       bundleRisk: number;
+      trainingPeriodId: number; // TrainingPeriod ID 추가
     }
     const allSchedules: ScheduleWithUnit[] = [];
 
@@ -202,6 +203,7 @@ export class AssignmentEngine {
           unit,
           schedule,
           bundleRisk: info.riskScore,
+          trainingPeriodId: info.bundle.trainingPeriodId, // TrainingPeriod ID 저장
         });
       }
     }
@@ -213,7 +215,7 @@ export class AssignmentEngine {
     });
 
     // 스케줄별 배정 진행 (Slack 우선순위로)
-    for (const { unit, schedule } of allSchedules) {
+    for (const { unit, schedule, trainingPeriodId } of allSchedules) {
       // isBlocked=true인 스케줄은 배정 생략
       if (schedule.isBlocked) {
         continue;
@@ -236,6 +238,7 @@ export class AssignmentEngine {
         currentScheduleId: schedule.id,
         currentScheduleDate: scheduleDate,
         currentUnitId: unit.id,
+        currentTrainingPeriodId: trainingPeriodId, // TrainingPeriod ID 추가
         currentUnitRegion: unit.region,
         currentAssignments: [...currentAssignments],
         instructorDistances,
@@ -336,6 +339,7 @@ export class AssignmentEngine {
           unitScheduleId: schedule.id,
           scheduleId: schedule.id,
           unitId: unit.id,
+          trainingPeriodId, // TrainingPeriod ID 추가
           date: context.currentScheduleDate,
           instructorId: selected.candidate.userId,
           category: selected.candidate.category,
@@ -382,6 +386,7 @@ export class AssignmentEngine {
         currentScheduleId: 0,
         currentScheduleDate: '',
         currentUnitId: 0,
+        currentTrainingPeriodId: 0, // TrainingPeriod ID 추가
         currentUnitRegion: '',
         currentAssignments: [],
         instructorDistances,
@@ -396,16 +401,29 @@ export class AssignmentEngine {
     // 통계 계산
     const byUnit: Record<number, number> = {};
     for (const assignment of result) {
-      const unitId = units.find((u) =>
-        u.schedules.some((s) => s.id === assignment.unitScheduleId),
-      )?.id;
-      if (unitId) {
-        byUnit[unitId] = (byUnit[unitId] || 0) + 1;
+      // TrainingPeriod 구조에서 스케줄 찾기
+      let foundUnitId: number | undefined;
+      for (const u of units) {
+        for (const period of u.trainingPeriods) {
+          if (period.schedules.some((s) => s.id === assignment.unitScheduleId)) {
+            foundUnitId = u.id;
+            break;
+          }
+        }
+        if (foundUnitId) break;
+      }
+      if (foundUnitId) {
+        byUnit[foundUnitId] = (byUnit[foundUnitId] || 0) + 1;
       }
     }
 
     const totalRequired = units.reduce(
-      (sum, u) => sum + u.schedules.reduce((s, sch) => s + sch.requiredCount, 0),
+      (sum, u) =>
+        sum +
+        u.trainingPeriods.reduce(
+          (pSum, p) => pSum + p.schedules.reduce((sSum, sch) => sSum + sch.requiredCount, 0),
+          0,
+        ),
       0,
     );
 
