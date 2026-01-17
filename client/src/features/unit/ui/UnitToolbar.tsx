@@ -6,8 +6,7 @@ interface SearchFilters {
   keyword: string;
   startDate: string;
   endDate: string;
-  hasAddressError?: boolean;
-  validationStatus?: string;
+  hasError: boolean;
   [key: string]: unknown;
 }
 
@@ -32,8 +31,7 @@ export const UnitToolbar = ({
     keyword: '',
     startDate: '',
     endDate: '',
-    hasAddressError: false,
-    validationStatus: '',
+    hasError: false,
   });
 
   // ✅ 업로드 확인 모달 상태
@@ -87,8 +85,7 @@ export const UnitToolbar = ({
       keyword: '',
       startDate: '',
       endDate: '',
-      hasAddressError: false,
-      validationStatus: '',
+      hasError: false,
     };
     setFilters(initial);
     onSearch(initial);
@@ -211,12 +208,12 @@ export const UnitToolbar = ({
           />
         </div>
 
-        {/* 주소 오류 체크 */}
+        {/* 데이터 오류 체크 */}
         <label className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
           <input
             type="checkbox"
-            name="hasAddressError"
-            checked={!!filters.hasAddressError}
+            name="hasError"
+            checked={filters.hasError}
             onChange={handleChange}
             className="w-4 h-4 rounded text-red-500 focus:ring-red-500 border-gray-300"
           />
@@ -234,23 +231,9 @@ export const UnitToolbar = ({
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
               />
             </svg>
-            주소 오류
+            데이터 오류
           </span>
         </label>
-
-        {/* 검증 상태 필터 */}
-        <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-2 shadow-sm">
-          <select
-            name="validationStatus"
-            value={filters.validationStatus}
-            onChange={handleChange}
-            className="text-sm bg-transparent outline-none py-2 cursor-pointer text-gray-700"
-          >
-            <option value="">전체 상태</option>
-            <option value="Valid">정상 데이터</option>
-            <option value="Invalid">오류 데이터</option>
-          </select>
-        </div>
 
         {/* 검색어 */}
         <div className="flex-1 min-w-[200px] relative">
@@ -289,11 +272,7 @@ export const UnitToolbar = ({
         </button>
 
         {/* 초기화 */}
-        {(filters.keyword ||
-          filters.startDate ||
-          filters.endDate ||
-          filters.hasAddressError ||
-          filters.validationStatus) && (
+        {(filters.keyword || filters.startDate || filters.endDate || filters.hasError) && (
           <button
             onClick={handleReset}
             className="px-3 py-2 text-gray-500 hover:text-gray-700 text-sm transition-colors hover:bg-gray-50 rounded-lg"
@@ -351,12 +330,12 @@ export const UnitToolbar = ({
             />
           </div>
 
-          {/* 주소 오류 체크 (모바일) */}
+          {/* 데이터 오류 체크 (모바일) */}
           <label className="flex items-center gap-2 px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer">
             <input
               type="checkbox"
-              name="hasAddressError"
-              checked={!!filters.hasAddressError}
+              name="hasError"
+              checked={filters.hasError}
               onChange={handleChange}
               className="w-5 h-5 rounded text-red-500 focus:ring-red-500 border-gray-300"
             />
@@ -374,23 +353,9 @@ export const UnitToolbar = ({
                   d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                 />
               </svg>
-              주소 오류 데이터만 보기
+              데이터 오류만 보기
             </span>
           </label>
-
-          {/* 검증 상태 필터 (모바일) */}
-          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 shadow-sm">
-            <select
-              name="validationStatus"
-              value={filters.validationStatus}
-              onChange={handleChange}
-              className="w-full text-sm bg-transparent outline-none py-3 cursor-pointer text-gray-700"
-            >
-              <option value="">전체 검증 상태</option>
-              <option value="Valid">정상 데이터</option>
-              <option value="Invalid">오류 데이터</option>
-            </select>
-          </div>
         </div>
       )}
 

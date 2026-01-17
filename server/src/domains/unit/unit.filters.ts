@@ -26,7 +26,7 @@ export function buildUnitWhere(query: UnitQuery = {}): Prisma.UnitWhereInput {
     endDate,
     // minPersonnel,
     // maxPersonnel,
-    validationStatus,
+    hasError,
   } = query;
 
   const conditions: Prisma.UnitWhereInput[] = [];
@@ -47,9 +47,15 @@ export function buildUnitWhere(query: UnitQuery = {}): Prisma.UnitWhereInput {
   if (region) conditions.push({ region: { contains: String(region).trim() } });
   if (wideArea) conditions.push({ wideArea: String(wideArea).trim() });
   if (unitType) conditions.push({ unitType: String(unitType).trim() as MilitaryType });
-  if (validationStatus) conditions.push({ validationStatus: String(validationStatus).trim() });
 
-  // 날짜 범위 필터 (일정) - 이제 trainingPeriods.schedules로 접근
+  // 데이터 오류 필터 (검증 실패 OR 주소 좌표 누락)
+  if (hasError === 'true' || hasError === true) {
+    conditions.push({
+      OR: [{ validationStatus: 'Invalid' }, { lat: null }],
+    });
+  }
+
+  // 날짜 범위 필터 (일정)
   if (startDate || endDate) {
     const gte = startDate ? new Date(`${startDate}T00:00:00.000Z`) : undefined;
     const lte = endDate ? new Date(`${endDate}T23:59:59.999Z`) : undefined;
@@ -64,20 +70,6 @@ export function buildUnitWhere(query: UnitQuery = {}): Prisma.UnitWhereInput {
           },
         },
       },
-    });
-  }
-
-  // 인원수 범위 필터 - plannedCount는 이제 ScheduleLocation에 있음 (trainingPeriods.schedules.scheduleLocations)
-  // TODO: 이 필터 로직은 스키마 변경에 따라 재검토 필요
-  // 임시로 주석 처리:
-  // if (minPersonnel || maxPersonnel) {
-  //   conditions.push({ ... });
-  // }
-
-  // 주소 오류 필터 (좌표 변환 실패한 부대 조회)
-  if (query.hasAddressError === 'true' || query.hasAddressError === true) {
-    conditions.push({
-      lat: null,
     });
   }
 

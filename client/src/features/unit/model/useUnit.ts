@@ -9,6 +9,7 @@ interface SearchParams {
   keyword?: string;
   startDate?: string;
   endDate?: string;
+  hasError?: boolean;
   [key: string]: unknown;
 }
 
