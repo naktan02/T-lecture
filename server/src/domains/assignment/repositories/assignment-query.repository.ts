@@ -194,6 +194,47 @@ class AssignmentQueryRepository {
   }
 
   /**
+   * 교육기간 ID 기반 스케줄 조회 (자동 배정용)
+   */
+  async findSchedulesByTrainingPeriodIds(trainingPeriodIds: number[]) {
+    if (!trainingPeriodIds || trainingPeriodIds.length === 0) return [];
+
+    return await prisma.unitSchedule.findMany({
+      where: {
+        trainingPeriodId: { in: trainingPeriodIds },
+      },
+      include: {
+        trainingPeriod: {
+          include: {
+            unit: true,
+            locations: {
+              include: {
+                scheduleLocations: true,
+              },
+            },
+          },
+        },
+        scheduleLocations: true,
+        assignments: {
+          where: { state: { in: ['Pending', 'Accepted', 'Rejected'] } },
+          include: {
+            User: {
+              include: {
+                instructor: {
+                  include: {
+                    team: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { date: 'asc' },
+    });
+  }
+
+  /**
    * ID 기반 스케줄 조회 (자동 배정용)
    */
   async findSchedulesByIds(scheduleIds: number[]) {

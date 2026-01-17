@@ -10,12 +10,7 @@ import instructorRepository from '../../instructor/instructor.repository';
 import AppError from '../../../common/errors/AppError';
 import assignmentAlgorithm from '../engine/adapter';
 import { DEFAULT_ASSIGNMENT_CONFIG } from '../engine/config-loader';
-import { cacheInstructors, getCachedInstructors } from '../../../libs/cache';
-import type {
-  InstructorRaw,
-  TrainingLocationRaw,
-  ScheduleLocationRaw,
-} from '../../../types/assignment.types';
+import type { TrainingLocationRaw, ScheduleLocationRaw } from '../../../types/assignment.types';
 
 // =============================================================================
 // Local Types (TrainingPeriod 구조 반영)
@@ -89,6 +84,29 @@ class AssignmentCommandService {
   }
 
   /**
+   * 교육기간 ID 기반 자동 배정 (클라이언트에서 trainingPeriodIds 전송)
+   */
+  async createAutoAssignmentsByPeriodIds(trainingPeriodIds: number[], instructorIds: number[]) {
+    if (!trainingPeriodIds || trainingPeriodIds.length === 0) {
+      throw new AppError('배정할 교육기간 ID가 없습니다.', 400, 'VALIDATION_ERROR');
+    }
+    if (!instructorIds || instructorIds.length === 0) {
+      throw new AppError('배정할 강사 ID가 없습니다.', 400, 'VALIDATION_ERROR');
+    }
+
+    // 1) 교육기간 ID로 스케줄 조회
+    const schedules =
+      await assignmentQueryRepository.findSchedulesByTrainingPeriodIds(trainingPeriodIds);
+    if (!schedules || schedules.length === 0) {
+      throw new AppError('조회되는 스케줄이 없습니다.', 404, 'NO_SCHEDULES');
+    }
+
+    // 스케줄 ID 추출하여 기존 로직 재사용
+    const scheduleIds = schedules.map((s) => s.id);
+    return this.createAutoAssignmentsByIds(scheduleIds, instructorIds);
+  }
+
+  /**
    * ID 기반 자동 배정 (하이브리드 방식)
    */
   async createAutoAssignmentsByIds(scheduleIds: number[], instructorIds: number[]) {
@@ -119,36 +137,12 @@ class AssignmentCommandService {
       if (d > maxDate) maxDate = d;
     }
 
-    // 3) 강사 조회 (Cache-First)
-    const { cached: cachedInstructors, missingIds: missingInstructorIds } =
-      await getCachedInstructors(instructorIds);
-
-    let instructorsFromDb: typeof cachedInstructors = [];
-    if (missingInstructorIds.length > 0) {
-      const dbInstructors = await instructorRepository.findAvailableInPeriod(
-        minDate.toISOString(),
-        maxDate.toISOString(),
-        { userIds: missingInstructorIds },
-      );
-      await cacheInstructors(
-        dbInstructors.map((i: InstructorRaw) => ({
-          userId: i.userId,
-          name: i.user?.name,
-          category: i.category,
-          teamId: (i as { teamId?: number | null }).teamId ?? null,
-          teamName: i.team?.name,
-          isTeamLeader: i.isTeamLeader ?? false,
-          generation: i.generation ?? null,
-          restrictedArea: i.restrictedArea ?? null,
-          availableDates: i.availabilities?.map((a) => a.availableOn) || [],
-          priorityCredits:
-            (i as { priorityCredit?: { credits: number } }).priorityCredit?.credits || 0,
-        })),
-      );
-      instructorsFromDb = dbInstructors as unknown as typeof cachedInstructors;
-    }
-
-    const instructors = [...cachedInstructors, ...instructorsFromDb];
+    // 3) 강사 조회 (DB 직접)
+    const instructors = await instructorRepository.findAvailableInPeriod(
+      minDate.toISOString(),
+      maxDate.toISOString(),
+      { userIds: instructorIds },
+    );
     if (!instructors || instructors.length === 0) {
       throw new AppError('배정 가능한 강사가 없습니다.', 404, 'NO_INSTRUCTORS');
     }

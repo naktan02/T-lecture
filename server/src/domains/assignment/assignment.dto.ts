@@ -106,6 +106,7 @@ class AssignmentDTO {
           list.push({
             type: 'UNIT',
             id: `u-${unit.id}-s-${schedule.id}-l-${loc.id}`,
+            trainingPeriodId: period.id, // 자동 배정용
 
             // [Card UI]
             unitName: unit.name,
