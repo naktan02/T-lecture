@@ -123,11 +123,19 @@ export const useAssignment = (): UseAssignmentReturn => {
         setActualDateRange(data.actualDateRange);
       }
 
-      // 배정 현황 설정 (상태별 분리)
+      // 배정 현황 설정 (상태별 분리) - 첫 날짜 기준 정렬
       const pending = (data as any).pendingAssignments || [];
       const accepted = (data as any).acceptedAssignments || [];
-      setAssignments(pending); // 임시 배정
-      setConfirmedAssignments(accepted); // 확정 배정
+
+      // 날짜 기준 정렬 헬퍼
+      const sortByFirstDate = (a: AssignmentData, b: AssignmentData) => {
+        const aDate = a.period?.split(' ~ ')[0] || '';
+        const bDate = b.period?.split(' ~ ')[0] || '';
+        return aDate.localeCompare(bDate);
+      };
+
+      setAssignments(pending.sort(sortByFirstDate)); // 임시 배정
+      setConfirmedAssignments(accepted.sort(sortByFirstDate)); // 확정 배정
     } catch (err) {
       setError((err as Error).message || '데이터 조회 실패');
     } finally {

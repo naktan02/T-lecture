@@ -5,6 +5,9 @@ interface PrismaError extends Error {
   code?: string;
 }
 
+// 테스트용 일일 한도 (실제 운영 시 증가)
+export const DAILY_GEOCODE_LIMIT = 100;
+
 class KakaoUsageRepository {
   // 오늘 날짜만 반환
   private _todayDateOnly(): Date {
@@ -39,6 +42,18 @@ class KakaoUsageRepository {
       }
       throw e;
     }
+  }
+
+  // 오늘 geocode 사용량 조회
+  async getTodayGeocodeUsage(): Promise<number> {
+    const usage = await this.getOrCreateToday();
+    return usage?.geocodeCount ?? 0;
+  }
+
+  // 일일 한도 확인
+  async canUseGeocode(): Promise<boolean> {
+    const current = await this.getTodayGeocodeUsage();
+    return current < DAILY_GEOCODE_LIMIT;
   }
 
   // routeCount 증가

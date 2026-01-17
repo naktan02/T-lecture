@@ -15,7 +15,7 @@ enum AssignmentState {
 }
 
 enum AssignmentRole {
-  Head       // 총괄강사 (주강사 1명일 때)
+  Head // 총괄강사 (주강사 1명일 때)
   Supervisor // 책임강사 (주강사 2명+ 중 팀장/선임)
 
   @@map("배정역할__t")
@@ -30,6 +30,7 @@ model InstructorAvailability {
 
   @@unique([instructorId, availableOn], map: "강사가능일_instructor_date_unique")
   @@index([instructorId], map: "강사가능일_instructor_idx")
+  @@index([availableOn], map: "강사가능일_date_idx")
   @@map("강사가능일")
 }
 
@@ -95,16 +96,15 @@ model SystemConfig {
 
 // 강사 패널티 (거절 시 패널티 기간 누적)
 model InstructorPenalty {
-  id         Int      @id @default(autoincrement())
-  userId     Int      @unique @map("강사id")
-  count      Int      @default(1) @map("누적횟수")
-  expiresAt  DateTime @map("만료일")
-  reasons    Json?    @map("사유목록") // [{"unit": "부대명", "date": "YYYY-MM-DD", "type": "거절"}]
-  createdAt  DateTime @default(now()) @map("생성일시")
-  updatedAt  DateTime @updatedAt @map("수정일시")
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique @map("강사id")
+  count     Int      @default(1) @map("누적횟수")
+  expiresAt DateTime @map("만료일")
+  reasons   Json?    @map("사유목록") // [{"unit": "부대명", "date": "YYYY-MM-DD", "type": "거절"}]
+  createdAt DateTime @default(now()) @map("생성일시")
+  updatedAt DateTime @updatedAt @map("수정일시")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("강사패널티")
 }
-

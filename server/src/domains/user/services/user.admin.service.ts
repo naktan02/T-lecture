@@ -2,6 +2,7 @@ import adminRepository from '../repositories/user.admin.repository';
 import userRepository from '../repositories/user.repository';
 import kakaoService from '../../../infra/kakao.service';
 import AppError from '../../../common/errors/AppError';
+import { invalidateInstructor, cacheInstructor } from '../../../libs/cache';
 import {
   UserStatus,
   AdminLevel,
@@ -350,6 +351,11 @@ class AdminService {
 
     const updatedUser = await userRepository.update(id, userData, instructorData);
 
+    // ✅ 강사 캐시 무효화 (정보 변경됨)
+    if (isInstructor) {
+      await invalidateInstructor(Number(id));
+    }
+
     // 업데이트된 availabilities를 포함해서 반환하기 위해 다시 조회 (선택사항)
     return await this.getUserById(id);
   }
@@ -359,7 +365,15 @@ class AdminService {
     const user = await userRepository.findById(id);
     if (!user) throw new AppError('해당 회원을 찾을 수 없습니다.', 404, 'USER_NOT_FOUND');
 
+    const isInstructor = !!user.instructor;
+
     await userRepository.delete(id);
+
+    // ✅ 강사 캐시 무효화
+    if (isInstructor) {
+      await invalidateInstructor(Number(id));
+    }
+
     return { message: '회원이 삭제되었습니다.' };
   }
 
@@ -379,6 +393,31 @@ class AdminService {
     }
 
     const updatedUser = await adminRepository.updateUserStatus(userId, UserStatus.APPROVED);
+
+    // ✅ 승인된 강사 캐시 저장
+    if (user.instructor) {
+      const fullUser = await userRepository.findByIdWithDetails(userId);
+      if (fullUser?.instructor) {
+        await cacheInstructor({
+          userId: Number(userId),
+          name: fullUser.name,
+          category: fullUser.instructor.category,
+          teamId: fullUser.instructor.teamId,
+          teamName: fullUser.instructor.team?.name,
+          isTeamLeader: fullUser.instructor.isTeamLeader,
+          generation: fullUser.instructor.generation,
+          restrictedArea: fullUser.instructor.restrictedArea,
+          availableDates: fullUser.instructor.availabilities?.map((a) => a.availableOn) || [],
+          priorityCredits: (fullUser.instructor as Record<string, unknown>).priorityCredit
+            ? (
+                (fullUser.instructor as Record<string, unknown>).priorityCredit as {
+                  credits: number;
+                }
+              ).credits
+            : 0,
+        });
+      }
+    }
 
     return {
       message: '승인 처리가 완료되었습니다.',
@@ -407,6 +446,33 @@ class AdminService {
     }
 
     const result = await adminRepository.updateUsersStatusBulk(userIds, UserStatus.APPROVED);
+
+    // ✅ 승인된 강사들 캐시 저장
+    for (const user of users) {
+      if (user?.instructor) {
+        const fullUser = await userRepository.findByIdWithDetails(user.id);
+        if (fullUser?.instructor) {
+          await cacheInstructor({
+            userId: user.id,
+            name: fullUser.name,
+            category: fullUser.instructor.category,
+            teamId: fullUser.instructor.teamId,
+            teamName: fullUser.instructor.team?.name,
+            isTeamLeader: fullUser.instructor.isTeamLeader,
+            generation: fullUser.instructor.generation,
+            restrictedArea: fullUser.instructor.restrictedArea,
+            availableDates: fullUser.instructor.availabilities?.map((a) => a.availableOn) || [],
+            priorityCredits: (fullUser.instructor as Record<string, unknown>).priorityCredit
+              ? (
+                  (fullUser.instructor as Record<string, unknown>).priorityCredit as {
+                    credits: number;
+                  }
+                ).credits
+              : 0,
+          });
+        }
+      }
+    }
 
     return {
       message: `${result.count}명의 유저가 승인되었습니다.`,
@@ -525,6 +591,9 @@ class AdminService {
 
     // 4. Instructor 레코드 및 관련 데이터 삭제
     await adminRepository.removeInstructor(id);
+
+    // ✅ 강사 캐시 무효화
+    await invalidateInstructor(id);
 
     return {
       message: '강사 역할이 회수되었습니다.',

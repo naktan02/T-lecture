@@ -38,34 +38,47 @@ export class AuthRepository {
     });
   }
 
-  //  리프레시 토큰 저장 (기존 토큰 삭제 후 저장)
   async saveRefreshToken(
     userId: number,
     tokenHash: string,
     expiresAt: Date,
     deviceId: string | null,
   ) {
+    // 동시 로그인 시 race condition 방지를 위해 try-catch 사용
+    // 1. 먼저 기존 토큰 삭제 시도
     if (deviceId) {
-      // 1. 기기 ID가 있으면 -> 해당 기기의 기존 토큰만 삭제 (Rotation 시에는 이전 토큰 삭제가 선행되므로 이 로직은 주로 로그인 시 사용됨)
       await prisma.refreshToken.deleteMany({
-        where: {
-          userId,
-          deviceId,
-        },
+        where: { userId, deviceId },
       });
     } else {
-      // 기기정보 없으면 유저의 모든 토큰 삭제 (단일 세션 정책이라면) -> 정책에 따라 다를 수 있으나 기존 유지
       await prisma.refreshToken.deleteMany({ where: { userId } });
     }
 
-    return await prisma.refreshToken.create({
-      data: {
-        userId,
-        token: tokenHash, // 해시된 값 저장
-        expiresAt,
-        deviceId,
-      },
-    });
+    // 2. 새 토큰 생성 시도 (중복 시 업데이트)
+    try {
+      return await prisma.refreshToken.create({
+        data: {
+          userId,
+          token: tokenHash,
+          expiresAt,
+          deviceId,
+        },
+      });
+    } catch (error: unknown) {
+      // P2002: Unique constraint violation - 동시 로그인으로 인한 중복
+      if (
+        error instanceof Error &&
+        'code' in error &&
+        (error as { code: string }).code === 'P2002'
+      ) {
+        // 이미 존재하면 업데이트
+        return await prisma.refreshToken.updateMany({
+          where: { userId, deviceId },
+          data: { token: tokenHash, expiresAt },
+        });
+      }
+      throw error;
+    }
   }
 
   // 리프레시 토큰 조회 (해시로 조회)

@@ -1,0 +1,641 @@
+{
+  "root_group": {
+    "name": "",
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": [
+      {
+        "checks": [
+          {
+            "path": "::Public - Health Check::health: 200",
+            "id": "97faea4635fa9c59bceeaff49cc4491a",
+            "passes": 330,
+            "fails": 9,
+            "name": "health: 200"
+          }
+        ],
+        "name": "Public - Health Check",
+        "path": "::Public - Health Check",
+        "id": "612b114af189338263c4bf0cb7216c62",
+        "groups": []
+      },
+      {
+        "id": "0986026797bc76ccc0673f204f587c8a",
+        "groups": [],
+        "checks": [
+            {
+              "path": "::Public - Metadata::teams: 2xx",
+              "id": "496b5401a4ebfc85aceaf4fabb68412b",
+              "passes": 330,
+              "fails": 9,
+              "name": "teams: 2xx"
+            },
+            {
+              "name": "virtues: 2xx",
+              "path": "::Public - Metadata::virtues: 2xx",
+              "id": "e56f5e42caa17dcf90670ff02f721f7e",
+              "passes": 330,
+              "fails": 9
+            },
+            {
+              "id": "3ccc783c2bbd7d0f8a2c903853f929f1",
+              "passes": 330,
+              "fails": 9,
+              "name": "instructor meta: 2xx",
+              "path": "::Public - Metadata::instructor meta: 2xx"
+            }
+          ],
+        "name": "Public - Metadata",
+        "path": "::Public - Metadata"
+      },
+      {
+        "id": "c564ee7bd95bad19ea006c018573a868",
+        "groups": [],
+        "checks": [
+            {
+              "name": "admin stats",
+              "path": "::Super Admin - Dashboard::admin stats",
+              "id": "cae23b4732d44ef9e09f50d7381347f0",
+              "passes": 45,
+              "fails": 0
+            },
+            {
+              "name": "admin instructors",
+              "path": "::Super Admin - Dashboard::admin instructors",
+              "id": "e23e48ec2b79d16323263025b96cd4b1",
+              "passes": 45,
+              "fails": 0
+            },
+            {
+              "name": "admin teams",
+              "path": "::Super Admin - Dashboard::admin teams",
+              "id": "1eb5757c3c9f0d82c395bb4cd18501f1",
+              "passes": 45,
+              "fails": 0
+            }
+          ],
+        "name": "Super Admin - Dashboard",
+        "path": "::Super Admin - Dashboard"
+      },
+      {
+        "name": "Super Admin - User Management",
+        "path": "::Super Admin - User Management",
+        "id": "4e3699823f1435be0d84defbd0115d81",
+        "groups": [],
+        "checks": [
+            {
+              "id": "cddaa812bd33636541969ad7c433ba58",
+              "passes": 45,
+              "fails": 0,
+              "name": "user list",
+              "path": "::Super Admin - User Management::user list"
+            },
+            {
+              "name": "pending users",
+              "path": "::Super Admin - User Management::pending users",
+              "id": "0383c3ab5963bb2ea82911c4376f3cfe",
+              "passes": 45,
+              "fails": 0
+            }
+          ]
+      },
+      {
+        "name": "Super Admin - System Config",
+        "path": "::Super Admin - System Config",
+        "id": "250e21bd672684201a19108972d675b4",
+        "groups": [],
+        "checks": [
+            {
+              "id": "260e199f273c052d1be74f03cea0e9e5",
+              "passes": 45,
+              "fails": 0,
+              "name": "assignment configs",
+              "path": "::Super Admin - System Config::assignment configs"
+            },
+            {
+              "path": "::Super Admin - System Config::message templates",
+              "id": "d842eafae87314e5df7e9a34e352973c",
+              "passes": 45,
+              "fails": 0,
+              "name": "message templates"
+            },
+            {
+              "name": "penalties",
+              "path": "::Super Admin - System Config::penalties",
+              "id": "5ea2b75c80ee15a58cd32e90f8c8511b",
+              "passes": 45,
+              "fails": 0
+            },
+            {
+              "name": "priority credits",
+              "path": "::Super Admin - System Config::priority credits",
+              "id": "2d88bf1addfdf2e0ddae0b56dba28084",
+              "passes": 45,
+              "fails": 0
+            }
+          ]
+      },
+      {
+        "name": "Super Admin - Data Backup",
+        "path": "::Super Admin - Data Backup",
+        "id": "ebf0120f6a46d5c9e71b689b9bec2a8a",
+        "groups": [],
+        "checks": [
+            {
+              "name": "db size",
+              "path": "::Super Admin - Data Backup::db size",
+              "id": "61bc2e6ec4ad2706d8e3ad16745d8348",
+              "passes": 45,
+              "fails": 0
+            }
+          ]
+      },
+      {
+        "checks": [
+          {
+            "id": "7e52227d60217c6be643982179cba74e",
+            "passes": 96,
+            "fails": 0,
+            "name": "units list",
+            "path": "::General Admin - Units::units list"
+          },
+          {
+            "name": "units search",
+            "path": "::General Admin - Units::units search",
+            "id": "4ea9bda23da9e7f8d994a82c5458b18c",
+            "passes": 0,
+            "fails": 96
+          }
+        ],
+        "name": "General Admin - Units",
+        "path": "::General Admin - Units",
+        "id": "a71687450ffc9daa2471c6e4aa0830e5",
+        "groups": []
+      },
+      {
+        "groups": [],
+        "checks": [
+            {
+              "id": "3cebd7380ff115ddde21880f3caf9ead",
+              "passes": 96,
+              "fails": 0,
+              "name": "notices list",
+              "path": "::General Admin - Notices::notices list"
+            }
+          ],
+        "name": "General Admin - Notices",
+        "path": "::General Admin - Notices",
+        "id": "1243afa41fd4a375ca7839b42ee94e02"
+      },
+      {
+        "name": "General Admin - Inquiries",
+        "path": "::General Admin - Inquiries",
+        "id": "553d6c6776216ba47ed7e8e012b2c9ce",
+        "groups": [],
+        "checks": [
+            {
+              "passes": 96,
+              "fails": 0,
+              "name": "inquiries list",
+              "path": "::General Admin - Inquiries::inquiries list",
+              "id": "5ff22416ac7e27fb6e9051a91b7f611e"
+            }
+          ]
+      },
+      {
+        "name": "General Admin - Assignments",
+        "path": "::General Admin - Assignments",
+        "id": "c0db929903c47d5e19be302992cb6ff1",
+        "groups": [],
+        "checks": [
+            {
+              "passes": 0,
+              "fails": 96,
+              "name": "assignment candidates",
+              "path": "::General Admin - Assignments::assignment candidates",
+              "id": "1bced7e61c5daf2361810869106e3d38"
+            }
+          ]
+      },
+      {
+        "groups": [],
+        "checks": [
+            {
+              "name": "temp dispatches",
+              "path": "::General Admin - Dispatches::temp dispatches",
+              "id": "b57b71f8f8c9f790c505cd8defec72e0",
+              "passes": 96,
+              "fails": 0
+            },
+            {
+              "name": "confirmed dispatches",
+              "path": "::General Admin - Dispatches::confirmed dispatches",
+              "id": "0695a9dfafb41f894060f46b29a5962d",
+              "passes": 96,
+              "fails": 0
+            }
+          ],
+        "name": "General Admin - Dispatches",
+        "path": "::General Admin - Dispatches",
+        "id": "3d27579d6cd2ba94ad609cb528858301"
+      },
+      {
+        "checks": [
+          {
+            "name": "my info",
+            "path": "::Instructor - Profile::my info",
+            "id": "e1a6762f8cd3e979d3df164770dc735d",
+            "passes": 164,
+            "fails": 0
+          }
+        ],
+        "name": "Instructor - Profile",
+        "path": "::Instructor - Profile",
+        "id": "670bb08470acf3e62b56d2a74aca31ca",
+        "groups": []
+      },
+      {
+        "name": "Instructor - Dashboard",
+        "path": "::Instructor - Dashboard",
+        "id": "150c3f4bdc35ae5519c1a005da8fb224",
+        "groups": [],
+        "checks": [
+            {
+              "name": "user stats",
+              "path": "::Instructor - Dashboard::user stats",
+              "id": "b43870121ba47fc3f01d2be49ba49bd2",
+              "passes": 164,
+              "fails": 0
+            },
+            {
+              "name": "recent work",
+              "path": "::Instructor - Dashboard::recent work",
+              "id": "d21e9bfc93c6b3d5e91a0812578a6547",
+              "passes": 0,
+              "fails": 164
+            }
+          ]
+      },
+      {
+        "id": "d6c0a278f21f8b364760d8511eb1941d",
+        "groups": [],
+        "checks": [
+            {
+              "name": "availability",
+              "path": "::Instructor - Availability::availability",
+              "id": "322cd911c942ebaa4c8b076dba00810e",
+              "passes": 0,
+              "fails": 164
+            },
+            {
+              "path": "::Instructor - Availability::instructor stats",
+              "id": "078d98ed222a1ac09ec64683150304ff",
+              "passes": 164,
+              "fails": 0,
+              "name": "instructor stats"
+            }
+          ],
+        "name": "Instructor - Availability",
+        "path": "::Instructor - Availability"
+      },
+      {
+        "path": "::Instructor - Assignments",
+        "id": "f237ad55e5492ce5add7efc8b4c2ccd7",
+        "groups": [],
+        "checks": [
+            {
+              "name": "my assignments",
+              "path": "::Instructor - Assignments::my assignments",
+              "id": "b40edd1c5ed023ff34bc86a2abf9508c",
+              "passes": 164,
+              "fails": 0
+            },
+            {
+              "path": "::Instructor - Assignments::my assignment list",
+              "id": "06d4349aedcff9df943b9028042057d0",
+              "passes": 164,
+              "fails": 0,
+              "name": "my assignment list"
+            },
+            {
+              "id": "c6b17f0ec1eee1c7644206ca983c8f22",
+              "passes": 164,
+              "fails": 0,
+              "name": "work history",
+              "path": "::Instructor - Assignments::work history"
+            }
+          ],
+        "name": "Instructor - Assignments"
+      },
+      {
+        "groups": [],
+        "checks": [
+            {
+              "passes": 164,
+              "fails": 0,
+              "name": "my dispatches",
+              "path": "::Instructor - Dispatches::my dispatches",
+              "id": "b1508fd7bbf6c74bab5011485ed9635e"
+            }
+          ],
+        "name": "Instructor - Dispatches",
+        "path": "::Instructor - Dispatches",
+        "id": "51faa2ab05ebe9487c63fb9aa6461bc7"
+      },
+      {
+        "checks": [
+          {
+            "name": "notices",
+            "path": "::Instructor - Notices::notices",
+            "id": "6fdcf3908c0593a3f42a837ea1e26e5d",
+            "passes": 164,
+            "fails": 0
+          }
+        ],
+        "name": "Instructor - Notices",
+        "path": "::Instructor - Notices",
+        "id": "886a1c684395a65a6cd3451cc97f89fb",
+        "groups": []
+      },
+      {
+        "checks": [
+          {
+            "name": "my inquiries",
+            "path": "::Instructor - Inquiries::my inquiries",
+            "id": "879601713f932d78a024c501e6709643",
+            "passes": 164,
+            "fails": 0
+          }
+        ],
+        "name": "Instructor - Inquiries",
+        "path": "::Instructor - Inquiries",
+        "id": "b762938b187b67af2d51e619f6a9e582",
+        "groups": []
+      }
+    ],
+    "checks": [
+      {
+        "fails": 1,
+        "name": "login success",
+        "path": "::login success",
+        "id": "5e9145e3435397cfb51ed9c3151ba755",
+        "passes": 305
+      }
+    ]
+  },
+  "options": {
+    "summaryTrendStats": [
+      "avg",
+      "min",
+      "med",
+      "max",
+      "p(90)",
+      "p(95)"
+    ],
+    "summaryTimeUnit": "",
+    "noColor": false
+  },
+  "state": {
+    "isStdErrTTY": true,
+    "testRunDurationMs": 70036.1514,
+    "isStdOutTTY": true
+  },
+  "metrics": {
+    "errors": {
+      "thresholds": {
+        "rate<0.05": {
+          "ok": false
+        }
+      },
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 1,
+        "passes": 521,
+        "fails": 0
+      }
+    },
+    "http_req_duration{expected_response:true}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 58.4972,
+        "p(95)": 112.5149,
+        "avg": 26.295267948400035,
+        "min": 0,
+        "med": 16.0276,
+        "max": 173.1156
+      }
+    },
+    "api_duration": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "p(90)": 39,
+        "p(95)": 50,
+        "avg": 21.98701298701299,
+        "min": 0,
+        "med": 18,
+        "max": 168
+      }
+    },
+    "login_duration": {
+      "contains": "default",
+      "values": {
+        "p(90)": 139,
+        "p(95)": 147.75,
+        "avg": 118.69281045751634,
+        "min": 8,
+        "med": 117,
+        "max": 191
+      },
+      "thresholds": {
+        "p(95)<500": {
+          "ok": true
+        }
+      },
+      "type": "trend"
+    },
+    "vus": {
+      "values": {
+        "min": 1,
+        "max": 11,
+        "value": 1
+      },
+      "type": "gauge",
+      "contains": "default"
+    },
+    "http_req_blocked": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 0.023427680906713166,
+        "min": 0,
+        "med": 0,
+        "max": 5.6149,
+        "p(90)": 0,
+        "p(95)": 0
+      }
+    },
+    "iterations": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 645,
+        "rate": 9.209529465949496
+      }
+    },
+    "iteration_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "min": 503.1282,
+        "med": 562.5122,
+        "max": 2009.003,
+        "p(90)": 1411.97188,
+        "p(95)": 1452.66646,
+        "avg": 912.9679558139529
+      }
+    },
+    "http_reqs": {
+      "contains": "default",
+      "values": {
+        "rate": 65.50902510042836,
+        "count": 4588
+      },
+      "type": "counter"
+    },
+    "checks": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.8785963382737576,
+        "passes": 4031,
+        "fails": 557
+      }
+    },
+    "http_req_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "max": 173.1156,
+        "p(90)": 49.38361000000003,
+        "p(95)": 108.39898999999998,
+        "avg": 24.281997994769064,
+        "min": 0,
+        "med": 14.61975
+      },
+      "thresholds": {
+        "p(95)<1000": {
+          "ok": true
+        }
+      }
+    },
+    "data_sent": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 1544363,
+        "rate": 22050.94039476304
+      }
+    },
+    "http_req_waiting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 23.894225043592016,
+        "min": 0,
+        "med": 14.26745,
+        "max": 171.8601,
+        "p(90)": 49.09047,
+        "p(95)": 108.12159
+      }
+    },
+    "vus_max": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 11,
+        "min": 11,
+        "max": 11
+      }
+    },
+    "http_req_sending": {
+      "values": {
+        "p(95)": 0,
+        "avg": 0.011293374019180472,
+        "min": 0,
+        "med": 0,
+        "max": 2.0599,
+        "p(90)": 0
+      },
+      "type": "trend",
+      "contains": "time"
+    },
+    "group_duration": {
+      "contains": "time",
+      "values": {
+        "avg": 30.470334070796568,
+        "min": 0.5065,
+        "med": 23.07135,
+        "max": 208.3868,
+        "p(90)": 64.9333,
+        "p(95)": 86.189625
+      },
+      "type": "trend"
+    },
+    "http_req_connecting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 0,
+        "avg": 0.01736580209241499,
+        "min": 0,
+        "med": 0,
+        "max": 3.8513,
+        "p(90)": 0
+      }
+    },
+    "http_req_tls_handshaking": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 0,
+        "min": 0,
+        "med": 0,
+        "max": 0,
+        "p(90)": 0,
+        "p(95)": 0
+      }
+    },
+    "http_req_receiving": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 0.9827100000000003,
+        "p(95)": 1.5130899999999998,
+        "avg": 0.37647957715780367,
+        "min": 0,
+        "med": 0,
+        "max": 6.1312
+      }
+    },
+    "data_received": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "rate": 71130.53616478418,
+        "count": 4981709
+      }
+    },
+    "http_req_failed": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.12140366172624237,
+        "passes": 557,
+        "fails": 4031
+      }
+    }
+  }
+}
