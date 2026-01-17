@@ -30,6 +30,7 @@ model InstructorAvailability {
 
   @@unique([instructorId, availableOn], map: "강사가능일_instructor_date_unique")
   @@index([instructorId], map: "강사가능일_instructor_idx")
+  @@index([availableOn], map: "강사가능일_date_idx")
   @@map("강사가능일")
 }
 

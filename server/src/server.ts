@@ -2,9 +2,8 @@
 // dotenv must be loaded first to read environment variables
 import 'dotenv/config';
 
-// Sentry: must be initialized BEFORE other imports for proper instrumentation
-import { initSentry, setupSentryErrorHandler } from './config/sentry';
-initSentry();
+// Sentry: setupSentryErrorHandler is still needed for Express error handling
+import { setupSentryErrorHandler } from './config/sentry';
 
 import express, { Request, Response, NextFunction } from 'express';
 import compression from 'compression';

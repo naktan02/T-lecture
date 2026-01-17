@@ -89,6 +89,7 @@ model UnitSchedule {
   scheduleLocations ScheduleLocation[]
   assignments       InstructorUnitAssignment[]
 
+  @@index([date], map: "부대일정_date_idx")
   @@map("부대일정")
 }
 
