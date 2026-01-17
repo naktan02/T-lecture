@@ -239,6 +239,9 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
   } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  // 강사 상세정보 모달 상태
+  const [selectedInstructorId, setSelectedInstructorId] = useState<number | null>(null);
+
   // 로컬 변경 상태 추적
   const [changeSet, setChangeSet] = useState<AssignmentChangeSet>({
     add: [],
@@ -685,7 +688,8 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                         .map((inst) => (
                           <div
                             key={inst.instructorId}
-                            className={`group relative flex items-center gap-2 border px-3 py-1.5 rounded-lg shadow-sm hover:shadow transition-all ${
+                            onClick={() => setSelectedInstructorId(inst.instructorId)}
+                            className={`group relative flex items-center gap-2 border px-3 py-1.5 rounded-lg shadow-sm hover:shadow transition-all cursor-pointer ${
                               inst.state === 'Rejected'
                                 ? 'bg-gray-100 border-gray-300 opacity-60'
                                 : inst.role === 'Head'
@@ -735,12 +739,13 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                             />
 
                             <button
-                              onClick={() =>
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setRemoveTarget({
                                   unitScheduleId: dateInfo.unitScheduleId,
                                   instructorId: inst.instructorId,
-                                })
-                              }
+                                });
+                              }}
                               className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-600"
                             >
                               ✕
@@ -888,6 +893,33 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
         onConfirm={confirmRemove}
         onCancel={() => setRemoveTarget(null)}
       />
+
+      {/* 6. 강사 상세정보 모달 */}
+      {selectedInstructorId &&
+        (() => {
+          // 배정된 강사 목록에서 찾기
+          const inst = group.trainingLocations
+            .flatMap((loc) => loc.dates)
+            .flatMap((d) => d.instructors)
+            .find((i) => i.instructorId === selectedInstructorId);
+          // 가용강사 목록에서 상세 데이터 찾기
+          const detail = availableInstructors.find((i) => i.id === selectedInstructorId);
+          if (!inst && !detail) return null;
+          return (
+            <AssignmentDetailModal
+              item={
+                {
+                  type: 'INSTRUCTOR',
+                  name: inst?.name || detail?.name || '',
+                  teamName: inst?.team || detail?.teamName || detail?.team || '',
+                  category: inst?.category || detail?.category || '',
+                  ...detail,
+                } as Item
+              }
+              onClose={() => setSelectedInstructorId(null)}
+            />
+          );
+        })()}
     </div>
   );
 };
