@@ -209,8 +209,15 @@ export class AssignmentEngine {
     }
 
     // Slack이 낮은 번들의 스케줄 먼저, 같은 번들 내에서는 날짜순
+    // 핵심: 같은 trainingPeriodId는 연속으로 처리 (연속일 보너스 적용을 위해)
     allSchedules.sort((a, b) => {
+      // 1. 먼저 bundleRisk로 정렬 (위험한 번들 먼저)
       if (a.bundleRisk !== b.bundleRisk) return a.bundleRisk - b.bundleRisk;
+
+      // 2. 같은 bundleRisk면 trainingPeriodId로 그룹화 (같은 교육기간 연속 처리)
+      if (a.trainingPeriodId !== b.trainingPeriodId) return a.trainingPeriodId - b.trainingPeriodId;
+
+      // 3. 같은 교육기간 내에서는 날짜순
       return new Date(a.schedule.date).getTime() - new Date(b.schedule.date).getTime();
     });
 
