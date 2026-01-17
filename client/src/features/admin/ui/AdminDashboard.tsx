@@ -147,21 +147,6 @@ export const AdminDashboard: React.FC = () => {
     return { startDate: formatDate(start), endDate: formatDate(end) };
   }, [rangeType, startDate, endDate]);
 
-  // Load data
-  const loadData = useCallback(async () => {
-    const { startDate: start, endDate: end } = getDateRange();
-
-    // If custom and dates are missing, don't fetch yet
-    if (rangeType === 'custom' && (!start || !end)) {
-      return;
-    }
-
-    // Abort previous controller if exists
-    // We cannot use a simple ref here easily because 'loadData' is recreated on deps change.
-    // Instead of ref in useCallback (which is tricky), let's rely on useEffect cleanup.
-    // However, since we call loadData imperatively (retry button), we need a ref.
-  }, [getDateRange, rangeType]);
-
   // Using a ref to track the current controller is cleaner.
   const abortControllerRef = React.useRef<AbortController | null>(null);
 
