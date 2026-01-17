@@ -33,6 +33,7 @@ export interface UnitScheduleDetail {
 export interface UnitSchedule {
   type: 'UNIT';
   id: string; // "u-${unitId}-s-${scheduleId}-l-${locationId}" 형식
+  trainingPeriodId: number; // 자동 배정용 교육기간 ID
   unitName: string;
   originalPlace: string;
   actualCount: number | null; // 서버에서 계산된 참여인원
@@ -112,12 +113,12 @@ export const getAssignmentCandidates = async (
 };
 
 export const postAutoAssignment = async (
-  scheduleIds: number[],
+  trainingPeriodIds: number[],
   instructorIds: number[],
 ): Promise<AutoAssignmentResult> => {
   const res = await apiClient('/api/v1/assignments/auto-assign', {
     method: 'POST',
-    body: JSON.stringify({ scheduleIds, instructorIds }),
+    body: JSON.stringify({ trainingPeriodIds, instructorIds }),
   });
   if (!res.ok) throw new Error('자동 배정 실행에 실패했습니다.');
 

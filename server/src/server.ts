@@ -5,7 +5,7 @@ import 'dotenv/config';
 // Sentry: setupSentryErrorHandler is still needed for Express error handling
 import { setupSentryErrorHandler } from './config/sentry';
 
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response } from 'express';
 import compression from 'compression';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -23,19 +23,6 @@ const isProd = process.env.NODE_ENV === 'production';
 
 // ✅ gzip 압축 (가장 먼저 적용 - 모든 응답 압축)
 app.use(compression());
-
-// ✅ Cache-Control 및 ETag 미들웨어 (API 응답용)
-const cacheMiddleware = (_req: Request, res: Response, next: NextFunction) => {
-  // API 응답에 ETag 활성화 (Express 기본 지원)
-  res.set('ETag', 'true');
-
-  // 정적 자원이 아닌 API는 짧은 캐시 또는 no-cache
-  // 클라이언트가 ETag로 304 응답 받을 수 있도록 must-revalidate 사용
-  res.set('Cache-Control', 'private, no-cache, must-revalidate');
-
-  next();
-};
-app.use('/api', cacheMiddleware);
 
 // Render 같은 리버스 프록시 뒤에서 실행될 때 필요 (rate-limit이 IP를 올바르게 인식하도록)
 if (isProd) {

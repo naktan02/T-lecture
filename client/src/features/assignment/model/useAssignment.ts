@@ -143,28 +143,23 @@ export const useAssignment = (): UseAssignmentReturn => {
     }
   }, [dateRange]);
 
-  // 2. 자동 배정 실행 (ID 기반 하이브리드)
+  // 2. 자동 배정 실행 (trainingPeriodIds 기반)
   const executeAutoAssign = async (): Promise<void> => {
     setLoading(true);
     try {
-      // 화면에 표시된 스케줄 ID 추출
-      const scheduleIds: number[] = [];
-      for (const unit of groupUnassignedUnits(sourceData.units)) {
-        for (const loc of unit.locations) {
-          for (const sched of loc.schedules) {
-            const schedId = parseInt(sched.scheduleId, 10);
-            if (!isNaN(schedId) && !scheduleIds.includes(schedId)) {
-              scheduleIds.push(schedId);
-            }
-          }
+      // 화면에 표시된 교육기간 ID 추출 (중복 제거)
+      const trainingPeriodIds: number[] = [];
+      for (const unit of sourceData.units) {
+        if (unit.trainingPeriodId && !trainingPeriodIds.includes(unit.trainingPeriodId)) {
+          trainingPeriodIds.push(unit.trainingPeriodId);
         }
       }
 
       // 화면에 표시된 강사 ID 추출
       const instructorIds = sourceData.instructors.map((i) => i.id);
 
-      if (scheduleIds.length === 0) {
-        showError('배정할 스케줄이 없습니다.');
+      if (trainingPeriodIds.length === 0) {
+        showError('배정할 교육기간이 없습니다.');
         return;
       }
       if (instructorIds.length === 0) {
@@ -173,7 +168,7 @@ export const useAssignment = (): UseAssignmentReturn => {
       }
 
       // 서버 API 호출 -> 바로 저장됨
-      const result = await postAutoAssignment(scheduleIds, instructorIds);
+      const result = await postAutoAssignment(trainingPeriodIds, instructorIds);
 
       logger.debug('자동 배정 결과:', result);
       showSuccess(`${result.summary.created}건 배정 완료! (${result.summary.skipped}건 건너뜀)`);

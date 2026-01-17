@@ -3,7 +3,6 @@ import userRepository from '../repositories/user.repository';
 import kakaoService from '../../../infra/kakao.service';
 import distanceService from '../../distance/distance.service';
 import AppError from '../../../common/errors/AppError';
-import { invalidateInstructor } from '../../../libs/cache';
 import { Prisma } from '../../../generated/prisma/client.js';
 
 interface UpdateProfileDto {
@@ -120,11 +119,6 @@ class UserMeService {
 
     const updatedUser = await userRepository.update(userId, userData, instructorData);
 
-    // ✅ 강사 캐시 무효화 (정보 변경됨)
-    if (isInstructor) {
-      await invalidateInstructor(Number(userId));
-    }
-
     const { password: _password, ...result } = updatedUser;
     // instructor가 null이면 응답에서 제외
     const { instructor, ...restResult } = result;
@@ -144,11 +138,6 @@ class UserMeService {
     const isInstructor = !!user.instructor;
 
     await userRepository.delete(userId);
-
-    // ✅ 강사 캐시 무효화
-    if (isInstructor) {
-      await invalidateInstructor(Number(userId));
-    }
 
     return { message: '회원 탈퇴가 완료되었습니다.' };
   }
@@ -191,9 +180,6 @@ class UserMeService {
 
     // 주소 변경 시 해당 강사의 모든 거리 무효화 (재계산 대기열에 추가)
     await distanceService.invalidateDistancesForInstructor(Number(userId));
-
-    // ✅ 강사 캐시 무효화 (주소 변경됨)
-    await invalidateInstructor(Number(userId));
 
     const { password: _password, ...result } = updatedUser;
     const { instructor, ...restResult } = result;
