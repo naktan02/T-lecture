@@ -146,6 +146,7 @@ export const UnitList = ({
                   className={`
                     transition-all duration-200 cursor-pointer
                     ${isSelected ? 'bg-green-50' : 'hover:bg-gray-50'}
+                    ${unit.validationStatus === 'Invalid' ? 'bg-red-50' : ''}
                   `}
                   onClick={() => onUnitClick?.(unit)}
                 >
@@ -161,13 +162,17 @@ export const UnitList = ({
                   <td className="px-4 py-3">
                     <div className="font-semibold text-gray-900 flex items-center gap-1">
                       {unit.name}
-                      {/* 주소 오류 경고 아이콘 */}
-                      {(!unit.addressDetail || unit.lat === null) && (
+                      {/* 주소 오류 및 데이터 검증 오류 경고 아이콘 */}
+                      {(unit.validationStatus === 'Invalid' ||
+                        !unit.addressDetail ||
+                        unit.lat === null) && (
                         <span
                           title={
-                            !unit.addressDetail
-                              ? '주소가 입력되지 않았습니다.'
-                              : '주소 좌표를 찾을 수 없습니다. 주소를 확인해주세요.'
+                            unit.validationStatus === 'Invalid'
+                              ? `[데이터 오류] ${unit.validationMessage}`
+                              : !unit.addressDetail
+                                ? '주소가 입력되지 않았습니다.'
+                                : '주소 좌표를 찾을 수 없습니다. 주소를 확인해주세요.'
                           }
                         >
                           <svg

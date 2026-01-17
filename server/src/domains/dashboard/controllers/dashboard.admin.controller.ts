@@ -57,7 +57,9 @@ function getDateRangeFromPeriod(period: PeriodFilter): { start: Date; end: Date 
 class DashboardAdminController {
   getStats = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const stats = await dashboardAdminService.getDashboardStats();
+      // 기간 필터 추출
+      const { start, end } = this.getDatesFromQuery(req.query);
+      const stats = await dashboardAdminService.getDashboardStats(start, end);
       res.status(200).json(stats);
     } catch (error) {
       next(error);
@@ -169,7 +171,8 @@ class DashboardAdminController {
         res.status(400).json({ message: 'Invalid status parameter' });
         return;
       }
-      const data = await dashboardAdminService.getUnitsByStatus(status);
+      const { start, end } = this.getDatesFromQuery(req.query);
+      const data = await dashboardAdminService.getUnitsByStatus(status, start, end);
       res.status(200).json(data);
     } catch (error) {
       next(error);

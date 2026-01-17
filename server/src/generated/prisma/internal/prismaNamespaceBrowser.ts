@@ -281,7 +281,9 @@ export const UnitScalarFieldEnum = {
   addressDetail: 'addressDetail',
   detailAddress: 'detailAddress',
   lat: 'lat',
-  lng: 'lng'
+  lng: 'lng',
+  validationStatus: 'validationStatus',
+  validationMessage: 'validationMessage'
 } as const
 
 export type UnitScalarFieldEnum = (typeof UnitScalarFieldEnum)[keyof typeof UnitScalarFieldEnum]

@@ -81,6 +81,10 @@ export interface Unit {
 
   // 교육기간 (핵심)
   trainingPeriods?: TrainingPeriod[];
+
+  // 데이터 검증 상태 (2025.01.17 추가)
+  validationStatus?: 'Valid' | 'Invalid';
+  validationMessage?: string | null;
 }
 
 // ===== Update Payloads =====
