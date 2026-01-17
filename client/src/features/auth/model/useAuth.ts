@@ -1,5 +1,5 @@
 // client/src/features/auth/model/useAuth.ts
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, NavigateFunction } from 'react-router-dom';
 import { login as loginApi, logout as logoutApi, LoginPayload, LoginResponse } from '../authApi';
 import { USER_ROLES, ADMIN_LEVELS } from '../../../shared/constants';
@@ -19,6 +19,7 @@ type UserRoleType = 'SUPER_ADMIN' | 'ADMIN' | 'USER';
 
 export const useAuth = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // 현재 저장된 role 및 강사 여부 가져오기
   const userRole = localStorage.getItem('userRole') as UserRoleType | null;
@@ -52,6 +53,8 @@ export const useAuth = () => {
   const logoutMutation = useMutation({
     mutationFn: logoutApi,
     onSettled: () => {
+      // React Query 캐시 전체 삭제 (이전 사용자 데이터 제거)
+      queryClient.clear();
       localStorage.clear();
       navigate('/login');
     },
