@@ -51,6 +51,8 @@ export type UnitMinAggregateOutputType = {
   detailAddress: string | null
   lat: number | null
   lng: number | null
+  validationStatus: string | null
+  validationMessage: string | null
 }
 
 export type UnitMaxAggregateOutputType = {
@@ -64,6 +66,8 @@ export type UnitMaxAggregateOutputType = {
   detailAddress: string | null
   lat: number | null
   lng: number | null
+  validationStatus: string | null
+  validationMessage: string | null
 }
 
 export type UnitCountAggregateOutputType = {
@@ -77,6 +81,8 @@ export type UnitCountAggregateOutputType = {
   detailAddress: number
   lat: number
   lng: number
+  validationStatus: number
+  validationMessage: number
   _all: number
 }
 
@@ -106,6 +112,8 @@ export type UnitMinAggregateInputType = {
   detailAddress?: true
   lat?: true
   lng?: true
+  validationStatus?: true
+  validationMessage?: true
 }
 
 export type UnitMaxAggregateInputType = {
@@ -119,6 +127,8 @@ export type UnitMaxAggregateInputType = {
   detailAddress?: true
   lat?: true
   lng?: true
+  validationStatus?: true
+  validationMessage?: true
 }
 
 export type UnitCountAggregateInputType = {
@@ -132,6 +142,8 @@ export type UnitCountAggregateInputType = {
   detailAddress?: true
   lat?: true
   lng?: true
+  validationStatus?: true
+  validationMessage?: true
   _all?: true
 }
 
@@ -232,6 +244,8 @@ export type UnitGroupByOutputType = {
   detailAddress: string | null
   lat: number | null
   lng: number | null
+  validationStatus: string
+  validationMessage: string | null
   _count: UnitCountAggregateOutputType | null
   _avg: UnitAvgAggregateOutputType | null
   _sum: UnitSumAggregateOutputType | null
@@ -268,6 +282,8 @@ export type UnitWhereInput = {
   detailAddress?: Prisma.StringNullableFilter<"Unit"> | string | null
   lat?: Prisma.FloatNullableFilter<"Unit"> | number | null
   lng?: Prisma.FloatNullableFilter<"Unit"> | number | null
+  validationStatus?: Prisma.StringFilter<"Unit"> | string
+  validationMessage?: Prisma.StringNullableFilter<"Unit"> | string | null
   trainingPeriods?: Prisma.TrainingPeriodListRelationFilter
   distances?: Prisma.InstructorUnitDistanceListRelationFilter
 }
@@ -283,6 +299,8 @@ export type UnitOrderByWithRelationInput = {
   detailAddress?: Prisma.SortOrderInput | Prisma.SortOrder
   lat?: Prisma.SortOrderInput | Prisma.SortOrder
   lng?: Prisma.SortOrderInput | Prisma.SortOrder
+  validationStatus?: Prisma.SortOrder
+  validationMessage?: Prisma.SortOrderInput | Prisma.SortOrder
   trainingPeriods?: Prisma.TrainingPeriodOrderByRelationAggregateInput
   distances?: Prisma.InstructorUnitDistanceOrderByRelationAggregateInput
 }
@@ -301,6 +319,8 @@ export type UnitWhereUniqueInput = Prisma.AtLeast<{
   detailAddress?: Prisma.StringNullableFilter<"Unit"> | string | null
   lat?: Prisma.FloatNullableFilter<"Unit"> | number | null
   lng?: Prisma.FloatNullableFilter<"Unit"> | number | null
+  validationStatus?: Prisma.StringFilter<"Unit"> | string
+  validationMessage?: Prisma.StringNullableFilter<"Unit"> | string | null
   trainingPeriods?: Prisma.TrainingPeriodListRelationFilter
   distances?: Prisma.InstructorUnitDistanceListRelationFilter
 }, "id" | "name">
@@ -316,6 +336,8 @@ export type UnitOrderByWithAggregationInput = {
   detailAddress?: Prisma.SortOrderInput | Prisma.SortOrder
   lat?: Prisma.SortOrderInput | Prisma.SortOrder
   lng?: Prisma.SortOrderInput | Prisma.SortOrder
+  validationStatus?: Prisma.SortOrder
+  validationMessage?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.UnitCountOrderByAggregateInput
   _avg?: Prisma.UnitAvgOrderByAggregateInput
   _max?: Prisma.UnitMaxOrderByAggregateInput
@@ -337,6 +359,8 @@ export type UnitScalarWhereWithAggregatesInput = {
   detailAddress?: Prisma.StringNullableWithAggregatesFilter<"Unit"> | string | null
   lat?: Prisma.FloatNullableWithAggregatesFilter<"Unit"> | number | null
   lng?: Prisma.FloatNullableWithAggregatesFilter<"Unit"> | number | null
+  validationStatus?: Prisma.StringWithAggregatesFilter<"Unit"> | string
+  validationMessage?: Prisma.StringNullableWithAggregatesFilter<"Unit"> | string | null
 }
 
 export type UnitCreateInput = {
@@ -349,6 +373,8 @@ export type UnitCreateInput = {
   detailAddress?: string | null
   lat?: number | null
   lng?: number | null
+  validationStatus?: string
+  validationMessage?: string | null
   trainingPeriods?: Prisma.TrainingPeriodCreateNestedManyWithoutUnitInput
   distances?: Prisma.InstructorUnitDistanceCreateNestedManyWithoutUnitInput
 }
@@ -364,6 +390,8 @@ export type UnitUncheckedCreateInput = {
   detailAddress?: string | null
   lat?: number | null
   lng?: number | null
+  validationStatus?: string
+  validationMessage?: string | null
   trainingPeriods?: Prisma.TrainingPeriodUncheckedCreateNestedManyWithoutUnitInput
   distances?: Prisma.InstructorUnitDistanceUncheckedCreateNestedManyWithoutUnitInput
 }
@@ -378,6 +406,8 @@ export type UnitUpdateInput = {
   detailAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   lng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  validationStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  validationMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   trainingPeriods?: Prisma.TrainingPeriodUpdateManyWithoutUnitNestedInput
   distances?: Prisma.InstructorUnitDistanceUpdateManyWithoutUnitNestedInput
 }
@@ -393,6 +423,8 @@ export type UnitUncheckedUpdateInput = {
   detailAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   lng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  validationStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  validationMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   trainingPeriods?: Prisma.TrainingPeriodUncheckedUpdateManyWithoutUnitNestedInput
   distances?: Prisma.InstructorUnitDistanceUncheckedUpdateManyWithoutUnitNestedInput
 }
@@ -408,6 +440,8 @@ export type UnitCreateManyInput = {
   detailAddress?: string | null
   lat?: number | null
   lng?: number | null
+  validationStatus?: string
+  validationMessage?: string | null
 }
 
 export type UnitUpdateManyMutationInput = {
@@ -420,6 +454,8 @@ export type UnitUpdateManyMutationInput = {
   detailAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   lng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  validationStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  validationMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type UnitUncheckedUpdateManyInput = {
@@ -433,6 +469,8 @@ export type UnitUncheckedUpdateManyInput = {
   detailAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   lng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  validationStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  validationMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type UnitScalarRelationFilter = {
@@ -451,6 +489,8 @@ export type UnitCountOrderByAggregateInput = {
   detailAddress?: Prisma.SortOrder
   lat?: Prisma.SortOrder
   lng?: Prisma.SortOrder
+  validationStatus?: Prisma.SortOrder
+  validationMessage?: Prisma.SortOrder
 }
 
 export type UnitAvgOrderByAggregateInput = {
@@ -471,6 +511,8 @@ export type UnitMaxOrderByAggregateInput = {
   detailAddress?: Prisma.SortOrder
   lat?: Prisma.SortOrder
   lng?: Prisma.SortOrder
+  validationStatus?: Prisma.SortOrder
+  validationMessage?: Prisma.SortOrder
 }
 
 export type UnitMinOrderByAggregateInput = {
@@ -484,6 +526,8 @@ export type UnitMinOrderByAggregateInput = {
   detailAddress?: Prisma.SortOrder
   lat?: Prisma.SortOrder
   lng?: Prisma.SortOrder
+  validationStatus?: Prisma.SortOrder
+  validationMessage?: Prisma.SortOrder
 }
 
 export type UnitSumOrderByAggregateInput = {
@@ -543,6 +587,8 @@ export type UnitCreateWithoutDistancesInput = {
   detailAddress?: string | null
   lat?: number | null
   lng?: number | null
+  validationStatus?: string
+  validationMessage?: string | null
   trainingPeriods?: Prisma.TrainingPeriodCreateNestedManyWithoutUnitInput
 }
 
@@ -557,6 +603,8 @@ export type UnitUncheckedCreateWithoutDistancesInput = {
   detailAddress?: string | null
   lat?: number | null
   lng?: number | null
+  validationStatus?: string
+  validationMessage?: string | null
   trainingPeriods?: Prisma.TrainingPeriodUncheckedCreateNestedManyWithoutUnitInput
 }
 
@@ -586,6 +634,8 @@ export type UnitUpdateWithoutDistancesInput = {
   detailAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   lng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  validationStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  validationMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   trainingPeriods?: Prisma.TrainingPeriodUpdateManyWithoutUnitNestedInput
 }
 
@@ -600,6 +650,8 @@ export type UnitUncheckedUpdateWithoutDistancesInput = {
   detailAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   lng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  validationStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  validationMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   trainingPeriods?: Prisma.TrainingPeriodUncheckedUpdateManyWithoutUnitNestedInput
 }
 
@@ -613,6 +665,8 @@ export type UnitCreateWithoutTrainingPeriodsInput = {
   detailAddress?: string | null
   lat?: number | null
   lng?: number | null
+  validationStatus?: string
+  validationMessage?: string | null
   distances?: Prisma.InstructorUnitDistanceCreateNestedManyWithoutUnitInput
 }
 
@@ -627,6 +681,8 @@ export type UnitUncheckedCreateWithoutTrainingPeriodsInput = {
   detailAddress?: string | null
   lat?: number | null
   lng?: number | null
+  validationStatus?: string
+  validationMessage?: string | null
   distances?: Prisma.InstructorUnitDistanceUncheckedCreateNestedManyWithoutUnitInput
 }
 
@@ -656,6 +712,8 @@ export type UnitUpdateWithoutTrainingPeriodsInput = {
   detailAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   lng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  validationStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  validationMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   distances?: Prisma.InstructorUnitDistanceUpdateManyWithoutUnitNestedInput
 }
 
@@ -670,6 +728,8 @@ export type UnitUncheckedUpdateWithoutTrainingPeriodsInput = {
   detailAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   lng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  validationStatus?: Prisma.StringFieldUpdateOperationsInput | string
+  validationMessage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   distances?: Prisma.InstructorUnitDistanceUncheckedUpdateManyWithoutUnitNestedInput
 }
 
@@ -724,6 +784,8 @@ export type UnitSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   detailAddress?: boolean
   lat?: boolean
   lng?: boolean
+  validationStatus?: boolean
+  validationMessage?: boolean
   trainingPeriods?: boolean | Prisma.Unit$trainingPeriodsArgs<ExtArgs>
   distances?: boolean | Prisma.Unit$distancesArgs<ExtArgs>
   _count?: boolean | Prisma.UnitCountOutputTypeDefaultArgs<ExtArgs>
@@ -740,6 +802,8 @@ export type UnitSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   detailAddress?: boolean
   lat?: boolean
   lng?: boolean
+  validationStatus?: boolean
+  validationMessage?: boolean
 }, ExtArgs["result"]["unit"]>
 
 export type UnitSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -753,6 +817,8 @@ export type UnitSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   detailAddress?: boolean
   lat?: boolean
   lng?: boolean
+  validationStatus?: boolean
+  validationMessage?: boolean
 }, ExtArgs["result"]["unit"]>
 
 export type UnitSelectScalar = {
@@ -766,9 +832,11 @@ export type UnitSelectScalar = {
   detailAddress?: boolean
   lat?: boolean
   lng?: boolean
+  validationStatus?: boolean
+  validationMessage?: boolean
 }
 
-export type UnitOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "lectureYear" | "name" | "unitType" | "wideArea" | "region" | "addressDetail" | "detailAddress" | "lat" | "lng", ExtArgs["result"]["unit"]>
+export type UnitOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "lectureYear" | "name" | "unitType" | "wideArea" | "region" | "addressDetail" | "detailAddress" | "lat" | "lng" | "validationStatus" | "validationMessage", ExtArgs["result"]["unit"]>
 export type UnitInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   trainingPeriods?: boolean | Prisma.Unit$trainingPeriodsArgs<ExtArgs>
   distances?: boolean | Prisma.Unit$distancesArgs<ExtArgs>
@@ -794,6 +862,8 @@ export type $UnitPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     detailAddress: string | null
     lat: number | null
     lng: number | null
+    validationStatus: string
+    validationMessage: string | null
   }, ExtArgs["result"]["unit"]>
   composites: {}
 }
@@ -1229,6 +1299,8 @@ export interface UnitFieldRefs {
   readonly detailAddress: Prisma.FieldRef<"Unit", 'String'>
   readonly lat: Prisma.FieldRef<"Unit", 'Float'>
   readonly lng: Prisma.FieldRef<"Unit", 'Float'>
+  readonly validationStatus: Prisma.FieldRef<"Unit", 'String'>
+  readonly validationMessage: Prisma.FieldRef<"Unit", 'String'>
 }
     
 

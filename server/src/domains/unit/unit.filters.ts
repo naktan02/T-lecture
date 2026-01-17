@@ -17,8 +17,17 @@ export function buildPaging(query: UnitQuery = {}): PagingResult {
 
 // 검색 조건 빌더 (Filter DTO -> Prisma Where)
 export function buildUnitWhere(query: UnitQuery = {}): Prisma.UnitWhereInput {
-  const { keyword, region, wideArea, unitType, startDate, endDate, minPersonnel, maxPersonnel } =
-    query;
+  const {
+    keyword,
+    region,
+    wideArea,
+    unitType,
+    startDate,
+    endDate,
+    // minPersonnel,
+    // maxPersonnel,
+    validationStatus,
+  } = query;
 
   const conditions: Prisma.UnitWhereInput[] = [];
 
@@ -38,6 +47,7 @@ export function buildUnitWhere(query: UnitQuery = {}): Prisma.UnitWhereInput {
   if (region) conditions.push({ region: { contains: String(region).trim() } });
   if (wideArea) conditions.push({ wideArea: String(wideArea).trim() });
   if (unitType) conditions.push({ unitType: String(unitType).trim() as MilitaryType });
+  if (validationStatus) conditions.push({ validationStatus: String(validationStatus).trim() });
 
   // 날짜 범위 필터 (일정) - 이제 trainingPeriods.schedules로 접근
   if (startDate || endDate) {
@@ -73,9 +83,3 @@ export function buildUnitWhere(query: UnitQuery = {}): Prisma.UnitWhereInput {
 
   return conditions.length > 0 ? { AND: conditions } : {};
 }
-
-// CommonJS 호환
-module.exports = {
-  buildPaging,
-  buildUnitWhere,
-};

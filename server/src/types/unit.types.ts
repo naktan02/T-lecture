@@ -168,6 +168,7 @@ export interface UnitQueryInput {
   minPersonnel?: string | number;
   maxPersonnel?: string | number;
   hasAddressError?: string | boolean;
+  validationStatus?: string;
 }
 
 // Excel 파일 동적 데이터

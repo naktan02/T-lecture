@@ -21,6 +21,10 @@ model Unit {
   lat           Float?        @map("위도")
   lng           Float?        @map("경도")
 
+  // 데이터 검증 상태
+  validationStatus  String   @default("Valid") @map("검증상태") // "Valid", "Invalid"
+  validationMessage String?  @map("검증메시지") @db.Text
+
   trainingPeriods TrainingPeriod[]
   distances       InstructorUnitDistance[]
 

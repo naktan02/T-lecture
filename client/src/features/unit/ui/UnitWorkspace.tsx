@@ -11,6 +11,7 @@ interface SearchParams {
   keyword: string;
   startDate: string;
   endDate: string;
+  validationStatus?: string;
   [key: string]: unknown;
 }
 

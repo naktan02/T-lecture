@@ -129,6 +129,8 @@ export interface UnitListItem {
   scheduleCount: number;
   instructorCount: number;
   dateRange: string;
+  validationStatus: 'Valid' | 'Invalid';
+  validationMessage: string | null;
 }
 
 export interface UnitDetail {
@@ -144,6 +146,8 @@ export interface UnitDetail {
     date: string;
     instructors: { id: number; name: string }[];
   }[];
+  validationStatus: 'Valid' | 'Invalid';
+  validationMessage: string | null;
 }
 
 export const fetchUnitsByStatus = async (

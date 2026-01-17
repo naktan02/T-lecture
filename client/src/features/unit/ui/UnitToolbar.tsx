@@ -7,6 +7,7 @@ interface SearchFilters {
   startDate: string;
   endDate: string;
   hasAddressError?: boolean;
+  validationStatus?: string;
   [key: string]: unknown;
 }
 
@@ -32,6 +33,7 @@ export const UnitToolbar = ({
     startDate: '',
     endDate: '',
     hasAddressError: false,
+    validationStatus: '',
   });
 
   // ✅ 업로드 확인 모달 상태
@@ -62,8 +64,9 @@ export const UnitToolbar = ({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
-    const { name, value, type, checked } = e.target;
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>): void => {
+    const { name, value, type } = e.target;
+    const checked = (e.target as HTMLInputElement).checked;
     setFilters((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
@@ -80,8 +83,15 @@ export const UnitToolbar = ({
   };
 
   const handleReset = (): void => {
-    setFilters({ keyword: '', startDate: '', endDate: '', hasAddressError: false });
-    onSearch({ keyword: '', startDate: '', endDate: '', hasAddressError: false });
+    const initial = {
+      keyword: '',
+      startDate: '',
+      endDate: '',
+      hasAddressError: false,
+      validationStatus: '',
+    };
+    setFilters(initial);
+    onSearch(initial);
   };
 
   return (
@@ -228,6 +238,20 @@ export const UnitToolbar = ({
           </span>
         </label>
 
+        {/* 검증 상태 필터 */}
+        <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-2 shadow-sm">
+          <select
+            name="validationStatus"
+            value={filters.validationStatus}
+            onChange={handleChange}
+            className="text-sm bg-transparent outline-none py-2 cursor-pointer text-gray-700"
+          >
+            <option value="">전체 상태</option>
+            <option value="Valid">정상 데이터</option>
+            <option value="Invalid">오류 데이터</option>
+          </select>
+        </div>
+
         {/* 검색어 */}
         <div className="flex-1 min-w-[200px] relative">
           <svg
@@ -265,7 +289,11 @@ export const UnitToolbar = ({
         </button>
 
         {/* 초기화 */}
-        {(filters.keyword || filters.startDate || filters.endDate || filters.hasAddressError) && (
+        {(filters.keyword ||
+          filters.startDate ||
+          filters.endDate ||
+          filters.hasAddressError ||
+          filters.validationStatus) && (
           <button
             onClick={handleReset}
             className="px-3 py-2 text-gray-500 hover:text-gray-700 text-sm transition-colors hover:bg-gray-50 rounded-lg"
@@ -349,6 +377,20 @@ export const UnitToolbar = ({
               주소 오류 데이터만 보기
             </span>
           </label>
+
+          {/* 검증 상태 필터 (모바일) */}
+          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 shadow-sm">
+            <select
+              name="validationStatus"
+              value={filters.validationStatus}
+              onChange={handleChange}
+              className="w-full text-sm bg-transparent outline-none py-3 cursor-pointer text-gray-700"
+            >
+              <option value="">전체 검증 상태</option>
+              <option value="Valid">정상 데이터</option>
+              <option value="Invalid">오류 데이터</option>
+            </select>
+          </div>
         </div>
       )}
 

@@ -423,7 +423,7 @@ class DashboardAdminService {
     const dateFilter = start && end ? { date: { gte: start, lte: end } } : undefined;
 
     // 최적화: 필요한 필드만 select
-    const units = await prisma.unit.findMany({
+    const units = (await prisma.unit.findMany({
       select: {
         id: true,
         name: true,
@@ -442,7 +442,7 @@ class DashboardAdminService {
           },
         },
       },
-    });
+    })) as any;
 
     const result: UnitListItem[] = [];
 

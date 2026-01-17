@@ -28,6 +28,8 @@ export interface UnitBasicFormData {
   region: string;
   addressDetail: string;
   detailAddress: string;
+  validationStatus?: 'Valid' | 'Invalid';
+  validationMessage?: string | null;
 }
 
 // 새 교육기간 폼 데이터

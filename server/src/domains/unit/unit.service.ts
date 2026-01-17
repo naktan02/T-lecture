@@ -62,9 +62,37 @@ class UnitService {
    */
   async registerSingleUnit(rawData: RawUnitInput, lectureYear?: number) {
     try {
+      // 0. 필수 날짜 형식 검증
+      if (rawData.educationStart && isNaN(new Date(rawData.educationStart).getTime())) {
+        throw new AppError(
+          `교육 시작일 형식이 유효하지 않습니다: ${rawData.educationStart}`,
+          400,
+          'INVALID_DATE',
+        );
+      }
+      if (rawData.educationEnd && isNaN(new Date(rawData.educationEnd).getTime())) {
+        throw new AppError(
+          `교육 종료일 형식이 유효하지 않습니다: ${rawData.educationEnd}`,
+          400,
+          'INVALID_DATE',
+        );
+      }
+
       const cleanData = toCreateUnitDto(rawData, lectureYear);
 
-      // 주소 → 좌표 변환 (일일 한도 체크 포함)
+      // 1. 필수 교육 기간 정보 확인
+      if (!rawData.educationStart || !rawData.educationEnd) {
+        throw new AppError('교육 시작일과 종료일은 필수입니다.', 400, 'VALIDATION_ERROR');
+      }
+
+      // 2. 날짜 논리성 검증
+      const startDate = new Date(rawData.educationStart);
+      const endDate = new Date(rawData.educationEnd);
+      if (startDate > endDate) {
+        throw new AppError('교육 종료일이 시작일보다 빠를 수 없습니다.', 400, 'VALIDATION_ERROR');
+      }
+
+      // 3. 주소 → 좌표 변환 (일일 한도 체크 포함)
       let lat: number | null = null;
       let lng: number | null = null;
       if (cleanData.addressDetail) {
@@ -75,9 +103,18 @@ class UnitService {
           logger.info(`[UnitService] Geocoded: ${cleanData.addressDetail} → (${lat}, ${lng})`);
         } else if (coords?.limitExceeded) {
           logger.warn(`[UnitService] Geocode limit exceeded for: ${cleanData.name}`);
+          // 한도 초과는 나중에 백그라운드에서 처리할 수 있으므로 에러는 안 냄
         } else {
-          logger.warn(`[UnitService] Geocode failed for: ${cleanData.addressDetail}`);
+          // 좌표 변환 실패 (틀린 주소 등)
+          throw new AppError(
+            `주소를 검색할 수 없습니다: ${cleanData.addressDetail}`,
+            400,
+            'GEOCODE_ERROR',
+          );
         }
+      } else {
+        // 주소 자체가 없는 경우
+        throw new AppError('부대 주소 정보가 없습니다.', 400, 'VALIDATION_ERROR');
       }
 
       // 좌표를 Unit 데이터에 추가
@@ -93,6 +130,14 @@ class UnitService {
         rawData.educationEnd,
         rawData.excludedDates || [],
       );
+
+      if (schedules.length === 0) {
+        throw new AppError(
+          '생성된 교육 일정이 없습니다. (교육 불가일자 확인 필요)',
+          400,
+          'VALIDATION_ERROR',
+        );
+      }
 
       // 부대 + 교육기간(모든 필드) + 일정 한 번에 생성
       const unit = await unitRepository.createUnitWithTrainingPeriod(unitDataWithCoords, {
@@ -241,7 +286,38 @@ class UnitService {
             created++;
             locationsAdded += data.trainingLocations?.length || 0;
           } catch (e) {
-            logger.error(`[UnitService] Failed to register unit ${data.name}: ${e}`);
+            const errorMessage = e instanceof Error ? e.message : '알 수 없는 오류가 발생했습니다.';
+            logger.error(`[UnitService] Failed to register unit ${data.name}: ${errorMessage}`);
+
+            // 실패 시 부분 저장 (이름이 있는 경우만)
+            if (data.name) {
+              try {
+                // 검증 상태 'Invalid'로 저장
+                const cleanData = toCreateUnitDto(data, lectureYear);
+                await unitRepository.createUnit(
+                  {
+                    ...cleanData,
+                    validationStatus: 'Invalid',
+                    validationMessage: errorMessage,
+                  },
+                  // Prisma.UnitCreateInput과 타입 호환성 문제시 any 캐스팅 필요할 수 있음.
+                  // 하지만 createUnit은 내부적으로 prisma.unit.create를 호출하므로,
+                  // repo의 createUnit이 validationStatus를 받아줄 수 있어야 함.
+                  // createUnit이 엄격한 타입을 요구한다면, repo 수정이 선행되어야 함.
+                  // 우선 repo 수정 없이 진행하기 위해, createUnitDto 변환 후
+                  // repo 내 createUnit 호출 시 추가 필드를 감안해야 함.
+                  // 현재 repository의 createUnit은 UnitCreateInput을 받으므로,
+                  // Prisma Client가 업데이트되었으므로 문제없을 것임.
+                );
+                // 실패 카운트 대신 created(유효하지 않음)로 칠지, 별도 failed로 칠지 결정.
+                // 일단 created로 치되 상태가 Invalid임.
+                created++;
+              } catch (innerError) {
+                logger.error(
+                  `[UnitService] Failed to save partial unit ${data.name}: ${innerError}`,
+                );
+              }
+            }
           }
         }),
       );
@@ -397,10 +473,13 @@ class UnitService {
       rawData.addressDetail !== undefined &&
       rawData.addressDetail !== existingUnit.addressDetail
     ) {
-      updateData.addressDetail = rawData.addressDetail === '' ? null : rawData.addressDetail;
       updateData.lat = null;
       updateData.lng = null;
     }
+
+    // 수정 시 검증 상태 초기화 ('Valid')
+    updateData.validationStatus = 'Valid';
+    updateData.validationMessage = null;
 
     const updated = await unitRepository.updateUnitById(id, updateData);
 
@@ -432,6 +511,10 @@ class UnitService {
     if (data.wideArea !== undefined) unitUpdateData.wideArea = data.wideArea || null;
     if (data.region !== undefined) unitUpdateData.region = data.region || null;
     if (data.detailAddress !== undefined) unitUpdateData.detailAddress = data.detailAddress || null;
+
+    // 수정 시 검증 상태 초기화
+    unitUpdateData.validationStatus = 'Valid';
+    unitUpdateData.validationMessage = null;
 
     if (Object.keys(unitUpdateData).length > 0) {
       await unitRepository.updateUnitById(unitId, unitUpdateData);
