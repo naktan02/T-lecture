@@ -282,10 +282,12 @@ export const UserDashboardPage: React.FC = () => {
   }, [rangeType, startDate, endDate]);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchData = async () => {
       // custom이고 날짜가 없으면 요청 안함
       if (rangeType === 'custom' && (!startDate || !endDate)) {
-        setIsLoading(false);
+        if (!controller.signal.aborted) setIsLoading(false);
         return;
       }
 
@@ -301,23 +303,33 @@ export const UserDashboardPage: React.FC = () => {
         setIsLoading(true);
         // 통계와 첫 페이지 활동 내역 동시 요청
         const [statsRes, activitiesRes] = await Promise.all([
-          dashboardApi.getUserStats(params),
-          dashboardApi.getUserActivities({ ...params, page: 1, limit: LIMIT }),
+          dashboardApi.getUserStats(params, controller.signal),
+          dashboardApi.getUserActivities({ ...params, page: 1, limit: LIMIT }, controller.signal),
         ]);
 
-        setStats(statsRes);
-        setActivitiesData(activitiesRes);
+        if (!controller.signal.aborted) {
+          setStats(statsRes);
+          setActivitiesData(activitiesRes);
+        }
       } catch (err) {
-        console.error(err);
-        setError('데이터를 불러오는데 실패했습니다.');
+        if ((err as Error).name !== 'AbortError') {
+          console.error(err);
+          setError('데이터를 불러오는데 실패했습니다.');
+        }
       } finally {
-        setIsLoading(false);
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     if (rangeType !== 'custom' || (startDate && endDate)) {
       fetchData();
     }
+
+    return () => {
+      controller.abort();
+    };
   }, [rangeType, startDate, endDate]);
 
   // 페이지 변경 시 활동 내역만 별도 로드

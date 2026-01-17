@@ -78,30 +78,36 @@ interface UnitDetail {
 }
 class DashboardAdminService {
   /**
-   * 교육 진행 현황 (도넛 차트)
-   * - 부대 수 기준 (일정 수 X)
-   * - 기간 필터 없음 (전체 데이터)
-   * - 상태 판단: 오늘이 일정 기간에 포함되면 진행중
+   * 교육 진행 현황 (도넛 차트) - 기간 필터 적용 및 쿼리 최적화
    */
-  async getDashboardStats(): Promise<DashboardStats> {
+  async getDashboardStats(start?: Date, end?: Date): Promise<DashboardStats> {
     const today = getTodayUTC();
 
-    // 모든 부대 조회 (교육기간 포함) - 이제 trainingPeriods.schedules로 접근
-    const units = await prisma.unit.findMany({
-      include: {
+    // 기간 필터 조건 (없으면 전체)
+    const dateFilter = start && end ? { date: { gte: start, lte: end } } : undefined;
+
+    // 최적화: 필요한 필드만 select (Unit -> TrainingPeriod -> UnitSchedule)
+    // 교육 기간이 해당 범위에 겹치는 부대만 1차적으로 가져올 수도 있지만,
+    // 정확한 통계를 위해 모든 부대를 가져오되, 내부는 필터링된 스케줄만 가져옴
+    const units = (await prisma.unit.findMany({
+      select: {
+        id: true,
         trainingPeriods: {
-          include: {
+          select: {
             schedules: {
-              include: {
+              where: dateFilter, // 필터링된 스케줄만 가져옴
+              select: {
+                date: true,
                 assignments: {
                   where: { state: 'Accepted' },
+                  select: { userId: true }, // 배정 여부 확인용 ID만
                 },
               },
             },
           },
         },
       },
-    });
+    })) as any;
 
     let completed = 0;
     let inProgress = 0;
@@ -109,8 +115,12 @@ class DashboardAdminService {
     let unassigned = 0;
 
     for (const unit of units) {
-      // 모든 trainingPeriods의 schedules를 평탄화
+      // 모든 trainingPeriods의 schedules를 평탄화 (필터링된 것만 있음)
       const allSchedules = unit.trainingPeriods.flatMap((p) => p.schedules);
+
+      // 조회 기간 내에 스케줄이 아예 없으면 -> 이 기간 통계에서 제외? 또는 unassigned?
+      // 요구사항: "기간 내" 통계이므로 기간 내 스케줄이 없으면 집계 제외가 맞음.
+      if (allSchedules.length === 0) continue;
 
       // 배정이 있는 일정만 필터링
       const assignedScheduleDates = allSchedules
@@ -118,7 +128,7 @@ class DashboardAdminService {
         .map((s) => toUTCMidnight(new Date(s.date!)));
 
       if (assignedScheduleDates.length === 0) {
-        // 배정 없음
+        // 기간 내 일정은 있지만 배정이 없음
         unassigned++;
         continue;
       }
@@ -132,16 +142,13 @@ class DashboardAdminService {
       const todayIsScheduled = assignedScheduleDates.some((d) => d.getTime() === today.getTime());
 
       if (todayIsScheduled) {
-        // 오늘이 일정 중 하나에 해당
         inProgress++;
       } else if (lastDate < today) {
-        // 모든 일정이 과거
         completed++;
       } else if (firstDate > today) {
-        // 모든 일정이 미래
         scheduled++;
       } else {
-        // 일정이 과거~미래에 걸쳐있지만 오늘은 아님 → 진행중으로 처리
+        // 기간은 걸쳐있으나 오늘은 아님 -> 진행중 간주
         inProgress++;
       }
     }
@@ -403,32 +410,47 @@ class DashboardAdminService {
   /**
    * 상태별 부대 목록 (모달용) - 일정별이 아닌 부대별 그룹화
    */
-  async getUnitsByStatus(status: ScheduleStatus): Promise<UnitListItem[]> {
+  /**
+   * 상태별 부대 목록 (모달용) - 일정별이 아닌 부대별 그룹화
+   * 기간 필터 적용 및 쿼리 최적화
+   */
+  async getUnitsByStatus(
+    status: ScheduleStatus,
+    start?: Date,
+    end?: Date,
+  ): Promise<UnitListItem[]> {
     const today = getTodayUTC();
+    const dateFilter = start && end ? { date: { gte: start, lte: end } } : undefined;
 
-    // 모든 부대 조회 (교육기간 포함) - 이제 trainingPeriods.schedules로 접근
-    const units = await prisma.unit.findMany({
-      include: {
+    // 최적화: 필요한 필드만 select
+    const units = (await prisma.unit.findMany({
+      select: {
+        id: true,
+        name: true,
         trainingPeriods: {
-          include: {
+          select: {
             schedules: {
-              include: {
+              where: dateFilter, // 기간 필터 적용
+              select: {
+                date: true,
                 assignments: {
                   where: { state: 'Accepted' },
-                  include: { User: true },
+                  select: { User: { select: { id: true } } }, // 강사 ID만 (카운트용)
                 },
               },
             },
           },
         },
       },
-    });
+    })) as any;
 
     const result: UnitListItem[] = [];
 
     for (const unit of units) {
       // 모든 trainingPeriods의 schedules를 평탄화
       const allSchedules = unit.trainingPeriods.flatMap((p) => p.schedules);
+      if (allSchedules.length === 0) continue; // 기간 내 일정 없으면 제외
+
       // 배정이 있는 일정만 필터링
       const assignedSchedules = allSchedules.filter((s) => s.date && s.assignments.length > 0);
       const assignedScheduleDates = assignedSchedules.map((s) => toUTCMidnight(new Date(s.date!)));

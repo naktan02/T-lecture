@@ -6,7 +6,7 @@ interface SearchFilters {
   keyword: string;
   startDate: string;
   endDate: string;
-  hasAddressError?: boolean;
+  hasError: boolean;
   [key: string]: unknown;
 }
 
@@ -31,7 +31,7 @@ export const UnitToolbar = ({
     keyword: '',
     startDate: '',
     endDate: '',
-    hasAddressError: false,
+    hasError: false,
   });
 
   // ✅ 업로드 확인 모달 상태
@@ -62,8 +62,9 @@ export const UnitToolbar = ({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
-    const { name, value, type, checked } = e.target;
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>): void => {
+    const { name, value, type } = e.target;
+    const checked = (e.target as HTMLInputElement).checked;
     setFilters((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
@@ -80,8 +81,14 @@ export const UnitToolbar = ({
   };
 
   const handleReset = (): void => {
-    setFilters({ keyword: '', startDate: '', endDate: '', hasAddressError: false });
-    onSearch({ keyword: '', startDate: '', endDate: '', hasAddressError: false });
+    const initial = {
+      keyword: '',
+      startDate: '',
+      endDate: '',
+      hasError: false,
+    };
+    setFilters(initial);
+    onSearch(initial);
   };
 
   return (
@@ -201,12 +208,12 @@ export const UnitToolbar = ({
           />
         </div>
 
-        {/* 주소 오류 체크 */}
+        {/* 데이터 오류 체크 */}
         <label className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
           <input
             type="checkbox"
-            name="hasAddressError"
-            checked={!!filters.hasAddressError}
+            name="hasError"
+            checked={filters.hasError}
             onChange={handleChange}
             className="w-4 h-4 rounded text-red-500 focus:ring-red-500 border-gray-300"
           />
@@ -224,7 +231,7 @@ export const UnitToolbar = ({
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
               />
             </svg>
-            주소 오류
+            데이터 오류
           </span>
         </label>
 
@@ -265,7 +272,7 @@ export const UnitToolbar = ({
         </button>
 
         {/* 초기화 */}
-        {(filters.keyword || filters.startDate || filters.endDate || filters.hasAddressError) && (
+        {(filters.keyword || filters.startDate || filters.endDate || filters.hasError) && (
           <button
             onClick={handleReset}
             className="px-3 py-2 text-gray-500 hover:text-gray-700 text-sm transition-colors hover:bg-gray-50 rounded-lg"
@@ -323,12 +330,12 @@ export const UnitToolbar = ({
             />
           </div>
 
-          {/* 주소 오류 체크 (모바일) */}
+          {/* 데이터 오류 체크 (모바일) */}
           <label className="flex items-center gap-2 px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer">
             <input
               type="checkbox"
-              name="hasAddressError"
-              checked={!!filters.hasAddressError}
+              name="hasError"
+              checked={filters.hasError}
               onChange={handleChange}
               className="w-5 h-5 rounded text-red-500 focus:ring-red-500 border-gray-300"
             />
@@ -346,7 +353,7 @@ export const UnitToolbar = ({
                   d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                 />
               </svg>
-              주소 오류 데이터만 보기
+              데이터 오류만 보기
             </span>
           </label>
         </div>

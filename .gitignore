@@ -52,3 +52,5 @@ coverage/
 
 # Turborepo (if used)
 .turbo
+
+dump.sql

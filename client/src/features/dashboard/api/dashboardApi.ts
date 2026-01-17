@@ -43,11 +43,14 @@ export interface PaginatedActivities {
 }
 
 export const dashboardApi = {
-  getUserStats: async (params?: {
-    startDate?: string;
-    endDate?: string;
-    period?: string;
-  }): Promise<DashboardStats> => {
+  getUserStats: async (
+    params?: {
+      startDate?: string;
+      endDate?: string;
+      period?: string;
+    },
+    signal?: AbortSignal,
+  ): Promise<DashboardStats> => {
     const queryParams = new URLSearchParams();
     if (params?.startDate) queryParams.append('startDate', params.startDate);
     if (params?.endDate) queryParams.append('endDate', params.endDate);
@@ -56,17 +59,20 @@ export const dashboardApi = {
     const queryString = queryParams.toString();
     const url = `/api/v1/dashboard/user/stats${queryString ? `?${queryString}` : ''}`;
 
-    const response = await apiClient(url);
+    const response = await apiClient(url, { signal });
     return response.json();
   },
 
-  getUserActivities: async (params: {
-    page: number;
-    limit: number;
-    startDate?: string;
-    endDate?: string;
-    period?: string;
-  }): Promise<PaginatedActivities> => {
+  getUserActivities: async (
+    params: {
+      page: number;
+      limit: number;
+      startDate?: string;
+      endDate?: string;
+      period?: string;
+    },
+    signal?: AbortSignal,
+  ): Promise<PaginatedActivities> => {
     const queryParams = new URLSearchParams();
     queryParams.append('page', params.page.toString());
     queryParams.append('limit', params.limit.toString());
@@ -77,7 +83,7 @@ export const dashboardApi = {
     const queryString = queryParams.toString();
     const url = `/api/v1/dashboard/user/activities${queryString ? `?${queryString}` : ''}`;
 
-    const response = await apiClient(url);
+    const response = await apiClient(url, { signal });
     return response.json();
   },
 };

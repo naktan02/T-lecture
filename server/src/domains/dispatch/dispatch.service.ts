@@ -203,7 +203,16 @@ class DispatchService {
 
     // 저장 (Repo 위임)
     const count = await dispatchRepository.createDispatchesBulk(dispatchesToCreate);
-    return { count, message: `${count}건의 임시 발송이 완료되었습니다.` };
+
+    // 유니크 강사(userId) 수 계산
+    const uniqueUserIds = new Set(dispatchesToCreate.map((d) => d.userId));
+    const uniqueUserCount = uniqueUserIds.size;
+
+    return {
+      count,
+      uniqueUserCount,
+      message: `${uniqueUserCount}명의 강사에게 ${count}건의 임시 발송이 완료되었습니다.`,
+    };
   }
 
   // 포맷 변수를 지원하는 템플릿 컴파일

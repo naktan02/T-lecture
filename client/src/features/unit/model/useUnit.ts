@@ -9,6 +9,7 @@ interface SearchParams {
   keyword?: string;
   startDate?: string;
   endDate?: string;
+  hasError?: boolean;
   [key: string]: unknown;
 }
 
@@ -29,6 +30,8 @@ interface Unit {
   officerName?: string;
   officerPhone?: string;
   officerEmail?: string;
+  validationStatus?: 'Valid' | 'Invalid';
+  validationMessage?: string;
   [key: string]: unknown;
 }
 
@@ -98,8 +101,7 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
       queryClient.invalidateQueries({ queryKey: ['unitDetail'] });
       showSuccess('부대 정보가 성공적으로 수정되었습니다.');
     },
-    onError: (err) => {
-      console.error(err);
+    onError: (_err) => {
       showError('수정 중 오류가 발생했습니다.');
     },
   });

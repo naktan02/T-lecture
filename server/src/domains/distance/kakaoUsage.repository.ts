@@ -6,7 +6,7 @@ interface PrismaError extends Error {
 }
 
 // 테스트용 일일 한도 (실제 운영 시 증가)
-export const DAILY_GEOCODE_LIMIT = 100;
+export const DAILY_GEOCODE_LIMIT = 3000;
 
 class KakaoUsageRepository {
   // 오늘 날짜만 반환

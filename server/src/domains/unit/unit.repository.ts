@@ -215,6 +215,13 @@ class UnitRepository {
   }
 
   /**
+   * 부대 기본 데이터 생성 (부분 저장용)
+   */
+  async createUnit(data: Prisma.UnitCreateInput) {
+    return prisma.unit.create({ data });
+  }
+
+  /**
    * 부대 + TrainingPeriod 함께 생성 (새 구조)
    * - 모든 TrainingPeriod 필드 지원 (시간, 담당관, 시설 정보)
    * - ScheduleLocation 자동 생성 (모든 일정에 모든 장소 연결)
