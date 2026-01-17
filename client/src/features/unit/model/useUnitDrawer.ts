@@ -224,6 +224,8 @@ export const useUnitDrawer = ({
     region: '',
     addressDetail: '',
     detailAddress: '',
+    validationStatus: 'Valid',
+    validationMessage: '',
   });
   const [trainingPeriods, setTrainingPeriods] = useState<TrainingPeriodFormData[]>([]);
 

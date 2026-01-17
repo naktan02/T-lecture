@@ -52,16 +52,21 @@ export interface TeamDetail {
   }[];
 }
 
-export const fetchDashboardStats = async (): Promise<DashboardStats> => {
-  const res = await apiClient('/api/v1/dashboard/admin/stats');
+export const fetchDashboardStats = async (
+  params?: DashboardParams,
+  signal?: AbortSignal,
+): Promise<DashboardStats> => {
+  const query = buildQuery(params);
+  const res = await apiClient(`/api/v1/dashboard/admin/stats?${query}`, { signal });
   if (!res.ok) throw new Error('대시보드 현황 조회 실패');
   return res.json();
 };
 
 export const fetchSchedulesByStatus = async (
   status: ScheduleStatus,
+  signal?: AbortSignal,
 ): Promise<ScheduleListItem[]> => {
-  const res = await apiClient(`/api/v1/dashboard/admin/schedules?status=${status}`);
+  const res = await apiClient(`/api/v1/dashboard/admin/schedules?status=${status}`, { signal });
   if (!res.ok) throw new Error('교육 일정 조회 실패');
   return res.json();
 };
@@ -87,16 +92,20 @@ const buildQuery = (params?: DashboardParams) => {
 
 export const fetchInstructorAnalysis = async (
   params?: DashboardParams,
+  signal?: AbortSignal,
 ): Promise<InstructorAnalysis[]> => {
   const query = buildQuery(params);
-  const res = await apiClient(`/api/v1/dashboard/admin/instructors?${query}`);
+  const res = await apiClient(`/api/v1/dashboard/admin/instructors?${query}`, { signal });
   if (!res.ok) throw new Error('강사 분석 데이터 조회 실패');
   return res.json();
 };
 
-export const fetchTeamAnalysis = async (params?: DashboardParams): Promise<TeamAnalysis[]> => {
+export const fetchTeamAnalysis = async (
+  params?: DashboardParams,
+  signal?: AbortSignal,
+): Promise<TeamAnalysis[]> => {
   const query = buildQuery(params);
-  const res = await apiClient(`/api/v1/dashboard/admin/teams?${query}`);
+  const res = await apiClient(`/api/v1/dashboard/admin/teams?${query}`, { signal });
   if (!res.ok) throw new Error('팀 분석 데이터 조회 실패');
   return res.json();
 };
@@ -104,9 +113,10 @@ export const fetchTeamAnalysis = async (params?: DashboardParams): Promise<TeamA
 export const fetchTeamDetail = async (
   teamId: number,
   params?: DashboardParams,
+  signal?: AbortSignal,
 ): Promise<TeamDetail> => {
   const query = buildQuery(params);
-  const res = await apiClient(`/api/v1/dashboard/admin/teams/${teamId}?${query}`);
+  const res = await apiClient(`/api/v1/dashboard/admin/teams/${teamId}?${query}`, { signal });
   if (!res.ok) throw new Error('팀 상세 조회 실패');
   return res.json();
 };
@@ -119,6 +129,8 @@ export interface UnitListItem {
   scheduleCount: number;
   instructorCount: number;
   dateRange: string;
+  validationStatus: 'Valid' | 'Invalid';
+  validationMessage: string | null;
 }
 
 export interface UnitDetail {
@@ -134,10 +146,15 @@ export interface UnitDetail {
     date: string;
     instructors: { id: number; name: string }[];
   }[];
+  validationStatus: 'Valid' | 'Invalid';
+  validationMessage: string | null;
 }
 
-export const fetchUnitsByStatus = async (status: ScheduleStatus): Promise<UnitListItem[]> => {
-  const res = await apiClient(`/api/v1/dashboard/admin/units?status=${status}`);
+export const fetchUnitsByStatus = async (
+  status: ScheduleStatus,
+  signal?: AbortSignal,
+): Promise<UnitListItem[]> => {
+  const res = await apiClient(`/api/v1/dashboard/admin/units?status=${status}`, { signal });
   if (!res.ok) throw new Error('부대 목록 조회 실패');
   return res.json();
 };
