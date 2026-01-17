@@ -323,6 +323,76 @@ export async function invalidateMetadata(key: string): Promise<void> {
 }
 
 // =============================================================================
+// 리프레시 토큰 캐싱
+// =============================================================================
+
+const REFRESH_TOKEN_TTL = 7 * 24 * 60 * 60; // 7일 (초)
+
+interface CachedRefreshToken {
+  userId: number;
+  deviceId: string | null;
+  expiresAt: string;
+}
+
+/**
+ * 리프레시 토큰 캐시 저장
+ */
+export async function cacheRefreshToken(
+  tokenHash: string,
+  data: { userId: number; deviceId: string | null; expiresAt: Date },
+): Promise<void> {
+  const redis = getRedis();
+  if (!redis) return;
+
+  try {
+    const key = `refresh:${tokenHash}`;
+    const cacheData: CachedRefreshToken = {
+      userId: data.userId,
+      deviceId: data.deviceId,
+      expiresAt: data.expiresAt.toISOString(),
+    };
+    await redis.set(key, JSON.stringify(cacheData), { ex: REFRESH_TOKEN_TTL });
+    logger.debug(`[Cache] 리프레시 토큰 저장`);
+  } catch (error) {
+    logger.error('[Cache] 리프레시 토큰 저장 실패:', error);
+  }
+}
+
+/**
+ * 리프레시 토큰 캐시 조회
+ */
+export async function getCachedRefreshToken(tokenHash: string): Promise<CachedRefreshToken | null> {
+  const redis = getRedis();
+  if (!redis) return null;
+
+  try {
+    const key = `refresh:${tokenHash}`;
+    const cached = await redis.get<string>(key);
+    if (!cached) return null;
+    return typeof cached === 'string' ? JSON.parse(cached) : cached;
+  } catch (error) {
+    logger.error('[Cache] 리프레시 토큰 조회 실패:', error);
+    return null;
+  }
+}
+
+/**
+ * 리프레시 토큰 캐시 무효화
+ */
+export async function invalidateRefreshToken(tokenHash: string): Promise<void> {
+  const redis = getRedis();
+  if (!redis) return;
+
+  try {
+    const key = `refresh:${tokenHash}`;
+    await redis.del(key);
+    logger.debug(`[Cache] 리프레시 토큰 무효화`);
+  } catch (error) {
+    logger.error('[Cache] 리프레시 토큰 무효화 실패:', error);
+  }
+}
+
+// =============================================================================
 // 레거시 호환 (이전 세션 기반 캐싱)
 // =============================================================================
 
