@@ -2,7 +2,6 @@
 import instructorRepository from './instructor.repository';
 import AppError from '../../common/errors/AppError';
 import { PROMOTION_CRITERIA } from '../../common/constants/constants';
-import { invalidateInstructor } from '../../libs/cache';
 
 class InstructorService {
   // 근무 가능일 조회
@@ -78,9 +77,6 @@ class InstructorService {
     // 업데이트 수행
     await instructorRepository.replaceAvailabilities(instructorId, startDate, endDate, newDatesStr);
 
-    // ✅ 캐시 무효화 (가용일 변경됨)
-    await invalidateInstructor(instructorId);
-
     return { message: '근무 가능일이 저장되었습니다.' };
   }
 
@@ -118,9 +114,6 @@ class InstructorService {
   // 강의 가능 과목(덕목) 수정
   async updateVirtues(instructorId: number, virtueIds: number[]) {
     await instructorRepository.updateVirtues(instructorId, virtueIds);
-
-    // ✅ 캐시 무효화 (덕목 변경됨)
-    await invalidateInstructor(instructorId);
 
     return { message: '강의 가능 과목이 수정되었습니다.' };
   }

@@ -45,6 +45,11 @@ export const respondAssignment = asyncHandler(async (req: Request, res: Response
 // [배정 후보 데이터 조회] (부대 + 강사 + 기존 배정)
 // ✅ Redis 캐시에 저장하여 나중에 배정 시 재사용
 export const getCandidates = asyncHandler(async (req: Request, res: Response) => {
+  // 304 캐시 방지 - 매번 최신 데이터 반환
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+
   const { startDate, endDate } = req.query || {};
 
   if (!startDate || !endDate) {
@@ -84,12 +89,16 @@ export const getCandidates = asyncHandler(async (req: Request, res: Response) =>
   });
 });
 
-//자동 배정 실행 (ID 기반 하이브리드)
+//자동 배정 실행 (trainingPeriodIds 기반)
 export const autoAssign = asyncHandler(async (req: Request, res: Response) => {
-  const { scheduleIds, instructorIds } = req.body;
+  const { trainingPeriodIds, instructorIds } = req.body;
 
-  if (!scheduleIds || !Array.isArray(scheduleIds) || scheduleIds.length === 0) {
-    throw new AppError('배정할 스케줄 ID 목록(scheduleIds)이 필요합니다.', 400, 'VALIDATION_ERROR');
+  if (!trainingPeriodIds || !Array.isArray(trainingPeriodIds) || trainingPeriodIds.length === 0) {
+    throw new AppError(
+      '배정할 교육기간 ID 목록(trainingPeriodIds)이 필요합니다.',
+      400,
+      'VALIDATION_ERROR',
+    );
   }
   if (!instructorIds || !Array.isArray(instructorIds) || instructorIds.length === 0) {
     throw new AppError('배정할 강사 ID 목록(instructorIds)이 필요합니다.', 400, 'VALIDATION_ERROR');
@@ -97,12 +106,12 @@ export const autoAssign = asyncHandler(async (req: Request, res: Response) => {
 
   logger.info('[assignment.autoAssign] Start', {
     userId: req.user!.id,
-    scheduleCount: scheduleIds.length,
+    trainingPeriodCount: trainingPeriodIds.length,
     instructorCount: instructorIds.length,
   });
 
-  const result = await assignmentService.createAutoAssignmentsByIds(
-    scheduleIds.map(Number),
+  const result = await assignmentService.createAutoAssignmentsByPeriodIds(
+    trainingPeriodIds.map(Number),
     instructorIds.map(Number),
   );
 

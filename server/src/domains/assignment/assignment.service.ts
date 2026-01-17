@@ -44,6 +44,13 @@ class AssignmentService {
     return assignmentCommandService.createAutoAssignmentsByIds(scheduleIds, instructorIds);
   }
 
+  createAutoAssignmentsByPeriodIds(trainingPeriodIds: number[], instructorIds: number[]) {
+    return assignmentCommandService.createAutoAssignmentsByPeriodIds(
+      trainingPeriodIds,
+      instructorIds,
+    );
+  }
+
   previewAutoAssignments(startDate: Date, endDate: Date, debugTopK = 0) {
     return assignmentCommandService.previewAutoAssignments(startDate, endDate, debugTopK);
   }

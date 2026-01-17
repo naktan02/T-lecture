@@ -123,7 +123,7 @@ class AssignmentQueryRepository {
     const startOfDay = new Date(`${startStr}T00:00:00.000Z`);
     const endOfDay = new Date(`${endStr}T00:00:00.000Z`);
 
-    return await prisma.unit.findMany({
+    const units = await prisma.unit.findMany({
       where: {
         ...(options?.unitIds && options.unitIds.length > 0 ? { id: { in: options.unitIds } } : {}),
         trainingPeriods: {
@@ -157,13 +157,8 @@ class AssignmentQueryRepository {
                 scheduleLocations: true,
               },
             },
+            // 해당 교육기간의 전체 스케줄 가져오기 (정렬용)
             schedules: {
-              where: {
-                date: {
-                  gte: startOfDay,
-                  lte: endOfDay,
-                },
-              },
               orderBy: { date: 'asc' },
               include: {
                 scheduleLocations: true,
@@ -193,9 +188,49 @@ class AssignmentQueryRepository {
           },
         },
       },
-      orderBy: {
-        name: 'asc',
+    });
+
+    return units;
+  }
+
+  /**
+   * 교육기간 ID 기반 스케줄 조회 (자동 배정용)
+   */
+  async findSchedulesByTrainingPeriodIds(trainingPeriodIds: number[]) {
+    if (!trainingPeriodIds || trainingPeriodIds.length === 0) return [];
+
+    return await prisma.unitSchedule.findMany({
+      where: {
+        trainingPeriodId: { in: trainingPeriodIds },
       },
+      include: {
+        trainingPeriod: {
+          include: {
+            unit: true,
+            locations: {
+              include: {
+                scheduleLocations: true,
+              },
+            },
+          },
+        },
+        scheduleLocations: true,
+        assignments: {
+          where: { state: { in: ['Pending', 'Accepted', 'Rejected'] } },
+          include: {
+            User: {
+              include: {
+                instructor: {
+                  include: {
+                    team: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { date: 'asc' },
     });
   }
 
@@ -380,27 +415,6 @@ class AssignmentQueryRepository {
       where: { id: scheduleId },
       include: { trainingPeriod: { include: { unit: { select: { name: true } } } } },
     });
-  }
-
-  /**
-   * 날짜 범위에 해당하는 부대 ID 목록 조회
-   */
-  async findUnitIdsInDateRange(start: Date, end: Date): Promise<number[]> {
-    const result = await prisma.unit.findMany({
-      where: {
-        trainingPeriods: {
-          some: {
-            schedules: {
-              some: {
-                date: { gte: start, lte: end },
-              },
-            },
-          },
-        },
-      },
-      select: { id: true },
-    });
-    return result.map((u) => u.id);
   }
 }
 

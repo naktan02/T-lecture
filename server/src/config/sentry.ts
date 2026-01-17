@@ -1,6 +1,6 @@
 // server/src/config/sentry.ts
 import * as Sentry from '@sentry/node';
-import { Application } from 'express';
+import type { Application } from 'express';
 
 const isProd = process.env.NODE_ENV === 'production';
 
