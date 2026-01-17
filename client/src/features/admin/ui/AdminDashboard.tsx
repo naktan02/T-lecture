@@ -156,33 +156,70 @@ export const AdminDashboard: React.FC = () => {
       return;
     }
 
+    // Abort previous controller if exists
+    // We cannot use a simple ref here easily because 'loadData' is recreated on deps change.
+    // Instead of ref in useCallback (which is tricky), let's rely on useEffect cleanup.
+    // However, since we call loadData imperatively (retry button), we need a ref.
+  }, [getDateRange, rangeType]);
+
+  // Using a ref to track the current controller is cleaner.
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+
+  const fetchWithAbort = useCallback(async () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const { startDate: start, endDate: end } = getDateRange();
+
+    if (rangeType === 'custom' && (!start || !end)) {
+      return;
+    }
+
     try {
       setLoading(true);
-
-      const queryParams = {
-        startDate: start,
-        endDate: end,
-      };
+      const queryParams = { startDate: start, endDate: end };
 
       const [statsData, instructorsData, teamsData] = await Promise.all([
-        fetchDashboardStats(),
-        fetchInstructorAnalysis(queryParams),
-        fetchTeamAnalysis(queryParams),
+        fetchDashboardStats(queryParams, controller.signal),
+        fetchInstructorAnalysis(queryParams, controller.signal),
+        fetchTeamAnalysis(queryParams, controller.signal),
       ]);
 
       setStats(statsData);
       setInstructors(instructorsData);
       setTeams(teamsData);
+      setError(null);
     } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        console.log('Request aborted');
+        return;
+      }
       setError(err instanceof Error ? err.message : '데이터 로딩 실패');
     } finally {
-      setLoading(false);
+      // Only unset loading if this is the current controller (not aborted by a newer one)
+      // Actually, if aborted, we might not want to touch state.
+      if (!controller.signal.aborted) {
+        setLoading(false);
+        // Only clear ref if it's still us
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+        }
+      }
     }
   }, [getDateRange, rangeType]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    fetchWithAbort();
+    return () => {
+      // Cleanup on unmount or deps change (triggered by new fetchWithAbort call basically, but standard consistency)
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [fetchWithAbort]);
 
   // Close all modals helper
   const closeAllModals = () => {
@@ -312,7 +349,7 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  if (loading && !stats) {
+  if (loading) {
     return (
       <div className="p-8 flex justify-center items-center h-96">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
@@ -325,7 +362,7 @@ export const AdminDashboard: React.FC = () => {
       <div className="p-8 text-center text-red-500">
         <p>{error || '데이터를 불러올 수 없습니다.'}</p>
         <button
-          onClick={loadData}
+          onClick={fetchWithAbort}
           className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
         >
           재시도

@@ -89,13 +89,29 @@ class DashboardService {
     }
 
     // 1. 수락된 배정 조회 (완료된 교육만)
+    // 최적화: 필요한 필드만 select (Unit -> TrainingPeriod -> UnitSchedule)
     const assignments = await prisma.instructorUnitAssignment.findMany({
       where: {
         userId,
         state: 'Accepted',
         UnitSchedule: { date: { gte: queryStart, lt: today } },
       },
-      include: { UnitSchedule: { include: { trainingPeriod: { include: { unit: true } } } } },
+      select: {
+        UnitSchedule: {
+          select: {
+            date: true,
+            trainingPeriod: {
+              select: {
+                workStartTime: true,
+                workEndTime: true,
+                unit: {
+                  select: { id: true },
+                },
+              },
+            },
+          },
+        },
+      },
     });
 
     // 2. 전체 제안 건수
