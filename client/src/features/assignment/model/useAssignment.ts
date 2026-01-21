@@ -52,6 +52,7 @@ interface UseAssignmentReturn {
   unassignedUnits: UnitSchedule[]; // raw data (하위 호환성)
   groupedUnassignedUnits: GroupedUnassignedUnit[]; // 부대별 그룹화
   availableInstructors: Instructor[];
+  allInstructors: Instructor[]; // 전체 강사 목록 (전체 검색용)
   assignments: AssignmentData[]; // 임시 배정 (Pending)
   confirmedAssignments: AssignmentData[]; // 확정 배정 (Accepted)
   addAssignment: (
@@ -83,6 +84,9 @@ export const useAssignment = (): UseAssignmentReturn => {
     units: [],
     instructors: [],
   });
+
+  // 전체 강사 목록 (전체 검색용)
+  const [allInstructors, setAllInstructors] = useState<Instructor[]>([]);
 
   // 서버에서 계산된 실제 날짜 범위 (부대 전체 일정 커버)
   const [actualDateRange, setActualDateRange] = useState<{
@@ -117,6 +121,9 @@ export const useAssignment = (): UseAssignmentReturn => {
         units: data.unassignedUnits || [],
         instructors: data.availableInstructors || [],
       });
+
+      // 전체 강사 목록 저장 (전체 검색용)
+      setAllInstructors(data.allInstructors || []);
 
       // 서버에서 계산된 실제 날짜 범위 저장
       if (data.actualDateRange) {
@@ -273,6 +280,7 @@ export const useAssignment = (): UseAssignmentReturn => {
     unassignedUnits: sourceData.units,
     groupedUnassignedUnits,
     availableInstructors: sourceData.instructors,
+    allInstructors,
     assignments,
     confirmedAssignments,
     fetchData,

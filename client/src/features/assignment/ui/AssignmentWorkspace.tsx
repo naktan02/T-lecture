@@ -39,6 +39,7 @@ export const AssignmentWorkspace: React.FC = () => {
     error,
     groupedUnassignedUnits,
     availableInstructors,
+    allInstructors,
     assignments,
     confirmedAssignments,
     fetchData,
@@ -601,6 +602,14 @@ export const AssignmentWorkspace: React.FC = () => {
             await fetchData();
           }}
           availableInstructors={availableInstructors.map((i) => ({
+            id: i.id,
+            name: i.name,
+            team: i.teamName,
+            teamName: i.teamName,
+            category: i.category ?? undefined,
+            availableDates: i.availableDates ?? [],
+          }))}
+          allInstructors={allInstructors.map((i) => ({
             id: i.id,
             name: i.name,
             team: i.teamName,

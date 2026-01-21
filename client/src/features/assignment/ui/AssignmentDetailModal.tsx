@@ -224,6 +224,14 @@ interface AssignmentGroupDetailModalProps {
     category?: string;
     availableDates?: string[];
   }[];
+  allInstructors?: {
+    id: number;
+    name: string;
+    team: string;
+    teamName?: string;
+    category?: string;
+    availableDates?: string[];
+  }[]; // 전체 강사 목록 (전체 검색용)
   assignedByDate?: Map<string, Set<number>>; // 날짜별 이미 배정된 강사 ID
 }
 
@@ -232,6 +240,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
   onClose,
   onSaveComplete,
   availableInstructors = [],
+  allInstructors = [],
   assignedByDate = new Map(),
 }) => {
   const [addPopupTarget, setAddPopupTarget] = useState<AddPopupTarget | null>(null);
@@ -872,6 +881,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
         <InstructorSelectionPopup
           target={addPopupTarget}
           allAvailableInstructors={availableInstructors}
+          allInstructors={allInstructors}
           assignedInstructorIds={[
             ...getAssignedInstructorIds(addPopupTarget.unitScheduleId),
             ...(assignedByDate.get(addPopupTarget.date) || []),
