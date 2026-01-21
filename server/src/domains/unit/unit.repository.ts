@@ -247,12 +247,18 @@ class UnitRepository {
     // 시간 문자열을 Date로 변환 (HH:MM 형식 지원)
     const parseTime = (t: Date | string | null | undefined): Date | null => {
       if (!t) return null;
-      if (t instanceof Date) return t;
+      if (t instanceof Date) {
+        // 이미 Date인 경우, 시/분/초만 추출하여 2000-01-01 UTC로 고정
+        return new Date(
+          Date.UTC(2000, 0, 1, t.getUTCHours(), t.getUTCMinutes(), t.getUTCSeconds()),
+        );
+      }
       if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(t)) {
         return new Date(`2000-01-01T${t}:00.000Z`);
       }
       const d = new Date(t);
-      return isNaN(d.getTime()) ? null : d;
+      if (isNaN(d.getTime())) return null;
+      return new Date(Date.UTC(2000, 0, 1, d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds()));
     };
 
     // 1. Unit + TrainingPeriod + Locations + Schedules 생성

@@ -60,35 +60,38 @@ class UnitService {
    * - 주소를 좌표로 변환 (실패해도 부대 생성 진행)
    */
   async registerSingleUnit(rawData: RawUnitInput, lectureYear?: number) {
-    try {
-      // 0. 필수 날짜 형식 검증
-      if (rawData.educationStart && isNaN(new Date(rawData.educationStart).getTime())) {
-        throw new AppError(
-          `교육 시작일 형식이 유효하지 않습니다: ${rawData.educationStart}`,
-          400,
-          'INVALID_DATE',
-        );
-      }
-      if (rawData.educationEnd && isNaN(new Date(rawData.educationEnd).getTime())) {
-        throw new AppError(
-          `교육 종료일 형식이 유효하지 않습니다: ${rawData.educationEnd}`,
-          400,
-          'INVALID_DATE',
-        );
-      }
+    const errorMessages: string[] = [];
+    let validationStatus: 'Valid' | 'Invalid' = 'Valid';
 
+    try {
       const cleanData = toCreateUnitDto(rawData, lectureYear);
 
       // 1. 필수 교육 기간 정보 확인
       if (!rawData.educationStart || !rawData.educationEnd) {
-        throw new AppError('교육 시작일과 종료일은 필수입니다.', 400, 'VALIDATION_ERROR');
+        errorMessages.push('교육 시작일과 종료일은 필수입니다.');
       }
 
-      // 2. 날짜 논리성 검증
-      const startDate = new Date(rawData.educationStart);
-      const endDate = new Date(rawData.educationEnd);
-      if (startDate > endDate) {
-        throw new AppError('교육 종료일이 시작일보다 빠를 수 없습니다.', 400, 'VALIDATION_ERROR');
+      // 2. 날짜 형식 및 논리성 검증
+      let startDate: Date | null = null;
+      let endDate: Date | null = null;
+
+      if (rawData.educationStart) {
+        startDate = new Date(rawData.educationStart);
+        if (isNaN(startDate.getTime())) {
+          errorMessages.push(`교육 시작일 형식이 유효하지 않습니다: ${rawData.educationStart}`);
+          startDate = null;
+        }
+      }
+      if (rawData.educationEnd) {
+        endDate = new Date(rawData.educationEnd);
+        if (isNaN(endDate.getTime())) {
+          errorMessages.push(`교육 종료일 형식이 유효하지 않습니다: ${rawData.educationEnd}`);
+          endDate = null;
+        }
+      }
+
+      if (startDate && endDate && startDate > endDate) {
+        errorMessages.push('교육 종료일이 시작일보다 빠를 수 없습니다.');
       }
 
       // 3. 주소 → 좌표 변환 (일일 한도 체크 포함)
@@ -102,44 +105,43 @@ class UnitService {
           logger.info(`[UnitService] Geocoded: ${cleanData.addressDetail} → (${lat}, ${lng})`);
         } else if (coords?.limitExceeded) {
           logger.warn(`[UnitService] Geocode limit exceeded for: ${cleanData.name}`);
-          // 한도 초과는 나중에 백그라운드에서 처리할 수 있으므로 에러는 안 냄
         } else {
-          // 좌표 변환 실패 (틀린 주소 등)
-          throw new AppError(
-            `주소를 검색할 수 없습니다: ${cleanData.addressDetail}`,
-            400,
-            'GEOCODE_ERROR',
-          );
+          errorMessages.push(`주소를 검색할 수 없습니다: ${cleanData.addressDetail}`);
         }
       } else {
-        // 주소 자체가 없는 경우
-        throw new AppError('부대 주소 정보가 없습니다.', 400, 'VALIDATION_ERROR');
+        errorMessages.push('부대 주소 정보가 없습니다.');
       }
 
-      // 좌표를 Unit 데이터에 추가
-      const unitDataWithCoords = {
-        ...cleanData,
-        lat,
-        lng,
-      };
-
-      // 교육 기간에서 일정 자동 계산 (excludedDates 배열 직접 사용)
-      const schedules = this._calculateSchedules(
-        rawData.educationStart,
-        rawData.educationEnd,
-        rawData.excludedDates || [],
-      );
-
-      if (schedules.length === 0) {
-        throw new AppError(
-          '생성된 교육 일정이 없습니다. (교육 불가일자 확인 필요)',
-          400,
-          'VALIDATION_ERROR',
+      // 4. 스케줄 계산
+      let schedules: ScheduleData[] = [];
+      if (startDate && endDate) {
+        schedules = this._calculateSchedules(
+          rawData.educationStart,
+          rawData.educationEnd,
+          rawData.excludedDates || [],
         );
       }
 
+      if (schedules.length === 0 && startDate && endDate) {
+        errorMessages.push('생성된 교육 일정이 없습니다. (교육 불가일자 확인 필요)');
+      }
+
+      // 검증 상태 결정
+      if (errorMessages.length > 0) {
+        validationStatus = 'Invalid';
+      }
+
+      // 좌표 및 검증 상태를 Unit 데이터에 추가
+      const unitDataToSave = {
+        ...cleanData,
+        lat,
+        lng,
+        validationStatus,
+        validationMessage: errorMessages.length > 0 ? errorMessages.join('; ') : null,
+      };
+
       // 부대 + 교육기간(모든 필드) + 일정 한 번에 생성
-      const unit = await unitRepository.createUnitWithTrainingPeriod(unitDataWithCoords, {
+      const unit = await unitRepository.createUnitWithTrainingPeriod(unitDataToSave, {
         name: '정규교육',
         // 근무 시간
         workStartTime: rawData.workStartTime,
@@ -162,7 +164,9 @@ class UnitService {
 
       // 스케줄이 있으면 활성 강사들에 대해 거리 행 미리 생성
       if (unit && schedules.length > 0) {
-        await distanceService.createDistanceRowsForNewUnit(unit.id);
+        await distanceService.createDistanceRowsForNewUnit(unit.id).catch((err) => {
+          logger.error(`[UnitService] Failed to create distance rows: ${err}`);
+        });
       }
 
       return unit;
@@ -170,6 +174,7 @@ class UnitService {
       if (e instanceof Error && e.message.includes('부대명(name)은 필수입니다.')) {
         throw new AppError(e.message, 400, 'VALIDATION_ERROR');
       }
+      logger.error(`[UnitService] Unexpected error in registerSingleUnit: ${e}`);
       throw e;
     }
   }
@@ -274,38 +279,8 @@ class UnitService {
             created++;
             locationsAdded += data.trainingLocations?.length || 0;
           } catch (e) {
-            const errorMessage = e instanceof Error ? e.message : '알 수 없는 오류가 발생했습니다.';
-            logger.error(`[UnitService] Failed to register unit ${data.name}: ${errorMessage}`);
-
-            // 실패 시 부분 저장 (이름이 있는 경우만)
-            if (data.name) {
-              try {
-                // 검증 상태 'Invalid'로 저장
-                const cleanData = toCreateUnitDto(data, lectureYear);
-                await unitRepository.createUnit(
-                  {
-                    ...cleanData,
-                    validationStatus: 'Invalid',
-                    validationMessage: errorMessage,
-                  },
-                  // Prisma.UnitCreateInput과 타입 호환성 문제시 any 캐스팅 필요할 수 있음.
-                  // 하지만 createUnit은 내부적으로 prisma.unit.create를 호출하므로,
-                  // repo의 createUnit이 validationStatus를 받아줄 수 있어야 함.
-                  // createUnit이 엄격한 타입을 요구한다면, repo 수정이 선행되어야 함.
-                  // 우선 repo 수정 없이 진행하기 위해, createUnitDto 변환 후
-                  // repo 내 createUnit 호출 시 추가 필드를 감안해야 함.
-                  // 현재 repository의 createUnit은 UnitCreateInput을 받으므로,
-                  // Prisma Client가 업데이트되었으므로 문제없을 것임.
-                );
-                // 실패 카운트 대신 created(유효하지 않음)로 칠지, 별도 failed로 칠지 결정.
-                // 일단 created로 치되 상태가 Invalid임.
-                created++;
-              } catch (innerError) {
-                logger.error(
-                  `[UnitService] Failed to save partial unit ${data.name}: ${innerError}`,
-                );
-              }
-            }
+            // registerSingleUnit이 name이 없는 경우 등에 대헤 throw 할 수 있음
+            logger.error(`[UnitService] Critical failure registering unit ${data.name}: ${e}`);
           }
         }),
       );

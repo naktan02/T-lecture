@@ -266,29 +266,61 @@ class ExcelService {
   private _parseDateTime(value: unknown): Date | null {
     if (!value) return null;
 
-    // Date 객체인 경우
+    // Date 객체인 경우 (ExcelJS가 이미 변환한 경우)
     if (value instanceof Date) {
+      // ExcelJS에서 읽어온 Date는 로컬 타임존의 영향을 받을 수 있음.
+      // 시간 정보만 있는 경우(1899-12-30)를 체크하여 처리
+      if (value.getFullYear() === 1899 || value.getFullYear() === 1900) {
+        return new Date(
+          Date.UTC(
+            2000,
+            0,
+            1,
+            value.getHours(),
+            value.getMinutes(),
+            value.getSeconds(),
+            value.getMilliseconds(),
+          ),
+        );
+      }
       return value;
     }
 
     // ExcelJS의 날짜 객체인 경우
     if (typeof value === 'object' && value !== null && 'result' in value) {
       const dateObj = (value as { result?: Date }).result;
-      if (dateObj instanceof Date) return dateObj;
+      if (dateObj instanceof Date) return this._parseDateTime(dateObj);
     }
 
     // 숫자(Excel 시리얼)인 경우
     if (typeof value === 'number') {
-      // Excel 시리얼 날짜를 JavaScript Date로 변환
-      const excelEpoch = new Date(1899, 11, 30);
+      // Excel 시리얼 날짜를 JavaScript Date로 변환 (UTC 기준)
       const days = Math.floor(value);
       const fraction = value - days;
-      const date = new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000);
 
-      // 시간 부분 처리
+      // 1899-12-30 00:00:00 UTC
+      const date = new Date(Date.UTC(1899, 11, 30));
+      date.setUTCDate(date.getUTCDate() + days);
+
+      // 시간 부분 처리 (UTC)
       if (fraction > 0) {
         const totalSeconds = Math.round(fraction * 24 * 60 * 60);
-        date.setSeconds(totalSeconds);
+        date.setUTCSeconds(totalSeconds);
+      }
+
+      // 만약 1899년(시간만 있는 경우)이면 2000-01-01 UTC로 정규화
+      if (date.getUTCFullYear() <= 1900) {
+        return new Date(
+          Date.UTC(
+            2000,
+            0,
+            1,
+            date.getUTCHours(),
+            date.getUTCMinutes(),
+            date.getUTCSeconds(),
+            date.getUTCMilliseconds(),
+          ),
+        );
       }
       return date;
     }
@@ -300,14 +332,17 @@ class ExcelService {
 
       // HH:MM 형식 (시간만)
       if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(trimmed)) {
-        const today = new Date();
         const parts = trimmed.split(':');
-        today.setHours(
-          parseInt(parts[0], 10),
-          parseInt(parts[1], 10),
-          parseInt(parts[2] || '0', 10),
+        return new Date(
+          Date.UTC(
+            2000,
+            0,
+            1,
+            parseInt(parts[0], 10),
+            parseInt(parts[1], 10),
+            parseInt(parts[2] || '0', 10),
+          ),
         );
-        return today;
       }
 
       // 일반 날짜 문자열
