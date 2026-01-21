@@ -88,13 +88,11 @@ class ExcelService {
     }
 
     // 2. 헤더 이전 행에서 강의년도 추출
-    // 형식: A열에 '강의년도' 라벨, B열에 '2026' 값 (또는 같은 행 인접 셀)
     let lectureYear: number | undefined;
     worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-      if (rowNumber >= headerRowNum) return; // 헤더 이후는 무시
-      if (lectureYear !== undefined) return; // 이미 찾았으면 스킵
+      if (rowNumber >= headerRowNum) return;
+      if (lectureYear !== undefined) return;
 
-      // 방법 1: '강의년도' 라벨을 찾고 옆 셀에서 년도 읽기
       let lectureYearLabelCol: number | null = null;
       row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
         const cellValue = String(cell.value || '').trim();
@@ -104,7 +102,6 @@ class ExcelService {
       });
 
       if (lectureYearLabelCol !== null) {
-        // 옆 셀(B열)에서 년도 읽기
         const yearCell = row.getCell(lectureYearLabelCol + 1);
         const yearValue = String(yearCell.value || '').trim();
         const yearMatch = yearValue.match(/^(\d{4})년?$/);
@@ -116,7 +113,6 @@ class ExcelService {
         return;
       }
 
-      // 방법 2: 기존 형식 지원 ('강의년도: 2026' 또는 '2026년')
       row.eachCell({ includeEmpty: false }, (cell) => {
         if (lectureYear !== undefined) return;
         const cellValue = String(cell.value || '').trim();
@@ -138,7 +134,7 @@ class ExcelService {
     // 3. 데이터 행 파싱
     const rows: Record<string, unknown>[] = [];
     worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-      if (rowNumber <= headerRowNum) return; // 헤더 이전/헤더 행 스킵
+      if (rowNumber <= headerRowNum) return;
 
       const rowData: Record<string, unknown> = {};
       let hasData = false;
@@ -170,7 +166,7 @@ class ExcelService {
   }
 
   /**
-   * 헤더 행 찾기 - 알려진 컬럼명이 가장 많이 일치하는 행을 헤더로 인식
+   * 헤더 행 찾기
    */
   private _findHeaderRow(worksheet: ExcelJS.Worksheet): {
     headerRowNum: number;
@@ -183,7 +179,6 @@ class ExcelService {
     const knownColumns = new Set(Object.keys(COLUMN_MAPPING));
 
     worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-      // 처음 20행 내에서 찾기
       if (rowNumber > 20) return;
 
       const columnMap = new Map<number, string>();
@@ -199,7 +194,6 @@ class ExcelService {
         }
       });
 
-      // 최소 2개 이상 컬럼이 일치해야 헤더로 인정
       if (matchCount > bestMatchCount && matchCount >= 2) {
         bestMatchCount = matchCount;
         bestRowNum = rowNumber;
@@ -220,7 +214,7 @@ class ExcelService {
       return null;
     }
 
-    // 날짜 필드
+    // 날짜/시간 필드
     const dateFields = [
       'educationStart',
       'educationEnd',
@@ -230,7 +224,9 @@ class ExcelService {
       'lunchEndTime',
     ];
     if (dateFields.includes(fieldName)) {
-      return this._parseDateTime(value);
+      // educationStart, educationEnd는 날짜 정보가 필요하므로 isTimeOnly = false
+      const isTimeOnly = !['educationStart', 'educationEnd'].includes(fieldName);
+      return this._parseDateTime(value, isTimeOnly);
     }
 
     // 불리언 필드
@@ -251,65 +247,62 @@ class ExcelService {
       return this._parseNumber(value);
     }
 
-    // 교육불가일자 (콤마로 구분된 날짜들)
+    // 교육불가일자
     if (fieldName === 'excludedDates') {
       return this._parseExcludedDates(value);
     }
 
-    // 문자열
     return String(value).trim();
   }
 
   /**
    * 날짜/시간 파싱
    */
-  private _parseDateTime(value: unknown): Date | null {
+  private _parseDateTime(value: unknown, isTimeOnly = true): Date | null {
     if (!value) return null;
 
-    // Date 객체인 경우 (ExcelJS가 이미 변환한 경우)
+    // 1. Date 객체인 경우
     if (value instanceof Date) {
-      // ExcelJS에서 읽어온 Date는 로컬 타임존의 영향을 받을 수 있음.
-      // 시간 정보만 있는 경우(1899-12-30)를 체크하여 처리
-      if (value.getFullYear() === 1899 || value.getFullYear() === 1900) {
+      if (isNaN(value.getTime())) return null;
+
+      if (isTimeOnly) {
         return new Date(
           Date.UTC(
             2000,
             0,
             1,
-            value.getHours(),
-            value.getMinutes(),
-            value.getSeconds(),
-            value.getMilliseconds(),
+            value.getUTCHours(),
+            value.getUTCMinutes(),
+            value.getUTCSeconds(),
+            value.getUTCMilliseconds(),
           ),
         );
+      } else {
+        return new Date(
+          Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate(), 0, 0, 0, 0),
+        );
       }
-      return value;
     }
 
-    // ExcelJS의 날짜 객체인 경우
+    // 2. Formula 결과 등
     if (typeof value === 'object' && value !== null && 'result' in value) {
       const dateObj = (value as { result?: Date }).result;
-      if (dateObj instanceof Date) return this._parseDateTime(dateObj);
+      if (dateObj instanceof Date) return this._parseDateTime(dateObj, isTimeOnly);
     }
 
-    // 숫자(Excel 시리얼)인 경우
+    // 3. 숫자(시리얼)
     if (typeof value === 'number') {
-      // Excel 시리얼 날짜를 JavaScript Date로 변환 (UTC 기준)
       const days = Math.floor(value);
       const fraction = value - days;
-
-      // 1899-12-30 00:00:00 UTC
       const date = new Date(Date.UTC(1899, 11, 30));
       date.setUTCDate(date.getUTCDate() + days);
 
-      // 시간 부분 처리 (UTC)
       if (fraction > 0) {
         const totalSeconds = Math.round(fraction * 24 * 60 * 60);
         date.setUTCSeconds(totalSeconds);
       }
 
-      // 만약 1899년(시간만 있는 경우)이면 2000-01-01 UTC로 정규화
-      if (date.getUTCFullYear() <= 1900) {
+      if (isTimeOnly) {
         return new Date(
           Date.UTC(
             2000,
@@ -321,86 +314,86 @@ class ExcelService {
             date.getUTCMilliseconds(),
           ),
         );
+      } else {
+        return new Date(
+          Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0),
+        );
       }
-      return date;
     }
 
-    // 문자열인 경우
+    // 4. 문자열
     if (typeof value === 'string') {
       const trimmed = value.trim();
       if (!trimmed) return null;
 
-      // HH:MM 형식 (시간만)
-      if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(trimmed)) {
-        const parts = trimmed.split(':');
-        return new Date(
-          Date.UTC(
-            2000,
-            0,
-            1,
-            parseInt(parts[0], 10),
-            parseInt(parts[1], 10),
-            parseInt(parts[2] || '0', 10),
-          ),
-        );
+      const matchHMS = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+      if (matchHMS) {
+        const h = parseInt(matchHMS[1], 10);
+        const m = parseInt(matchHMS[2], 10);
+        const s = parseInt(matchHMS[3] || '0', 10);
+        return new Date(Date.UTC(2000, 0, 1, h, m, s));
       }
 
-      // 일반 날짜 문자열
+      const matchKor = trimmed.match(/^(\d{1,2})시\s*(?:(\d{1,2})분)?\s*(?:(\d{1,2})초)?$/);
+      if (matchKor) {
+        const h = parseInt(matchKor[1], 10);
+        const m = parseInt(matchKor[2] || '0', 10);
+        const s = parseInt(matchKor[3] || '0', 10);
+        return new Date(Date.UTC(2000, 0, 1, h, m, s));
+      }
+
       const parsed = new Date(trimmed);
       if (!isNaN(parsed.getTime())) {
-        return parsed;
+        if (isTimeOnly) {
+          return new Date(
+            Date.UTC(
+              2000,
+              0,
+              1,
+              parsed.getUTCHours(),
+              parsed.getUTCMinutes(),
+              parsed.getUTCSeconds(),
+            ),
+          );
+        } else {
+          return new Date(
+            Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 0, 0, 0, 0),
+          );
+        }
       }
     }
 
     return null;
   }
 
-  /**
-   * 불리언 파싱
-   */
   private _parseBoolean(value: unknown): boolean | null {
     if (value === null || value === undefined) return null;
     if (typeof value === 'boolean') return value;
-
     const strValue = String(value).trim().toLowerCase();
-
     const trueValues = ['true', 'o', 'yes', '예', 'y', '1', 'v', '○'];
     const falseValues = ['false', 'x', 'no', '아니오', 'n', '0', ''];
-
     if (trueValues.includes(strValue)) return true;
     if (falseValues.includes(strValue)) return false;
-
     return null;
   }
 
-  /**
-   * 숫자 파싱
-   */
   private _parseNumber(value: unknown): number | null {
     if (value === null || value === undefined || value === '') return null;
     if (typeof value === 'number') return value;
-
     const num = Number(value);
     return isNaN(num) ? null : num;
   }
 
-  /**
-   * 교육불가일자 파싱 (콤마로 구분된 날짜 문자열 → 배열)
-   */
   private _parseExcludedDates(value: unknown): string[] {
     if (!value) return [];
-
     const strValue = String(value);
     return strValue
       .split(/[,;]/)
       .map((d) => d.trim())
       .filter((d) => d.length > 0)
       .map((d) => {
-        // 날짜 형식 정규화 (YYYY-MM-DD)
-        const parsed = this._parseDateTime(d);
-        if (parsed) {
-          return parsed.toISOString().split('T')[0];
-        }
+        const parsed = this._parseDateTime(d, false);
+        if (parsed) return parsed.toISOString().split('T')[0];
         return d;
       });
   }
@@ -408,6 +401,4 @@ class ExcelService {
 
 const excelService = new ExcelService();
 export default excelService;
-
-// CommonJS 호환 (테스트 모킹용)
 module.exports = excelService;
