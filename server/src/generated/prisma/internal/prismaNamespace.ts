@@ -2697,7 +2697,8 @@ export type TrainingLocationScalarFieldEnum = (typeof TrainingLocationScalarFiel
 export const UnitScheduleScalarFieldEnum = {
   id: 'id',
   trainingPeriodId: 'trainingPeriodId',
-  date: 'date'
+  date: 'date',
+  initialDate: 'initialDate'
 } as const
 
 export type UnitScheduleScalarFieldEnum = (typeof UnitScheduleScalarFieldEnum)[keyof typeof UnitScheduleScalarFieldEnum]

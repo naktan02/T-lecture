@@ -285,9 +285,13 @@ class UnitRepository {
               }),
             },
             schedules: {
-              create: (periodData.schedules || []).map((s) => ({
-                date: toUTCMidnight(s.date),
-              })),
+              create: (periodData.schedules || []).map((s) => {
+                const dt = toUTCMidnight(s.date);
+                return {
+                  date: dt,
+                  initialDate: dt,
+                };
+              }),
             },
           },
         },
@@ -373,10 +377,14 @@ class UnitRepository {
     if (dates.length === 0) return { count: 0 };
 
     return prisma.unitSchedule.createMany({
-      data: dates.map((d) => ({
-        trainingPeriodId,
-        date: toUTCMidnight(d),
-      })),
+      data: dates.map((d) => {
+        const dt = toUTCMidnight(d);
+        return {
+          trainingPeriodId,
+          date: dt,
+          initialDate: dt,
+        };
+      }),
       skipDuplicates: true,
     });
   }
@@ -636,6 +644,7 @@ class UnitRepository {
       data: {
         trainingPeriodId: Number(trainingPeriodId),
         date: dt,
+        initialDate: dt,
       },
     });
   }
