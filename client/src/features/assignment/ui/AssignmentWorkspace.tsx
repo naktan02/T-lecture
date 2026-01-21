@@ -423,7 +423,11 @@ export const AssignmentWorkspace: React.FC = () => {
                     <div
                       key={group.unitId}
                       onClick={() => setDetailModalKey({ unitId: group.unitId, bucket: 'PENDING' })}
-                      className="bg-white border border-gray-200 rounded-lg p-2.5 shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 border-l-indigo-500"
+                      className={`bg-white border border-gray-200 rounded-lg p-2.5 shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 ${
+                        group.totalAssigned === 0
+                          ? 'border-l-gray-400 bg-gray-50/70'
+                          : 'border-l-indigo-500'
+                      }`}
                     >
                       <div className="flex justify-between items-start mb-1">
                         <div>
@@ -433,7 +437,9 @@ export const AssignmentWorkspace: React.FC = () => {
                           </span>
                         </div>
                         <div className="text-right">
-                          <div className="text-[10px] font-bold text-indigo-600">
+                          <div
+                            className={`text-[10px] font-bold ${group.totalAssigned === 0 ? 'text-gray-500' : 'text-indigo-600'}`}
+                          >
                             {group.period}
                           </div>
                           <div className="text-[10px] text-gray-400">
@@ -442,18 +448,24 @@ export const AssignmentWorkspace: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-[11px] text-orange-600 font-medium">
-                          📨 {group.totalAssigned}명 배정
-                        </span>
                         <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                            (group as any).unsentCount > 0
-                              ? 'text-blue-600 bg-blue-100'
-                              : 'text-gray-500 bg-gray-100'
-                          }`}
+                          className={`text-[11px] font-medium ${group.totalAssigned === 0 ? 'text-gray-500' : 'text-orange-600'}`}
                         >
-                          🔵 미발송 {(group as any).unsentCount ?? 0}
+                          {group.totalAssigned === 0
+                            ? '📋 강사 미배정 (클릭하여 배정)'
+                            : `📨 ${group.totalAssigned}명 배정`}
                         </span>
+                        {group.totalAssigned > 0 && (
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                              (group as any).unsentCount > 0
+                                ? 'text-blue-600 bg-blue-100'
+                                : 'text-gray-500 bg-gray-100'
+                            }`}
+                          >
+                            🔵 미발송 {(group as any).unsentCount ?? 0}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}

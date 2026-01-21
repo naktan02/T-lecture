@@ -448,8 +448,7 @@ class AssignmentDTO {
             isStaffLocked: (unit as any).isStaffLocked ?? false, // 인원고정 상태
           };
         })
-        // 0명 배정된 부대는 필터링 (배정 작업 중/확정 섹션에서 표시 안 함)
-        .filter((unit) => unit.totalAssigned > 0)
+      // 모든 부대 표시 (0명 배정도 포함 - 수동 배정 가능)
     );
   }
 }
