@@ -224,6 +224,7 @@ interface AssignmentGroupDetailModalProps {
     category?: string;
     availableDates?: string[];
   }[];
+  assignedByDate?: Map<string, Set<number>>; // 날짜별 이미 배정된 강사 ID
 }
 
 export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProps> = ({
@@ -231,6 +232,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
   onClose,
   onSaveComplete,
   availableInstructors = [],
+  assignedByDate = new Map(),
 }) => {
   const [addPopupTarget, setAddPopupTarget] = useState<AddPopupTarget | null>(null);
   const [removeTarget, setRemoveTarget] = useState<{
@@ -870,7 +872,10 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
         <InstructorSelectionPopup
           target={addPopupTarget}
           allAvailableInstructors={availableInstructors}
-          assignedInstructorIds={getAssignedInstructorIds(addPopupTarget.unitScheduleId)}
+          assignedInstructorIds={[
+            ...getAssignedInstructorIds(addPopupTarget.unitScheduleId),
+            ...(assignedByDate.get(addPopupTarget.date) || []),
+          ]}
           onClose={() => setAddPopupTarget(null)}
           onAdd={async (inst) => {
             handleAddLocal(

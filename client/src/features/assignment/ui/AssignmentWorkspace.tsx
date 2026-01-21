@@ -1,6 +1,6 @@
 // src/features/assignment/ui/AssignmentWorkspace.tsx
 
-import { useState, useRef, ChangeEvent, MouseEvent, useEffect } from 'react';
+import { useState, useRef, ChangeEvent, MouseEvent, useEffect, useMemo } from 'react';
 import { useAssignment } from '../model/useAssignment';
 import { Button, MiniCalendar, ConfirmModal } from '../../../shared/ui';
 import { AssignmentDetailModal, AssignmentGroupDetailModal } from './AssignmentDetailModal';
@@ -98,6 +98,28 @@ export const AssignmentWorkspace: React.FC = () => {
     y: 0,
     dates: [],
   });
+
+  // 날짜별 이미 배정된 강사 ID 맵 생성 (모든 부대 통합)
+  const assignedByDate = useMemo(() => {
+    const map = new Map<string, Set<number>>();
+    const allGroups = [...assignments, ...confirmedAssignments];
+    for (const group of allGroups) {
+      for (const loc of (group as any).trainingLocations || []) {
+        for (const dateInfo of loc.dates || []) {
+          const dateStr = dateInfo.date as string;
+          if (!dateStr) continue;
+          if (!map.has(dateStr)) map.set(dateStr, new Set());
+          for (const inst of dateInfo.instructors || []) {
+            // Pending 또는 Accepted 상태인 배정만 포함
+            if (inst.state === 'Pending' || inst.state === 'Accepted') {
+              map.get(dateStr)!.add(inst.instructorId);
+            }
+          }
+        }
+      }
+    }
+    return map;
+  }, [assignments, confirmedAssignments]);
 
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -586,6 +608,7 @@ export const AssignmentWorkspace: React.FC = () => {
             category: i.category ?? undefined,
             availableDates: i.availableDates ?? [],
           }))}
+          assignedByDate={assignedByDate}
         />
       )}
 
