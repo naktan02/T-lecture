@@ -18,6 +18,9 @@ export interface MonthlyReportParams {
 export class ReportService {
   private readonly templateDir = path.join(__dirname, '../../infra/report');
 
+  // =====================================================
+  // 주간 보고서 생성
+  // =====================================================
   async generateWeeklyReport(params: WeeklyReportParams): Promise<Buffer> {
     const { year, month, week } = params;
     const { startDate, endDate } = this.getWeekRange(year, month, week);
@@ -31,7 +34,7 @@ export class ReportService {
     const titleCell = sheet.getRow(1).getCell(2);
     titleCell.value = `[1그룹 푸른나무재단] ${month}월 ${week}주차 '${shortYear}년 병 집중인성교육 주간 결과보고`;
 
-    const unitGroups = await this.getProcessedReportData(startDate, endDate);
+    const unitGroups = await this.getWeeklyReportData(startDate, endDate);
 
     if (unitGroups.length > 0) {
       // 합계 행 수식 버그 방지 (클리어)
@@ -48,7 +51,6 @@ export class ReportService {
         }
       }
 
-      // 교육장소별 합계 계산용 변수
       const placeTotals = { p22: 0, p23: 0, p24: 0, p25: 0, p26: 0 };
 
       unitGroups.forEach((g, idx) => {
@@ -159,7 +161,6 @@ export class ReportService {
         result: totals.adCum,
       };
 
-      // 교육장소 합계 수식 추가 (22~26열)
       summaryRow.getCell(22).value = {
         formula: `SUBTOTAL(9, V5:V${lastRow})`,
         result: placeTotals.p22,
@@ -185,6 +186,9 @@ export class ReportService {
     return (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
   }
 
+  // =====================================================
+  // 월간 보고서 생성
+  // =====================================================
   async generateMonthlyReport(params: MonthlyReportParams): Promise<Buffer> {
     const { year, month } = params;
     const startDate = new Date(Date.UTC(year, month - 1, 1));
@@ -194,151 +198,149 @@ export class ReportService {
     const templatePath = path.join(this.templateDir, 'report_month.xlsx');
     await workbook.xlsx.readFile(templatePath);
 
-    const unitGroups = await this.getProcessedReportData(startDate, endDate);
+    const unitGroups = await this.getMonthlyReportData(startDate, endDate, year, month);
 
-    // 월간 템플릿은 2개 시트: 0=사전, 1=사후
-    // 1. 사전 시트 (Sheet 0)
+    // ========== 사전 시트 (Sheet 0) ==========
     const preSheet = workbook.worksheets[0];
-    const shortYear = year.toString().slice(-2);
-    preSheet.getRow(1).getCell(1).value = `${year} 집중인성교육 ${month}월 교육일정`;
+    // 제목 행 (Row 1, Cell B) - 병합셀이므로 B만 설정
+    preSheet.getRow(1).getCell(2).value = `${year} 병 집중인성교육 1그룹 ${month}월 교육일정`;
 
-    if (unitGroups.length > 0) {
-      if (unitGroups.length > 1) {
-        for (let i = 1; i < unitGroups.length; i++) {
-          preSheet.duplicateRow(4, 1, true);
-        }
+    // 데이터 시작: Row 5
+    if (unitGroups.length > 1) {
+      for (let i = 1; i < unitGroups.length; i++) {
+        preSheet.duplicateRow(5, 1, true);
       }
-      unitGroups.forEach((g, idx) => {
-        const row = preSheet.getRow(4 + idx);
-        row.getCell(2).value = idx + 1;
-        row.getCell(4).value = '푸른나무재단';
-        row.getCell(5).value = '인성교육';
-        row.getCell(6).value = g.unitName;
-        row.getCell(7).value = g.place;
-        row.getCell(8).value = g.periodStr;
-        row.getCell(9).value = g.plannedCount;
-        row.getCell(10).value = g.instructors.join(', ');
-        row.commit();
-      });
     }
 
-    // 2. 사후 시트 (Sheet 1)
+    unitGroups.forEach((g, idx) => {
+      const row = preSheet.getRow(5 + idx);
+      row.getCell(2).value = idx + 1; // B: 번호
+      row.getCell(3).value = this.getMilitaryTypeLabel(g.unitType); // C: 군구분
+      row.getCell(4).value = g.unitName; // D: 부대명
+      row.getCell(5).value = g.wideArea; // E: 지역(광역)
+      row.getCell(6).value = g.region; // F: 지역(기초)
+      row.getCell(7).value = `${month}월`; // G: 시기
+      row.getCell(8).value = g.weekStr || ''; // H: 주차
+      row.getCell(9).value = g.periodStr; // I: 시행기간
+      row.getCell(10).value = g.plannedCount; // J: 계획인원
+      row.getCell(11).value = g.officerContact; // K: 부대실무자 연락처
+      row.commit();
+    });
+
+    // ========== 사후 시트 (Sheet 1) ==========
     const postSheet = workbook.worksheets[1];
-    postSheet.getRow(1).getCell(1).value = `${year} 집중인성교육 ${month}월 교육결과`;
+    // 제목 행 (Row 2, Cell A) - 병합셀
+    postSheet.getRow(2).getCell(1).value =
+      `[1그룹] 푸른나무재단 ${year}년 ${month}월 병 집중인성교육 월간보고`;
 
-    if (unitGroups.length > 0) {
-      const initialSummaryRow = postSheet.getRow(6);
-      initialSummaryRow.eachCell({ includeEmpty: true }, (cell) => {
-        cell.value = null;
-        if ((cell as any).formula) (cell as any).formula = undefined;
-        if ((cell as any)._sharedFormula) (cell as any)._sharedFormula = undefined;
-      });
+    // 합계 행 수식 클리어 (Row 7)
+    const initialSummaryRow = postSheet.getRow(7);
+    initialSummaryRow.eachCell({ includeEmpty: true }, (cell) => {
+      cell.value = null;
+      if ((cell as any).formula) (cell as any).formula = undefined;
+      if ((cell as any)._sharedFormula) (cell as any)._sharedFormula = undefined;
+    });
 
-      if (unitGroups.length > 1) {
-        for (let i = 1; i < unitGroups.length; i++) {
-          postSheet.duplicateRow(5, 1, true);
-        }
+    // 데이터 시작: Row 6
+    if (unitGroups.length > 1) {
+      for (let i = 1; i < unitGroups.length; i++) {
+        postSheet.duplicateRow(6, 1, true);
       }
-
-      // 장소 합계 계산용
-      const placeTotals = { p18: 0, p19: 0, p20: 0, p21: 0, p22: 0 };
-
-      unitGroups.forEach((g, idx) => {
-        const row = postSheet.getRow(5 + idx);
-        row.getCell(2).value = idx + 1;
-        row.getCell(4).value = '푸른나무재단';
-        row.getCell(5).value = this.getMilitaryTypeLabel(g.unitType);
-        row.getCell(6).value = g.unitName;
-        row.getCell(7).value = g.place;
-        row.getCell(8).value = g.periodStr;
-        row.getCell(9).value = g.actualCount;
-        row.getCell(10).value = g.instructors.join(', ');
-        row.getCell(11).value = g.instructors.length;
-
-        row.getCell(12).value = g.totalPlannedDays;
-        row.getCell(13).value = 1;
-        row.getCell(14).value = g.totalPlannedDays;
-
-        row.getCell(15).value = g.actualDaysCumulative;
-        row.getCell(16).value = 1;
-        row.getCell(17).value = g.actualDaysCumulative;
-
-        // 장소 체크 (18~22열)
-        const placeCols = { 생활관: 18, 종교시설: 19, 식당: 20, 강의실: 21, 기타: 22 };
-        let placeChecked = false;
-        g.places.forEach((p) => {
-          for (const [key, col] of Object.entries(placeCols)) {
-            if (
-              p.includes(key) ||
-              (key === '강의실' && (p.includes('강당') || p.includes('교육장')))
-            ) {
-              row.getCell(col).value = 1;
-              if (col === 18) placeTotals.p18++;
-              else if (col === 19) placeTotals.p19++;
-              else if (col === 20) placeTotals.p20++;
-              else if (col === 21) placeTotals.p21++;
-              placeChecked = true;
-            }
-          }
-        });
-        if (!placeChecked) {
-          row.getCell(22).value = 1;
-          placeTotals.p22++;
-        }
-        row.commit();
-      });
-
-      const totals = unitGroups.reduce(
-        (acc, g) => {
-          acc.aCount += g.actualCount;
-          acc.iLen += g.instructors.length;
-          return acc;
-        },
-        { aCount: 0, iLen: 0 },
-      );
-
-      const summaryRow = postSheet.getRow(5 + unitGroups.length);
-      const lastRow = 5 + unitGroups.length - 1;
-      summaryRow.getCell(2).value = '계';
-      summaryRow.getCell(4).value = '계';
-      summaryRow.getCell(6).value = '계';
-
-      summaryRow.getCell(9).value = {
-        formula: `SUBTOTAL(9, I5:I${lastRow})`,
-        result: totals.aCount,
-      };
-      summaryRow.getCell(11).value = {
-        formula: `SUBTOTAL(9, K5:K${lastRow})`,
-        result: totals.iLen,
-      };
-
-      // 장소 합계 수식 추가 (18~22열)
-      summaryRow.getCell(18).value = {
-        formula: `SUBTOTAL(9, R5:R${lastRow})`,
-        result: placeTotals.p18,
-      };
-      summaryRow.getCell(19).value = {
-        formula: `SUBTOTAL(9, S5:S${lastRow})`,
-        result: placeTotals.p19,
-      };
-      summaryRow.getCell(20).value = {
-        formula: `SUBTOTAL(9, T5:T${lastRow})`,
-        result: placeTotals.p20,
-      };
-      summaryRow.getCell(21).value = {
-        formula: `SUBTOTAL(9, U5:U${lastRow})`,
-        result: placeTotals.p21,
-      };
-      summaryRow.getCell(22).value = {
-        formula: `SUBTOTAL(9, V5:V${lastRow})`,
-        result: placeTotals.p22,
-      };
     }
+
+    unitGroups.forEach((g, idx) => {
+      const row = postSheet.getRow(6 + idx);
+      row.getCell(1).value = idx + 1; // A: 번호
+      row.getCell(2).value = '푸른나무재단'; // B: 업체명
+      row.getCell(3).value = this.getMilitaryTypeLabel(g.unitType); // C: 군별
+      row.getCell(4).value = g.unitName; // D: 부대명
+      row.getCell(5).value = g.wideArea; // E: 지역(광역)
+      row.getCell(6).value = g.region; // F: 지역(기초)
+      row.getCell(7).value = month; // G: 시기
+      row.getCell(8).value = g.weekStr || ''; // H: 주차
+      row.getCell(9).value = g.periodStr; // I: 시행기간
+      row.getCell(10).value = g.actualCount; // J: 참여인원
+      row.getCell(11).value = g.instructors.length; // K: 투입 강사 수
+      row.getCell(12).value = g.totalPlannedDays; // L: 계획 횟수
+      row.getCell(13).value = g.actualDaysCumulative; // M: 실시 횟수
+      row.getCell(14).value = ''; // N: 특이사항
+      row.commit();
+    });
+
+    // 합계 행
+    const summaryRowNum = 6 + unitGroups.length;
+    const summaryRow = postSheet.getRow(summaryRowNum);
+    summaryRow.getCell(1).value = '계';
+
+    const totals = unitGroups.reduce(
+      (acc, g) => {
+        acc.aCount += g.actualCount;
+        acc.iLen += g.instructors.length;
+        acc.tpDays += g.totalPlannedDays;
+        acc.adCum += g.actualDaysCumulative;
+        return acc;
+      },
+      { aCount: 0, iLen: 0, tpDays: 0, adCum: 0 },
+    );
+
+    const lastDataRow = 6 + unitGroups.length - 1;
+    summaryRow.getCell(10).value = {
+      formula: `SUBTOTAL(9, J6:J${lastDataRow})`,
+      result: totals.aCount,
+    };
+    summaryRow.getCell(11).value = {
+      formula: `SUBTOTAL(9, K6:K${lastDataRow})`,
+      result: totals.iLen,
+    };
+    summaryRow.getCell(12).value = {
+      formula: `SUBTOTAL(9, L6:L${lastDataRow})`,
+      result: totals.tpDays,
+    };
+    summaryRow.getCell(13).value = {
+      formula: `SUBTOTAL(9, M6:M${lastDataRow})`,
+      result: totals.adCum,
+    };
+
+    // ========== 진행률 정보 (Row 10~13, 데이터 행 추가로 밀림) ==========
+    const progressBaseRow = summaryRowNum + 3; // 합계 + 빈 행 2개 후
+
+    // 진행률 계산
+    const totalYearSchedules = await prisma.unitSchedule.count({
+      where: { trainingPeriod: { unit: { lectureYear: year } } },
+    });
+    const completedThisMonth = totals.adCum;
+    const completedUntilNow = await prisma.unitSchedule.count({
+      where: {
+        trainingPeriod: { unit: { lectureYear: year } },
+        date: { lte: endDate },
+        assignments: { some: { state: 'Accepted' } },
+      },
+    });
+
+    const monthlySchedules = await prisma.unitSchedule.count({
+      where: { date: { gte: startDate, lte: endDate } },
+    });
+
+    const monthProgress =
+      monthlySchedules > 0 ? Math.round((completedThisMonth / monthlySchedules) * 100) : 0;
+    const totalProgress =
+      totalYearSchedules > 0 ? Math.round((completedUntilNow / totalYearSchedules) * 1000) / 10 : 0;
+
+    postSheet.getRow(progressBaseRow).getCell(2).value =
+      `* ${month}월 진행률 :  ${monthProgress}(%)`;
+    postSheet.getRow(progressBaseRow + 1).getCell(2).value = `* 전체 진행률 :  ${totalProgress}(%)`;
+    postSheet.getRow(progressBaseRow + 2).getCell(2).value = `총 진행 목표(${year})`;
+    postSheet.getRow(progressBaseRow + 2).getCell(3).value = totalYearSchedules;
+    postSheet.getRow(progressBaseRow + 3).getCell(2).value = `누적 진행(${month}월)`;
+    postSheet.getRow(progressBaseRow + 3).getCell(3).value = completedUntilNow;
 
     return (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
   }
 
-  private async getProcessedReportData(startDate: Date, endDate: Date) {
+  // =====================================================
+  // 주간 보고서용 데이터 조회
+  // =====================================================
+  private async getWeeklyReportData(startDate: Date, endDate: Date) {
     const schedulesInRange = await prisma.unitSchedule.findMany({
       where: { date: { gte: startDate, lte: endDate } },
       select: { trainingPeriodId: true },
@@ -351,6 +353,7 @@ export class ReportService {
       include: {
         unit: true,
         schedules: {
+          where: { date: { gte: startDate, lte: endDate } },
           orderBy: { date: 'asc' },
           include: {
             scheduleLocations: { include: { location: true } },
@@ -382,18 +385,20 @@ export class ReportService {
       const places = new Set<string>();
       const dailyPlanned = new Map<string, number>();
       const dailyActual = new Map<string, number>();
-      const periodStrings: string[] = u.periods.map((p: any) => {
-        const sortedDates = p.schedules
-          .map((s: any) => s.date)
-          .filter(Boolean)
-          .sort((a: any, b: any) => a.getTime() - b.getTime());
-        return this.formatPeriod(sortedDates);
-      });
+      const periodStrings: string[] = [];
 
       let totalPlannedDays = 0;
       let actualDaysCumulative = 0;
 
       u.periods.forEach((p: any) => {
+        const sortedDates = p.schedules
+          .map((s: any) => s.date)
+          .filter(Boolean)
+          .sort((a: any, b: any) => a.getTime() - b.getTime());
+        if (sortedDates.length > 0) {
+          periodStrings.push(this.formatPeriod(sortedDates));
+        }
+
         totalPlannedDays += p.schedules.length;
         p.schedules.forEach((s: any) => {
           const dateStr = s.date?.toISOString().split('T')[0] || 'Unknown';
@@ -401,15 +406,13 @@ export class ReportService {
           if (!dailyActual.has(dateStr)) dailyActual.set(dateStr, 0);
 
           s.scheduleLocations.forEach((sl: any) => {
-            const pCount = sl.plannedCount || 0;
-            const aCount = sl.actualCount || 0;
-            dailyPlanned.set(dateStr, dailyPlanned.get(dateStr)! + pCount);
-            dailyActual.set(dateStr, dailyActual.get(dateStr)! + aCount);
+            dailyPlanned.set(dateStr, dailyPlanned.get(dateStr)! + (sl.plannedCount || 0));
+            dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount || 0));
             const pl = sl.location?.originalPlace || sl.location?.changedPlace;
             if (pl) places.add(pl);
           });
 
-          if (s.assignments.length > 0 && s.date <= endDate) actualDaysCumulative++;
+          if (s.assignments.length > 0) actualDaysCumulative++;
           s.assignments.forEach((a: any) => {
             if (a.User?.name) instructors.add(a.User.name);
           });
@@ -417,9 +420,8 @@ export class ReportService {
       });
 
       const plannedCount =
-        dailyPlanned.size > 0 ? Math.max(...(Array.from(dailyPlanned.values()) as number[])) : 0;
-      const actualCount =
-        dailyActual.size > 0 ? Math.max(...(Array.from(dailyActual.values()) as number[])) : 0;
+        dailyPlanned.size > 0 ? Math.max(...Array.from(dailyPlanned.values())) : 0;
+      const actualCount = dailyActual.size > 0 ? Math.max(...Array.from(dailyActual.values())) : 0;
 
       return {
         ...u,
@@ -430,11 +432,132 @@ export class ReportService {
         actualDaysCumulative,
         instructors: Array.from(instructors),
         places: Array.from(places),
-        place: Array.from(places)[0] || '',
       };
     });
   }
 
+  // =====================================================
+  // 월간 보고서용 데이터 조회 (독립적)
+  // =====================================================
+  private async getMonthlyReportData(startDate: Date, endDate: Date, year: number, month: number) {
+    const schedulesInRange = await prisma.unitSchedule.findMany({
+      where: { date: { gte: startDate, lte: endDate } },
+      select: { trainingPeriodId: true },
+    });
+    const periodIds = Array.from(new Set(schedulesInRange.map((s) => s.trainingPeriodId)));
+    if (periodIds.length === 0) return [];
+
+    const periods = await prisma.trainingPeriod.findMany({
+      where: { id: { in: periodIds } },
+      include: {
+        unit: true,
+        schedules: {
+          where: { date: { gte: startDate, lte: endDate } },
+          orderBy: { date: 'asc' },
+          include: {
+            scheduleLocations: { include: { location: true } },
+            assignments: {
+              where: { state: 'Accepted' },
+              include: { User: { select: { name: true } } },
+            },
+          },
+        },
+      },
+    });
+
+    const unitMap = new Map<number, any>();
+    for (const p of periods) {
+      if (!unitMap.has(p.unitId)) {
+        unitMap.set(p.unitId, {
+          unitName: p.unit.name,
+          unitType: p.unit.unitType,
+          wideArea: p.unit.wideArea,
+          region: p.unit.region,
+          officerName: p.officerName,
+          officerPhone: p.officerPhone,
+          periods: [],
+        });
+      }
+      // 담당관 정보 업데이트 (나중에 들어온 값으로)
+      if (p.officerName) unitMap.get(p.unitId).officerName = p.officerName;
+      if (p.officerPhone) unitMap.get(p.unitId).officerPhone = p.officerPhone;
+      unitMap.get(p.unitId).periods.push(p);
+    }
+
+    return Array.from(unitMap.values()).map((u) => {
+      const instructors = new Set<string>();
+      const dailyPlanned = new Map<string, number>();
+      const dailyActual = new Map<string, number>();
+      const periodStrings: string[] = [];
+      const weeks = new Set<number>();
+
+      let totalPlannedDays = 0;
+      let actualDaysCumulative = 0;
+
+      u.periods.forEach((p: any) => {
+        const sortedDates = p.schedules
+          .map((s: any) => s.date)
+          .filter(Boolean)
+          .sort((a: any, b: any) => a.getTime() - b.getTime());
+        if (sortedDates.length > 0) {
+          periodStrings.push(this.formatPeriod(sortedDates));
+          // 주차 계산
+          sortedDates.forEach((d: Date) => {
+            const weekNum = this.getWeekNumber(d, month);
+            if (weekNum > 0) weeks.add(weekNum);
+          });
+        }
+
+        totalPlannedDays += p.schedules.length;
+        p.schedules.forEach((s: any) => {
+          const dateStr = s.date?.toISOString().split('T')[0] || 'Unknown';
+          if (!dailyPlanned.has(dateStr)) dailyPlanned.set(dateStr, 0);
+          if (!dailyActual.has(dateStr)) dailyActual.set(dateStr, 0);
+
+          s.scheduleLocations.forEach((sl: any) => {
+            dailyPlanned.set(dateStr, dailyPlanned.get(dateStr)! + (sl.plannedCount || 0));
+            dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount || 0));
+          });
+
+          if (s.assignments.length > 0) actualDaysCumulative++;
+          s.assignments.forEach((a: any) => {
+            if (a.User?.name) instructors.add(a.User.name);
+          });
+        });
+      });
+
+      const plannedCount =
+        dailyPlanned.size > 0 ? Math.max(...Array.from(dailyPlanned.values())) : 0;
+      const actualCount = dailyActual.size > 0 ? Math.max(...Array.from(dailyActual.values())) : 0;
+
+      // 담당관 연락처 포맷
+      const officerContact =
+        u.officerName && u.officerPhone
+          ? `${u.officerName} / ${u.officerPhone}`
+          : u.officerName || u.officerPhone || '';
+
+      // 주차 문자열
+      const weekStr = Array.from(weeks)
+        .sort((a, b) => a - b)
+        .join(', ');
+
+      return {
+        ...u,
+        periodStr: periodStrings.join(', '),
+        plannedCount,
+        actualCount,
+        totalPlannedDays,
+        actualDaysCumulative,
+        instructors: Array.from(instructors),
+        officerContact,
+        weekStr,
+      };
+    });
+  }
+
+  // =====================================================
+  // 헬퍼 함수들
+  // =====================================================
   private getWeekRange(year: number, month: number, week: number) {
     const firstDayOfMonth = new Date(year, month - 1, 1);
     const dayOfFirst = firstDayOfMonth.getDay();
@@ -445,6 +568,17 @@ export class ReportService {
     return { startDate, endDate };
   }
 
+  private getWeekNumber(date: Date, month: number): number {
+    const d = new Date(date);
+    if (d.getMonth() + 1 !== month) return 0;
+    const firstDayOfMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+    const dayOfFirst = firstDayOfMonth.getDay();
+    const firstMondayDate = 1 + (dayOfFirst === 1 ? 0 : dayOfFirst === 0 ? 1 : 8 - dayOfFirst);
+    const dayOfMonth = d.getDate();
+    if (dayOfMonth < firstMondayDate) return 0;
+    return Math.ceil((dayOfMonth - firstMondayDate + 1) / 7);
+  }
+
   private formatPeriod(dates: Date[]): string {
     if (dates.length === 0) return '';
     const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
@@ -453,21 +587,6 @@ export class ReportService {
     const fmt = (d: Date) => `${d.getMonth() + 1}.${d.getDate()}(${dayNames[d.getDay()]})`;
     if (dates.length === 1) return fmt(start);
     return `${fmt(start)}~${fmt(end)}`;
-  }
-
-  private getMonthlyStats(schedules: any[]) {
-    const stats: Record<string, { count: number }> = {
-      Army: { count: 0 },
-      Navy: { count: 0 },
-      AirForce: { count: 0 },
-      Marines: { count: 0 },
-      MND: { count: 0 },
-    };
-    schedules.forEach((s) => {
-      const type = s.trainingPeriod.unit.unitType;
-      if (type && stats[type]) stats[type].count++;
-    });
-    return stats;
   }
 
   private getMilitaryTypeLabel(type: MilitaryType | null): string {
