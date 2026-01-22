@@ -289,7 +289,6 @@ class UnitRepository {
                 const dt = toUTCMidnight(s.date);
                 return {
                   date: dt,
-                  initialDate: dt,
                 };
               }),
             },
@@ -382,7 +381,6 @@ class UnitRepository {
         return {
           trainingPeriodId,
           date: dt,
-          initialDate: dt,
         };
       }),
       skipDuplicates: true,
@@ -644,7 +642,6 @@ class UnitRepository {
       data: {
         trainingPeriodId: Number(trainingPeriodId),
         date: dt,
-        initialDate: dt,
       },
     });
   }

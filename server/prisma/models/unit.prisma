@@ -88,7 +88,6 @@ model UnitSchedule {
   id               Int       @id @default(autoincrement())
   trainingPeriodId Int       @map("교육기간id")
   date             DateTime? @map("교육일")
-  initialDate      DateTime? @map("최초계획일")
 
   trainingPeriod    TrainingPeriod             @relation(fields: [trainingPeriodId], references: [id], onDelete: Cascade)
   scheduleLocations ScheduleLocation[]

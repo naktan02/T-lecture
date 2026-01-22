@@ -40,21 +40,18 @@ export type UnitScheduleMinAggregateOutputType = {
   id: number | null
   trainingPeriodId: number | null
   date: Date | null
-  initialDate: Date | null
 }
 
 export type UnitScheduleMaxAggregateOutputType = {
   id: number | null
   trainingPeriodId: number | null
   date: Date | null
-  initialDate: Date | null
 }
 
 export type UnitScheduleCountAggregateOutputType = {
   id: number
   trainingPeriodId: number
   date: number
-  initialDate: number
   _all: number
 }
 
@@ -73,21 +70,18 @@ export type UnitScheduleMinAggregateInputType = {
   id?: true
   trainingPeriodId?: true
   date?: true
-  initialDate?: true
 }
 
 export type UnitScheduleMaxAggregateInputType = {
   id?: true
   trainingPeriodId?: true
   date?: true
-  initialDate?: true
 }
 
 export type UnitScheduleCountAggregateInputType = {
   id?: true
   trainingPeriodId?: true
   date?: true
-  initialDate?: true
   _all?: true
 }
 
@@ -181,7 +175,6 @@ export type UnitScheduleGroupByOutputType = {
   id: number
   trainingPeriodId: number
   date: Date | null
-  initialDate: Date | null
   _count: UnitScheduleCountAggregateOutputType | null
   _avg: UnitScheduleAvgAggregateOutputType | null
   _sum: UnitScheduleSumAggregateOutputType | null
@@ -211,7 +204,6 @@ export type UnitScheduleWhereInput = {
   id?: Prisma.IntFilter<"UnitSchedule"> | number
   trainingPeriodId?: Prisma.IntFilter<"UnitSchedule"> | number
   date?: Prisma.DateTimeNullableFilter<"UnitSchedule"> | Date | string | null
-  initialDate?: Prisma.DateTimeNullableFilter<"UnitSchedule"> | Date | string | null
   trainingPeriod?: Prisma.XOR<Prisma.TrainingPeriodScalarRelationFilter, Prisma.TrainingPeriodWhereInput>
   scheduleLocations?: Prisma.ScheduleLocationListRelationFilter
   assignments?: Prisma.InstructorUnitAssignmentListRelationFilter
@@ -221,7 +213,6 @@ export type UnitScheduleOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   trainingPeriodId?: Prisma.SortOrder
   date?: Prisma.SortOrderInput | Prisma.SortOrder
-  initialDate?: Prisma.SortOrderInput | Prisma.SortOrder
   trainingPeriod?: Prisma.TrainingPeriodOrderByWithRelationInput
   scheduleLocations?: Prisma.ScheduleLocationOrderByRelationAggregateInput
   assignments?: Prisma.InstructorUnitAssignmentOrderByRelationAggregateInput
@@ -234,7 +225,6 @@ export type UnitScheduleWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.UnitScheduleWhereInput | Prisma.UnitScheduleWhereInput[]
   trainingPeriodId?: Prisma.IntFilter<"UnitSchedule"> | number
   date?: Prisma.DateTimeNullableFilter<"UnitSchedule"> | Date | string | null
-  initialDate?: Prisma.DateTimeNullableFilter<"UnitSchedule"> | Date | string | null
   trainingPeriod?: Prisma.XOR<Prisma.TrainingPeriodScalarRelationFilter, Prisma.TrainingPeriodWhereInput>
   scheduleLocations?: Prisma.ScheduleLocationListRelationFilter
   assignments?: Prisma.InstructorUnitAssignmentListRelationFilter
@@ -244,7 +234,6 @@ export type UnitScheduleOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   trainingPeriodId?: Prisma.SortOrder
   date?: Prisma.SortOrderInput | Prisma.SortOrder
-  initialDate?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.UnitScheduleCountOrderByAggregateInput
   _avg?: Prisma.UnitScheduleAvgOrderByAggregateInput
   _max?: Prisma.UnitScheduleMaxOrderByAggregateInput
@@ -259,12 +248,10 @@ export type UnitScheduleScalarWhereWithAggregatesInput = {
   id?: Prisma.IntWithAggregatesFilter<"UnitSchedule"> | number
   trainingPeriodId?: Prisma.IntWithAggregatesFilter<"UnitSchedule"> | number
   date?: Prisma.DateTimeNullableWithAggregatesFilter<"UnitSchedule"> | Date | string | null
-  initialDate?: Prisma.DateTimeNullableWithAggregatesFilter<"UnitSchedule"> | Date | string | null
 }
 
 export type UnitScheduleCreateInput = {
   date?: Date | string | null
-  initialDate?: Date | string | null
   trainingPeriod: Prisma.TrainingPeriodCreateNestedOneWithoutSchedulesInput
   scheduleLocations?: Prisma.ScheduleLocationCreateNestedManyWithoutScheduleInput
   assignments?: Prisma.InstructorUnitAssignmentCreateNestedManyWithoutUnitScheduleInput
@@ -274,14 +261,12 @@ export type UnitScheduleUncheckedCreateInput = {
   id?: number
   trainingPeriodId: number
   date?: Date | string | null
-  initialDate?: Date | string | null
   scheduleLocations?: Prisma.ScheduleLocationUncheckedCreateNestedManyWithoutScheduleInput
   assignments?: Prisma.InstructorUnitAssignmentUncheckedCreateNestedManyWithoutUnitScheduleInput
 }
 
 export type UnitScheduleUpdateInput = {
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  initialDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   trainingPeriod?: Prisma.TrainingPeriodUpdateOneRequiredWithoutSchedulesNestedInput
   scheduleLocations?: Prisma.ScheduleLocationUpdateManyWithoutScheduleNestedInput
   assignments?: Prisma.InstructorUnitAssignmentUpdateManyWithoutUnitScheduleNestedInput
@@ -291,7 +276,6 @@ export type UnitScheduleUncheckedUpdateInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   trainingPeriodId?: Prisma.IntFieldUpdateOperationsInput | number
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  initialDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   scheduleLocations?: Prisma.ScheduleLocationUncheckedUpdateManyWithoutScheduleNestedInput
   assignments?: Prisma.InstructorUnitAssignmentUncheckedUpdateManyWithoutUnitScheduleNestedInput
 }
@@ -300,19 +284,16 @@ export type UnitScheduleCreateManyInput = {
   id?: number
   trainingPeriodId: number
   date?: Date | string | null
-  initialDate?: Date | string | null
 }
 
 export type UnitScheduleUpdateManyMutationInput = {
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  initialDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type UnitScheduleUncheckedUpdateManyInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   trainingPeriodId?: Prisma.IntFieldUpdateOperationsInput | number
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  initialDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type UnitScheduleScalarRelationFilter = {
@@ -334,7 +315,6 @@ export type UnitScheduleCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   trainingPeriodId?: Prisma.SortOrder
   date?: Prisma.SortOrder
-  initialDate?: Prisma.SortOrder
 }
 
 export type UnitScheduleAvgOrderByAggregateInput = {
@@ -346,14 +326,12 @@ export type UnitScheduleMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   trainingPeriodId?: Prisma.SortOrder
   date?: Prisma.SortOrder
-  initialDate?: Prisma.SortOrder
 }
 
 export type UnitScheduleMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   trainingPeriodId?: Prisma.SortOrder
   date?: Prisma.SortOrder
-  initialDate?: Prisma.SortOrder
 }
 
 export type UnitScheduleSumOrderByAggregateInput = {
@@ -433,7 +411,6 @@ export type UnitScheduleUpdateOneRequiredWithoutScheduleLocationsNestedInput = {
 
 export type UnitScheduleCreateWithoutAssignmentsInput = {
   date?: Date | string | null
-  initialDate?: Date | string | null
   trainingPeriod: Prisma.TrainingPeriodCreateNestedOneWithoutSchedulesInput
   scheduleLocations?: Prisma.ScheduleLocationCreateNestedManyWithoutScheduleInput
 }
@@ -442,7 +419,6 @@ export type UnitScheduleUncheckedCreateWithoutAssignmentsInput = {
   id?: number
   trainingPeriodId: number
   date?: Date | string | null
-  initialDate?: Date | string | null
   scheduleLocations?: Prisma.ScheduleLocationUncheckedCreateNestedManyWithoutScheduleInput
 }
 
@@ -464,7 +440,6 @@ export type UnitScheduleUpdateToOneWithWhereWithoutAssignmentsInput = {
 
 export type UnitScheduleUpdateWithoutAssignmentsInput = {
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  initialDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   trainingPeriod?: Prisma.TrainingPeriodUpdateOneRequiredWithoutSchedulesNestedInput
   scheduleLocations?: Prisma.ScheduleLocationUpdateManyWithoutScheduleNestedInput
 }
@@ -473,13 +448,11 @@ export type UnitScheduleUncheckedUpdateWithoutAssignmentsInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   trainingPeriodId?: Prisma.IntFieldUpdateOperationsInput | number
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  initialDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   scheduleLocations?: Prisma.ScheduleLocationUncheckedUpdateManyWithoutScheduleNestedInput
 }
 
 export type UnitScheduleCreateWithoutTrainingPeriodInput = {
   date?: Date | string | null
-  initialDate?: Date | string | null
   scheduleLocations?: Prisma.ScheduleLocationCreateNestedManyWithoutScheduleInput
   assignments?: Prisma.InstructorUnitAssignmentCreateNestedManyWithoutUnitScheduleInput
 }
@@ -487,7 +460,6 @@ export type UnitScheduleCreateWithoutTrainingPeriodInput = {
 export type UnitScheduleUncheckedCreateWithoutTrainingPeriodInput = {
   id?: number
   date?: Date | string | null
-  initialDate?: Date | string | null
   scheduleLocations?: Prisma.ScheduleLocationUncheckedCreateNestedManyWithoutScheduleInput
   assignments?: Prisma.InstructorUnitAssignmentUncheckedCreateNestedManyWithoutUnitScheduleInput
 }
@@ -525,12 +497,10 @@ export type UnitScheduleScalarWhereInput = {
   id?: Prisma.IntFilter<"UnitSchedule"> | number
   trainingPeriodId?: Prisma.IntFilter<"UnitSchedule"> | number
   date?: Prisma.DateTimeNullableFilter<"UnitSchedule"> | Date | string | null
-  initialDate?: Prisma.DateTimeNullableFilter<"UnitSchedule"> | Date | string | null
 }
 
 export type UnitScheduleCreateWithoutScheduleLocationsInput = {
   date?: Date | string | null
-  initialDate?: Date | string | null
   trainingPeriod: Prisma.TrainingPeriodCreateNestedOneWithoutSchedulesInput
   assignments?: Prisma.InstructorUnitAssignmentCreateNestedManyWithoutUnitScheduleInput
 }
@@ -539,7 +509,6 @@ export type UnitScheduleUncheckedCreateWithoutScheduleLocationsInput = {
   id?: number
   trainingPeriodId: number
   date?: Date | string | null
-  initialDate?: Date | string | null
   assignments?: Prisma.InstructorUnitAssignmentUncheckedCreateNestedManyWithoutUnitScheduleInput
 }
 
@@ -561,7 +530,6 @@ export type UnitScheduleUpdateToOneWithWhereWithoutScheduleLocationsInput = {
 
 export type UnitScheduleUpdateWithoutScheduleLocationsInput = {
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  initialDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   trainingPeriod?: Prisma.TrainingPeriodUpdateOneRequiredWithoutSchedulesNestedInput
   assignments?: Prisma.InstructorUnitAssignmentUpdateManyWithoutUnitScheduleNestedInput
 }
@@ -570,19 +538,16 @@ export type UnitScheduleUncheckedUpdateWithoutScheduleLocationsInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   trainingPeriodId?: Prisma.IntFieldUpdateOperationsInput | number
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  initialDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   assignments?: Prisma.InstructorUnitAssignmentUncheckedUpdateManyWithoutUnitScheduleNestedInput
 }
 
 export type UnitScheduleCreateManyTrainingPeriodInput = {
   id?: number
   date?: Date | string | null
-  initialDate?: Date | string | null
 }
 
 export type UnitScheduleUpdateWithoutTrainingPeriodInput = {
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  initialDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   scheduleLocations?: Prisma.ScheduleLocationUpdateManyWithoutScheduleNestedInput
   assignments?: Prisma.InstructorUnitAssignmentUpdateManyWithoutUnitScheduleNestedInput
 }
@@ -590,7 +555,6 @@ export type UnitScheduleUpdateWithoutTrainingPeriodInput = {
 export type UnitScheduleUncheckedUpdateWithoutTrainingPeriodInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  initialDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   scheduleLocations?: Prisma.ScheduleLocationUncheckedUpdateManyWithoutScheduleNestedInput
   assignments?: Prisma.InstructorUnitAssignmentUncheckedUpdateManyWithoutUnitScheduleNestedInput
 }
@@ -598,7 +562,6 @@ export type UnitScheduleUncheckedUpdateWithoutTrainingPeriodInput = {
 export type UnitScheduleUncheckedUpdateManyWithoutTrainingPeriodInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   date?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-  initialDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 
@@ -645,7 +608,6 @@ export type UnitScheduleSelect<ExtArgs extends runtime.Types.Extensions.Internal
   id?: boolean
   trainingPeriodId?: boolean
   date?: boolean
-  initialDate?: boolean
   trainingPeriod?: boolean | Prisma.TrainingPeriodDefaultArgs<ExtArgs>
   scheduleLocations?: boolean | Prisma.UnitSchedule$scheduleLocationsArgs<ExtArgs>
   assignments?: boolean | Prisma.UnitSchedule$assignmentsArgs<ExtArgs>
@@ -656,7 +618,6 @@ export type UnitScheduleSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   id?: boolean
   trainingPeriodId?: boolean
   date?: boolean
-  initialDate?: boolean
   trainingPeriod?: boolean | Prisma.TrainingPeriodDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["unitSchedule"]>
 
@@ -664,7 +625,6 @@ export type UnitScheduleSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   id?: boolean
   trainingPeriodId?: boolean
   date?: boolean
-  initialDate?: boolean
   trainingPeriod?: boolean | Prisma.TrainingPeriodDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["unitSchedule"]>
 
@@ -672,10 +632,9 @@ export type UnitScheduleSelectScalar = {
   id?: boolean
   trainingPeriodId?: boolean
   date?: boolean
-  initialDate?: boolean
 }
 
-export type UnitScheduleOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "trainingPeriodId" | "date" | "initialDate", ExtArgs["result"]["unitSchedule"]>
+export type UnitScheduleOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "trainingPeriodId" | "date", ExtArgs["result"]["unitSchedule"]>
 export type UnitScheduleInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   trainingPeriod?: boolean | Prisma.TrainingPeriodDefaultArgs<ExtArgs>
   scheduleLocations?: boolean | Prisma.UnitSchedule$scheduleLocationsArgs<ExtArgs>
@@ -700,7 +659,6 @@ export type $UnitSchedulePayload<ExtArgs extends runtime.Types.Extensions.Intern
     id: number
     trainingPeriodId: number
     date: Date | null
-    initialDate: Date | null
   }, ExtArgs["result"]["unitSchedule"]>
   composites: {}
 }
@@ -1130,7 +1088,6 @@ export interface UnitScheduleFieldRefs {
   readonly id: Prisma.FieldRef<"UnitSchedule", 'Int'>
   readonly trainingPeriodId: Prisma.FieldRef<"UnitSchedule", 'Int'>
   readonly date: Prisma.FieldRef<"UnitSchedule", 'DateTime'>
-  readonly initialDate: Prisma.FieldRef<"UnitSchedule", 'DateTime'>
 }
     
 
