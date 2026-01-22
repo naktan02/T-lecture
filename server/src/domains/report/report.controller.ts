@@ -23,9 +23,10 @@ export class ReportController {
         'Content-Type',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       );
+      const filename = `${year.toString().slice(-2)}년 ${month}월 ${week}주차 주간 보고서.xlsx`;
       res.setHeader(
         'Content-Disposition',
-        `attachment; filename=Weekly_Report_${year}_${month}_${week}w.xlsx`,
+        `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
       );
       res.send(buffer);
     } catch (error) {
@@ -52,9 +53,10 @@ export class ReportController {
         'Content-Type',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       );
+      const filename = `${year.toString().slice(-2)}년 ${month}월 월간 보고서.xlsx`;
       res.setHeader(
         'Content-Disposition',
-        `attachment; filename=Monthly_Report_${year}_${month}.xlsx`,
+        `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
       );
       res.send(buffer);
     } catch (error) {

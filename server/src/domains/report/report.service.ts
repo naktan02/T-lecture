@@ -160,8 +160,10 @@ export class ReportService {
       summaryRow.getCell(13).value = { formula: `SUBTOTAL(9, M5:M${5 + unitGroups.length - 1})` };
       summaryRow.getCell(15).value = { formula: `SUBTOTAL(9, O5:O${5 + unitGroups.length - 1})` };
       summaryRow.getCell(16).value = { formula: `SUBTOTAL(9, P5:P${5 + unitGroups.length - 1})` };
+      summaryRow.getCell(17).value = { formula: `SUBTOTAL(9, Q5:Q${5 + unitGroups.length - 1})` };
       summaryRow.getCell(18).value = { formula: `SUBTOTAL(9, R5:R${5 + unitGroups.length - 1})` };
       summaryRow.getCell(19).value = { formula: `SUBTOTAL(9, S5:S${5 + unitGroups.length - 1})` };
+      summaryRow.getCell(20).value = { formula: `SUBTOTAL(9, T5:T${5 + unitGroups.length - 1})` };
       summaryRow.getCell(21).value = { formula: `SUBTOTAL(9, U5:U${5 + unitGroups.length - 1})` };
       // 교육장소 합계 추가
       summaryRow.getCell(22).value = { formula: `SUBTOTAL(9, V5:V${5 + unitGroups.length - 1})` };
