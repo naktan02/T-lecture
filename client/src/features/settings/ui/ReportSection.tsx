@@ -27,7 +27,14 @@ export const ReportSection = (): ReactElement => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Weekly_Report_${year}_${month}_${week}w.xlsx`;
+      // 서버에서 보내는 Content-Disposition 헤더에서 파일명 추출
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `${year.toString().slice(-2)}년 ${month}월 ${week}주차 주간 보고서.xlsx`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename\*=UTF-8''(.+)/);
+        if (match) filename = decodeURIComponent(match[1]);
+      }
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -52,7 +59,14 @@ export const ReportSection = (): ReactElement => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Monthly_Report_${year}_${month}.xlsx`;
+      // 서버에서 보내는 Content-Disposition 헤더에서 파일명 추출
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `${year.toString().slice(-2)}년 ${month}월 월간 보고서.xlsx`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename\*=UTF-8''(.+)/);
+        if (match) filename = decodeURIComponent(match[1]);
+      }
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

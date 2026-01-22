@@ -575,6 +575,7 @@ export class ReportService {
     const dayOfFirst = firstDayOfMonth.getDay();
     const firstMondayDate = 1 + (dayOfFirst === 1 ? 0 : dayOfFirst === 0 ? 1 : 8 - dayOfFirst);
     const dayOfMonth = d.getDate();
+    // 국립어학원 기준: 첫 번째 월요일 이전 날짜는 0주차 (이전 달 소속)
     if (dayOfMonth < firstMondayDate) return 0;
     return Math.ceil((dayOfMonth - firstMondayDate + 1) / 7);
   }
