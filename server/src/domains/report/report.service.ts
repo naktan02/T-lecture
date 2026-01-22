@@ -36,7 +36,8 @@ export class ReportService {
 
     // 제목 셀 업데이트 (Row 1)
     const titleCell = sheet.getRow(1).getCell(2);
-    titleCell.value = `[1그룹 푸른나무재단] ${month}월 ${week}주차 '25년 병 집중인성교육 주간 결과보고`;
+    const shortYear = year.toString().slice(-2);
+    titleCell.value = `[1그룹 푸른나무재단] ${month}월 ${week}주차 '${shortYear}년 병 집중인성교육 주간 결과보고`;
 
     // 데이터 조회
     const schedules = await prisma.unitSchedule.findMany({
@@ -143,18 +144,31 @@ export class ReportService {
     }
 
     // 합계 수식 업데이트
-    // Row 6 (또는 삽입 후의 행)
     const summaryRowNumber = 5 + (unitGroups.length > 0 ? unitGroups.length : 1);
     const summaryRow = sheet.getRow(summaryRowNumber);
     if (unitGroups.length > 0) {
+      // "계" 레이블 및 서식 복구
+      summaryRow.getCell(2).value = '계';
+      summaryRow.getCell(4).value = '계';
+      summaryRow.getCell(5).value = '계';
+      summaryRow.getCell(6).value = '계';
+      summaryRow.getCell(7).value = '계';
+      summaryRow.getCell(8).value = '계';
+      summaryRow.getCell(10).value = '계';
+
       summaryRow.getCell(12).value = { formula: `SUBTOTAL(9, L5:L${5 + unitGroups.length - 1})` };
       summaryRow.getCell(13).value = { formula: `SUBTOTAL(9, M5:M${5 + unitGroups.length - 1})` };
       summaryRow.getCell(15).value = { formula: `SUBTOTAL(9, O5:O${5 + unitGroups.length - 1})` };
-      // 기간(16), 횟수(18) 등 다른 합계 수식도 필요시 추가
       summaryRow.getCell(16).value = { formula: `SUBTOTAL(9, P5:P${5 + unitGroups.length - 1})` };
       summaryRow.getCell(18).value = { formula: `SUBTOTAL(9, R5:R${5 + unitGroups.length - 1})` };
       summaryRow.getCell(19).value = { formula: `SUBTOTAL(9, S5:S${5 + unitGroups.length - 1})` };
       summaryRow.getCell(21).value = { formula: `SUBTOTAL(9, U5:U${5 + unitGroups.length - 1})` };
+      // 교육장소 합계 추가
+      summaryRow.getCell(22).value = { formula: `SUBTOTAL(9, V5:V${5 + unitGroups.length - 1})` };
+      summaryRow.getCell(23).value = { formula: `SUBTOTAL(9, W5:W${5 + unitGroups.length - 1})` };
+      summaryRow.getCell(24).value = { formula: `SUBTOTAL(9, X5:X${5 + unitGroups.length - 1})` };
+      summaryRow.getCell(25).value = { formula: `SUBTOTAL(9, Y5:Y${5 + unitGroups.length - 1})` };
+      summaryRow.getCell(26).value = { formula: `SUBTOTAL(9, Z5:Z${5 + unitGroups.length - 1})` };
     }
 
     return (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
@@ -177,8 +191,9 @@ export class ReportService {
     summarySheet.name = `${month}월 집중인성교육 종합`;
 
     // 제목
+    const shortYear = year.toString().slice(-2);
     summarySheet.getRow(1).getCell(2).value =
-      `[1그룹 푸른나무재단] ${month}월 '25년 병 집중인성교육 정기 보고`;
+      `[1그룹 푸른나무재단] ${month}월 '${shortYear}년 병 집중인성교육 정기 보고`;
 
     // 데이터 조회 (해당 월)
     const monthlySchedules = await prisma.unitSchedule.findMany({
@@ -307,6 +322,9 @@ export class ReportService {
 
       // 합계 수식
       const summaryRow = postSheet.getRow(5 + unitGroups.length);
+      summaryRow.getCell(2).value = '계';
+      summaryRow.getCell(4).value = '계';
+      summaryRow.getCell(6).value = '계';
       summaryRow.getCell(9).value = { formula: `SUBTOTAL(9, I5:I${5 + unitGroups.length - 1})` };
       summaryRow.getCell(11).value = { formula: `SUBTOTAL(9, K5:K${5 + unitGroups.length - 1})` };
     }
@@ -334,22 +352,23 @@ export class ReportService {
    */
   private getWeekRange(year: number, month: number, week: number) {
     // 해당 월의 1일
-    const firstDay = new Date(year, month - 1, 1);
+    const firstDayOfMonth = new Date(year, month - 1, 1);
 
-    // 사용자가 제공한 템플릿 예시: 2025년 6월 2주차가 6.9(월) ~ 임.
-    // 이는 6월 1일(일)을 1주차로 보거나, 혹은 6월 첫 월요일(6/2)이 있는 주를 1주차로 보는 기준임.
-    // 여기서는 6/2(월)~6/8(일)을 1주차, 6/9(월)~6/15(일)을 2주차로 계산하는 "완전한 주(Full Week)" 또는 "월요일 시작" 기준을 적용해봅니다.
-
-    // 첫 번째 월요일 찾기
-    const dayOfFirst = firstDay.getDay(); // 0(일) ~ 6(토)
-    let firstMonday = 1;
+    // 첫 번째 월요일 찾기 (국립국어원 표준: 첫 번째 월요일이 포함된 주가 1주차)
+    // firstDayOfMonth.getDay(): 0(일) ~ 6(토)
+    const dayOfFirst = firstDayOfMonth.getDay();
+    let firstMondayDate = 1;
     if (dayOfFirst !== 1) {
-      firstMonday = 1 + (dayOfFirst === 0 ? 1 : 8 - dayOfFirst);
+      // 월요일이 아니면
+      firstMondayDate = 1 + (dayOfFirst === 0 ? 1 : 8 - dayOfFirst);
     }
 
-    const startDay = firstMonday + (week - 1) * 7;
-    const startDate = new Date(Date.UTC(year, month - 1, startDay));
-    const endDate = new Date(Date.UTC(year, month - 1, startDay + 6));
+    // 계산된 첫 월요일이 1일이 아니고, 그 전의 며칠(목/금/토/일 등)이 있다면
+    // 그 날들은 전월의 마지막 주에 속함.
+
+    const startDay = firstMondayDate + (week - 1) * 7;
+    const startDate = new Date(Date.UTC(year, month - 1, startDay, 0, 0, 0));
+    const endDate = new Date(Date.UTC(year, month - 1, startDay + 6, 23, 59, 59, 999));
 
     return { startDate, endDate };
   }
@@ -367,8 +386,8 @@ export class ReportService {
           region: unit.region,
           dates: [],
           initialDates: [],
-          plannedCount: 0,
-          actualCount: 0,
+          dailyPlanned: new Map<string, number>(),
+          dailyActual: new Map<string, number>(),
           instructors: new Set<string>(),
           place:
             s.scheduleLocations?.[0]?.location?.changedPlace ||
@@ -381,9 +400,13 @@ export class ReportService {
       if (s.initialDate) g.initialDates.push(s.initialDate);
 
       const sl = s.scheduleLocations || [];
+      const dateStr = s.date?.toISOString().split('T')[0] || 'Unknown';
+      if (!g.dailyPlanned.has(dateStr)) g.dailyPlanned.set(dateStr, 0);
+      if (!g.dailyActual.has(dateStr)) g.dailyActual.set(dateStr, 0);
+
       sl.forEach((l: any) => {
-        g.plannedCount += l.plannedCount || 0;
-        g.actualCount += l.actualCount || 0;
+        g.dailyPlanned.set(dateStr, g.dailyPlanned.get(dateStr) + (l.plannedCount || 0));
+        g.dailyActual.set(dateStr, g.dailyActual.get(dateStr) + (l.actualCount || 0));
       });
 
       s.assignments.forEach((a: any) => {
@@ -401,8 +424,18 @@ export class ReportService {
       ).size;
       const actualDaysCount = new Set(g.dates.map((d: Date) => d.toISOString().split('T')[0])).size;
 
+      // 일별 합계 중 최대값을 해당 주차의 인원으로 산정
+      const plannedCount =
+        g.dailyPlanned.size > 0
+          ? Math.max(...(Array.from(g.dailyPlanned.values()) as number[]))
+          : 0;
+      const actualCount =
+        g.dailyActual.size > 0 ? Math.max(...(Array.from(g.dailyActual.values()) as number[])) : 0;
+
       return {
         ...g,
+        plannedCount,
+        actualCount,
         instructors: uniqueInstructors as string[],
         periodStr,
         initialDaysCount,
