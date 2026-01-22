@@ -191,8 +191,8 @@ export class ReportService {
   // =====================================================
   async generateMonthlyReport(params: MonthlyReportParams): Promise<Buffer> {
     const { year, month } = params;
-    const startDate = new Date(Date.UTC(year, month - 1, 1));
-    const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+    // 주차 기반 월간 범위: 첫 번째 월요일 ~ 마지막 주 일요일
+    const { startDate, endDate } = this.getMonthRange(year, month);
 
     const workbook = new Workbook();
     const templatePath = path.join(this.templateDir, 'report_month.xlsx');
@@ -565,6 +565,32 @@ export class ReportService {
     const startDay = firstMondayDate + (week - 1) * 7;
     const startDate = new Date(Date.UTC(year, month - 1, startDay, 0, 0, 0));
     const endDate = new Date(Date.UTC(year, month - 1, startDay + 6, 23, 59, 59, 999));
+    return { startDate, endDate };
+  }
+
+  // 월간 보고서용 주차 기반 날짜 범위
+  private getMonthRange(year: number, month: number) {
+    // 해당 월의 첫 번째 월요일 계산
+    const firstDayOfMonth = new Date(year, month - 1, 1);
+    const dayOfFirst = firstDayOfMonth.getDay();
+    const firstMondayDate = 1 + (dayOfFirst === 1 ? 0 : dayOfFirst === 0 ? 1 : 8 - dayOfFirst);
+
+    // 해당 월의 마지막 날
+    const lastDayOfMonth = new Date(year, month, 0).getDate();
+
+    // 마지막 주의 월요일 계산
+    let lastMondayDate = firstMondayDate;
+    while (lastMondayDate + 7 <= lastDayOfMonth) {
+      lastMondayDate += 7;
+    }
+
+    // 마지막 주 일요일 (다음 달로 넘어갈 수 있음)
+    const lastSundayDate = lastMondayDate + 6;
+
+    const startDate = new Date(Date.UTC(year, month - 1, firstMondayDate, 0, 0, 0));
+    // 일요일이 다음 달로 넘어가는 경우 처리
+    const endDate = new Date(Date.UTC(year, month - 1, lastSundayDate, 23, 59, 59, 999));
+
     return { startDate, endDate };
   }
 
