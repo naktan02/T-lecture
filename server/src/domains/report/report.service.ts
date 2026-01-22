@@ -28,7 +28,6 @@ export class ReportService {
 
     const sheet = workbook.worksheets[0];
     const shortYear = year.toString().slice(-2);
-    // 제목: Sheet name is already set in template usually, but we update title cell
     const titleCell = sheet.getRow(1).getCell(2);
     titleCell.value = `[1그룹 푸른나무재단] ${month}월 ${week}주차 '${shortYear}년 병 집중인성교육 주간 결과보고`;
 
@@ -49,50 +48,57 @@ export class ReportService {
         }
       }
 
+      // 교육장소별 합계 계산용 변수
+      const placeTotals = { p22: 0, p23: 0, p24: 0, p25: 0, p26: 0 };
+
       unitGroups.forEach((g, idx) => {
         const row = sheet.getRow(5 + idx);
-        row.getCell(2).value = idx + 1; // 번호/누적
-        row.getCell(4).value = '푸른나무재단'; // 업체명
-        row.getCell(5).value = this.getMilitaryTypeLabel(g.unitType); // 군 구분
-        row.getCell(6).value = g.unitName; // 부대명
+        row.getCell(2).value = idx + 1;
+        row.getCell(4).value = '푸른나무재단';
+        row.getCell(5).value = this.getMilitaryTypeLabel(g.unitType);
+        row.getCell(6).value = g.unitName;
         row.getCell(7).value = g.wideArea;
         row.getCell(8).value = g.region;
         row.getCell(9).value = month;
         row.getCell(10).value = week;
         row.getCell(11).value = g.periodStr;
 
-        // 인원 (Peak Attendance)
         row.getCell(12).value = g.plannedCount;
         row.getCell(13).value = g.actualCount;
 
-        // 강사
         row.getCell(14).value = g.instructors.join(', ');
         row.getCell(15).value = g.instructors.length;
 
-        // 회차/횟수 (Session-based Cumulative)
-        row.getCell(16).value = g.totalPlannedDays; // 최초계획 (기간)
-        row.getCell(17).value = 1; // 그룹 (고정 1)
-        row.getCell(18).value = g.totalPlannedDays; // 최초계획 (횟수)
+        row.getCell(16).value = g.totalPlannedDays;
+        row.getCell(17).value = 1;
+        row.getCell(18).value = g.totalPlannedDays;
 
-        row.getCell(19).value = g.actualDaysCumulative; // 실시현황 (기간)
-        row.getCell(20).value = 1; // 그룹 (고정 1)
-        row.getCell(21).value = g.actualDaysCumulative; // 실시현황 (횟수)
+        row.getCell(19).value = g.actualDaysCumulative;
+        row.getCell(20).value = 1;
+        row.getCell(21).value = g.actualDaysCumulative;
 
         // 교육장소 체크 (22~26열)
         const placeCols = { 생활관: 22, 종교시설: 23, 식당: 24, 강의실: 25, 기타: 26 };
+        let placeChecked = false;
         g.places.forEach((p) => {
-          let found = false;
           for (const [key, col] of Object.entries(placeCols)) {
             if (
               p.includes(key) ||
               (key === '강의실' && (p.includes('강당') || p.includes('교육장')))
             ) {
               row.getCell(col).value = 1;
-              found = true;
+              if (col === 22) placeTotals.p22++;
+              else if (col === 23) placeTotals.p23++;
+              else if (col === 24) placeTotals.p24++;
+              else if (col === 25) placeTotals.p25++;
+              placeChecked = true;
             }
           }
-          if (!found) row.getCell(26).value = 1;
         });
+        if (!placeChecked) {
+          row.getCell(26).value = 1;
+          placeTotals.p26++;
+        }
         row.commit();
       });
 
@@ -116,7 +122,6 @@ export class ReportService {
       );
 
       const lastRow = 5 + unitGroups.length - 1;
-      // Protected View 호환을 위해 수식과 결과값 모두 삽입
       summaryRow.getCell(12).value = {
         formula: `SUBTOTAL(9, L5:L${lastRow})`,
         result: totals.pCount,
@@ -153,7 +158,28 @@ export class ReportService {
         formula: `SUBTOTAL(9, U5:U${lastRow})`,
         result: totals.adCum,
       };
-      // 장소 체크별 합계는 복잡하므로 여기서는 생략하거나 필요시 추가
+
+      // 교육장소 합계 수식 추가 (22~26열)
+      summaryRow.getCell(22).value = {
+        formula: `SUBTOTAL(9, V5:V${lastRow})`,
+        result: placeTotals.p22,
+      };
+      summaryRow.getCell(23).value = {
+        formula: `SUBTOTAL(9, W5:W${lastRow})`,
+        result: placeTotals.p23,
+      };
+      summaryRow.getCell(24).value = {
+        formula: `SUBTOTAL(9, X5:X${lastRow})`,
+        result: placeTotals.p24,
+      };
+      summaryRow.getCell(25).value = {
+        formula: `SUBTOTAL(9, Y5:Y${lastRow})`,
+        result: placeTotals.p25,
+      };
+      summaryRow.getCell(26).value = {
+        formula: `SUBTOTAL(9, Z5:Z${lastRow})`,
+        result: placeTotals.p26,
+      };
     }
 
     return (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
@@ -170,37 +196,12 @@ export class ReportService {
 
     const unitGroups = await this.getProcessedReportData(startDate, endDate);
 
-    // 1. 종합 시트 (Sheet 1)
-    const summarySheet = workbook.worksheets[0];
+    // 월간 템플릿은 2개 시트: 0=사전, 1=사후
+    // 1. 사전 시트 (Sheet 0)
+    const preSheet = workbook.worksheets[0];
     const shortYear = year.toString().slice(-2);
-    summarySheet.getRow(1).getCell(2).value =
-      `[1그룹 푸른나무재단] ${month}월 '${shortYear}년 병 집중인성교육 정기 보고`;
-
-    const totalYearSchedules = await prisma.unitSchedule.count({
-      where: { trainingPeriod: { unit: { lectureYear: year } } },
-    });
-    const progressCount = await prisma.unitSchedule.count({
-      where: { trainingPeriod: { unit: { lectureYear: year } }, date: { lt: new Date() } },
-    });
-    const progressRow = summarySheet.getRow(6);
-    progressRow.getCell(2).value = totalYearSchedules;
-    progressRow.getCell(3).value = progressCount;
-    progressRow.getCell(4).value = totalYearSchedules > 0 ? progressCount / totalYearSchedules : 0;
-
-    const schedulesForSummary = await prisma.unitSchedule.findMany({
-      where: { date: { gte: startDate, lte: endDate } },
-      include: { trainingPeriod: { include: { unit: true } } },
-    });
-    const monthlyStats = this.getMonthlyStats(schedulesForSummary);
-    summarySheet.getRow(12).getCell(3).value = monthlyStats.Army.count;
-    summarySheet.getRow(13).getCell(3).value = monthlyStats.Navy.count;
-    summarySheet.getRow(14).getCell(3).value = monthlyStats.AirForce.count;
-    summarySheet.getRow(15).getCell(3).value = monthlyStats.Marines.count;
-    summarySheet.getRow(16).getCell(3).value = monthlyStats.MND.count;
-
-    // 2. 사전 시트 (Sheet 2)
-    const preSheet = workbook.worksheets[1];
     preSheet.getRow(1).getCell(1).value = `${year} 집중인성교육 ${month}월 교육일정`;
+
     if (unitGroups.length > 0) {
       if (unitGroups.length > 1) {
         for (let i = 1; i < unitGroups.length; i++) {
@@ -213,7 +214,7 @@ export class ReportService {
         row.getCell(4).value = '푸른나무재단';
         row.getCell(5).value = '인성교육';
         row.getCell(6).value = g.unitName;
-        row.getCell(7).value = g.place; // 대표 장소
+        row.getCell(7).value = g.place;
         row.getCell(8).value = g.periodStr;
         row.getCell(9).value = g.plannedCount;
         row.getCell(10).value = g.instructors.join(', ');
@@ -221,8 +222,8 @@ export class ReportService {
       });
     }
 
-    // 3. 사후 시트 (Sheet 3)
-    const postSheet = workbook.worksheets[2];
+    // 2. 사후 시트 (Sheet 1)
+    const postSheet = workbook.worksheets[1];
     postSheet.getRow(1).getCell(1).value = `${year} 집중인성교육 ${month}월 교육결과`;
 
     if (unitGroups.length > 0) {
@@ -239,6 +240,9 @@ export class ReportService {
         }
       }
 
+      // 장소 합계 계산용
+      const placeTotals = { p18: 0, p19: 0, p20: 0, p21: 0, p22: 0 };
+
       unitGroups.forEach((g, idx) => {
         const row = postSheet.getRow(5 + idx);
         row.getCell(2).value = idx + 1;
@@ -251,7 +255,6 @@ export class ReportService {
         row.getCell(10).value = g.instructors.join(', ');
         row.getCell(11).value = g.instructors.length;
 
-        // 회차/횟수 (Weekly와 동일한 컬럼 구조)
         row.getCell(12).value = g.totalPlannedDays;
         row.getCell(13).value = 1;
         row.getCell(14).value = g.totalPlannedDays;
@@ -260,21 +263,28 @@ export class ReportService {
         row.getCell(16).value = 1;
         row.getCell(17).value = g.actualDaysCumulative;
 
-        // 장소 체크 (18~22열 - Template layout)
+        // 장소 체크 (18~22열)
         const placeCols = { 생활관: 18, 종교시설: 19, 식당: 20, 강의실: 21, 기타: 22 };
+        let placeChecked = false;
         g.places.forEach((p) => {
-          let found = false;
           for (const [key, col] of Object.entries(placeCols)) {
             if (
               p.includes(key) ||
               (key === '강의실' && (p.includes('강당') || p.includes('교육장')))
             ) {
               row.getCell(col).value = 1;
-              found = true;
+              if (col === 18) placeTotals.p18++;
+              else if (col === 19) placeTotals.p19++;
+              else if (col === 20) placeTotals.p20++;
+              else if (col === 21) placeTotals.p21++;
+              placeChecked = true;
             }
           }
-          if (!found) row.getCell(22).value = 1;
         });
+        if (!placeChecked) {
+          row.getCell(22).value = 1;
+          placeTotals.p22++;
+        }
         row.commit();
       });
 
@@ -286,11 +296,13 @@ export class ReportService {
         },
         { aCount: 0, iLen: 0 },
       );
+
       const summaryRow = postSheet.getRow(5 + unitGroups.length);
       const lastRow = 5 + unitGroups.length - 1;
       summaryRow.getCell(2).value = '계';
       summaryRow.getCell(4).value = '계';
       summaryRow.getCell(6).value = '계';
+
       summaryRow.getCell(9).value = {
         formula: `SUBTOTAL(9, I5:I${lastRow})`,
         result: totals.aCount,
@@ -298,6 +310,28 @@ export class ReportService {
       summaryRow.getCell(11).value = {
         formula: `SUBTOTAL(9, K5:K${lastRow})`,
         result: totals.iLen,
+      };
+
+      // 장소 합계 수식 추가 (18~22열)
+      summaryRow.getCell(18).value = {
+        formula: `SUBTOTAL(9, R5:R${lastRow})`,
+        result: placeTotals.p18,
+      };
+      summaryRow.getCell(19).value = {
+        formula: `SUBTOTAL(9, S5:S${lastRow})`,
+        result: placeTotals.p19,
+      };
+      summaryRow.getCell(20).value = {
+        formula: `SUBTOTAL(9, T5:T${lastRow})`,
+        result: placeTotals.p20,
+      };
+      summaryRow.getCell(21).value = {
+        formula: `SUBTOTAL(9, U5:U${lastRow})`,
+        result: placeTotals.p21,
+      };
+      summaryRow.getCell(22).value = {
+        formula: `SUBTOTAL(9, V5:V${lastRow})`,
+        result: placeTotals.p22,
       };
     }
 
@@ -396,7 +430,7 @@ export class ReportService {
         actualDaysCumulative,
         instructors: Array.from(instructors),
         places: Array.from(places),
-        place: Array.from(places)[0] || '', // 대표 장소
+        place: Array.from(places)[0] || '',
       };
     });
   }
