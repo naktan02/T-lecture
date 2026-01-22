@@ -156,21 +156,91 @@ export class ReportService {
       summaryRow.getCell(8).value = '계';
       summaryRow.getCell(10).value = '계';
 
-      summaryRow.getCell(12).value = { formula: `SUBTOTAL(9, L5:L${5 + unitGroups.length - 1})` };
-      summaryRow.getCell(13).value = { formula: `SUBTOTAL(9, M5:M${5 + unitGroups.length - 1})` };
-      summaryRow.getCell(15).value = { formula: `SUBTOTAL(9, O5:O${5 + unitGroups.length - 1})` };
-      summaryRow.getCell(16).value = { formula: `SUBTOTAL(9, P5:P${5 + unitGroups.length - 1})` };
-      summaryRow.getCell(17).value = { formula: `SUBTOTAL(9, Q5:Q${5 + unitGroups.length - 1})` };
-      summaryRow.getCell(18).value = { formula: `SUBTOTAL(9, R5:R${5 + unitGroups.length - 1})` };
-      summaryRow.getCell(19).value = { formula: `SUBTOTAL(9, S5:S${5 + unitGroups.length - 1})` };
-      summaryRow.getCell(20).value = { formula: `SUBTOTAL(9, T5:T${5 + unitGroups.length - 1})` };
-      summaryRow.getCell(21).value = { formula: `SUBTOTAL(9, U5:U${5 + unitGroups.length - 1})` };
+      const totals = unitGroups.reduce(
+        (acc, g) => {
+          acc.planned += g.plannedCount;
+          acc.actual += g.actualCount;
+          acc.instCount += g.instructors.length;
+          acc.initDays += g.initialDaysCount;
+          acc.initSched += g.initialSchedulesCount;
+          acc.actDays += g.actualDaysCount;
+          acc.actSched += g.actualSchedulesCount;
+
+          const p = (g.place || '').toLowerCase();
+          if (p.includes('생활관')) acc.p22++;
+          else if (
+            p.includes('종교시설') ||
+            p.includes('성당') ||
+            p.includes('교회') ||
+            p.includes('사찰')
+          )
+            acc.p23++;
+          else if (p.includes('식당')) acc.p24++;
+          else if (p.includes('교육장') || p.includes('대강당') || p.includes('강의실')) acc.p25++;
+          else acc.p26++;
+
+          return acc;
+        },
+        {
+          planned: 0,
+          actual: 0,
+          instCount: 0,
+          initDays: 0,
+          initSched: 0,
+          actDays: 0,
+          actSched: 0,
+          p22: 0,
+          p23: 0,
+          p24: 0,
+          p25: 0,
+          p26: 0,
+        },
+      );
+
+      const lastRow = 5 + unitGroups.length - 1;
+
+      summaryRow.getCell(12).value = {
+        formula: `SUBTOTAL(9, L5:L${lastRow})`,
+        result: totals.planned,
+      };
+      summaryRow.getCell(13).value = {
+        formula: `SUBTOTAL(9, M5:M${lastRow})`,
+        result: totals.actual,
+      };
+      summaryRow.getCell(15).value = {
+        formula: `SUBTOTAL(9, O5:O${lastRow})`,
+        result: totals.instCount,
+      };
+      summaryRow.getCell(16).value = {
+        formula: `SUBTOTAL(9, P5:P${lastRow})`,
+        result: totals.initDays,
+      };
+      summaryRow.getCell(17).value = {
+        formula: `SUBTOTAL(9, Q5:Q${lastRow})`,
+        result: unitGroups.length,
+      };
+      summaryRow.getCell(18).value = {
+        formula: `SUBTOTAL(9, R5:R${lastRow})`,
+        result: totals.initSched,
+      };
+      summaryRow.getCell(19).value = {
+        formula: `SUBTOTAL(9, S5:S${lastRow})`,
+        result: totals.actDays,
+      };
+      summaryRow.getCell(20).value = {
+        formula: `SUBTOTAL(9, T5:T${lastRow})`,
+        result: unitGroups.length,
+      };
+      summaryRow.getCell(21).value = {
+        formula: `SUBTOTAL(9, U5:U${lastRow})`,
+        result: totals.actSched,
+      };
       // 교육장소 합계 추가
-      summaryRow.getCell(22).value = { formula: `SUBTOTAL(9, V5:V${5 + unitGroups.length - 1})` };
-      summaryRow.getCell(23).value = { formula: `SUBTOTAL(9, W5:W${5 + unitGroups.length - 1})` };
-      summaryRow.getCell(24).value = { formula: `SUBTOTAL(9, X5:X${5 + unitGroups.length - 1})` };
-      summaryRow.getCell(25).value = { formula: `SUBTOTAL(9, Y5:Y${5 + unitGroups.length - 1})` };
-      summaryRow.getCell(26).value = { formula: `SUBTOTAL(9, Z5:Z${5 + unitGroups.length - 1})` };
+      summaryRow.getCell(22).value = { formula: `SUBTOTAL(9, V5:V${lastRow})`, result: totals.p22 };
+      summaryRow.getCell(23).value = { formula: `SUBTOTAL(9, W5:W${lastRow})`, result: totals.p23 };
+      summaryRow.getCell(24).value = { formula: `SUBTOTAL(9, X5:X${lastRow})`, result: totals.p24 };
+      summaryRow.getCell(25).value = { formula: `SUBTOTAL(9, Y5:Y${lastRow})`, result: totals.p25 };
+      summaryRow.getCell(26).value = { formula: `SUBTOTAL(9, Z5:Z${lastRow})`, result: totals.p26 };
     }
 
     return (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
@@ -323,12 +393,27 @@ export class ReportService {
       });
 
       // 합계 수식
+      const totals = unitGroups.reduce(
+        (acc, g) => {
+          acc.actual += g.actualCount;
+          acc.instCount += g.instructors.length;
+          return acc;
+        },
+        { actual: 0, instCount: 0 },
+      );
+
       const summaryRow = postSheet.getRow(5 + unitGroups.length);
       summaryRow.getCell(2).value = '계';
       summaryRow.getCell(4).value = '계';
       summaryRow.getCell(6).value = '계';
-      summaryRow.getCell(9).value = { formula: `SUBTOTAL(9, I5:I${5 + unitGroups.length - 1})` };
-      summaryRow.getCell(11).value = { formula: `SUBTOTAL(9, K5:K${5 + unitGroups.length - 1})` };
+      summaryRow.getCell(9).value = {
+        formula: `SUBTOTAL(9, I5:I${5 + unitGroups.length - 1})`,
+        result: totals.actual,
+      };
+      summaryRow.getCell(11).value = {
+        formula: `SUBTOTAL(9, K5:K${5 + unitGroups.length - 1})`,
+        result: totals.instCount,
+      };
     }
 
     return (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
