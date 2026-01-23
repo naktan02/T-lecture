@@ -75,6 +75,7 @@ model Instructor {
   instructorStats InstructorStats[]
   priorityCredit  InstructorPriorityCredit?
 
+  @@index([teamId], map: "강사_teamId_idx")
   @@map("강사")
 }
 
