@@ -1,6 +1,7 @@
 // client/src/features/dashboard/ui/UserDashboardPage.tsx
 import React, { useEffect, useState } from 'react';
 import { dashboardApi, DashboardStats, PaginatedActivities } from '../api/dashboardApi';
+import { getMilitaryTypeLabel } from '@/shared/types/unit.types';
 import {
   ClockIcon,
   MapPinIcon,
@@ -134,7 +135,7 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({
                     {assignment.region && <span>• {assignment.region}</span>}
                     {assignment.unitType && (
                       <span className="rounded bg-gray-200 px-1.5 py-0.5">
-                        {assignment.unitType}
+                        {getMilitaryTypeLabel(assignment.unitType)}
                       </span>
                     )}
                   </div>
@@ -210,7 +211,7 @@ export const UserDashboardPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // 날짜 필터 상태
-  const [rangeType, setRangeType] = useState<string>('12m'); // '1m', '3m', '6m', '12m', 'custom'
+  const [rangeType, setRangeType] = useState<string>('1m'); // '1m', '3m', '6m', '12m', 'custom'
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
@@ -378,7 +379,15 @@ export const UserDashboardPage: React.FC = () => {
       {/* 페이지 헤더 */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">대시보드</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900">대시보드</h1>
+            {(isLoading || isActivitiesLoading) && stats && (
+              <div className="flex items-center gap-2 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-600">
+                <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                업데이트 중...
+              </div>
+            )}
+          </div>
           <p className="mt-1 text-sm text-gray-500">나의 활동 통계 현황</p>
         </div>
 

@@ -1,7 +1,12 @@
 // client/src/features/unit/ui/UnitList.tsx
 import { ReactElement, ChangeEvent } from 'react';
 import { EmptyState } from '../../../shared/ui';
-import { Unit, TrainingPeriod, getPeriodDateRange } from '../../../shared/types/unit.types';
+import {
+  Unit,
+  TrainingPeriod,
+  getPeriodDateRange,
+  getMilitaryTypeLabel,
+} from '../../../shared/types/unit.types';
 
 interface UnitListProps {
   units?: Unit[];
@@ -22,23 +27,21 @@ const formatDateMD = (dateStr?: string | null): string => {
   return `${date.getMonth() + 1}/${date.getDate()}`;
 };
 
-// 군 타입 정보 헬퍼
-const getUnitTypeInfo = (
-  unitType?: string | null,
-): { label: string; bgColor: string; textColor: string } => {
+// 군 타입 정보 (색상 매핑)
+const getUnitTypeColor = (unitType?: string | null): { bgColor: string; textColor: string } => {
   switch (unitType) {
     case 'Army':
-      return { label: '육군', bgColor: 'bg-green-100', textColor: 'text-green-700' };
+      return { bgColor: 'bg-green-100', textColor: 'text-green-700' };
     case 'Navy':
-      return { label: '해군', bgColor: 'bg-blue-100', textColor: 'text-blue-700' };
+      return { bgColor: 'bg-blue-100', textColor: 'text-blue-700' };
     case 'AirForce':
-      return { label: '공군', bgColor: 'bg-sky-100', textColor: 'text-sky-700' };
+      return { bgColor: 'bg-sky-100', textColor: 'text-sky-700' };
     case 'Marines':
-      return { label: '해병대', bgColor: 'bg-red-100', textColor: 'text-red-700' };
+      return { bgColor: 'bg-red-100', textColor: 'text-red-700' };
     case 'MND':
-      return { label: '국직부대', bgColor: 'bg-purple-100', textColor: 'text-purple-700' };
+      return { bgColor: 'bg-purple-100', textColor: 'text-purple-700' };
     default:
-      return { label: unitType || '미지정', bgColor: 'bg-gray-100', textColor: 'text-gray-600' };
+      return { bgColor: 'bg-gray-100', textColor: 'text-gray-600' };
   }
 };
 
@@ -191,12 +194,12 @@ export const UnitList = ({
                       )}
                     </div>
                     {(() => {
-                      const typeInfo = getUnitTypeInfo(unit.unitType);
+                      const colors = getUnitTypeColor(unit.unitType);
                       return (
                         <span
-                          className={`inline-block text-xs px-2 py-0.5 rounded-full mt-1 ${typeInfo.bgColor} ${typeInfo.textColor}`}
+                          className={`inline-block text-xs px-2 py-0.5 rounded-full mt-1 ${colors.bgColor} ${colors.textColor}`}
                         >
-                          {typeInfo.label}
+                          {getMilitaryTypeLabel(unit.unitType)}
                         </span>
                       );
                     })()}
@@ -289,12 +292,12 @@ export const UnitList = ({
                   <div>
                     <h3 className="font-bold text-gray-900">{unit.name}</h3>
                     {(() => {
-                      const typeInfo = getUnitTypeInfo(unit.unitType);
+                      const colors = getUnitTypeColor(unit.unitType);
                       return (
                         <span
-                          className={`inline-block text-xs px-2 py-0.5 rounded-full mt-1 ${typeInfo.bgColor} ${typeInfo.textColor}`}
+                          className={`inline-block text-xs px-2 py-0.5 rounded-full mt-1 ${colors.bgColor} ${colors.textColor}`}
                         >
-                          {typeInfo.label}
+                          {getMilitaryTypeLabel(unit.unitType)}
                         </span>
                       );
                     })()}
