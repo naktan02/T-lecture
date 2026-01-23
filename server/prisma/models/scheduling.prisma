@@ -50,6 +50,7 @@ model InstructorUnitAssignment {
 
   @@id([unitScheduleId, userId])
   @@unique([unitScheduleId, userId], name: "assignment_instructor_schedule_unique")
+  @@index([trainingLocationId], map: "배정_trainingLocationId_idx")
   @@map("강사_부대_배정")
 }
 

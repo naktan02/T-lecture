@@ -28,7 +28,6 @@ model Unit {
   trainingPeriods TrainingPeriod[]
   distances       InstructorUnitDistance[]
 
-  @@index([lectureYear])
   @@map("부대")
 }
 
@@ -62,6 +61,7 @@ model TrainingPeriod {
   locations TrainingLocation[]
   schedules UnitSchedule[]
 
+  @@index([unitId], map: "교육기간_unitId_idx")
   @@map("교육기간")
 }
 
@@ -80,6 +80,7 @@ model TrainingLocation {
   scheduleLocations ScheduleLocation[]
   assignments       InstructorUnitAssignment[]
 
+  @@index([trainingPeriodId], map: "교육장소_trainingPeriodId_idx")
   @@map("교육장소")
 }
 
@@ -94,6 +95,7 @@ model UnitSchedule {
   assignments       InstructorUnitAssignment[]
 
   @@index([date], map: "부대일정_date_idx")
+  @@index([trainingPeriodId], map: "부대일정_trainingPeriodId_idx")
   @@map("부대일정")
 }
 

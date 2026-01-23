@@ -110,7 +110,12 @@ class MetadataService {
   // ===== SystemConfig (배정 설정) =====
 
   // 배정 설정 키 목록
-  private readonly ASSIGNMENT_CONFIG_KEYS = ['TRAINEES_PER_INSTRUCTOR', 'REJECTION_PENALTY_DAYS'];
+  private readonly ASSIGNMENT_CONFIG_KEYS = [
+    'TRAINEES_PER_INSTRUCTOR',
+    'REJECTION_PENALTY_DAYS',
+    'INTERN_MAX_DISTANCE_KM',
+    'SUB_MAX_DISTANCE_KM',
+  ];
 
   // 배정 설정 기본값
   private readonly ASSIGNMENT_CONFIG_DEFAULTS: Record<
@@ -119,6 +124,8 @@ class MetadataService {
   > = {
     TRAINEES_PER_INSTRUCTOR: { value: '36', description: '강사당 교육생 수' },
     REJECTION_PENALTY_DAYS: { value: '15', description: '거절 패널티 기간 (일)' },
+    INTERN_MAX_DISTANCE_KM: { value: '50', description: '실습강사 제한 거리 (km)' },
+    SUB_MAX_DISTANCE_KM: { value: '0', description: '보조강사 제한 거리 (km), 0=제한없음' },
   };
 
   // 배정 설정 조회
@@ -144,8 +151,15 @@ class MetadataService {
     }
 
     const numValue = Number(value);
-    if (!Number.isFinite(numValue) || numValue <= 0 || !Number.isInteger(numValue)) {
-      throw new AppError('설정 값은 양의 정수여야 합니다.', 400, 'VALIDATION_ERROR');
+    // SUB_MAX_DISTANCE_KM은 0 허용 (0 = 제한없음)
+    if (key === 'SUB_MAX_DISTANCE_KM') {
+      if (!Number.isFinite(numValue) || numValue < 0 || !Number.isInteger(numValue)) {
+        throw new AppError('설정 값은 0 이상의 정수여야 합니다.', 400, 'VALIDATION_ERROR');
+      }
+    } else {
+      if (!Number.isFinite(numValue) || numValue <= 0 || !Number.isInteger(numValue)) {
+        throw new AppError('설정 값은 양의 정수여야 합니다.', 400, 'VALIDATION_ERROR');
+      }
     }
 
     const defaults = this.ASSIGNMENT_CONFIG_DEFAULTS[key];
