@@ -33,6 +33,8 @@ export interface AssignmentConfig {
   rejectionPenaltyMonths: number; // 최근 N개월 거절 횟수
   fairnessLookbackMonths: number; // 형평성 계산 기간
   scorerWeights: Record<string, number>; // 스코어러별 가중치
+  internMaxDistanceKm: number; // 실습강사 최대 배정 거리 (km)
+  subMaxDistanceKm: number | null; // 보조강사 최대 배정 거리 (km), null=제한없음
 }
 
 // =========================================

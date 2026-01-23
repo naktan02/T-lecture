@@ -20,6 +20,22 @@ const CONFIG_ITEMS = [
     min: 1,
     max: 90,
   },
+  {
+    key: 'INTERN_MAX_DISTANCE_KM',
+    label: '실습강사 제한 거리',
+    description: '실습강사가 배정될 수 있는 최대 거리',
+    unit: 'km',
+    min: 10,
+    max: 200,
+  },
+  {
+    key: 'SUB_MAX_DISTANCE_KM',
+    label: '보조강사 제한 거리',
+    description: '보조강사가 배정될 수 있는 최대 거리 (0 = 제한 없음)',
+    unit: 'km',
+    min: 0,
+    max: 200,
+  },
 ] as const;
 
 /**

@@ -2,7 +2,6 @@
 // 배정 알고리즘 Hard 필터 모음
 
 import { AssignmentFilter, InstructorCandidate, AssignmentContext } from './assignment.types';
-import { FILTER_CONFIG } from './config-loader';
 
 /**
  * 가용일 필터
@@ -126,18 +125,40 @@ export const canceledBlockFilter: AssignmentFilter = {
 
 /**
  * 실습강사 거리 제한 필터 (Practicum)
- * - 실습강사는 집에서 가까운 곳만 배정
+ * - 실습강사는 집에서 가까운 곳만 배정 (DB 설정값 사용)
  */
 export const internDistanceFilter: AssignmentFilter = {
   id: 'INTERN_DISTANCE',
   name: '실습강사 거리 제한',
-  description: `실습강사는 집에서 ${FILTER_CONFIG.internMaxDistanceKm}km 이내만 배정`,
+  description: '실습강사는 설정된 최대 거리 이내만 배정',
   check(candidate: InstructorCandidate, context: AssignmentContext): boolean {
     // Practicum이 아니면 통과
     if (candidate.category !== 'Practicum') return true;
 
-    // 거리 확인 (설정값 사용)
-    const maxDistance = FILTER_CONFIG.internMaxDistanceKm;
+    // 거리 확인 (DB에서 가져온 설정값 사용)
+    const maxDistance = context.config.internMaxDistanceKm;
+    const key = `${candidate.userId}-${context.currentUnitId}`;
+    const distance = context.instructorDistances.get(key) ?? Infinity;
+    return distance <= maxDistance;
+  },
+};
+
+/**
+ * 보조강사 거리 제한 필터 (Assistant/Co)
+ * - 보조강사는 설정된 거리 이내만 배정 (null이면 제한 없음)
+ */
+export const subDistanceFilter: AssignmentFilter = {
+  id: 'SUB_DISTANCE',
+  name: '보조강사 거리 제한',
+  description: '보조강사는 설정된 최대 거리 이내만 배정',
+  check(candidate: InstructorCandidate, context: AssignmentContext): boolean {
+    // Assistant 또는 Co가 아니면 통과
+    if (candidate.category !== 'Assistant' && candidate.category !== 'Co') return true;
+
+    // 거리 제한이 null이면 제한 없음
+    const maxDistance = context.config.subMaxDistanceKm;
+    if (maxDistance === null) return true;
+
     const key = `${candidate.userId}-${context.currentUnitId}`;
     const distance = context.instructorDistances.get(key) ?? Infinity;
     return distance <= maxDistance;
@@ -154,6 +175,7 @@ export const allFilters: AssignmentFilter[] = [
   distanceFilter,
   areaRestrictionFilter,
   internDistanceFilter,
+  subDistanceFilter,
   mainInstructorFilter,
   traineeFilter,
 ];

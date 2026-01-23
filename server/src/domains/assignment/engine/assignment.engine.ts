@@ -81,6 +81,8 @@ export class AssignmentEngine {
       rejectionPenaltyMonths: 6,
       fairnessLookbackMonths: 3,
       scorerWeights: {},
+      internMaxDistanceKm: 50, // 기본값 50km
+      subMaxDistanceKm: null, // null = 제한없음
       ...config,
     };
 

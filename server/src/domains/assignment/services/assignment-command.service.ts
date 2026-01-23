@@ -68,6 +68,16 @@ class AssignmentCommandService {
   }
 
   /**
+   * 시스템 설정 숫자 값 조회 (null 허용)
+   */
+  private async getSystemConfigNumberOrNull(key: string): Promise<number | null> {
+    const value = await assignmentConfigRepository.getSystemConfigValue(key);
+    if (!value || value === '0' || value.toLowerCase() === 'null') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }
+
+  /**
    * 날짜에서 월 빼기 유틸
    */
   private subtractMonths(base: Date, months: number): Date {
@@ -223,6 +233,8 @@ class AssignmentCommandService {
       'REJECTION_PENALTY_MONTHS',
       DEFAULT_ASSIGNMENT_CONFIG.rejectionPenaltyMonths,
     );
+    const internMaxDistanceKm = await this.getSystemConfigNumber('INTERN_MAX_DISTANCE_KM', 50);
+    const subMaxDistanceKm = await this.getSystemConfigNumberOrNull('SUB_MAX_DISTANCE_KM');
 
     const assignmentSince = this.subtractMonths(minDate, fairnessLookbackMonths);
     const rejectionSince = this.subtractMonths(minDate, rejectionPenaltyMonths);
@@ -240,6 +252,8 @@ class AssignmentCommandService {
       blockedInstructorIdsBySchedule,
       recentAssignmentCountByInstructorId,
       recentRejectionCountByInstructorId,
+      internMaxDistanceKm,
+      subMaxDistanceKm,
     });
 
     const { assignments: matchResults } = matchResult;
@@ -334,6 +348,9 @@ class AssignmentCommandService {
         rejectionSince,
       );
 
+    const internMaxDistanceKm = await this.getSystemConfigNumber('INTERN_MAX_DISTANCE_KM', 50);
+    const subMaxDistanceKm = await this.getSystemConfigNumberOrNull('SUB_MAX_DISTANCE_KM');
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const matchResult = assignmentAlgorithm.execute(units as any, instructors as any, {
       traineesPerInstructor,
@@ -341,6 +358,8 @@ class AssignmentCommandService {
       recentAssignmentCountByInstructorId,
       recentRejectionCountByInstructorId,
       debugTopK,
+      internMaxDistanceKm,
+      subMaxDistanceKm,
     });
 
     const { assignments: matchResults, debug } = matchResult;

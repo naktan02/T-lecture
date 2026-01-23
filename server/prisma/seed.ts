@@ -19,6 +19,8 @@ const VIRTUES = [{ id: 1, name: '예' }];
 const SYSTEM_CONFIGS = [
   { key: 'REJECTION_PENALTY_DAYS', value: '15', description: '거절 패널티 기간 (일)' },
   { key: 'TRAINEES_PER_INSTRUCTOR', value: '36', description: '강사당 교육생 수' },
+  { key: 'INTERN_MAX_DISTANCE_KM', value: '50', description: '실습강사 제한 거리 (km)' },
+  { key: 'SUB_MAX_DISTANCE_KM', value: '0', description: '보조강사 제한 거리 (km), 0=제한없음' },
 ];
 
 async function main() {
