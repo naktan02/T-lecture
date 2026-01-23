@@ -147,141 +147,85 @@ class DistanceService {
     return distanceRepository.createManyForInstructor(instructorId, unitIds);
   }
 
-  // 배치: 스케줄 우선순위로 거리 계산 (needsRecalc=true 우선)
-  async calculateDistancesBySchedulePriority(limit = 200) {
-    const usage = await kakaoUsageRepository.getOrCreateToday();
-    const remainingRouteQuota = Math.max(0, Math.min(MAX_ROUTE_PER_DAY - usage!.routeCount, limit));
-
-    if (remainingRouteQuota <= 0) {
-      return { processed: 0, message: 'No remaining Kakao route quota for today' };
-    }
-
-    // 1. 먼저 needsRecalc=true인 쌍 우선 처리
-    const needsRecalcPairs = await distanceRepository.findNeedsRecalc(remainingRouteQuota);
-
+  // 배치: 스케줄 우선순위로 거리 계산 (일일 할당량까지 반복)
+  async calculateDistancesBySchedulePriority(batchSize = 200) {
     const CONCURRENCY = 5;
-    let processed = 0;
-    const results: ProcessResult[] = [];
+    let totalProcessed = 0;
+    let totalErrors = 0;
+    const allResults: ProcessResult[] = [];
+    let iterations = 0;
 
-    // needsRecalc=true 쌍 처리
-    for (let i = 0; i < needsRecalcPairs.length; i += CONCURRENCY) {
-      const batch = needsRecalcPairs.slice(i, i + CONCURRENCY);
+    // 일일 할당량이 남아있고, 처리할 쌍이 있는 동안 반복
+    while (true) {
+      iterations++;
 
-      const batchResults = await Promise.all(
-        batch.map(async (pair): Promise<ProcessResult> => {
-          const { userId: instructorId, unitId, earliestSchedule } = pair;
-          try {
-            const saved = await this.calculateAndSaveDistance(instructorId, unitId);
-            return {
-              instructorId,
-              unitId,
-              scheduleDate: earliestSchedule,
-              distance: Number(saved.distance),
-              status: 'success',
-            };
-          } catch (error: unknown) {
-            const err = error as { message?: string; code?: string; statusCode?: number };
-            return {
-              instructorId,
-              unitId,
-              scheduleDate: earliestSchedule,
-              status: 'error',
-              error: err.message || 'Unknown error',
-              code: err.code || 'DISTANCE_CALC_FAILED',
-              statusCode: err.statusCode || 500,
-            };
-          }
-        }),
-      );
+      // 현재 할당량 확인
+      const usage = await kakaoUsageRepository.getOrCreateToday();
+      const remainingQuota = MAX_ROUTE_PER_DAY - usage!.routeCount;
 
-      results.push(...batchResults);
-      processed += batchResults.filter((r) => r.status === 'success').length;
-    }
+      if (remainingQuota <= 0) {
+        break; // 할당량 소진
+      }
 
-    // 2. 할당량 남으면 신규 쌍 계산 (기존 로직)
-    const remainingAfterRecalc = remainingRouteQuota - processed;
-    if (remainingAfterRecalc > 0) {
-      const upcomingSchedules = await unitRepository.findUpcomingSchedules(50);
-      if (upcomingSchedules.length > 0) {
-        // NOTE: unitId는 이제 trainingPeriod를 통해 접근
-        const unitIds = Array.from(
-          new Set(upcomingSchedules.map((s) => s.trainingPeriod.unitId)),
-        ) as number[];
-        const existingDistances = await distanceRepository.findManyByUnitIds(unitIds);
+      // 이번 반복에서 처리할 개수 (할당량과 batchSize 중 작은 값)
+      const limit = Math.min(remainingQuota, batchSize);
 
-        const existingByUnit = new Map<number, Set<number>>();
-        for (const row of existingDistances) {
-          let set = existingByUnit.get(row.unitId);
-          if (!set) {
-            set = new Set();
-            existingByUnit.set(row.unitId, set);
-          }
-          set.add(row.userId);
-        }
+      // needsRecalc=true인 쌍 조회
+      const needsRecalcPairs = await distanceRepository.findNeedsRecalc(limit);
 
-        const instructors = await instructorRepository.findActiveInstructors();
-        const candidates: { instructorId: number; unitId: number; scheduleDate: Date | null }[] =
-          [];
+      if (needsRecalcPairs.length === 0) {
+        break; // 더 이상 처리할 쌍 없음
+      }
 
-        for (const schedule of upcomingSchedules) {
-          // NOTE: unitId는 이제 trainingPeriod를 통해 접근
-          const unitId = schedule.trainingPeriod.unitId;
-          let set = existingByUnit.get(unitId);
-          if (!set) {
-            set = new Set();
-            existingByUnit.set(unitId, set);
-          }
+      // 배치 처리
+      for (let i = 0; i < needsRecalcPairs.length; i += CONCURRENCY) {
+        const batch = needsRecalcPairs.slice(i, i + CONCURRENCY);
 
-          for (const instructor of instructors) {
-            const instructorId = instructor.userId;
-            if (set.has(instructorId)) continue;
-            candidates.push({ instructorId, unitId, scheduleDate: schedule.date });
-          }
-        }
+        const batchResults = await Promise.all(
+          batch.map(async (pair): Promise<ProcessResult> => {
+            const { userId: instructorId, unitId, earliestSchedule } = pair;
+            try {
+              const saved = await this.calculateAndSaveDistance(instructorId, unitId);
+              return {
+                instructorId,
+                unitId,
+                scheduleDate: earliestSchedule,
+                distance: Number(saved.distance),
+                status: 'success',
+              };
+            } catch (error: unknown) {
+              const err = error as { message?: string; code?: string; statusCode?: number };
+              return {
+                instructorId,
+                unitId,
+                scheduleDate: earliestSchedule,
+                status: 'error',
+                error: err.message || 'Unknown error',
+                code: err.code || 'DISTANCE_CALC_FAILED',
+                statusCode: err.statusCode || 500,
+              };
+            }
+          }),
+        );
 
-        const toProcess = candidates.slice(0, remainingAfterRecalc);
+        const successCount = batchResults.filter((r) => r.status === 'success').length;
+        const errorCount = batchResults.filter((r) => r.status === 'error').length;
 
-        for (let i = 0; i < toProcess.length; i += CONCURRENCY) {
-          const batch = toProcess.slice(i, i + CONCURRENCY);
-
-          const batchResults = await Promise.all(
-            batch.map(async (pair): Promise<ProcessResult> => {
-              const { instructorId, unitId, scheduleDate } = pair;
-              try {
-                const saved = await this.calculateAndSaveDistance(instructorId, unitId);
-                return {
-                  instructorId,
-                  unitId,
-                  scheduleDate,
-                  distance: Number(saved.distance),
-                  status: 'success',
-                };
-              } catch (error: unknown) {
-                const err = error as { message?: string; code?: string; statusCode?: number };
-                return {
-                  instructorId,
-                  unitId,
-                  scheduleDate,
-                  status: 'error',
-                  error: err.message || 'Unknown error',
-                  code: err.code || 'DISTANCE_CALC_FAILED',
-                  statusCode: err.statusCode || 500,
-                };
-              }
-            }),
-          );
-
-          results.push(...batchResults);
-          processed += batchResults.filter((r) => r.status === 'success').length;
-        }
+        totalProcessed += successCount;
+        totalErrors += errorCount;
+        allResults.push(...batchResults);
       }
     }
 
+    // 최종 할당량 확인
+    const finalUsage = await kakaoUsageRepository.getOrCreateToday();
+
     return {
-      processed,
-      needsRecalcCount: needsRecalcPairs.length,
-      remainingQuotaAfter: remainingRouteQuota - processed,
-      results,
+      processed: totalProcessed,
+      errors: totalErrors,
+      iterations,
+      remainingQuotaAfter: MAX_ROUTE_PER_DAY - finalUsage!.routeCount,
+      results: allResults,
     };
   }
 

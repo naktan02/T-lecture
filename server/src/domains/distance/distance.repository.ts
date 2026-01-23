@@ -171,15 +171,22 @@ class DistanceRepository {
   }
 
   // 재계산 필요한 쌍 조회 (스케줄 우선순위)
-  // NOTE: UnitSchedule은 trainingPeriodId를 통해 Unit과 연결됨
+  // 조건: needsRecalc=true, 강사 APPROVED, 강사/부대 모두 위도·경도 있음
   async findNeedsRecalc(limit: number) {
     return prisma.$queryRaw<{ userId: number; unitId: number; earliestSchedule: Date | null }[]>`
       SELECT d."userId", d."부대id" as "unitId", MIN(s."교육일") as "earliestSchedule"
       FROM "강사-부대 거리" d
+      JOIN "강사" i ON d."userId" = i."user_id"
+      JOIN "user" u ON i."user_id" = u."id"
+      JOIN "부대" unit ON d."부대id" = unit."id"
       LEFT JOIN "교육기간" tp ON d."부대id" = tp."부대id"
       LEFT JOIN "부대일정" s ON tp."id" = s."교육기간id"
       WHERE d."재계산필요" = true
-        AND (s."교육일" >= CURRENT_DATE OR s."교육일" IS NULL)
+        AND u."status" = 'APPROVED'
+        AND i."위도" IS NOT NULL
+        AND i."경도" IS NOT NULL
+        AND unit."위도" IS NOT NULL
+        AND unit."경도" IS NOT NULL
       GROUP BY d."userId", d."부대id"
       ORDER BY MIN(s."교육일") ASC NULLS LAST
       LIMIT ${limit}
