@@ -29,6 +29,13 @@ export const EducationStatusChart: React.FC<Props> = ({ stats, onSegmentClick })
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
       <h3 className="text-lg font-bold text-gray-800 mb-4">교육 진행 현황</h3>
       <div className="w-full h-72 relative">
+        {/* Center text - moved here to be behind the chart and tooltip */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="text-center -mt-8">
+            <p className="text-3xl font-bold text-gray-900">{educationStatus.total}</p>
+            <p className="text-sm text-gray-500">총 교육</p>
+          </div>
+        </div>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -48,6 +55,7 @@ export const EducationStatusChart: React.FC<Props> = ({ stats, onSegmentClick })
               ))}
             </Pie>
             <Tooltip
+              wrapperStyle={{ zIndex: 100 }}
               contentStyle={{
                 borderRadius: '8px',
                 border: 'none',
@@ -58,13 +66,6 @@ export const EducationStatusChart: React.FC<Props> = ({ stats, onSegmentClick })
             <Legend verticalAlign="bottom" height={36} />
           </PieChart>
         </ResponsiveContainer>
-        {/* Center text */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="text-center -mt-8">
-            <p className="text-3xl font-bold text-gray-900">{educationStatus.total}</p>
-            <p className="text-sm text-gray-500">총 교육</p>
-          </div>
-        </div>
       </div>
     </div>
   );
