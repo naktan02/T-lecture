@@ -20,6 +20,10 @@ type ExecuteOptions = {
   recentRejectionCountByInstructorId?: Map<number, number>;
   /** 디버그용: 상위 K명의 breakdown 수집 (0이면 수집 안 함) */
   debugTopK?: number;
+  /** 실습강사 최대 배정 거리 (km) */
+  internMaxDistanceKm?: number;
+  /** 보조강사 최대 배정 거리 (km), null=제한없음 */
+  subMaxDistanceKm?: number | null;
 };
 
 // =========================================
@@ -238,6 +242,8 @@ class AssignmentAlgorithm {
       traineesPerInstructor,
       rejectionPenaltyMonths: 6,
       fairnessLookbackMonths: 3,
+      internMaxDistanceKm: options.internMaxDistanceKm ?? 50, // 기본값 50km
+      subMaxDistanceKm: options.subMaxDistanceKm ?? null, // null = 제한없음
     });
 
     // 1. 데이터 변환 (TrainingPeriod 단위)
