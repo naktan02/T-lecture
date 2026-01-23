@@ -77,8 +77,6 @@ class DispatchRepository {
 
   // 확정 발송 대상 조회 (부대가 확정 상태인 경우만, 날짜 범위 필터링)
   async findTargetsForConfirmedDispatch(startDate?: string, endDate?: string) {
-    console.log('[DispatchRepo] findTargetsForConfirmedDispatch:', { startDate, endDate });
-
     // 날짜 범위 조건
     const dateFilter =
       startDate && endDate
@@ -117,16 +115,9 @@ class DispatchRepository {
       select: { id: true, unitId: true },
     });
 
-    console.log(
-      '[DispatchRepo] Confirmed periods:',
-      confirmedPeriods.length,
-      confirmedPeriods.map((p) => p.id),
-    );
-
     const confirmedPeriodIds = confirmedPeriods.map((p) => p.id);
 
     if (confirmedPeriodIds.length === 0) {
-      console.log('[DispatchRepo] No confirmed periods found');
       return [];
     }
 
@@ -144,16 +135,11 @@ class DispatchRepository {
       },
     });
 
-    console.log('[DispatchRepo] Unsent assignments:', unsentAssignments.length);
-
     const periodIdsNeedingResend = [
       ...new Set(unsentAssignments.map((a) => a.UnitSchedule.trainingPeriodId)),
     ];
 
-    console.log('[DispatchRepo] Period IDs needing resend:', periodIdsNeedingResend);
-
     if (periodIdsNeedingResend.length === 0) {
-      console.log('[DispatchRepo] All confirmed assignments already have Confirmed dispatch');
       return [];
     }
 
@@ -278,8 +264,6 @@ class DispatchRepository {
       ...(type && { type }),
     };
 
-    console.log('[DispatchRepo] findMyDispatches where:', where);
-
     const [dispatches, total] = await Promise.all([
       prisma.dispatch.findMany({
         where,
@@ -302,11 +286,6 @@ class DispatchRepository {
       }),
       prisma.dispatch.count({ where }),
     ]);
-
-    console.log('[DispatchRepo] findMyDispatches result:', {
-      total,
-      dispatchCount: dispatches.length,
-    });
 
     return { dispatches, total, page, limit };
   }

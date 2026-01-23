@@ -3,8 +3,9 @@ import { useState, ReactElement } from 'react';
 import { TeamsSection } from './TeamsSection';
 import { VirtuesSection } from './VirtuesSection';
 import { DataBackupSection } from './DataBackupSection';
+import { ReportSection } from './ReportSection';
 
-type TabKey = 'teams' | 'virtues' | 'backup';
+type TabKey = 'teams' | 'virtues' | 'backup' | 'reports';
 
 interface Tab {
   key: TabKey;
@@ -16,6 +17,7 @@ const TABS: Tab[] = [
   { key: 'teams', label: '팀 관리', icon: '👥' },
   { key: 'virtues', label: '덕목 관리', icon: '📚' },
   { key: 'backup', label: '데이터 백업', icon: '💾' },
+  { key: 'reports', label: '보고서 다운로드', icon: '📊' },
 ];
 
 export const SettingsTabs = (): ReactElement => {
@@ -49,6 +51,7 @@ export const SettingsTabs = (): ReactElement => {
         {activeTab === 'teams' && <TeamsSection />}
         {activeTab === 'virtues' && <VirtuesSection />}
         {activeTab === 'backup' && <DataBackupSection />}
+        {activeTab === 'reports' && <ReportSection />}
       </div>
     </div>
   );

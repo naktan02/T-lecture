@@ -70,6 +70,7 @@ export interface Instructor {
 export interface AssignmentCandidatesResponse {
   unassignedUnits: UnitSchedule[];
   availableInstructors: Instructor[];
+  allInstructors?: Instructor[]; // 전체 승인된 강사 목록 (전체 검색용)
   actualDateRange?: {
     startDate: string;
     endDate: string;

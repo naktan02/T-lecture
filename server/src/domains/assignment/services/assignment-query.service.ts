@@ -69,9 +69,13 @@ class AssignmentQueryService {
       actualDateRangeStr.endDate,
     );
 
+    // 5) 전체 승인된 강사 목록 조회 (전체 검색용)
+    const allInstructorsRaw = await instructorRepository.findActiveInstructors();
+
     return {
       unitsRaw: unitsRaw as unknown as UnitRaw[],
       instructorsRaw: instructorsRaw as unknown as InstructorRaw[],
+      allInstructorsRaw: allInstructorsRaw as unknown as InstructorRaw[],
       actualDateRange: actualDateRangeStr,
     };
   }

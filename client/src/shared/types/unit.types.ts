@@ -4,6 +4,23 @@
 // 군 구분
 export type MilitaryType = 'Army' | 'Navy' | 'AirForce' | 'Marines' | 'MND';
 
+// 군 구분 한글 매핑
+export const MILITARY_TYPE_LABELS: Record<MilitaryType, string> = {
+  Army: '육군',
+  Navy: '해군',
+  AirForce: '공군',
+  Marines: '해병대',
+  MND: '국직부대',
+};
+
+/**
+ * 군 구분 한글 레이블 반환
+ */
+export function getMilitaryTypeLabel(type?: string | null): string {
+  if (!type) return '미지정';
+  return MILITARY_TYPE_LABELS[type as MilitaryType] || type;
+}
+
 // 일정-장소 연결
 export interface ScheduleLocation {
   id?: number;

@@ -57,7 +57,7 @@ export const getCandidates = asyncHandler(async (req: Request, res: Response) =>
   }
 
   // 캐시 저장 버전 사용 (userId로 캐시 키 구분)
-  const { unitsRaw, instructorsRaw, actualDateRange } =
+  const { unitsRaw, instructorsRaw, allInstructorsRaw, actualDateRange } =
     await assignmentService.getAssignmentCandidatesWithCache(
       startDate as string,
       endDate as string,
@@ -68,6 +68,9 @@ export const getCandidates = asyncHandler(async (req: Request, res: Response) =>
   const traineesPerInstructor = await assignmentService.getTraineesPerInstructor();
 
   const responseData = assignmentDTO.toCandidateResponse(unitsRaw, instructorsRaw);
+
+  // 전체 강사 목록 변환 (전체 검색용)
+  const allInstructors = assignmentDTO.mapInstructorsToCards(allInstructorsRaw);
 
   // 배정 현황을 분류별로 분리 (Temporary=배정작업공간, Confirmed=확정)
   const pendingAssignments = assignmentDTO.toHierarchicalResponse(
@@ -83,6 +86,7 @@ export const getCandidates = asyncHandler(async (req: Request, res: Response) =>
 
   res.json({
     ...responseData,
+    allInstructors, // 전체 강사 목록 (전체 검색용)
     pendingAssignments, // 임시 배정 (배정 작업 공간)
     acceptedAssignments, // 확정 배정 (확정 배정 완료)
     actualDateRange, // 부대 전체 일정 범위 (임시 발송 시 사용)

@@ -1,6 +1,6 @@
 // src/features/assignment/ui/AssignmentWorkspace.tsx
 
-import { useState, useRef, ChangeEvent, MouseEvent, useEffect } from 'react';
+import { useState, useRef, ChangeEvent, MouseEvent, useEffect, useMemo } from 'react';
 import { useAssignment } from '../model/useAssignment';
 import { Button, MiniCalendar, ConfirmModal } from '../../../shared/ui';
 import { AssignmentDetailModal, AssignmentGroupDetailModal } from './AssignmentDetailModal';
@@ -39,6 +39,7 @@ export const AssignmentWorkspace: React.FC = () => {
     error,
     groupedUnassignedUnits,
     availableInstructors,
+    allInstructors,
     assignments,
     confirmedAssignments,
     fetchData,
@@ -98,6 +99,28 @@ export const AssignmentWorkspace: React.FC = () => {
     y: 0,
     dates: [],
   });
+
+  // 날짜별 이미 배정된 강사 ID 맵 생성 (모든 부대 통합)
+  const assignedByDate = useMemo(() => {
+    const map = new Map<string, Set<number>>();
+    const allGroups = [...assignments, ...confirmedAssignments];
+    for (const group of allGroups) {
+      for (const loc of (group as any).trainingLocations || []) {
+        for (const dateInfo of loc.dates || []) {
+          const dateStr = dateInfo.date as string;
+          if (!dateStr) continue;
+          if (!map.has(dateStr)) map.set(dateStr, new Set());
+          for (const inst of dateInfo.instructors || []) {
+            // Pending 또는 Accepted 상태인 배정만 포함
+            if (inst.state === 'Pending' || inst.state === 'Accepted') {
+              map.get(dateStr)!.add(inst.instructorId);
+            }
+          }
+        }
+      }
+    }
+    return map;
+  }, [assignments, confirmedAssignments]);
 
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -423,7 +446,11 @@ export const AssignmentWorkspace: React.FC = () => {
                     <div
                       key={group.unitId}
                       onClick={() => setDetailModalKey({ unitId: group.unitId, bucket: 'PENDING' })}
-                      className="bg-white border border-gray-200 rounded-lg p-2.5 shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 border-l-indigo-500"
+                      className={`bg-white border border-gray-200 rounded-lg p-2.5 shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 ${
+                        group.totalAssigned === 0
+                          ? 'border-l-gray-400 bg-gray-50/70'
+                          : 'border-l-indigo-500'
+                      }`}
                     >
                       <div className="flex justify-between items-start mb-1">
                         <div>
@@ -433,7 +460,9 @@ export const AssignmentWorkspace: React.FC = () => {
                           </span>
                         </div>
                         <div className="text-right">
-                          <div className="text-[10px] font-bold text-indigo-600">
+                          <div
+                            className={`text-[10px] font-bold ${group.totalAssigned === 0 ? 'text-gray-500' : 'text-indigo-600'}`}
+                          >
                             {group.period}
                           </div>
                           <div className="text-[10px] text-gray-400">
@@ -442,18 +471,24 @@ export const AssignmentWorkspace: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-[11px] text-orange-600 font-medium">
-                          📨 {group.totalAssigned}명 배정
-                        </span>
                         <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                            (group as any).unsentCount > 0
-                              ? 'text-blue-600 bg-blue-100'
-                              : 'text-gray-500 bg-gray-100'
-                          }`}
+                          className={`text-[11px] font-medium ${group.totalAssigned === 0 ? 'text-gray-500' : 'text-orange-600'}`}
                         >
-                          🔵 미발송 {(group as any).unsentCount ?? 0}
+                          {group.totalAssigned === 0
+                            ? '📋 강사 미배정 (클릭하여 배정)'
+                            : `📨 ${group.totalAssigned}명 배정`}
                         </span>
+                        {group.totalAssigned > 0 && (
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                              (group as any).unsentCount > 0
+                                ? 'text-blue-600 bg-blue-100'
+                                : 'text-gray-500 bg-gray-100'
+                            }`}
+                          >
+                            🔵 미발송 {(group as any).unsentCount ?? 0}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -574,6 +609,15 @@ export const AssignmentWorkspace: React.FC = () => {
             category: i.category ?? undefined,
             availableDates: i.availableDates ?? [],
           }))}
+          allInstructors={allInstructors.map((i) => ({
+            id: i.id,
+            name: i.name,
+            team: i.teamName,
+            teamName: i.teamName,
+            category: i.category ?? undefined,
+            availableDates: i.availableDates ?? [],
+          }))}
+          assignedByDate={assignedByDate}
         />
       )}
 

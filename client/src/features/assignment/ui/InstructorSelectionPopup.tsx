@@ -14,7 +14,8 @@ interface Instructor {
 
 interface InstructorSelectionPopupProps {
   target: Target;
-  allAvailableInstructors: any[];
+  allAvailableInstructors: any[]; // 기간 내 가용일 있는 강사
+  allInstructors?: any[]; // 전체 승인된 강사 (전체 검색용)
   assignedInstructorIds?: number[]; // 이미 해당 날짜에 배정된 강사 ID
   onClose: () => void;
   onAdd?: (instructor: Instructor) => Promise<void>;
@@ -26,6 +27,7 @@ type TabType = 'AVAILABLE' | 'ALL';
 export const InstructorSelectionPopup: React.FC<InstructorSelectionPopupProps> = ({
   target,
   allAvailableInstructors = [],
+  allInstructors = [],
   assignedInstructorIds = [],
   onClose,
   onAdd,
@@ -34,12 +36,20 @@ export const InstructorSelectionPopup: React.FC<InstructorSelectionPopupProps> =
   const [tab, setTab] = useState<TabType>('AVAILABLE');
   const [search, setSearch] = useState<string>('');
 
-  const instructors = allAvailableInstructors || [];
-  // 이미 배정된 강사 제외
-  const notAssigned = instructors.filter((inst) => !assignedInstructorIds.includes(inst.id));
-  const availableForDate = notAssigned.filter((inst) => inst.availableDates?.includes(target.date));
+  // 가능 강사 탭: 기간 내 가용일 있는 강사 중 해당 날짜에 가용 + 미배정
+  const periodInstructors = allAvailableInstructors || [];
+  const notAssignedPeriod = periodInstructors.filter(
+    (inst) => !assignedInstructorIds.includes(inst.id),
+  );
+  const availableForDate = notAssignedPeriod.filter((inst) =>
+    inst.availableDates?.includes(target.date),
+  );
 
-  const list = tab === 'AVAILABLE' ? availableForDate : notAssigned;
+  // 전체 검색 탭: 모든 승인된 강사 중 해당 날짜에 미배정
+  const allInst = allInstructors || [];
+  const notAssignedAll = allInst.filter((inst) => !assignedInstructorIds.includes(inst.id));
+
+  const list = tab === 'AVAILABLE' ? availableForDate : notAssignedAll;
   // 이름 또는 팀명으로 검색
   const filteredList = list.filter(
     (i) =>
