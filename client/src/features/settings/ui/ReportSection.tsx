@@ -1,18 +1,37 @@
 // client/src/features/settings/ui/ReportSection.tsx
-import { useState, ReactElement } from 'react';
+import { useState, useEffect, ReactElement } from 'react';
 import { Button } from '../../../shared/ui';
 import { showSuccess, showError } from '../../../shared/utils';
-import { apiClient } from '../../../shared/apiClient';
+import { apiClient, apiClientJson } from '../../../shared/apiClient';
 
 export const ReportSection = (): ReactElement => {
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
 
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [year, setYear] = useState(currentYear);
   const [month, setMonth] = useState(currentMonth);
   const [week, setWeek] = useState(1);
   const [isDownloadingWeekly, setIsDownloadingWeekly] = useState(false);
   const [isDownloadingMonthly, setIsDownloadingMonthly] = useState(false);
+
+  // 사용 가능한 연도 목록 조회
+  useEffect(() => {
+    const fetchYears = async () => {
+      try {
+        const years = await apiClientJson<number[]>('/api/v1/reports/years');
+        setAvailableYears(years);
+        // 현재 연도가 목록에 있으면 선택, 없으면 첫 번째 연도 선택
+        if (years.length > 0 && !years.includes(currentYear)) {
+          setYear(years[0]);
+        }
+      } catch {
+        // 조회 실패 시 현재 ±1년 사용
+        setAvailableYears([currentYear - 1, currentYear, currentYear + 1]);
+      }
+    };
+    fetchYears();
+  }, [currentYear]);
 
   const handleDownloadWeekly = async () => {
     setIsDownloadingWeekly(true);
@@ -99,7 +118,7 @@ export const ReportSection = (): ReactElement => {
               onChange={(e) => setYear(parseInt(e.target.value))}
               className="w-full h-10 px-3 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             >
-              {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
+              {availableYears.map((y) => (
                 <option key={y} value={y}>
                   {y}년
                 </option>

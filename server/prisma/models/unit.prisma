@@ -28,6 +28,7 @@ model Unit {
   trainingPeriods TrainingPeriod[]
   distances       InstructorUnitDistance[]
 
+  @@index([lectureYear], map: "부대_lectureYear_idx")
   @@map("부대")
 }
 
