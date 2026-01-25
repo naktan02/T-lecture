@@ -84,6 +84,22 @@ export const unitApi = {
     return response.json();
   },
 
+  // 엑셀 양식 다운로드
+  downloadExcelTemplate: async () => {
+    const response = await apiClient('/api/v1/units/template/excel');
+    const blob = await response.blob();
+
+    // 파일 다운로드 트리거
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'unit-upload-template.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  },
+
   // 부대 전체 정보 수정 (기본정보 + 교육장소 + 일정)
   updateUnit: async (id: number | string, data: UpdateUnitWithPeriodsPayload) => {
     const response = await apiClient(`/api/v1/units/${id}`, {
