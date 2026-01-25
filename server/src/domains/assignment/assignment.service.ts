@@ -77,6 +77,11 @@ class AssignmentService {
       unitId: number;
       isStaffLocked: boolean;
     }>;
+    stateChanges?: Array<{
+      unitScheduleId: number;
+      instructorId: number;
+      state: 'Pending' | 'Accepted' | 'Rejected' | 'Canceled';
+    }>;
   }) {
     return assignmentCommandService.batchUpdateAssignments(changes);
   }

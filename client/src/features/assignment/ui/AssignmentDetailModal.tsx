@@ -374,6 +374,19 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
     }));
   }, []);
 
+  // 이 강사가 로컬에서 확정 대기 상태인지 확인
+  const isLocallyConfirmed = useCallback(
+    (unitScheduleId: number, instructorId: number): boolean => {
+      return changeSet.stateChanges.some(
+        (sc) =>
+          sc.unitScheduleId === unitScheduleId &&
+          sc.instructorId === instructorId &&
+          sc.state === 'Accepted',
+      );
+    },
+    [changeSet.stateChanges],
+  );
+
   // 역할 변경 (로컬)
   const handleRoleChange = useCallback(
     (instructorId: number, role: 'Head' | 'Supervisor' | null) => {
@@ -756,28 +769,33 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                             {/* 상태 점 표시 */}
                             <span
                               className={`absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full border border-white shadow-sm ${
-                                !(inst as { messageSent?: boolean }).messageSent
-                                  ? 'bg-blue-500' // 미발송
-                                  : inst.state === 'Accepted'
-                                    ? 'bg-green-500'
-                                    : inst.state === 'Rejected'
-                                      ? 'bg-red-500'
-                                      : 'bg-yellow-400' // Pending (발송됨 but 대기중)
+                                isLocallyConfirmed(dateInfo.unitScheduleId, inst.instructorId)
+                                  ? 'bg-green-500 ring-2 ring-green-300' // 로컬 확정 대기
+                                  : !(inst as { messageSent?: boolean }).messageSent
+                                    ? 'bg-blue-500' // 미발송
+                                    : inst.state === 'Accepted'
+                                      ? 'bg-green-500'
+                                      : inst.state === 'Rejected'
+                                        ? 'bg-red-500'
+                                        : 'bg-yellow-400' // Pending (발송됨 but 대기중)
                               }`}
                               title={
-                                !(inst as { messageSent?: boolean }).messageSent
-                                  ? '미발송'
-                                  : inst.state === 'Accepted'
-                                    ? '수락'
-                                    : inst.state === 'Rejected'
-                                      ? '거절'
-                                      : '대기중'
+                                isLocallyConfirmed(dateInfo.unitScheduleId, inst.instructorId)
+                                  ? '확정 대기 (저장 필요)'
+                                  : !(inst as { messageSent?: boolean }).messageSent
+                                    ? '미발송'
+                                    : inst.state === 'Accepted'
+                                      ? '수락'
+                                      : inst.state === 'Rejected'
+                                        ? '거절'
+                                        : '대기중'
                               }
                             />
 
-                            {/* ✓ 확정 버튼 (Pending 상태이고 메시지 발송됨일 때만) */}
+                            {/* ✓ 확정 버튼 (Pending 상태이고 메시지 발송됨이고 아직 로컬 확정 안됐을 때만) */}
                             {(inst as { messageSent?: boolean }).messageSent &&
-                              inst.state === 'Pending' && (
+                              inst.state === 'Pending' &&
+                              !isLocallyConfirmed(dateInfo.unitScheduleId, inst.instructorId) && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -896,6 +914,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
             {hasChanges && (
               <span className="text-indigo-600 font-medium">
                 📝 변경 대기: 추가 {changeSet.add.length}, 삭제 {changeSet.remove.length}
+                {changeSet.stateChanges.length > 0 && `, 확정 ${changeSet.stateChanges.length}`}
                 {changeSet.staffLockChanges.length > 0 &&
                   `, 인원고정 ${changeSet.staffLockChanges.length}`}
                 {changeSet.roleChanges.length > 0 && `, 역할 ${changeSet.roleChanges.length}`}
@@ -910,7 +929,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
               <Button variant="primary" onClick={handleSave} disabled={isSaving}>
                 {isSaving
                   ? '저장 중...'
-                  : `저장 (${changeSet.add.length + changeSet.remove.length + changeSet.staffLockChanges.length + changeSet.roleChanges.length}건)`}
+                  : `저장 (${changeSet.add.length + changeSet.remove.length + changeSet.stateChanges.length + changeSet.staffLockChanges.length + changeSet.roleChanges.length}건)`}
               </Button>
             )}
           </div>
