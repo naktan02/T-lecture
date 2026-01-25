@@ -124,7 +124,7 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({
         <EmptyState title="해당 기간의 활동 내역이 없습니다." />
       ) : (
         <>
-          <div className="max-h-[400px] md:max-h-[500px] space-y-2 md:space-y-3 overflow-y-auto custom-scrollbar">
+          <div className="space-y-2 md:space-y-3">
             {assignments.map((assignment) => (
               <div
                 key={assignment.id}

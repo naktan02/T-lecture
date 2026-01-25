@@ -131,7 +131,7 @@ export const UserWorkspace = (): ReactElement => {
 
   return (
     <>
-      <main className="flex-1 w-full max-w-7xl mx-auto p-3 md:p-6 flex flex-col min-h-0">
+      <main className="flex-1 w-full max-w-7xl mx-auto p-3 md:p-6 flex flex-col">
         {/* 툴바 영역 */}
         <div className="shrink-0 mb-3">
           <UserToolbar
@@ -205,7 +205,7 @@ export const UserWorkspace = (): ReactElement => {
         )}
 
         {/* 리스트 영역 */}
-        <div className="flex-1 min-h-0 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full gap-3">
               <div className="w-10 h-10 border-4 border-gray-200 border-t-green-500 rounded-full animate-spin" />

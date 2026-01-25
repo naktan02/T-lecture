@@ -110,7 +110,7 @@ export const UnitList = ({
   return (
     <div className="h-full flex flex-col">
       {/* 데스크톱: 테이블 뷰 */}
-      <div className="hidden md:block flex-1 overflow-auto custom-scrollbar">
+      <div className="hidden md:block overflow-x-auto custom-scrollbar">
         <table className="w-full text-left border-collapse whitespace-nowrap">
           <thead className="sticky top-0 z-10 bg-gray-50 shadow-sm">
             <tr className="text-xs uppercase text-gray-500 font-semibold border-b border-gray-200">
@@ -255,7 +255,7 @@ export const UnitList = ({
       </div>
 
       {/* 모바일: 카드 뷰 */}
-      <div className="md:hidden flex-1 overflow-auto p-3 space-y-3 custom-scrollbar">
+      <div className="md:hidden p-3 space-y-3">
         {/* 모바일 전체 선택 */}
         <div className="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-lg">
           <input

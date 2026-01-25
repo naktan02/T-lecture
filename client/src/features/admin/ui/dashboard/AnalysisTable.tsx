@@ -88,10 +88,7 @@ export const AnalysisTable: React.FC<Props> = ({
     });
 
   return (
-    <div
-      className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex flex-col"
-      style={{ maxHeight: 'calc(100vh - 600px)', minHeight: '300px' }}
-    >
+    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
       <div className="p-3 md:p-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 flex-shrink-0">
         <div className="flex space-x-2 md:space-x-4 w-full sm:w-auto">
           <button
@@ -132,7 +129,7 @@ export const AnalysisTable: React.FC<Props> = ({
         </div>
       </div>
 
-      <div className="overflow-auto flex-1">
+      <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50 sticky top-0">
             {activeTab === 'INSTRUCTOR' ? (
