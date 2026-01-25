@@ -255,7 +255,7 @@ export const UnitList = ({
       </div>
 
       {/* 모바일: 카드 뷰 */}
-      <div className="md:hidden p-3 space-y-3">
+      <div className="md:hidden flex-1 overflow-auto p-3 space-y-3 custom-scrollbar">
         {/* 모바일 전체 선택 */}
         <div className="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-lg">
           <input
