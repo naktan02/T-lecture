@@ -168,9 +168,14 @@ const UNIT_FIELD_CONFIG: FieldConfig[] = [
 interface AssignmentDetailModalProps {
   item: Item | null;
   onClose: () => void;
+  zIndex?: number;
 }
 
-export const AssignmentDetailModal: React.FC<AssignmentDetailModalProps> = ({ item, onClose }) => {
+export const AssignmentDetailModal: React.FC<AssignmentDetailModalProps> = ({
+  item,
+  onClose,
+  zIndex,
+}) => {
   const modalContent = useMemo<ModalContent | null>(() => {
     if (!item) return null;
 
@@ -208,6 +213,7 @@ export const AssignmentDetailModal: React.FC<AssignmentDetailModalProps> = ({ it
       title={modalContent.title}
       subtitle={modalContent.subtitle}
       fields={modalContent.fields}
+      zIndex={zIndex}
     />
   );
 };
@@ -259,6 +265,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
     remove: [],
     roleChanges: [],
     staffLockChanges: [],
+    stateChanges: [],
   });
 
   // 역할 선택 드롭다운 표시 상태
@@ -270,7 +277,8 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
       changeSet.add.length > 0 ||
       changeSet.remove.length > 0 ||
       changeSet.roleChanges.length > 0 ||
-      changeSet.staffLockChanges.length > 0
+      changeSet.staffLockChanges.length > 0 ||
+      changeSet.stateChanges.length > 0
     );
   }, [changeSet]);
 
@@ -355,6 +363,17 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
     }));
   }, []);
 
+  // 배정 확정 (로컬) - Pending → Accepted
+  const handleConfirmLocal = useCallback((unitScheduleId: number, instructorId: number) => {
+    setChangeSet((prev) => ({
+      ...prev,
+      stateChanges: [
+        ...prev.stateChanges,
+        { unitScheduleId, instructorId, state: 'Accepted' as const },
+      ],
+    }));
+  }, []);
+
   // 역할 변경 (로컬)
   const handleRoleChange = useCallback(
     (instructorId: number, role: 'Head' | 'Supervisor' | null) => {
@@ -419,8 +438,15 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
       if (result.removed > 0) msgs.push(`삭제 ${result.removed}`);
       if (result.rolesUpdated > 0) msgs.push(`역할 변경 ${result.rolesUpdated}`);
       if (result.staffLocksUpdated > 0) msgs.push(`인원고정 ${result.staffLocksUpdated}`);
+      if (result.statesUpdated > 0) msgs.push(`확정 ${result.statesUpdated}`);
       showSuccess(msgs.length > 0 ? `저장 완료: ${msgs.join(', ')}` : '저장 완료');
-      setChangeSet({ add: [], remove: [], roleChanges: [], staffLockChanges: [] });
+      setChangeSet({
+        add: [],
+        remove: [],
+        roleChanges: [],
+        staffLockChanges: [],
+        stateChanges: [],
+      });
       if (onSaveComplete) await onSaveComplete();
     } catch (e) {
       showError((e as Error).message);
@@ -749,6 +775,21 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                               }
                             />
 
+                            {/* ✓ 확정 버튼 (Pending 상태이고 메시지 발송됨일 때만) */}
+                            {(inst as { messageSent?: boolean }).messageSent &&
+                              inst.state === 'Pending' && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleConfirmLocal(dateInfo.unitScheduleId, inst.instructorId);
+                                  }}
+                                  className="absolute -top-2 -right-8 bg-green-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-green-600"
+                                  title="확정 처리"
+                                >
+                                  ✓
+                                </button>
+                              )}
+
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -895,6 +936,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
             );
             setAddPopupTarget(null);
           }}
+          onInstructorClick={(instructorId) => setSelectedInstructorId(instructorId)}
         />
       )}
       {/* 5. 삭제 확인 모달 */}
@@ -932,6 +974,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                 } as Item
               }
               onClose={() => setSelectedInstructorId(null)}
+              zIndex={70}
             />
           );
         })()}

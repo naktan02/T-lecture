@@ -324,6 +324,11 @@ export interface AssignmentChangeSet {
   remove: Array<{ unitScheduleId: number; instructorId: number }>;
   roleChanges: Array<{ unitId: number; instructorId: number; role: 'Head' | 'Supervisor' | null }>;
   staffLockChanges: Array<{ unitId: number; isStaffLocked: boolean }>;
+  stateChanges: Array<{
+    unitScheduleId: number;
+    instructorId: number;
+    state: 'Pending' | 'Accepted' | 'Rejected' | 'Canceled';
+  }>;
 }
 
 export interface BatchUpdateResult {
@@ -332,6 +337,7 @@ export interface BatchUpdateResult {
   removed: number;
   rolesUpdated: number;
   staffLocksUpdated: number;
+  statesUpdated: number;
 }
 
 /**

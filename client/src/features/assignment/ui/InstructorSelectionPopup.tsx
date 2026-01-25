@@ -20,6 +20,7 @@ interface InstructorSelectionPopupProps {
   onClose: () => void;
   onAdd?: (instructor: Instructor) => Promise<void>;
   onBlock?: () => Promise<void>; // 배정 막기 콜백
+  onInstructorClick?: (instructorId: number) => void; // 강사 상세보기 클릭
 }
 
 type TabType = 'AVAILABLE' | 'ALL';
@@ -32,6 +33,7 @@ export const InstructorSelectionPopup: React.FC<InstructorSelectionPopupProps> =
   onClose,
   onAdd,
   onBlock,
+  onInstructorClick,
 }) => {
   const [tab, setTab] = useState<TabType>('AVAILABLE');
   const [search, setSearch] = useState<string>('');
@@ -143,6 +145,7 @@ export const InstructorSelectionPopup: React.FC<InstructorSelectionPopupProps> =
               <div
                 key={inst.id}
                 className="flex justify-between items-center p-2 hover:bg-indigo-50 rounded cursor-pointer group border border-transparent hover:border-indigo-100"
+                onClick={() => onInstructorClick?.(inst.id)}
               >
                 <div>
                   <div className="text-sm font-bold text-gray-800">{inst.name}</div>
