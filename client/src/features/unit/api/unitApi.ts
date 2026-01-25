@@ -93,7 +93,7 @@ export const unitApi = {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'unit-upload-template.xlsx';
+    a.download = '부대 엑셀 양식.xlsx';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

@@ -241,7 +241,10 @@ export const downloadExcelTemplate = asyncHandler(async (req: Request, res: Resp
   const buffer = await unitService.generateExcelTemplate();
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', 'attachment; filename="unit-upload-template.xlsx"');
+  res.setHeader(
+    'Content-Disposition',
+    "attachment; filename*=UTF-8''%EB%B6%80%EB%8C%80%20%EC%97%91%EC%85%80%20%EC%96%91%EC%8B%9D.xlsx",
+  );
   res.send(buffer);
 });
 
