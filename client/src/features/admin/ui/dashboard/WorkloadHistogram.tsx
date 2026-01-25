@@ -107,19 +107,19 @@ export const WorkloadHistogram: React.FC<Props> = ({ instructors, onBarClick, ra
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+    <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm border border-gray-100">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-bold text-gray-800">강사 업무량 분포</h3>
+        <h3 className="text-sm md:text-lg font-bold text-gray-800">강사 업무량 분포</h3>
         <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
           {rangeType === 'custom' ? '선택 기간' : `최근 ${rangeType}`} 기준
         </span>
       </div>
-      <div className="w-full h-72">
+      <div className="w-full h-60 md:h-72">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={distribution} margin={{ top: 10, right: 10, left: -10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={12} interval={0} />
-            <YAxis axisLine={false} tickLine={false} fontSize={12} />
+            <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} interval={0} />
+            <YAxis axisLine={false} tickLine={false} fontSize={10} />
             <Tooltip
               cursor={{ fill: '#F3F4F6' }}
               contentStyle={{

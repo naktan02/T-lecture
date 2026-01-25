@@ -359,15 +359,15 @@ export const AdminDashboard: React.FC = () => {
   return (
     <div className="p-4 md:p-8 bg-gray-50 min-h-screen overflow-auto">
       {/* Header */}
-      <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h2 className="text-2xl font-bold text-gray-900">관리자 대시보드</h2>
+      <div className="mb-4 md:mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-900">관리자 대시보드</h2>
 
         {/* Global Filter */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
           <select
             value={rangeType}
             onChange={(e) => setRangeType(e.target.value)}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className="flex-1 md:flex-none rounded-lg border border-gray-300 bg-white px-3 py-1.5 md:py-2 text-xs md:text-sm focus:border-indigo-500 focus:outline-none"
           >
             <option value="1m">최근 1개월</option>
             <option value="3m">최근 3개월</option>
@@ -377,19 +377,19 @@ export const AdminDashboard: React.FC = () => {
           </select>
 
           {rangeType === 'custom' && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full md:w-auto">
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 md:py-2 text-xs md:text-sm focus:border-indigo-500 focus:outline-none"
               />
               <span className="text-gray-400">~</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 md:py-2 text-xs md:text-sm focus:border-indigo-500 focus:outline-none"
               />
             </div>
           )}
@@ -397,7 +397,7 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Charts Row - 3 columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-6">
         <EducationStatusChart stats={stats} onSegmentClick={handleStatusClick} />
         <WorkloadHistogram
           instructors={instructors}
