@@ -992,23 +992,44 @@ class UnitService {
 
     const sheet = workbook.addWorksheet('부대 업로드 양식');
 
-    // 메타데이터 행 (강의년도)
-    sheet.mergeCells('A1:C1');
-    const metaCell = sheet.getCell('A1');
-    metaCell.value = '강의년도';
-    metaCell.font = { bold: true };
-    sheet.getCell('D1').value = new Date().getFullYear();
+    // 메타데이터 행 (강의년도) - A1: 라벨, B1: 연도
+    const metaLabelCell = sheet.getCell('A1');
+    metaLabelCell.value = '강의년도';
+    metaLabelCell.font = { bold: true };
+    metaLabelCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFFD700' }, // 골드 배경색
+    };
+    metaLabelCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    // 안내 문구
+    const metaValueCell = sheet.getCell('B1');
+    metaValueCell.value = new Date().getFullYear();
+    metaValueCell.font = { bold: true };
+    metaValueCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFFF9C4' }, // 연한 노란색
+    };
+    metaValueCell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // 안내 문구 1: 복수 장소
     sheet.mergeCells('A2:Z2');
     const guideCell = sheet.getCell('A2');
     guideCell.value =
       '※ 복수 교육장소: 동일 부대에 장소를 추가하려면 부대명을 비우고 교육장소 정보만 입력하세요.';
     guideCell.font = { color: { argb: 'FF0000FF' }, italic: true };
 
+    // 안내 문구 2: 교육불가일자 설명
+    sheet.mergeCells('A3:Z3');
+    const guideCell2 = sheet.getCell('A3');
+    guideCell2.value =
+      '※ 교육불가일자: 교육기간 중 교육이 불가능한 날짜입니다. 복수인 경우 콤마(,)로 구분하여 입력하세요. (예: 2026-03-03,2026-03-04)';
+    guideCell2.font = { color: { argb: 'FF0000FF' }, italic: true };
+
     // 헤더 정의
     const headers = [
-      { header: '부대명', key: 'name', width: 25, required: true, example: '육군1사단(2026)' },
+      { header: '부대명', key: 'name', width: 25, required: true, example: '육군1사단' },
       {
         header: '군구분',
         key: 'unitType',
@@ -1022,9 +1043,10 @@ class UnitService {
       {
         header: '부대주소',
         key: 'addressDetail',
-        width: 35,
+        width: 40,
         required: false,
-        example: '서울특별시 강남구 테헤란로 152',
+        example: '서울특별시 강남구 테헤란로 152, 강남파이낸스센터',
+        note: '도로명주소 + 지번(건물명)까지 작성 시 더 정확한 좌표 변환',
       },
       {
         header: '부대상세주소',
@@ -1052,10 +1074,10 @@ class UnitService {
       {
         header: '교육불가일자',
         key: 'excludedDates',
-        width: 20,
+        width: 30,
         required: false,
-        example: '2026-03-04',
-        note: '복수 시 콤마로 구분',
+        example: '2026-03-03,2026-03-04',
+        note: '교육기간 중 교육불가 날짜, 복수 시 콤마(,)로 구분',
       },
       {
         header: '근무시작시간',
@@ -1178,8 +1200,8 @@ class UnitService {
       { header: '특이사항', key: 'note', width: 30, required: false, example: '주차 가능' },
     ];
 
-    // 헤더 행 (3행)
-    const headerRow = sheet.getRow(3);
+    // 헤더 행 (4행)
+    const headerRow = sheet.getRow(4);
     headers.forEach((col, index) => {
       const cell = headerRow.getCell(index + 1);
       cell.value = col.header;
@@ -1208,19 +1230,63 @@ class UnitService {
       }
     });
 
-    // 예시 데이터 1: 기본 부대 (단일 장소)
-    const example1 = sheet.getRow(4);
+    // 데이터 셀 스타일 함수
+    const applyDataCellStyle = (
+      row: ReturnType<typeof sheet.getRow>,
+      colIndex: number,
+      value: string | number | undefined,
+      colKey: string,
+    ) => {
+      const cell = row.getCell(colIndex);
+      cell.value = value ?? '';
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+      };
+
+      // 숫자 필드는 오른쪽 정렬
+      const numberFields = ['plannedCount', 'actualCount'];
+      // 중앙 정렬 필드
+      const centerFields = [
+        'unitType',
+        'educationStart',
+        'educationEnd',
+        'excludedDates',
+        'workStartTime',
+        'workEndTime',
+        'lunchStartTime',
+        'lunchEndTime',
+        'hasCateredMeals',
+        'hasHallLodging',
+        'allowsPhoneBeforeAfter',
+        'hasInstructorLounge',
+        'hasWomenRestroom',
+      ];
+
+      if (numberFields.includes(colKey)) {
+        cell.alignment = { horizontal: 'right', vertical: 'middle' };
+      } else if (centerFields.includes(colKey)) {
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      } else {
+        cell.alignment = { horizontal: 'left', vertical: 'middle' };
+      }
+    };
+
+    // 예시 데이터 1: 기본 부대 (단일 장소, 교육불가일자 복수)
+    const example1 = sheet.getRow(5);
     headers.forEach((col, index) => {
-      example1.getCell(index + 1).value = col.example;
+      applyDataCellStyle(example1, index + 1, col.example, col.key);
     });
 
-    // 예시 데이터 2: 복수 장소가 있는 부대 (첫 번째 장소)
+    // 예시 데이터 2: 복수 장소가 있는 부대 (첫 번째 장소, 교육불가일자 없음)
     const example2Values: Record<string, string | number> = {
-      name: '해군2함대(2026)',
+      name: '해군2함대',
       unitType: '해군',
       wideArea: '경기도',
       region: '평택시',
-      addressDetail: '경기도 평택시 평택로 51',
+      addressDetail: '경기도 평택시 평택로 51, 평택시청',
       detailAddress: '해군회관',
       educationStart: '2026-04-01',
       educationEnd: '2026-04-05',
@@ -1243,9 +1309,9 @@ class UnitService {
       actualCount: 75,
       note: '',
     };
-    const example2 = sheet.getRow(5);
+    const example2 = sheet.getRow(6);
     headers.forEach((col, index) => {
-      example2.getCell(index + 1).value = example2Values[col.key] ?? '';
+      applyDataCellStyle(example2, index + 1, example2Values[col.key], col.key);
     });
 
     // 예시 데이터 3: 동일 부대의 추가 장소 (부대명 비움)
@@ -1277,10 +1343,10 @@ class UnitService {
       actualCount: 58,
       note: '프로젝터 있음',
     };
-    const example3 = sheet.getRow(6);
+    const example3 = sheet.getRow(7);
     headers.forEach((col, index) => {
       const cell = example3.getCell(index + 1);
-      cell.value = example3Values[col.key] ?? '';
+      applyDataCellStyle(example3, index + 1, example3Values[col.key], col.key);
       // 복수 장소 행 강조
       if (col.key === 'originalPlace' || col.key === 'plannedCount' || col.key === 'actualCount') {
         cell.fill = {
@@ -1292,10 +1358,10 @@ class UnitService {
     });
 
     // 안내 행 추가
-    sheet.mergeCells('A7:Z7');
-    const noteRow = sheet.getCell('A7');
+    sheet.mergeCells('A8:Z8');
+    const noteRow = sheet.getCell('A8');
     noteRow.value =
-      '↑ 6행은 5행 부대에 추가되는 교육장소입니다. 부대명을 비우면 직전 부대에 장소가 추가됩니다.';
+      '↑ 7행은 6행 부대에 추가되는 교육장소입니다. 부대명을 비우면 직전 부대에 장소가 추가됩니다.';
     noteRow.font = { color: { argb: 'FFFF6600' }, italic: true, size: 10 };
 
     // 버퍼로 변환

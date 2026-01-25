@@ -5,7 +5,8 @@
       "Bash(npx tsx:*)",
       "Bash(npx prisma:*)",
       "Bash(k6 version:*)",
-      "Bash(k6 run:*)"
+      "Bash(k6 run:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }
