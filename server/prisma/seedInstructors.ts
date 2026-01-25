@@ -10,6 +10,7 @@ import prisma from '../src/libs/prisma.js';
 import bcrypt from 'bcrypt';
 import ExcelJS from 'exceljs';
 import axios from 'axios';
+import distanceService from '../src/domains/distance/distance.service.js';
 
 // 전국 실제 도로명주소 50개 (Kakao API로 좌표 변환 예정)
 const REAL_ADDRESSES = [
@@ -365,6 +366,13 @@ export async function runSeedInstructors() {
             },
           })
           .catch(() => {});
+
+        // 거리 테이블 생성 (신규 강사 - 스케줄 있는 부대 간 거리 행 생성)
+        try {
+          await distanceService.createDistanceRowsForNewInstructor(user.id);
+        } catch (error) {
+          console.warn(`  ⚠️ 거리 테이블 생성 실패 (강사 ID: ${user.id})`);
+        }
 
         if ((instructorIndex + 1) % 10 === 0) {
           console.log(`  ✅ 강사 ${instructorIndex + 1}/50 생성 완료`);
