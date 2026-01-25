@@ -51,12 +51,15 @@ export function VariablePanel({
   return (
     <div
       style={{
+        flex: '0 1 280px',
+        minWidth: 180,
         border: '1px solid #e5e7eb',
         borderRadius: 12,
         background: '#fff',
         display: 'flex',
         overflow: 'hidden',
         height: 'fit-content',
+        maxHeight: 300,
       }}
     >
       {/* 변수 목록 */}
@@ -109,7 +112,7 @@ export function VariablePanel({
         </div>
       </div>
 
-      {/* 카테고리 세로 탭 - 둥근 박스 스타일 */}
+      {/* 카테고리 세로 탭 - 스크롤 가능 */}
       <div
         style={{
           display: 'flex',
@@ -118,6 +121,8 @@ export function VariablePanel({
           padding: 8,
           borderLeft: '1px solid #e5e7eb',
           background: '#fafafa',
+          overflowY: 'auto',
+          flexShrink: 0,
         }}
       >
         {categories.map((cat) => {
@@ -130,7 +135,7 @@ export function VariablePanel({
               type="button"
               onClick={() => onTabChange(cat.id)}
               style={{
-                padding: '10px 8px',
+                padding: '8px 6px',
                 border: isActive ? `2px solid ${cat.color}` : '1px solid #e5e7eb',
                 borderRadius: 10,
                 background: isActive ? cat.color : '#fff',
@@ -140,13 +145,21 @@ export function VariablePanel({
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: 2,
-                minWidth: 60,
+                minWidth: 56,
                 transition: 'all 0.15s',
               }}
             >
-              <span style={{ fontSize: 18 }}>{cat.icon}</span>
-              <span style={{ fontSize: 10, fontWeight: isActive ? 600 : 400 }}>{cat.label}</span>
-              <span style={{ fontSize: 9, opacity: 0.8 }}>({categoryCount[cat.id] || 0})</span>
+              <span style={{ fontSize: 16 }}>{cat.icon}</span>
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: isActive ? 600 : 400,
+                  lineHeight: 1.2,
+                  textAlign: 'center',
+                }}
+              >
+                {cat.label}
+              </span>
             </button>
           );
         })}

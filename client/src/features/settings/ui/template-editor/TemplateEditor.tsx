@@ -6,7 +6,7 @@ import { parseTemplateToTokens } from './parse';
 import { renderPreview } from './sample';
 import { useTemplateEditor } from './useTemplateEditor';
 import { VariablePanel } from './VariablePanel';
-import { EDITOR_STYLE, PANEL_STYLE } from './styles';
+import { EDITOR_STYLE } from './styles';
 
 type Props = {
   value: string;
@@ -108,8 +108,8 @@ export function TemplateEditor({
       className={className}
       style={{ display: 'flex', flexDirection: 'column', gap: singleLine ? 8 : 12 }}
     >
-      {/* 상단: 에디터 + 패널 */}
-      <div style={{ display: 'grid', gridTemplateColumns: `1fr ${PANEL_STYLE.width}px`, gap: 12 }}>
+      {/* 상단: 에디터 + 패널 (반응형: 좁으면 세로 스택) */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
         {/* 편집 영역 */}
         <div
           ref={editorRef}
@@ -129,6 +129,8 @@ export function TemplateEditor({
             }
           }}
           style={{
+            flex: '1 1 200px',
+            minWidth: 0,
             minHeight: editorMinHeight,
             padding: singleLine ? '8px 12px' : EDITOR_STYLE.padding,
             border: dragOver ? '2px dashed #3b82f6' : '1px solid #e5e7eb',
