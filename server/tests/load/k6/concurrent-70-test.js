@@ -13,9 +13,9 @@ const apiDuration = new Trend('api_duration');
 // 환경 설정
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
 
-// 계정 정보
-const ADMIN_EMAIL = __ENV.ADMIN_EMAIL || 'admin@t-lecture.com';
-const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'admin';
+// 계정 정보 (일반 관리자 사용 - 슈퍼 관리자는 대시보드 권한 없음)
+const ADMIN_EMAIL = __ENV.ADMIN_EMAIL || 'general@t-lecture.com';
+const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'general';
 const INSTRUCTOR_PASSWORD = 'test1234';
 
 // 테스트 설정
@@ -144,6 +144,26 @@ export function adminScenario() {
         sleep(0.5);
       });
 
+      group('Admin Notices & Inquiries', () => {
+        // 공지사항 목록 조회
+        apiCall('GET', '/api/v1/notices', params, 'notices list');
+        sleep(0.3);
+
+        // 공지사항 상세 조회 (랜덤 ID)
+        const noticeId = Math.floor(Math.random() * 10) + 1;
+        apiCall('GET', `/api/v1/notices/${noticeId}`, params, 'notice detail');
+        sleep(0.3);
+
+        // 문의사항 목록 조회 (관리자는 전체 조회)
+        apiCall('GET', '/api/v1/inquiries', params, 'inquiries list');
+        sleep(0.3);
+
+        // 문의사항 상세 조회 (랜덤 ID)
+        const inquiryId = Math.floor(Math.random() * 10) + 1;
+        apiCall('GET', `/api/v1/inquiries/${inquiryId}`, params, 'inquiry detail');
+        sleep(0.3);
+      });
+
       sleep(2); // 다음 반복 전 대기
     }
   });
@@ -198,6 +218,21 @@ export function instructorScenario() {
 
         // 덕목 목록 (공개)
         apiCall('GET', '/api/v1/metadata/virtues', params, 'virtues');
+        sleep(0.3);
+      });
+
+      group('Notices & Inquiries', () => {
+        // 공지사항 목록 조회
+        apiCall('GET', '/api/v1/notices', params, 'notices list');
+        sleep(0.3);
+
+        // 공지사항 상세 조회 (랜덤 ID)
+        const noticeId = Math.floor(Math.random() * 10) + 1;
+        apiCall('GET', `/api/v1/notices/${noticeId}`, params, 'notice detail');
+        sleep(0.3);
+
+        // 문의사항 목록 조회 (본인 문의만 조회)
+        apiCall('GET', '/api/v1/inquiries', params, 'my inquiries');
         sleep(0.3);
       });
 
