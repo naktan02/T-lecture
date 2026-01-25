@@ -36,16 +36,6 @@ export function VariablePanel({
     return [...formats, ...normals];
   }, [variables, activeTab]);
 
-  const categoryCount = useMemo(() => {
-    const counts: Record<string, number> = {};
-    variables.forEach((v) => {
-      if (v.category) {
-        counts[v.category] = (counts[v.category] || 0) + 1;
-      }
-    });
-    return counts;
-  }, [variables]);
-
   const activeCat = categories.find((c) => c.id === activeTab);
 
   return (

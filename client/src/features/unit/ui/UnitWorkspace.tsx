@@ -72,7 +72,7 @@ export const UnitWorkspace = (): ReactElement => {
   // 전체 선택 토글 (현재 페이지)
   const handleToggleAll = (isChecked: boolean): void => {
     if (isChecked) {
-      const allIds = units.map((u: Unit) => u.id);
+      const allIds = units.map((u) => u.id);
       setSelectedIds(allIds);
     } else {
       setSelectedIds([]);
@@ -181,7 +181,7 @@ export const UnitWorkspace = (): ReactElement => {
             </div>
           ) : (
             <UnitList
-              units={units}
+              units={units as Unit[]}
               selectedIds={selectedIds}
               onToggleSelect={handleToggleSelect}
               onToggleAll={handleToggleAll}
