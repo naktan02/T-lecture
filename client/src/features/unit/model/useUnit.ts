@@ -20,6 +20,15 @@ interface UnitMeta {
   limit?: number;
 }
 
+interface UnitSchedule {
+  date?: string | null;
+}
+
+interface TrainingPeriod {
+  schedules?: UnitSchedule[];
+  locations?: unknown[];
+}
+
 interface Unit {
   id: number;
   name: string;
@@ -30,8 +39,10 @@ interface Unit {
   officerName?: string;
   officerPhone?: string;
   officerEmail?: string;
+  lat?: number | null;
   validationStatus?: 'Valid' | 'Invalid';
   validationMessage?: string;
+  trainingPeriods?: TrainingPeriod[];
   [key: string]: unknown;
 }
 
@@ -78,12 +89,51 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
     isError,
   } = useQuery({
     queryKey: ['units', page, limit, searchParams, sortField, sortOrder],
-    queryFn: () => unitApi.getUnitList({ page, limit, ...searchParams, sortField, sortOrder }),
+    queryFn: () =>
+      unitApi.getUnitList({
+        page,
+        limit,
+        ...searchParams,
+        // educationStart는 서버에서 지원하지 않으므로 제외
+        sortField: sortField === 'educationStart' ? undefined : sortField,
+        sortOrder: sortField === 'educationStart' ? undefined : sortOrder,
+      }),
     // keepPreviousData is deprecated in v5, using placeholderData instead
   });
 
   // 데이터 접근 안전장치
-  const units: Unit[] = Array.isArray(response?.data?.data) ? response.data.data : [];
+  let units: Unit[] = Array.isArray(response?.data?.data) ? response.data.data : [];
+
+  // educationStart 정렬은 클라이언트에서 처리 (Prisma 한계)
+  // 모든 교육기간 중: 오름차순=가장 이른 날짜, 내림차순=가장 늦은 날짜 기준
+  if (sortField === 'educationStart' && sortOrder) {
+    units = [...units].sort((a, b) => {
+      // 모든 TrainingPeriod의 모든 일정에서 날짜 추출
+      const getAllDates = (unit: Unit): string[] => {
+        const dates: string[] = [];
+        for (const period of unit.trainingPeriods || []) {
+          for (const schedule of period.schedules || []) {
+            if (schedule.date) dates.push(schedule.date);
+          }
+        }
+        return dates.sort(); // 날짜순 정렬
+      };
+
+      const aDates = getAllDates(a);
+      const bDates = getAllDates(b);
+
+      // 오름차순: 가장 이른 날짜 비교, 내림차순: 가장 늦은 날짜 비교
+      const aDate = sortOrder === 'asc' ? aDates[0] : aDates[aDates.length - 1];
+      const bDate = sortOrder === 'asc' ? bDates[0] : bDates[bDates.length - 1];
+
+      if (!aDate && !bDate) return 0;
+      if (!aDate) return sortOrder === 'asc' ? 1 : -1;
+      if (!bDate) return sortOrder === 'asc' ? -1 : 1;
+
+      return sortOrder === 'asc' ? aDate.localeCompare(bDate) : bDate.localeCompare(aDate);
+    });
+  }
+
   const meta: UnitMeta = response?.data?.meta || { total: 0, lastPage: 1 };
 
   const updateMutation = useMutation({

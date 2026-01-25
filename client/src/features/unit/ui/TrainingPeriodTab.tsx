@@ -401,8 +401,12 @@ export const TrainingPeriodTab = ({
               <span className="text-center">참여</span>
               <span className="text-center text-[10px] leading-tight">
                 강사필요
-                <br />
-                (자동계산)
+                <span
+                  className="inline-block align-super text-[8px] text-gray-400 cursor-help ml-0.5"
+                  title="빈값이면 참여인원으로 자동 계산"
+                >
+                  ⓘ
+                </span>
               </span>
               <span></span>
             </div>
