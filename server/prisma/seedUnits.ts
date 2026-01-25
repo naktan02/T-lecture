@@ -83,7 +83,11 @@ const REAL_ADDRESSES: { address: string; wideArea: string; region: string }[] = 
 
   // 충청북도 (7곳)
   { address: '충청북도 청주시 상당구 상당로 155', wideArea: '충청북도', region: '청주시 상당구' },
-  { address: '충청북도 청주시 흥덕구 강내면 청주역로 71', wideArea: '충청북도', region: '청주시 흥덕구' },
+  {
+    address: '충청북도 청주시 흥덕구 강내면 청주역로 71',
+    wideArea: '충청북도',
+    region: '청주시 흥덕구',
+  },
   { address: '충청북도 충주시 으뜸로 21', wideArea: '충청북도', region: '충주시' },
   { address: '충청북도 제천시 내토로 295', wideArea: '충청북도', region: '제천시' },
   { address: '충청북도 진천군 진천읍 중앙서로 11', wideArea: '충청북도', region: '진천군' },
@@ -98,8 +102,16 @@ const REAL_ADDRESSES: { address: string; wideArea: string; region: string }[] = 
   { address: '대전광역시 대덕구 대전로1033번길 20', wideArea: '대전광역시', region: '대덕구' },
 
   // 전북특별자치도 (6곳)
-  { address: '전북특별자치도 전주시 완산구 효자로 225', wideArea: '전북특별자치도', region: '전주시 완산구' },
-  { address: '전북특별자치도 전주시 덕진구 건산로 251', wideArea: '전북특별자치도', region: '전주시 덕진구' },
+  {
+    address: '전북특별자치도 전주시 완산구 효자로 225',
+    wideArea: '전북특별자치도',
+    region: '전주시 완산구',
+  },
+  {
+    address: '전북특별자치도 전주시 덕진구 건산로 251',
+    wideArea: '전북특별자치도',
+    region: '전주시 덕진구',
+  },
   { address: '전북특별자치도 군산시 시청로 17', wideArea: '전북특별자치도', region: '군산시' },
   { address: '전북특별자치도 익산시 인북로 140', wideArea: '전북특별자치도', region: '익산시' },
   { address: '전북특별자치도 정읍시 충정로 379', wideArea: '전북특별자치도', region: '정읍시' },
@@ -166,7 +178,24 @@ const MILITARY_TYPES: { type: MilitaryType; weight: number }[] = [
   { type: 'MND', weight: 10 },
 ];
 
-const LAST_NAMES = ['김', '이', '박', '최', '정', '강', '조', '윤', '장', '임', '한', '오', '서', '신', '권', '황'];
+const LAST_NAMES = [
+  '김',
+  '이',
+  '박',
+  '최',
+  '정',
+  '강',
+  '조',
+  '윤',
+  '장',
+  '임',
+  '한',
+  '오',
+  '서',
+  '신',
+  '권',
+  '황',
+];
 const FIRST_NAMES = [
   '민준',
   '서준',
@@ -185,7 +214,18 @@ const FIRST_NAMES = [
   '재원',
   '태현',
 ];
-const PLACES = ['대강당', '연병장', '체육관', '교육관', '회의실', '다목적실', '세미나실', '훈련장', '교육센터', '강의실'];
+const PLACES = [
+  '대강당',
+  '연병장',
+  '체육관',
+  '교육관',
+  '회의실',
+  '다목적실',
+  '세미나실',
+  '훈련장',
+  '교육센터',
+  '강의실',
+];
 
 // 유틸리티 함수
 function randomChoice<T>(arr: T[]): T {
@@ -212,7 +252,9 @@ function formatDate(date: Date): string {
 
 // Kakao Local API를 사용해서 주소를 위도/경도로 변환
 // 1차: 주소 검색 API, 2차: 키워드 검색 API (fallback)
-async function getCoordinatesFromAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+async function getCoordinatesFromAddress(
+  address: string,
+): Promise<{ lat: number; lng: number } | null> {
   const kakaoApiKey = process.env.KAKAO_REST_API_KEY;
 
   if (!kakaoApiKey) {
@@ -281,7 +323,20 @@ async function convertAddressesToCoordinates() {
 const usedNames = new Set<string>();
 function generateUniqueUnitName(index: number): string {
   const suffixes = ['사단', '여단', '연대', '대대', '부대', '사령부', '지원단', '교육대'];
-  const prefixes = ['육군', '해군', '공군', '해병', '수도방위', '특전', '기계화', '포병', '공병', '통신', '군수', '의무'];
+  const prefixes = [
+    '육군',
+    '해군',
+    '공군',
+    '해병',
+    '수도방위',
+    '특전',
+    '기계화',
+    '포병',
+    '공병',
+    '통신',
+    '군수',
+    '의무',
+  ];
 
   let name = '';
   let attempts = 0;
@@ -330,7 +385,7 @@ async function createUnit(
 
   // 불가일자 생성 (교육 기간 중 1일)
   let excludedDates: string[] = [];
-  let actualEducationDays = educationDays;
+  const actualEducationDays = educationDays;
 
   if (hasExcludedDates && educationDays >= 3) {
     // 중간 날짜를 불가일자로 설정
