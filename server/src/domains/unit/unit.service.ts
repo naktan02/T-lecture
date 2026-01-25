@@ -7,6 +7,7 @@ import distanceService from '../distance/distance.service';
 import AppError from '../../common/errors/AppError';
 import logger from '../../config/logger';
 import { Prisma, MilitaryType } from '../../generated/prisma/client.js';
+import ExcelJS from 'exceljs';
 import {
   ScheduleInput,
   UnitQueryInput,
@@ -975,6 +976,331 @@ class UnitService {
       creditsGiven: deleteResult.creditsGiven,
       reassigned: deleteResult.reassigned,
     };
+  }
+
+  // ===== 엑셀 템플릿 생성 =====
+
+  /**
+   * 부대 업로드용 엑셀 템플릿 생성
+   * - 컬럼 헤더 및 예시 데이터 포함
+   * - 복수 교육장소 작성 방법 안내
+   */
+  async generateExcelTemplate(): Promise<Buffer> {
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'T-Lecture';
+    workbook.created = new Date();
+
+    const sheet = workbook.addWorksheet('부대 업로드 양식');
+
+    // 메타데이터 행 (강의년도)
+    sheet.mergeCells('A1:C1');
+    const metaCell = sheet.getCell('A1');
+    metaCell.value = '강의년도';
+    metaCell.font = { bold: true };
+    sheet.getCell('D1').value = new Date().getFullYear();
+
+    // 안내 문구
+    sheet.mergeCells('A2:Z2');
+    const guideCell = sheet.getCell('A2');
+    guideCell.value =
+      '※ 복수 교육장소: 동일 부대에 장소를 추가하려면 부대명을 비우고 교육장소 정보만 입력하세요.';
+    guideCell.font = { color: { argb: 'FF0000FF' }, italic: true };
+
+    // 헤더 정의
+    const headers = [
+      { header: '부대명', key: 'name', width: 25, required: true, example: '육군1사단(2026)' },
+      {
+        header: '군구분',
+        key: 'unitType',
+        width: 12,
+        required: false,
+        example: '육군',
+        note: '육군/해군/공군/해병대/국직부대',
+      },
+      { header: '광역', key: 'wideArea', width: 15, required: false, example: '서울특별시' },
+      { header: '지역', key: 'region', width: 15, required: false, example: '강남구' },
+      {
+        header: '부대주소',
+        key: 'addressDetail',
+        width: 35,
+        required: false,
+        example: '서울특별시 강남구 테헤란로 152',
+      },
+      {
+        header: '부대상세주소',
+        key: 'detailAddress',
+        width: 20,
+        required: false,
+        example: '본관 3층',
+      },
+      {
+        header: '교육시작일자',
+        key: 'educationStart',
+        width: 15,
+        required: true,
+        example: '2026-03-02',
+        note: 'YYYY-MM-DD',
+      },
+      {
+        header: '교육종료일자',
+        key: 'educationEnd',
+        width: 15,
+        required: true,
+        example: '2026-03-06',
+        note: 'YYYY-MM-DD',
+      },
+      {
+        header: '교육불가일자',
+        key: 'excludedDates',
+        width: 20,
+        required: false,
+        example: '2026-03-04',
+        note: '복수 시 콤마로 구분',
+      },
+      {
+        header: '근무시작시간',
+        key: 'workStartTime',
+        width: 15,
+        required: false,
+        example: '09:00',
+        note: 'HH:MM',
+      },
+      {
+        header: '근무종료시간',
+        key: 'workEndTime',
+        width: 15,
+        required: false,
+        example: '18:00',
+        note: 'HH:MM',
+      },
+      {
+        header: '점심시작시간',
+        key: 'lunchStartTime',
+        width: 15,
+        required: false,
+        example: '12:00',
+        note: 'HH:MM',
+      },
+      {
+        header: '점심종료시간',
+        key: 'lunchEndTime',
+        width: 15,
+        required: false,
+        example: '13:00',
+        note: 'HH:MM',
+      },
+      { header: '간부명', key: 'officerName', width: 12, required: false, example: '홍길동' },
+      {
+        header: '간부 전화번호',
+        key: 'officerPhone',
+        width: 18,
+        required: false,
+        example: '010-1234-5678',
+      },
+      {
+        header: '간부 이메일 주소',
+        key: 'officerEmail',
+        width: 25,
+        required: false,
+        example: 'officer@army.mil.kr',
+      },
+      {
+        header: '수탁급식여부',
+        key: 'hasCateredMeals',
+        width: 14,
+        required: false,
+        example: 'O',
+        note: 'O 또는 X',
+      },
+      {
+        header: '회관숙박여부',
+        key: 'hasHallLodging',
+        width: 14,
+        required: false,
+        example: 'X',
+        note: 'O 또는 X',
+      },
+      {
+        header: '사전사후 휴대폰 불출 여부',
+        key: 'allowsPhoneBeforeAfter',
+        width: 25,
+        required: false,
+        example: 'O',
+        note: 'O 또는 X',
+      },
+      {
+        header: '기존교육장소',
+        key: 'originalPlace',
+        width: 20,
+        required: false,
+        example: '대강당',
+      },
+      {
+        header: '변경교육장소',
+        key: 'changedPlace',
+        width: 20,
+        required: false,
+        example: '',
+        note: '변경 시에만 입력',
+      },
+      {
+        header: '강사휴게실 여부',
+        key: 'hasInstructorLounge',
+        width: 16,
+        required: false,
+        example: 'O',
+        note: 'O 또는 X',
+      },
+      {
+        header: '여자화장실 여부',
+        key: 'hasWomenRestroom',
+        width: 16,
+        required: false,
+        example: 'O',
+        note: 'O 또는 X',
+      },
+      {
+        header: '계획인원',
+        key: 'plannedCount',
+        width: 12,
+        required: false,
+        example: '100',
+        note: '숫자',
+      },
+      {
+        header: '참여인원',
+        key: 'actualCount',
+        width: 12,
+        required: false,
+        example: '95',
+        note: '숫자',
+      },
+      { header: '특이사항', key: 'note', width: 30, required: false, example: '주차 가능' },
+    ];
+
+    // 헤더 행 (3행)
+    const headerRow = sheet.getRow(3);
+    headers.forEach((col, index) => {
+      const cell = headerRow.getCell(index + 1);
+      cell.value = col.header;
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: col.required ? 'FF2E7D32' : 'FF1976D2' },
+      };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+      };
+
+      // 컬럼 너비 설정
+      sheet.getColumn(index + 1).width = col.width;
+
+      // 주석 추가 (입력 형식 안내)
+      if (col.note) {
+        cell.note = {
+          texts: [{ text: col.note }],
+        };
+      }
+    });
+
+    // 예시 데이터 1: 기본 부대 (단일 장소)
+    const example1 = sheet.getRow(4);
+    headers.forEach((col, index) => {
+      example1.getCell(index + 1).value = col.example;
+    });
+
+    // 예시 데이터 2: 복수 장소가 있는 부대 (첫 번째 장소)
+    const example2Values: Record<string, string | number> = {
+      name: '해군2함대(2026)',
+      unitType: '해군',
+      wideArea: '경기도',
+      region: '평택시',
+      addressDetail: '경기도 평택시 평택로 51',
+      detailAddress: '해군회관',
+      educationStart: '2026-04-01',
+      educationEnd: '2026-04-05',
+      excludedDates: '',
+      workStartTime: '08:30',
+      workEndTime: '17:30',
+      lunchStartTime: '12:00',
+      lunchEndTime: '13:00',
+      officerName: '김철수',
+      officerPhone: '010-9876-5432',
+      officerEmail: 'navy@navy.mil.kr',
+      hasCateredMeals: 'O',
+      hasHallLodging: 'O',
+      allowsPhoneBeforeAfter: 'X',
+      originalPlace: 'A강의실',
+      changedPlace: '',
+      hasInstructorLounge: 'O',
+      hasWomenRestroom: 'O',
+      plannedCount: 80,
+      actualCount: 75,
+      note: '',
+    };
+    const example2 = sheet.getRow(5);
+    headers.forEach((col, index) => {
+      example2.getCell(index + 1).value = example2Values[col.key] ?? '';
+    });
+
+    // 예시 데이터 3: 동일 부대의 추가 장소 (부대명 비움)
+    const example3Values: Record<string, string | number> = {
+      name: '', // 부대명 비움 → 위 부대에 장소 추가
+      unitType: '',
+      wideArea: '',
+      region: '',
+      addressDetail: '',
+      detailAddress: '',
+      educationStart: '',
+      educationEnd: '',
+      excludedDates: '',
+      workStartTime: '',
+      workEndTime: '',
+      lunchStartTime: '',
+      lunchEndTime: '',
+      officerName: '',
+      officerPhone: '',
+      officerEmail: '',
+      hasCateredMeals: '',
+      hasHallLodging: '',
+      allowsPhoneBeforeAfter: '',
+      originalPlace: 'B강의실', // 추가 장소
+      changedPlace: '',
+      hasInstructorLounge: 'X',
+      hasWomenRestroom: 'O',
+      plannedCount: 60,
+      actualCount: 58,
+      note: '프로젝터 있음',
+    };
+    const example3 = sheet.getRow(6);
+    headers.forEach((col, index) => {
+      const cell = example3.getCell(index + 1);
+      cell.value = example3Values[col.key] ?? '';
+      // 복수 장소 행 강조
+      if (col.key === 'originalPlace' || col.key === 'plannedCount' || col.key === 'actualCount') {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFF9C4' }, // 연한 노란색
+        };
+      }
+    });
+
+    // 안내 행 추가
+    sheet.mergeCells('A7:Z7');
+    const noteRow = sheet.getCell('A7');
+    noteRow.value =
+      '↑ 6행은 5행 부대에 추가되는 교육장소입니다. 부대명을 비우면 직전 부대에 장소가 추가됩니다.';
+    noteRow.font = { color: { argb: 'FFFF6600' }, italic: true, size: 10 };
+
+    // 버퍼로 변환
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   }
 }
 

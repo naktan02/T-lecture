@@ -236,11 +236,21 @@ export const checkScheduleAssignments = asyncHandler(async (req: Request, res: R
   });
 });
 
+// 엑셀 양식 다운로드 (템플릿)
+export const downloadExcelTemplate = asyncHandler(async (req: Request, res: Response) => {
+  const buffer = await unitService.generateExcelTemplate();
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename="unit-upload-template.xlsx"');
+  res.send(buffer);
+});
+
 // CommonJS 호환
 module.exports = {
   getUnitList,
   registerSingleUnit,
   uploadExcelAndRegisterUnits,
+  downloadExcelTemplate,
   getUnitDetail,
   updateBasicInfo,
   updateUnitWithPeriods,
