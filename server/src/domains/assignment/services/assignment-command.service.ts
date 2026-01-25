@@ -10,6 +10,7 @@ import instructorRepository from '../../instructor/instructor.repository';
 import AppError from '../../../common/errors/AppError';
 import assignmentAlgorithm from '../engine/adapter';
 import { DEFAULT_ASSIGNMENT_CONFIG } from '../engine/config-loader';
+import { assignmentResponseService } from './assignment-response.service';
 import type { TrainingLocationRaw, ScheduleLocationRaw } from '../../../types/assignment.types';
 
 // =============================================================================
@@ -406,6 +407,11 @@ class AssignmentCommandService {
       unitId: number;
       isStaffLocked: boolean;
     }>;
+    stateChanges?: Array<{
+      unitScheduleId: number;
+      instructorId: number;
+      state: 'Pending' | 'Accepted' | 'Rejected' | 'Canceled';
+    }>;
   }) {
     const result = await assignmentCommandRepository.batchUpdateAssignments(changes);
 
@@ -425,6 +431,17 @@ class AssignmentCommandService {
         for (const unitId of unitIds) {
           await assignmentCommandRepository.recalculateRolesForUnit(unitId);
         }
+      }
+    }
+
+    // stateChanges에서 Accepted로 변경된 경우 자동 확정 체크
+    if (changes.stateChanges && changes.stateChanges.length > 0) {
+      const acceptedScheduleIds = changes.stateChanges
+        .filter((sc) => sc.state === 'Accepted')
+        .map((sc) => sc.unitScheduleId);
+
+      for (const scheduleId of acceptedScheduleIds) {
+        await assignmentResponseService.checkAndAutoConfirm(scheduleId);
       }
     }
 

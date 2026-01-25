@@ -1,5 +1,5 @@
 import { ReactElement, useEffect, useState, useCallback } from 'react';
-import { showError } from '../../shared/utils/toast';
+import { showError, showSuccess, showConfirm } from '../../shared/utils';
 import { InquiryList } from '../../features/inquiry/ui/InquiryList';
 import { InquiryDetailModal } from '../../features/inquiry/ui/InquiryDetailModal';
 import { InquiryFormModal } from '../../features/inquiry/ui/InquiryFormModal';
@@ -77,13 +77,27 @@ const InquiryPage = (): ReactElement => {
     setSearchQuery(searchInput);
   };
 
+  const handleDeleteInquiry = async (id: number) => {
+    const confirmed = await showConfirm('정말 이 문의사항을 취소하시겠습니까?');
+    if (!confirmed) return;
+
+    try {
+      await inquiryApi.deleteInquiry(id);
+      showSuccess('문의사항이 취소되었습니다.');
+      setIsDetailOpen(false);
+      fetchInquiries();
+    } catch {
+      showError('문의사항 취소에 실패했습니다.');
+    }
+  };
+
   if (!shouldRender) return <></>;
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-gray-100">
       <UserHeader />
       <ContentWrapper>
-        <div className="flex-1 flex flex-col min-h-0 bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
           {/* 헤더 */}
           <div className="p-4 border-b border-gray-200">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
@@ -132,19 +146,16 @@ const InquiryPage = (): ReactElement => {
             </div>
           </div>
 
-          {/* 목록 */}
-          <div className="flex-1 overflow-auto">
-            <InquiryList
-              inquiries={inquiries}
-              onInquiryClick={handleInquiryClick}
-              currentPage={page}
-              totalCount={totalCount}
-              pageSize={30}
-              sortField={sortField}
-              sortOrder={sortOrder}
-              onSort={handleSort}
-            />
-          </div>
+          <InquiryList
+            inquiries={inquiries}
+            onInquiryClick={handleInquiryClick}
+            currentPage={page}
+            totalCount={totalCount}
+            pageSize={30}
+            sortField={sortField}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+          />
 
           {/* 페이지네이션 */}
           <div className="border-t border-gray-200 p-3">
@@ -157,6 +168,7 @@ const InquiryPage = (): ReactElement => {
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
         inquiry={selectedInquiry}
+        onDelete={handleDeleteInquiry}
       />
 
       <InquiryFormModal

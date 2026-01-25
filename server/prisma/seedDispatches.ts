@@ -142,21 +142,16 @@ ${user.name} 강사님, 교육 일정이 임시 배정되었습니다.
           });
           temporaryCount++;
 
-          // DispatchAssignment 연결
-          for (const assignment of userAssignments) {
-            try {
-              await prisma.dispatchAssignment.create({
-                data: {
-                  dispatchId: dispatch.id,
-                  unitScheduleId: assignment.unitScheduleId,
-                  userId: assignment.userId,
-                },
-              });
-              dispatchAssignmentCount++;
-            } catch {
-              /* 중복 무시 */
-            }
-          }
+          // DispatchAssignment 연결 (Batch Insert)
+          await prisma.dispatchAssignment.createMany({
+            data: userAssignments.map((a) => ({
+              dispatchId: dispatch.id,
+              unitScheduleId: a.unitScheduleId,
+              userId: a.userId,
+            })),
+            skipDuplicates: true,
+          });
+          dispatchAssignmentCount += userAssignments.length;
         } catch {
           /* 오류 무시 */
         }
@@ -228,20 +223,16 @@ ${user.name} 강사님, 배정이 확정되었습니다.
             },
           });
 
-          for (const assignment of userAssignments) {
-            try {
-              await prisma.dispatchAssignment.create({
-                data: {
-                  dispatchId: dispatch.id,
-                  unitScheduleId: assignment.unitScheduleId,
-                  userId: assignment.userId,
-                },
-              });
-              dispatchAssignmentCount++;
-            } catch {
-              /* 중복 무시 */
-            }
-          }
+          // DispatchAssignment 연결 (Batch Insert)
+          await prisma.dispatchAssignment.createMany({
+            data: userAssignments.map((a) => ({
+              dispatchId: dispatch.id,
+              unitScheduleId: a.unitScheduleId,
+              userId: a.userId,
+            })),
+            skipDuplicates: true,
+          });
+          dispatchAssignmentCount += userAssignments.length;
         } catch {
           /* 오류 무시 */
         }

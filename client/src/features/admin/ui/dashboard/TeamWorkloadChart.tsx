@@ -42,11 +42,11 @@ export const TeamWorkloadChart: React.FC<Props> = ({ teams, onBarClick }) => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+    <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm border border-gray-100">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-bold text-gray-800">팀 업무량 분포</h3>
+        <h3 className="text-sm md:text-lg font-bold text-gray-800">팀 업무량 분포</h3>
       </div>
-      <div className="w-full h-64">
+      <div className="w-full h-56 md:h-64">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
@@ -54,14 +54,14 @@ export const TeamWorkloadChart: React.FC<Props> = ({ teams, onBarClick }) => {
             margin={{ top: 5, right: 20, left: 5, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-            <XAxis type="number" axisLine={false} tickLine={false} fontSize={11} />
+            <XAxis type="number" axisLine={false} tickLine={false} fontSize={10} />
             <YAxis
               type="category"
               dataKey="teamName"
               axisLine={false}
               tickLine={false}
-              fontSize={11}
-              width={60}
+              fontSize={10}
+              width={50}
               tick={{ style: { whiteSpace: 'nowrap' } }}
             />
             <Tooltip

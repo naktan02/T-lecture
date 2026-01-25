@@ -9,7 +9,7 @@ const AdminInquiryPage = (): ReactElement => {
   if (!shouldRender) return <></>;
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-gray-100">
       <AdminHeader />
       <InquiryWorkspace />
     </div>

@@ -1,12 +1,11 @@
 // server/prisma/seedAssignments.ts
-// 강사 배정 및 거리 데이터 생성
+// 강사 배정 데이터 생성
 // 규칙:
 // - 2박3일 동일 강사 배정 (TrainingPeriod 단위)
 // - 주강사 1명 필수 (role=Head)
 // - 참여인원 40명당 1명 추가
-// - 2025년: 모두 Accepted
-// - 2026년 1월 1~7일: Accepted (완료)
-// - 2026년 1월 8일~: Pending/Accepted 혼합 (예정)
+// - 강사의 가용일정(InstructorAvailability)에 맞게만 배정
+// - 2026년 1월: 배정 (Pending/Accepted 혼합)
 // - 2026년 2월: 미배정
 // 실행: npx tsx prisma/seedAssignments.ts
 
@@ -20,22 +19,23 @@ import {
   AssignmentRole,
 } from '../src/generated/prisma/client.js';
 
-// 기준일: 2026-01-08
-const CURRENT_DATE = new Date(Date.UTC(2026, 0, 8));
-
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// 거리 계산 (직선거리 기반 km, 현실적인 값)
+// 날짜 문자열 변환 (YYYY-MM-DD)
+function formatDate(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
+// 거리 계산 (직선거리 기반 km)
 function calculateDistance(
   lat1: number,
   lng1: number,
   lat2: number,
   lng2: number,
 ): { distance: number; duration: number } {
-  // Haversine 공식 간소화
-  const R = 6371; // 지구 반지름 km
+  const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
   const a =
@@ -43,16 +43,22 @@ function calculateDistance(
     Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const straightDistance = R * c;
-
-  // 도로 거리는 직선거리의 1.2~1.5배
   const roadDistance = straightDistance * (1.2 + Math.random() * 0.3);
-  // 평균 시속 50km로 가정
   const duration = Math.round((roadDistance / 50) * 60);
 
   return {
     distance: Math.round(roadDistance * 10) / 10,
-    duration: Math.max(30, duration), // 최소 30분
+    duration: Math.max(30, duration),
   };
+}
+
+interface InstructorWithAvailability {
+  userId: number;
+  category: string | null;
+  lat: number | null;
+  lng: number | null;
+  user: { name: string | null };
+  availableDates: Set<string>; // YYYY-MM-DD 형식
 }
 
 export async function runSeedAssignments() {
@@ -61,22 +67,34 @@ export async function runSeedAssignments() {
   const startTime = Date.now();
 
   // 1. 데이터 로드
-  console.log('[1/4] 기본 데이터 로드 중...');
+  console.log('[1/5] 기본 데이터 로드 중...');
 
-  const instructors = await prisma.instructor.findMany({
+  const instructorsRaw = await prisma.instructor.findMany({
     where: { user: { status: 'APPROVED' } },
     include: {
       user: true,
       availabilities: true,
     },
   });
-  if (instructors.length === 0) {
-    console.log('❌ 강사 데이터가 없습니다.');
+
+  if (instructorsRaw.length === 0) {
+    console.log('❌ 강사 데이터가 없습니다. seedUsers.ts를 먼저 실행하세요.');
     return;
   }
+
+  // 강사 가용일정을 Set으로 변환 (빠른 조회)
+  const instructors: InstructorWithAvailability[] = instructorsRaw.map((i) => ({
+    userId: i.userId,
+    category: i.category,
+    lat: i.lat,
+    lng: i.lng,
+    user: i.user,
+    availableDates: new Set(i.availabilities.map((a) => formatDate(a.availableOn))),
+  }));
+
   console.log(`  ✅ 강사 ${instructors.length}명 로드됨`);
 
-  // 주강사만 필터 (Head 역할 후보)
+  // 주강사와 기타 강사 분리
   const mainInstructors = instructors.filter((i) => i.category === 'Main');
   const otherInstructors = instructors.filter((i) => i.category !== 'Main');
   console.log(`  - 주강사: ${mainInstructors.length}명`);
@@ -93,13 +111,19 @@ export async function runSeedAssignments() {
       },
     },
   });
+
+  if (trainingPeriods.length === 0) {
+    console.log('❌ TrainingPeriod 데이터가 없습니다. seedUnits.ts를 먼저 실행하세요.');
+    return;
+  }
+
   console.log(`  ✅ TrainingPeriod ${trainingPeriods.length}개 로드됨`);
 
   // 2. 배정 대상 분류
-  console.log('\n[2/4] 배정 대상 분류 중...');
+  console.log('\n[2/5] 배정 대상 분류 중...');
 
-  const toAssign: typeof trainingPeriods = []; // 배정 대상
-  const toSkip: typeof trainingPeriods = []; // 미배정 (2026년 2월)
+  const toAssign: typeof trainingPeriods = [];
+  const toSkip: typeof trainingPeriods = [];
 
   for (const period of trainingPeriods) {
     if (period.schedules.length === 0) continue;
@@ -110,18 +134,24 @@ export async function runSeedAssignments() {
     // 2026년 2월은 미배정
     if (firstScheduleDate.getUTCFullYear() === 2026 && firstScheduleDate.getUTCMonth() === 1) {
       toSkip.push(period);
-    } else {
+    } else if (
+      firstScheduleDate.getUTCFullYear() === 2026 &&
+      firstScheduleDate.getUTCMonth() === 0
+    ) {
+      // 2026년 1월만 배정
       toAssign.push(period);
     }
   }
 
-  console.log(`  ✅ 배정 대상: ${toAssign.length}개 TrainingPeriod`);
+  console.log(`  ✅ 배정 대상 (2026년 1월): ${toAssign.length}개 TrainingPeriod`);
   console.log(`  ⏭️ 미배정 (2026년 2월): ${toSkip.length}개 TrainingPeriod`);
 
-  // 3. 배정 및 거리 생성
-  console.log('\n[3/4] 배정 및 거리 데이터 생성 중...');
+  // 3. 강사 가용성 기반 배정
+  console.log('\n[3/5] 강사 가용성 기반 배정 중...');
+
   let assignmentCount = 0;
   let distanceCount = 0;
+  let noAvailableInstructorCount = 0;
   let periodIndex = 0;
 
   for (const period of toAssign) {
@@ -129,10 +159,19 @@ export async function runSeedAssignments() {
     if (period.schedules.length === 0) continue;
 
     const unit = period.unit;
-    const firstSchedule = period.schedules[0];
-    const firstDate = firstSchedule.date!;
+    const scheduleDates = period.schedules.filter((s) => s.date).map((s) => formatDate(s.date!));
 
-    // 참여인원 계산 (첫 번째 일정의 모든 장소 합산)
+    if (scheduleDates.length === 0) continue;
+
+    // 모든 일정에 가용한 강사 필터링
+    const availableMainInstructors = mainInstructors.filter((i) =>
+      scheduleDates.every((d) => i.availableDates.has(d)),
+    );
+    const availableOtherInstructors = otherInstructors.filter((i) =>
+      scheduleDates.every((d) => i.availableDates.has(d)),
+    );
+
+    // 참여인원 계산
     let totalPlannedCount = 0;
     for (const sch of period.schedules) {
       for (const loc of sch.scheduleLocations) {
@@ -144,48 +183,49 @@ export async function runSeedAssignments() {
 
     // 필요 강사 수: 주강사 1 + 참여인원 40명당 1명
     const requiredCount = 1 + Math.ceil(avgPlannedCount / 40);
-    const actualCount = Math.min(requiredCount, mainInstructors.length + otherInstructors.length);
 
-    // 상태 결정
-    let assignmentState: AssignmentState;
-    let classification: AssignmentCategory;
-
-    if (firstDate.getUTCFullYear() === 2025) {
-      // 2025년: 모두 완료
-      assignmentState = 'Accepted';
-      classification = 'Confirmed';
-    } else if (firstDate.getUTCFullYear() === 2026 && firstDate.getUTCMonth() === 0) {
-      // 2026년 1월
-      if (firstDate.getUTCDate() <= 7) {
-        // 1~7일: 완료
-        assignmentState = 'Accepted';
-        classification = 'Confirmed';
-      } else {
-        // 8일 이후: 예정/응답대기 혼합
-        if (Math.random() > 0.4) {
-          assignmentState = 'Pending';
-          classification = 'Temporary';
-        } else {
-          assignmentState = 'Accepted';
-          classification = 'Confirmed';
-        }
-      }
-    } else {
-      // 기타: 기본값
-      assignmentState = 'Pending';
-      classification = 'Temporary';
+    // 주강사가 없으면 배정 불가
+    if (availableMainInstructors.length === 0) {
+      noAvailableInstructorCount++;
+      continue;
     }
 
-    // 강사 선택 (3일 연속 같은 강사)
-    const shuffledMain = [...mainInstructors].sort(() => Math.random() - 0.5);
-    const shuffledOther = [...otherInstructors].sort(() => Math.random() - 0.5);
+    // 강사 선택 (랜덤 셔플)
+    const shuffledMain = [...availableMainInstructors].sort(() => Math.random() - 0.5);
+    const shuffledOther = [...availableOtherInstructors].sort(() => Math.random() - 0.5);
+
+    const actualCount = Math.min(requiredCount, shuffledMain.length + shuffledOther.length);
 
     const selectedInstructors = [
       ...shuffledMain.slice(0, 1), // 주강사 1명 필수
       ...shuffledOther.slice(0, actualCount - 1), // 나머지
     ].slice(0, actualCount);
 
-    // TrainingPeriod의 모든 일정에 동일 강사 배정
+    // 상태 결정 (60% Pending, 40% Accepted)
+    const assignmentState: AssignmentState = Math.random() > 0.4 ? 'Pending' : 'Accepted';
+    const classification: AssignmentCategory =
+      assignmentState === 'Accepted' ? 'Confirmed' : 'Temporary';
+
+    // 배정 데이터 수집 (Batch Insert용)
+    const assignmentsData: {
+      userId: number;
+      unitScheduleId: number;
+      trainingLocationId: number;
+      classification: AssignmentCategory;
+      state: AssignmentState;
+      role: AssignmentRole;
+    }[] = [];
+
+    // 거리 데이터 수집 (Batch Insert용)
+    const distanceData: {
+      userId: number;
+      unitId: number;
+      distance: number;
+      duration: number;
+    }[] = [];
+
+    const processedDistances = new Set<string>();
+
     for (const schedule of period.schedules) {
       const location = schedule.scheduleLocations[0];
       if (!location) continue;
@@ -194,56 +234,65 @@ export async function runSeedAssignments() {
         const instructor = selectedInstructors[i];
         const role: AssignmentRole = i === 0 ? 'Head' : 'Supervisor';
 
-        try {
-          await prisma.instructorUnitAssignment.create({
-            data: {
-              userId: instructor.userId,
-              unitScheduleId: schedule.id,
-              trainingLocationId: location.trainingLocationId,
-              classification,
-              state: assignmentState,
-              role,
-            },
+        assignmentsData.push({
+          userId: instructor.userId,
+          unitScheduleId: schedule.id,
+          trainingLocationId: location.trainingLocationId,
+          classification,
+          state: assignmentState,
+          role,
+        });
+
+        // 거리 데이터 (Unit당 강사당 1번만)
+        const distKey = `${instructor.userId}-${unit.id}`;
+        if (
+          !processedDistances.has(distKey) &&
+          unit.lat &&
+          unit.lng &&
+          instructor.lat &&
+          instructor.lng
+        ) {
+          processedDistances.add(distKey);
+          const { distance, duration } = calculateDistance(
+            instructor.lat,
+            instructor.lng,
+            unit.lat,
+            unit.lng,
+          );
+          distanceData.push({
+            userId: instructor.userId,
+            unitId: unit.id,
+            distance,
+            duration,
           });
-          assignmentCount++;
-        } catch {
-          // 중복 무시
-        }
-
-        // 거리 데이터 생성 (Unit 당 한 번)
-        if (unit.lat && unit.lng && instructor.lat && instructor.lng) {
-          const existing = await prisma.instructorUnitDistance.findUnique({
-            where: {
-              userId_unitId: { userId: instructor.userId, unitId: unit.id },
-            },
-          });
-
-          if (!existing) {
-            const { distance, duration } = calculateDistance(
-              instructor.lat,
-              instructor.lng,
-              unit.lat,
-              unit.lng,
-            );
-
-            await prisma.instructorUnitDistance.create({
-              data: {
-                userId: instructor.userId,
-                unitId: unit.id,
-                distance,
-                duration,
-                preDistance: 0,
-                preDuration: 0,
-                needsRecalc: false,
-              },
-            });
-            distanceCount++;
-          }
         }
       }
     }
 
-    if (periodIndex % 100 === 0) {
+    // Batch Insert: 배정
+    if (assignmentsData.length > 0) {
+      await prisma.instructorUnitAssignment.createMany({
+        data: assignmentsData,
+        skipDuplicates: true,
+      });
+      assignmentCount += assignmentsData.length;
+    }
+
+    // Batch Insert: 거리
+    if (distanceData.length > 0) {
+      await prisma.instructorUnitDistance.createMany({
+        data: distanceData.map((d) => ({
+          ...d,
+          preDistance: 0,
+          preDuration: 0,
+          needsRecalc: false,
+        })),
+        skipDuplicates: true,
+      });
+      distanceCount += distanceData.length;
+    }
+
+    if (periodIndex % 20 === 0) {
       console.log(`  📊 ${periodIndex}/${toAssign.length} TrainingPeriod 처리 완료...`);
     }
   }
@@ -258,6 +307,7 @@ export async function runSeedAssignments() {
   console.log(`소요 시간: ${elapsedTime}초`);
   console.log(`배정 생성: ${assignmentCount}건`);
   console.log(`거리 정보: ${distanceCount}건`);
+  console.log(`가용 강사 없음: ${noAvailableInstructorCount}개 TrainingPeriod`);
   console.log(`미배정 (2026년 2월): ${toSkip.length}개 TrainingPeriod`);
   console.log('='.repeat(50));
 
@@ -270,6 +320,20 @@ export async function runSeedAssignments() {
   for (const s of stateStats) {
     console.log(`  - ${s.state}: ${s._count.userId}건`);
   }
+
+  // 강사별 배정 수 요약
+  const instructorStats = await prisma.instructorUnitAssignment.groupBy({
+    by: ['userId'],
+    _count: { userId: true },
+  });
+  const avgAssignments =
+    instructorStats.length > 0
+      ? (
+          instructorStats.reduce((sum, s) => sum + s._count.userId, 0) / instructorStats.length
+        ).toFixed(1)
+      : 0;
+  console.log(`📊 강사당 평균 배정: ${avgAssignments}건 (${instructorStats.length}명 배정됨)`);
+  console.log('='.repeat(50));
 }
 
 // 직접 실행 시

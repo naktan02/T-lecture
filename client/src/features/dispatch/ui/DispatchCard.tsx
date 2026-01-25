@@ -20,7 +20,7 @@ export const DispatchCard = ({ dispatch, onClick }: DispatchCardProps) => {
     <article
       onClick={onClick}
       className={`
-        p-4 rounded-lg border cursor-pointer transition-all
+        p-3 rounded-lg border cursor-pointer transition-all
         hover:shadow-md hover:-translate-y-0.5
         ${dispatch.isRead ? 'bg-white' : 'bg-blue-50 border-blue-200'}
         ${isTemporary && !isCanceled ? 'border-yellow-200' : ''}
@@ -28,12 +28,12 @@ export const DispatchCard = ({ dispatch, onClick }: DispatchCardProps) => {
         ${isConfirmed ? 'border-green-200' : ''}
       `}
     >
-      <div className="flex justify-between items-start mb-2">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap justify-between items-start gap-1 mb-1">
+        <div className="flex flex-wrap items-center gap-1">
           {!dispatch.isRead && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />}
           <span
             className={`
-            text-xs font-medium px-2 py-0.5 rounded
+            text-[10px] font-medium px-1.5 py-0.5 rounded
             ${isTemporary && !isCanceled ? 'bg-yellow-100 text-yellow-700' : ''}
             ${isTemporary && isCanceled ? 'bg-gray-200 text-gray-500' : ''}
             ${isConfirmed ? 'bg-green-100 text-green-700' : ''}
@@ -43,39 +43,41 @@ export const DispatchCard = ({ dispatch, onClick }: DispatchCardProps) => {
           </span>
           {/* 추가 상태 배지 */}
           {isCanceled && (
-            <span className="text-xs px-2 py-0.5 rounded bg-gray-300 text-gray-600">취소됨</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-300 text-gray-600">
+              취소됨
+            </span>
           )}
           {isAccepted && (
-            <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-700">
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">
               수락완료
             </span>
           )}
           {isPending && (
-            <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700">
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">
               응답대기
             </span>
           )}
         </div>
-        <span className="text-xs text-gray-400">
+        <span className="text-[10px] text-gray-400 whitespace-nowrap">
           {dispatch.receivedAt ? new Date(dispatch.receivedAt).toLocaleDateString('ko-KR') : ''}
         </span>
       </div>
 
       {/* 제목 표시 (변수 치환된 제목) */}
       {dispatch.title && (
-        <h3 className="text-sm font-medium text-gray-800 mb-2 line-clamp-1">{dispatch.title}</h3>
+        <h3 className="text-xs font-medium text-gray-800 mb-1.5 line-clamp-2">{dispatch.title}</h3>
       )}
 
       {/* 읽음/안읽음 상태 배지 */}
-      <div className="flex justify-between items-center mt-2">
+      <div className="flex justify-between items-center mt-1.5">
         <span
-          className={`text-xs px-2 py-0.5 rounded ${
+          className={`text-[10px] px-1.5 py-0.5 rounded ${
             dispatch.isRead ? 'bg-gray-100 text-gray-500' : 'bg-blue-100 text-blue-700 font-medium'
           }`}
         >
           {dispatch.isRead ? '읽음' : '새 메시지'}
         </span>
-        <span className="text-xs text-blue-500 font-medium">자세히 보기 →</span>
+        <span className="text-[10px] text-blue-500 font-medium">자세히 보기 →</span>
       </div>
     </article>
   );

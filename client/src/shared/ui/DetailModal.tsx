@@ -13,6 +13,7 @@ interface DetailModalProps {
   title: string;
   subtitle?: string;
   fields?: ModalField[];
+  zIndex?: number; // z-index 죀절용 (default: 50)
 }
 
 /**
@@ -24,11 +25,15 @@ export const DetailModal: React.FC<DetailModalProps> = ({
   title,
   subtitle,
   fields = [],
+  zIndex = 50,
 }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-opacity duration-300">
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-opacity duration-300"
+      style={{ zIndex }}
+    >
       <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden animate-fadeInScale transform transition-all flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-start shrink-0">

@@ -1,5 +1,5 @@
 // server/src/domains/report/report.service.ts
-import { Workbook } from 'exceljs';
+import { Workbook, Worksheet } from 'exceljs';
 import path from 'path';
 import prisma from '../../libs/prisma';
 import { MilitaryType } from '../../generated/prisma/client.js';
@@ -17,6 +17,18 @@ export interface MonthlyReportParams {
 
 export class ReportService {
   private readonly templateDir = path.join(__dirname, '../../infra/report');
+
+  /**
+   * 사용 가능한 연도 목록 조회 (Unit.lectureYear 기준)
+   */
+  async getAvailableYears(): Promise<number[]> {
+    const result = await prisma.unit.findMany({
+      select: { lectureYear: true },
+      distinct: ['lectureYear'],
+      orderBy: { lectureYear: 'desc' },
+    });
+    return result.map((r) => r.lectureYear);
+  }
 
   // =====================================================
   // 주간 보고서 생성
@@ -183,6 +195,9 @@ export class ReportService {
       };
     }
 
+    // 열 너비 내용에 맞춰 자동 조절 (헤더 행(1~4) 제외, 데이터 행부터)
+    this.autoResizeColumns(sheet, 5);
+
     return (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
   }
 
@@ -333,6 +348,10 @@ export class ReportService {
     postSheet.getRow(progressBaseRow + 2).getCell(3).value = totalYearSchedules;
     postSheet.getRow(progressBaseRow + 3).getCell(2).value = `누적 진행(${month}월)`;
     postSheet.getRow(progressBaseRow + 3).getCell(3).value = completedUntilNow;
+
+    // 열 너비 내용에 맞춰 자동 조절
+    this.autoResizeColumns(preSheet, 5); // 사전 시트: 데이터 row 5부터
+    this.autoResizeColumns(postSheet, 6); // 사후 시트: 데이터 row 6부터
 
     return (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
   }
@@ -625,6 +644,44 @@ export class ReportService {
       MND: '국직부대',
     };
     return type ? labels[type] || type : '';
+  }
+
+  /**
+   * 열 너비를 데이터에 맞게 자동 조절
+   */
+  autoResizeColumns(sheet: Worksheet, startRow = 1) {
+    sheet.columns.forEach((column, colIndex) => {
+      let maxLength = 0;
+
+      // 각 행의 데이터 길이 체크
+      sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+        if (rowNumber >= startRow) {
+          const cell = row.getCell(colIndex + 1);
+          const cellValue = cell.value ? String(cell.value) : '';
+          maxLength = Math.max(maxLength, this.getTextWidth(cellValue));
+        }
+      });
+
+      // 최소/최대 너비 제한
+      if (maxLength > 0) {
+        column.width = Math.min(Math.max(maxLength + 2, 8), 50);
+      }
+    });
+  }
+
+  /**
+   * 텍스트 너비 계산 (한글은 2배)
+   */
+  private getTextWidth(text: string): number {
+    let width = 0;
+    for (const char of text) {
+      if (/[\u3131-\uD79D]/.test(char)) {
+        width += 2;
+      } else {
+        width += 1;
+      }
+    }
+    return width;
   }
 }
 

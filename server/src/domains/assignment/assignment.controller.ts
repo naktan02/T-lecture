@@ -229,13 +229,20 @@ export const batchUpdate = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('changes 객체가 필요합니다.', 400, 'VALIDATION_ERROR');
   }
 
-  const { add = [], remove = [], roleChanges = [], staffLockChanges = [] } = changes;
+  const {
+    add = [],
+    remove = [],
+    roleChanges = [],
+    staffLockChanges = [],
+    stateChanges = [],
+  } = changes;
 
   const result = await assignmentService.batchUpdateAssignments({
     add,
     remove,
     roleChanges,
     staffLockChanges,
+    stateChanges,
   });
 
   res.status(200).json({

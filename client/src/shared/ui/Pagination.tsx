@@ -1,4 +1,4 @@
-import { ReactElement } from 'react';
+import { ReactElement, useState, useEffect } from 'react';
 
 interface PaginationProps {
   totalPage: number;
@@ -11,8 +11,22 @@ export const Pagination = ({
   totalPage,
   currentPage,
   onPageChange,
-  limit = 10,
+  limit: initialLimit,
 }: PaginationProps): ReactElement => {
+  const [limit, setLimit] = useState(initialLimit || 10);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setLimit(5);
+      } else {
+        setLimit(initialLimit || 10);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [initialLimit]);
   // 최소 1페이지는 항상 표시
   const effectiveTotalPage = Math.max(totalPage, 1);
 
