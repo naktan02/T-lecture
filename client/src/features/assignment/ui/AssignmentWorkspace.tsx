@@ -259,11 +259,11 @@ export const AssignmentWorkspace: React.FC = () => {
       )}
 
       {/* 2. Main Workspace (Grid) */}
-      <div className="flex-1 p-4 grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto md:overflow-hidden bg-gray-100">
+      <div className="flex-1 p-4 grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-min md:auto-rows-fr overflow-y-auto md:overflow-hidden bg-gray-100">
         {/* Left Column */}
-        <div className="flex flex-col gap-4 md:overflow-hidden">
+        <div className="flex flex-col gap-4 h-fit md:h-auto md:overflow-hidden">
           {/* Panel 1: 미배정 부대 (교육단위별 그룹화) */}
-          <div className="md:flex-1 max-h-[40vh] md:max-h-none bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden h-fit max-h-[35vh] md:flex-1 md:h-auto md:max-h-none">
             <div className="p-3 bg-red-50 border-b border-red-100 border-l-4 border-l-red-500 font-bold text-gray-700 flex justify-between items-center gap-2">
               <span className="flex items-center gap-2 shrink-0">📋 배정 대상 부대 (부대별)</span>
               <input
@@ -331,7 +331,7 @@ export const AssignmentWorkspace: React.FC = () => {
           </div>
 
           {/* Panel 2: 가용 강사 */}
-          <div className="md:flex-1 max-h-[40vh] md:max-h-none bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden h-fit max-h-[35vh] md:flex-1 md:h-auto md:max-h-none">
             <div className="p-3 bg-slate-50 border-b border-slate-100 border-l-4 border-l-slate-700 font-bold text-gray-700 flex items-center gap-2">
               <span className="shrink-0">👤 가용 강사</span>
               <input
@@ -419,8 +419,8 @@ export const AssignmentWorkspace: React.FC = () => {
         </div>
 
         {/* Right Column */}
-        <div className="flex flex-col gap-4 md:overflow-hidden">
-          <div className="md:flex-1 max-h-[40vh] md:max-h-none bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
+        <div className="flex flex-col gap-4 h-fit md:h-auto md:overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden h-fit max-h-[40vh] md:flex-1 md:h-auto md:max-h-none">
             <div className="p-3 bg-orange-50 border-b border-orange-100 border-l-4 border-l-orange-500 font-bold text-gray-700 flex justify-between items-center">
               <span>⚖️ 배정 작업 공간 (부대별)</span>
               <div className="flex gap-2">
