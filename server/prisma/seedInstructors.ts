@@ -80,7 +80,9 @@ const REAL_ADDRESSES = [
 ];
 
 // Kakao Local API를 사용해서 주소를 위도/경도로 변환
-async function getCoordinatesFromAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+async function getCoordinatesFromAddress(
+  address: string,
+): Promise<{ lat: number; lng: number } | null> {
   const kakaoApiKey = process.env.KAKAO_REST_API_KEY;
 
   if (!kakaoApiKey) {
@@ -335,25 +337,27 @@ export async function runSeedInstructors() {
         } else {
           virtueCount = 0; // 실습강: 없음
         }
-
+        // 덕목 할당 (Batch Insert로 최적화)
         if (virtueCount > 0) {
           const shuffledVirtues = [...virtues].sort(() => Math.random() - 0.5);
-          for (let v = 0; v < Math.min(virtueCount, shuffledVirtues.length); v++) {
-            await prisma.instructorVirtue
-              .create({
-                data: { instructorId: user.id, virtueId: shuffledVirtues[v].id },
-              })
-              .catch(() => {}); // 중복 무시
-          }
+          await prisma.instructorVirtue.createMany({
+            data: shuffledVirtues.slice(0, virtueCount).map((v) => ({
+              instructorId: user.id,
+              virtueId: v.id,
+            })),
+            skipDuplicates: true,
+          });
         }
 
-        // 교육가능일 생성 (Excel에서 읽은 실제 일정)
-        for (const date of schedule.availableDates) {
-          await prisma.instructorAvailability
-            .create({
-              data: { instructorId: user.id, availableOn: date },
-            })
-            .catch(() => {}); // 중복 무시
+        // 교육가능일 생성 (Batch Insert로 최적화)
+        if (schedule.availableDates.length > 0) {
+          await prisma.instructorAvailability.createMany({
+            data: schedule.availableDates.map((date) => ({
+              instructorId: user.id,
+              availableOn: date,
+            })),
+            skipDuplicates: true,
+          });
         }
 
         // 강사 통계 초기화

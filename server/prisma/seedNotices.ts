@@ -145,27 +145,20 @@ export async function runSeedNotices() {
           recipientIds = shuffled.slice(0, randomInt(1, 5)).map((u) => u.id);
         }
 
-        // NoticeReceipt 생성
-        for (const userId of recipientIds) {
-          // 읽음 처리 (확률 기반)
+        // NoticeReceipt 생성 (Batch Insert로 최적화)
+        const readProbability = type === 'all' ? 0.65 : type === 'team' ? 0.45 : 0.35;
+        const receiptsData = recipientIds.map((userId) => {
           let readAt: Date | null = null;
-          const readProbability = type === 'all' ? 0.65 : type === 'team' ? 0.45 : 0.35;
           if (Math.random() < readProbability) {
             readAt = new Date(createdAt.getTime() + randomInt(1, 72) * 60 * 60 * 1000);
           }
+          return { noticeId: notice.id, userId, readAt };
+        });
 
-          try {
-            await prisma.noticeReceipt.create({
-              data: {
-                noticeId: notice.id,
-                userId: userId,
-                readAt: readAt,
-              },
-            });
-          } catch {
-            // 중복 무시
-          }
-        }
+        await prisma.noticeReceipt.createMany({
+          data: receiptsData,
+          skipDuplicates: true,
+        });
 
         totalCreated++;
       } catch (error: any) {

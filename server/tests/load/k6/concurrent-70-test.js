@@ -1,5 +1,8 @@
 // server/tests/load/k6/concurrent-70-test.js
 // 70명 동시 접속 테스트 (관리자 1명 + 강사 69명)
+//
+// Render 서버 테스트 실행:
+// k6 run -e BASE_URL=https://your-app.onrender.com -e ADMIN_EMAIL=your@email.com -e ADMIN_PASSWORD=yourpass concurrent-70-test.js
 
 import http from 'k6/http';
 import { check, group, sleep } from 'k6';
@@ -11,11 +14,12 @@ const loginDuration = new Trend('login_duration');
 const apiDuration = new Trend('api_duration');
 
 // 환경 설정
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
+// const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
+const BASE_URL = __ENV.BASE_URL || 'https://t-lecture-api.onrender.com';
 
 // 계정 정보 (일반 관리자 사용 - 슈퍼 관리자는 대시보드 권한 없음)
 const ADMIN_EMAIL = __ENV.ADMIN_EMAIL || 'general@t-lecture.com';
-const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'general';
+const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'general'; // 시드 기본값과 일치
 const INSTRUCTOR_PASSWORD = 'test1234';
 
 // 테스트 설정
@@ -29,16 +33,21 @@ export const options = {
       duration: '2m',
       startTime: '0s',
     },
-    // 강사 시나리오 (69명, 점진적 증가)
+    // 강사 시나리오 (69명, 10명씩 점진적 증가로 문제 발생 지점 파악)
     instructors: {
       executor: 'ramping-vus',
       exec: 'instructorScenario',
       startVUs: 0,
       stages: [
-        { duration: '20s', target: 30 },  // 20초 동안 30명까지 증가
-        { duration: '20s', target: 69 },  // 20초 동안 69명까지 증가
-        { duration: '60s', target: 69 },  // 60초 동안 69명 유지
-        { duration: '20s', target: 0 },   // 20초 동안 종료
+        { duration: '15s', target: 10 }, // 10명
+        { duration: '15s', target: 20 }, // 20명
+        { duration: '15s', target: 30 }, // 30명
+        { duration: '15s', target: 40 }, // 40명
+        { duration: '15s', target: 50 }, // 50명
+        { duration: '15s', target: 60 }, // 60명
+        { duration: '15s', target: 69 }, // 69명 (최대)
+        { duration: '30s', target: 69 }, // 30초 유지
+        { duration: '15s', target: 0 }, // 종료
       ],
       startTime: '5s', // 관리자 로그인 후 시작
     },
@@ -49,6 +58,28 @@ export const options = {
     http_req_failed: ['rate<0.05'],
   },
 };
+
+// Render Cold Start 대비: 테스트 시작 전 웜업
+export function setup() {
+  console.log(`Testing against: ${BASE_URL}`);
+
+  // 헬스체크로 서버 깨우기
+  const warmup = http.get(`${BASE_URL}/api/health`, { timeout: '30s' });
+
+  if (warmup.status !== 200) {
+    console.log(`Warmup failed: ${warmup.status} - Server may be starting...`);
+    sleep(10); // 추가 대기
+
+    // 재시도
+    const retry = http.get(`${BASE_URL}/api/health`, { timeout: '30s' });
+    console.log(`Warmup retry: ${retry.status}`);
+  } else {
+    console.log('Server is ready!');
+  }
+
+  sleep(2); // 안정화 대기
+  return { ready: true };
+}
 
 // 로그인 헬퍼 함수
 function login(email, password) {
@@ -115,13 +146,29 @@ export function adminScenario() {
 
     // 관리자 작업 반복
     for (let i = 0; i < 5; i++) {
+      // 실제 unit ID를 저장할 변수
+      let unitIds = [];
+
       group('Admin Dashboard', () => {
         // 대시보드 통계
         apiCall('GET', '/api/v1/dashboard/admin/stats', params, 'admin stats');
         sleep(0.5);
 
-        // 부대 목록 조회 (status 파라미터 필수)
-        apiCall('GET', '/api/v1/dashboard/admin/units?status=scheduled', params, 'admin units');
+        // 부대 목록 조회 (status 파라미터 필수) - 응답에서 unit ID 추출
+        const unitsRes = apiCall(
+          'GET',
+          '/api/v1/dashboard/admin/units?status=scheduled',
+          params,
+          'admin units',
+        );
+        try {
+          const unitsData = JSON.parse(unitsRes.body);
+          if (unitsData.data && Array.isArray(unitsData.data)) {
+            unitIds = unitsData.data.map((u) => u.id).filter((id) => id);
+          }
+        } catch (e) {
+          // 파싱 실패 시 무시
+        }
         sleep(0.5);
 
         // 강사 목록 조회
@@ -129,7 +176,12 @@ export function adminScenario() {
         sleep(0.5);
 
         // 스케줄 조회 (status: completed, inProgress, scheduled, unassigned)
-        apiCall('GET', '/api/v1/dashboard/admin/schedules?status=scheduled', params, 'admin schedules');
+        apiCall(
+          'GET',
+          '/api/v1/dashboard/admin/schedules?status=scheduled',
+          params,
+          'admin schedules',
+        );
         sleep(0.5);
 
         // 팀 목록 조회
@@ -138,9 +190,11 @@ export function adminScenario() {
       });
 
       group('Admin Unit Management', () => {
-        // 부대 상세 정보 (랜덤 부대 ID)
-        const unitId = Math.floor(Math.random() * 100) + 1;
-        apiCall('GET', `/api/v1/dashboard/admin/units/${unitId}`, params, 'unit detail');
+        // 부대 상세 정보 (실제 존재하는 unit ID 사용)
+        if (unitIds.length > 0) {
+          const unitId = unitIds[Math.floor(Math.random() * unitIds.length)];
+          apiCall('GET', `/api/v1/dashboard/admin/units/${unitId}`, params, 'unit detail');
+        }
         sleep(0.5);
       });
 
@@ -171,9 +225,9 @@ export function adminScenario() {
 
 // 강사 시나리오 (69명)
 export function instructorScenario() {
-  // VU 번호에 따라 강사 계정 할당 (1-50 순환)
+  // VU 번호에 따라 강사 계정 할당 (1-80 순환)
   const vuId = __VU;
-  const instructorNum = ((vuId - 1) % 50) + 1;
+  const instructorNum = ((vuId - 1) % 80) + 1;
   const instructorEmail = `instructor${String(instructorNum).padStart(3, '0')}@test.com`;
 
   group('Instructor Login', () => {
