@@ -4,6 +4,7 @@
 
 import { ChangeEvent, useState } from 'react';
 import { showConfirm } from '../../../shared/utils/toast';
+import { formatPhoneNumber } from '../../../shared/utils/formatPhoneNumber';
 import { LocationAccordion, LocationData } from './LocationAccordion';
 import { TimeDropdownPicker } from './TimeDropdownPicker';
 
@@ -250,7 +251,7 @@ export const TrainingPeriodTab = ({
               <label className="block text-xs text-gray-500 mb-1">담당관 연락처</label>
               <input
                 type="text"
-                value={data.officerPhone}
+                value={formatPhoneNumber(data.officerPhone)}
                 onChange={(e) => onChange('officerPhone', e.target.value)}
                 disabled={!isEditingInfo}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm disabled:bg-gray-100"

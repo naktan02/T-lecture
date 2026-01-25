@@ -1,7 +1,7 @@
 // server/src/domains/unit/unit.service.ts
 import unitRepository from './unit.repository';
 import { buildPaging, buildUnitWhere } from './unit.filters';
-import { toCreateUnitDto, groupExcelRowsByUnit, RawUnitData } from './unit.mapper';
+import { toCreateUnitDto, groupExcelRowsByUnit, RawUnitData, normalizePhone } from './unit.mapper';
 import kakaoService from '../../infra/kakao.service';
 import distanceService from '../distance/distance.service';
 import AppError from '../../common/errors/AppError';
@@ -151,7 +151,7 @@ class UnitService {
         lunchEndTime: rawData.lunchEndTime,
         // 담당관 정보
         officerName: rawData.officerName,
-        officerPhone: rawData.officerPhone,
+        officerPhone: normalizePhone(rawData.officerPhone),
         officerEmail: rawData.officerEmail,
         // 시설 정보 (RawUnitInput에서 가져옴 - 확장 필요)
         hasCateredMeals: (rawData as Record<string, unknown>).hasCateredMeals === true,
@@ -528,7 +528,7 @@ class UnitService {
 
     const updateData = {
       officerName: rawData.officerName === '' ? null : rawData.officerName,
-      officerPhone: rawData.officerPhone === '' ? null : rawData.officerPhone,
+      officerPhone: rawData.officerPhone === '' ? null : normalizePhone(rawData.officerPhone),
       officerEmail: rawData.officerEmail === '' ? null : rawData.officerEmail,
     };
     const updated = await unitRepository.updateTrainingPeriod(targetPeriodId, updateData);
@@ -577,7 +577,7 @@ class UnitService {
         : null,
       lunchEndTime: data.lunchEndTime ? new Date(`2000-01-01T${data.lunchEndTime}:00.000Z`) : null,
       officerName: data.officerName || null,
-      officerPhone: data.officerPhone || null,
+      officerPhone: normalizePhone(data.officerPhone) || null,
       officerEmail: data.officerEmail || null,
       hasCateredMeals: data.hasCateredMeals ?? false,
       hasHallLodging: data.hasHallLodging ?? false,
