@@ -39,12 +39,12 @@ export const Button: React.FC<ButtonProps> = ({
     ghost: 'bg-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100',
   };
 
-  // 3. 크기 옵션 (Size)
+  // 3. 크기 옵션 (Size) - 반응형: 모바일에서 더 작게
   const sizes: Record<ButtonSize, string> = {
-    xsmall: 'px-2 py-1 text-[11px]',
-    small: 'px-3 py-1.5 text-sm',
-    medium: 'px-4 py-3 text-base',
-    large: 'px-6 py-4 text-lg',
+    xsmall: 'px-1.5 py-0.5 text-[10px] md:px-2 md:py-1 md:text-[11px]',
+    small: 'px-2 py-1 text-xs md:px-3 md:py-1.5 md:text-sm',
+    medium: 'px-3 py-2 text-sm md:px-4 md:py-3 md:text-base',
+    large: 'px-4 py-3 text-base md:px-6 md:py-4 md:text-lg',
   };
 
   // 4. 가로 꽉 채우기 옵션

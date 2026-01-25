@@ -110,13 +110,13 @@ export const ReportSection = (): ReactElement => {
 
       <div className="grid grid-cols-1 gap-6">
         {/* 날짜 선택 섹션 */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 flex flex-wrap gap-4 items-end">
-          <div className="flex-1 min-w-[120px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">연도</label>
+        <div className="bg-white rounded-lg border border-gray-200 p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">연도</label>
             <select
               value={year}
               onChange={(e) => setYear(parseInt(e.target.value))}
-              className="w-full h-10 px-3 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full h-9 px-2 bg-white border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 outline-none"
             >
               {availableYears.map((y) => (
                 <option key={y} value={y}>
@@ -126,12 +126,12 @@ export const ReportSection = (): ReactElement => {
             </select>
           </div>
 
-          <div className="flex-1 min-w-[120px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">월</label>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">월</label>
             <select
               value={month}
               onChange={(e) => setMonth(parseInt(e.target.value))}
-              className="w-full h-10 px-3 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full h-9 px-2 bg-white border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 outline-none"
             >
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
                 <option key={m} value={m}>
@@ -141,16 +141,16 @@ export const ReportSection = (): ReactElement => {
             </select>
           </div>
 
-          <div className="flex-1 min-w-[120px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">주차</label>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">주차</label>
             <select
               value={week}
               onChange={(e) => setWeek(parseInt(e.target.value))}
-              className="w-full h-10 px-3 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full h-9 px-2 bg-white border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 outline-none"
             >
               {[1, 2, 3, 4, 5].map((w) => (
                 <option key={w} value={w}>
-                  {w}주차
+                  {w}주
                 </option>
               ))}
             </select>
@@ -158,43 +158,35 @@ export const ReportSection = (): ReactElement => {
         </div>
 
         {/* 주간 보고서 */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-1">주간 보고서</h3>
-              <p className="text-xs text-gray-500">
-                선택한 {month}월 {week}주차의 부대별 교육 현황을 다운로드합니다.
-              </p>
-            </div>
-            <Button
-              variant="primary"
-              onClick={handleDownloadWeekly}
-              disabled={isDownloadingWeekly}
-              className="min-w-[140px]"
-            >
-              {isDownloadingWeekly ? '다운로드 중...' : '📥 주간 보고서'}
-            </Button>
-          </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-1">주간 보고서</h3>
+          <p className="text-xs text-gray-500 mb-3">
+            선택한 {month}월 {week}주차의 부대별 교육 현황을 다운로드합니다.
+          </p>
+          <Button
+            variant="primary"
+            onClick={handleDownloadWeekly}
+            disabled={isDownloadingWeekly}
+            fullWidth
+          >
+            {isDownloadingWeekly ? '다운로드 중...' : '📥 주간 보고서'}
+          </Button>
         </div>
 
         {/* 월간 보고서 */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-1">월간 보고서</h3>
-              <p className="text-xs text-gray-500">
-                선택한 {month}월 한 달간의 전체 교육 현황을 다운로드합니다.
-              </p>
-            </div>
-            <Button
-              variant="primary"
-              onClick={handleDownloadMonthly}
-              disabled={isDownloadingMonthly}
-              className="min-w-[140px]"
-            >
-              {isDownloadingMonthly ? '다운로드 중...' : '📥 월간 보고서'}
-            </Button>
-          </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-1">월간 보고서</h3>
+          <p className="text-xs text-gray-500 mb-3">
+            선택한 {month}월 한 달간의 전체 교육 현황을 다운로드합니다.
+          </p>
+          <Button
+            variant="primary"
+            onClick={handleDownloadMonthly}
+            disabled={isDownloadingMonthly}
+            fullWidth
+          >
+            {isDownloadingMonthly ? '다운로드 중...' : '📥 월간 보고서'}
+          </Button>
         </div>
       </div>
     </div>

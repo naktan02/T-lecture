@@ -185,14 +185,14 @@ export const DataBackupSection = (): ReactElement => {
       </div>
 
       {/* 연도 선택 */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-4">
+      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
         <h3 className="text-sm font-medium text-gray-700 mb-2">백업/삭제 대상 연도</h3>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
             disabled={isLoadingYears}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
           >
             <option value="all">전체</option>
             {availableYears.map((year) => (
