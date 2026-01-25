@@ -134,7 +134,12 @@ export const UnitList = ({
               >
                 위치 {getSortIcon('region')}
               </th>
-              <th className="px-4 py-3">교육기간</th>
+              <th
+                className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                onClick={() => onSort?.('educationStart')}
+              >
+                교육기간 {getSortIcon('educationStart')}
+              </th>
               <th className="px-4 py-3 w-16"></th>
             </tr>
           </thead>
@@ -165,33 +170,41 @@ export const UnitList = ({
                   <td className="px-4 py-3">
                     <div className="font-semibold text-gray-900 flex items-center gap-1">
                       {unit.name}
-                      {/* 주소 오류 및 데이터 검증 오류 경고 아이콘 */}
-                      {(unit.validationStatus === 'Invalid' ||
-                        !unit.addressDetail ||
-                        unit.lat === null) && (
-                        <span
-                          title={
-                            unit.validationStatus === 'Invalid'
-                              ? `[데이터 오류] ${unit.validationMessage}`
-                              : !unit.addressDetail
-                                ? '주소가 입력되지 않았습니다.'
-                                : '주소 좌표를 찾을 수 없습니다. 주소를 확인해주세요.'
-                          }
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                            className="w-4 h-4 text-red-500"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </span>
-                      )}
+                      {/* 주소/데이터/교육기간/장소 오류 경고 아이콘 */}
+                      {(() => {
+                        // 경고 메시지 우선순위 결정
+                        let warningMessage: string | null = null;
+                        if (unit.validationStatus === 'Invalid') {
+                          warningMessage = `[데이터 오류] ${unit.validationMessage}`;
+                        } else if (!unit.addressDetail) {
+                          warningMessage = '주소가 입력되지 않았습니다.';
+                        } else if (unit.lat === null) {
+                          warningMessage = '주소 좌표를 찾을 수 없습니다. 주소를 확인해주세요.';
+                        } else if (!unit.trainingPeriods || unit.trainingPeriods.length === 0) {
+                          warningMessage = '교육기간이 없습니다.';
+                        } else if (unit.trainingPeriods[0]?.locations?.length === 0) {
+                          warningMessage = '교육장소가 없습니다.';
+                        }
+
+                        if (!warningMessage) return null;
+
+                        return (
+                          <span title={warningMessage}>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                              className="w-4 h-4 text-red-500"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </span>
+                        );
+                      })()}
                     </div>
                     {(() => {
                       const colors = getUnitTypeColor(unit.unitType);
