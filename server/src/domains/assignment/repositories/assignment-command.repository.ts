@@ -165,6 +165,7 @@ class AssignmentCommandRepository {
         removed: 0,
         rolesUpdated: 0,
         staffLocksUpdated: 0,
+        statesUpdated: 0,
       };
 
       // 1. 배정 추가 (Pending 상태로 저장)
@@ -307,6 +308,22 @@ class AssignmentCommandRepository {
             });
           }
           results.staffLocksUpdated++;
+        }
+      }
+
+      // 5. 상태 변경 (관리자가 수동으로 Pending→Accepted 등 변경)
+      if (changes.stateChanges && changes.stateChanges.length > 0) {
+        for (const sc of changes.stateChanges) {
+          await tx.instructorUnitAssignment.updateMany({
+            where: {
+              userId: sc.instructorId,
+              unitScheduleId: sc.unitScheduleId,
+            },
+            data: {
+              state: sc.state,
+            },
+          });
+          results.statesUpdated++;
         }
       }
 

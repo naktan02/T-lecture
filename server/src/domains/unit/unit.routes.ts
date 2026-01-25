@@ -19,6 +19,9 @@ router.post('/', unitController.registerSingleUnit);
 // 엑셀 파일 등록
 router.post('/upload/excel', upload.single('file'), unitController.uploadExcelAndRegisterUnits);
 
+// 엑셀 양식 다운로드 (템플릿)
+router.get('/template/excel', unitController.downloadExcelTemplate);
+
 // ✅ 부대 일괄 삭제 (body에 { ids: [...] } 전달) - 반드시 /:id 앞에 위치해야 함
 router.delete('/batch/delete', unitController.deleteMultipleUnits);
 

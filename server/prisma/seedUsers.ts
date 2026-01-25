@@ -342,7 +342,7 @@ export async function runSeedUsers() {
 
         instructorIds.push(user.id);
 
-        // 덕목 할당
+        // 덕목 할당 (Batch Insert로 최적화)
         let virtueCount: number;
         if (type === 'Main') {
           virtueCount = 15; // 주강사는 전체 15개
@@ -355,23 +355,23 @@ export async function runSeedUsers() {
         }
 
         const shuffledVirtues = [...virtues].sort(() => Math.random() - 0.5);
-        for (let v = 0; v < Math.min(virtueCount, shuffledVirtues.length); v++) {
-          await prisma.instructorVirtue
-            .create({
-              data: { instructorId: user.id, virtueId: shuffledVirtues[v].id },
-            })
-            .catch(() => {}); // 중복 무시
-        }
+        await prisma.instructorVirtue.createMany({
+          data: shuffledVirtues.slice(0, virtueCount).map((v) => ({
+            instructorId: user.id,
+            virtueId: v.id,
+          })),
+          skipDuplicates: true,
+        });
 
-        // 교육가능일 생성 (2025년 전체 + 2026년 1~2월)
+        // 교육가능일 생성 (Batch Insert로 최적화)
         const availableDates = generateAvailableDates();
-        for (const date of availableDates) {
-          await prisma.instructorAvailability
-            .create({
-              data: { instructorId: user.id, availableOn: date },
-            })
-            .catch(() => {}); // 중복 무시
-        }
+        await prisma.instructorAvailability.createMany({
+          data: availableDates.map((date) => ({
+            instructorId: user.id,
+            availableOn: date,
+          })),
+          skipDuplicates: true,
+        });
 
         // 강사 통계 초기화
         await prisma.instructorStats

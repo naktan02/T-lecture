@@ -4,6 +4,19 @@ import reportService from './report.service';
 
 export class ReportController {
   /**
+   * GET /api/v1/reports/years
+   * 사용 가능한 연도 목록 조회
+   */
+  async getAvailableYears(req: Request, res: Response, next: NextFunction) {
+    try {
+      const years = await reportService.getAvailableYears();
+      res.json(years);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * GET /api/v1/reports/weekly?year=2025&month=6&week=2
    */
   async downloadWeekly(req: Request, res: Response, next: NextFunction) {

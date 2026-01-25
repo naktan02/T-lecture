@@ -131,9 +131,9 @@ export const UserWorkspace = (): ReactElement => {
 
   return (
     <>
-      <main className="flex-1 w-full max-w-7xl mx-auto p-3 md:p-6 flex flex-col min-h-0">
+      <main className="flex-1 w-full max-w-7xl mx-auto p-3 md:p-6 flex flex-col">
         {/* 툴바 영역 */}
-        <div className="shrink-0 mb-3 md:mb-4">
+        <div className="shrink-0 mb-3">
           <UserToolbar
             onSearch={handleSearch}
             totalCount={meta?.total || 0}
@@ -144,23 +144,23 @@ export const UserWorkspace = (): ReactElement => {
         {/* 선택 액션 바 */}
         {selectedIds.length > 0 && (
           <div className="shrink-0 mb-3 flex flex-col gap-2">
-            <div className="flex flex-wrap gap-y-2 justify-between items-center bg-green-50 p-3 px-4 rounded-xl border border-green-200">
-              <div className="flex flex-wrap items-center gap-2 mr-2">
-                <span className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold shrink-0">
+            <div className="flex flex-wrap gap-y-2 justify-between items-center bg-green-50 p-2.5 md:p-3 px-4 rounded-xl border border-green-200 shadow-sm">
+              <div className="flex items-center gap-2 mr-2">
+                <span className="w-5 h-5 md:w-6 md:h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold shrink-0">
                   {selectedIds.length}
                 </span>
-                <span className="text-sm text-green-800 font-medium whitespace-nowrap">
+                <span className="text-xs md:text-sm text-green-800 font-medium whitespace-nowrap">
                   명 선택됨
                 </span>
               </div>
-              <div className="flex gap-2 ml-auto">
+              <div className="flex gap-2 ml-auto w-full sm:w-auto justify-end">
                 {/* 승인 대기 유저가 선택되어 있을 때만 표시 */}
                 {selectedPendingIds.length > 0 && (
                   <>
                     <button
                       onClick={() => setBulkAction('approve')}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 text-white rounded-lg
-                                hover:bg-amber-600 active:scale-95 transition-all text-sm font-medium"
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 py-1.5 md:px-3 md:py-2 bg-amber-500 text-white rounded-lg
+                                hover:bg-amber-600 active:scale-95 transition-all text-[11px] md:text-sm font-medium"
                     >
                       <svg
                         className="w-4 h-4"
@@ -179,8 +179,8 @@ export const UserWorkspace = (): ReactElement => {
                     </button>
                     <button
                       onClick={() => setBulkAction('reject')}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-red-500 text-white rounded-lg
-                                hover:bg-red-600 active:scale-95 transition-all text-sm font-medium"
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 py-1.5 md:px-3 md:py-2 bg-red-500 text-white rounded-lg
+                                hover:bg-red-600 active:scale-95 transition-all text-[11px] md:text-sm font-medium"
                     >
                       <svg
                         className="w-4 h-4"
@@ -205,7 +205,7 @@ export const UserWorkspace = (): ReactElement => {
         )}
 
         {/* 리스트 영역 */}
-        <div className="flex-1 min-h-0 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full gap-3">
               <div className="w-10 h-10 border-4 border-gray-200 border-t-green-500 rounded-full animate-spin" />

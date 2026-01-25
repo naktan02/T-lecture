@@ -36,7 +36,7 @@ export const NoticeWorkspace = (): ReactElement => {
 
   return (
     <>
-      <main className="flex-1 w-full max-w-7xl mx-auto p-3 md:p-6 flex flex-col min-h-0">
+      <main className="w-full max-w-7xl mx-auto p-3 md:p-6">
         {/* 헤더 영역 */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
           <h1 className="text-xl md:text-2xl font-bold text-gray-900">공지사항 관리</h1>
@@ -64,24 +64,23 @@ export const NoticeWorkspace = (): ReactElement => {
         </div>
 
         {/* 공지 목록 */}
-        <div className="flex-1 min-h-0 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-auto">
-            <NoticeList
-              notices={notices}
-              onNoticeClick={openEditDrawer}
-              isAdmin={true}
-              currentPage={page}
-              totalCount={totalCount}
-              pageSize={PAGE_SIZE}
-              sortField={sortField}
-              sortOrder={sortOrder}
-              onSort={onSort}
-            />
-          </div>
-          {/* 페이지네이션 */}
-          <div className="border-t border-gray-200 p-3">
-            <Pagination currentPage={page} totalPage={totalPage} onPageChange={setPage} />
-          </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <NoticeList
+            notices={notices}
+            onNoticeClick={openEditDrawer}
+            isAdmin={true}
+            currentPage={page}
+            totalCount={totalCount}
+            pageSize={PAGE_SIZE}
+            sortField={sortField}
+            sortOrder={sortOrder}
+            onSort={onSort}
+          />
+        </div>
+
+        {/* 페이지네이션 */}
+        <div className="shrink-0 py-3 md:py-4">
+          <Pagination currentPage={page} totalPage={totalPage} onPageChange={setPage} />
         </div>
       </main>
 

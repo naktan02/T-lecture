@@ -21,14 +21,17 @@ export const ContentWrapper: React.FC<ContentWrapperProps> = ({
 }) => {
   return (
     <div
-      className="flex flex-col bg-gray-50"
-      style={{ height: 'calc(100vh - var(--header-height))' }}
+      className={`flex flex-col bg-gray-50 ${
+        scrollable
+          ? 'min-h-[calc(100vh-var(--header-height))]'
+          : 'h-[calc(100vh-var(--header-height))]'
+      }`}
     >
       <main
         className={`
                     flex-1 w-full max-w-7xl mx-auto px-4 flex flex-col
                     ${noPadding ? '' : 'py-6'}
-                    ${scrollable ? 'overflow-y-auto' : 'overflow-hidden'} 
+                    ${scrollable ? '' : 'overflow-hidden'}
                 `}
       >
         {children}

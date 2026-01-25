@@ -8,6 +8,13 @@ export type RawUnitData = RawUnitInput;
 // 헬퍼: 문자열 확인
 const isNonEmptyString = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 0;
 
+// 헬퍼: 전화번호 정규화 (숫자만 추출)
+export const normalizePhone = (phone: unknown): string | undefined => {
+  if (!phone) return undefined;
+  const numbers = String(phone).replace(/[^\d]/g, '');
+  return numbers.length > 0 ? numbers : undefined;
+};
+
 // 헬퍼: 날짜 변환 (UTC 자정으로 변환 - 시간 없는 날짜 전용)
 const toDateOrUndef = (v: unknown): Date | undefined => {
   if (!v) return undefined;
@@ -129,7 +136,7 @@ export function excelRowToRawUnit(row: Record<string, unknown> = {}): RawUnitDat
 
     // 담당자 정보
     officerName: row.officerName as string | undefined,
-    officerPhone: row.officerPhone as string | undefined,
+    officerPhone: normalizePhone(row.officerPhone),
     officerEmail: row.officerEmail as string | undefined,
 
     // 시설 정보 (TrainingPeriod에 저장)

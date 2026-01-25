@@ -1,6 +1,6 @@
 // client/src/shared/ui/CommonHeader.tsx
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/model/useAuth';
 import { showConfirm } from '../utils';
@@ -171,6 +171,46 @@ export const CommonHeader = ({
   const { logout, isAdmin, isSuperAdmin } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // 스크롤 시 헤더 숨기기 로직
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      // 모바일 메뉴가 열려있을 때는 헤더를 숨기지 않음
+      if (isMobileMenuOpen) {
+        setIsVisible(true);
+        lastScrollY.current = currentScrollY;
+        return;
+      }
+
+      // 최상단에서는 항시 노출
+      if (currentScrollY <= 0) {
+        setIsVisible(true);
+        lastScrollY.current = currentScrollY;
+        return;
+      }
+
+      // 50px 이상 스크롤했을 때만 동작 (미세한 진동 방지)
+      if (Math.abs(currentScrollY - lastScrollY.current) < 10) return;
+
+      if (currentScrollY > lastScrollY.current) {
+        // 아래로 스크롤 중 -> 숨김
+        setIsVisible(false);
+      } else {
+        // 위로 스크롤 중 -> 노출
+        setIsVisible(true);
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isMobileMenuOpen]);
+
   // userLabel이 없으면 localStorage에서 사용자 이름 가져오기
   const userName = localStorage.getItem('userName') || '사용자';
   const displayLabel = userLabel || userName;
@@ -218,8 +258,12 @@ export const CommonHeader = ({
   };
 
   return (
-    <>
-      <header className="flex justify-between items-center bg-[#2c3e50] px-4 md:px-6 py-4 shadow-md text-white relative z-50">
+    <div className="h-[var(--header-height)]">
+      <header
+        className={`fixed top-0 left-0 w-full flex justify-between items-center bg-[#2c3e50] px-4 md:px-6 py-4 shadow-md text-white z-50 transition-transform duration-300 ease-in-out ${
+          isVisible ? 'translate-y-0' : '-translate-y-full'
+        }`}
+      >
         {/* 1. 왼쪽: 타이틀 및 메뉴 */}
         <div className="flex items-center gap-4 md:gap-8">
           <Link to={logoPath} className="hover:opacity-80 transition-opacity">
@@ -376,6 +420,6 @@ export const CommonHeader = ({
           </div>
         </>
       )}
-    </>
+    </div>
   );
 };

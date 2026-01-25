@@ -110,7 +110,7 @@ export const UnitList = ({
   return (
     <div className="h-full flex flex-col">
       {/* 데스크톱: 테이블 뷰 */}
-      <div className="hidden md:block flex-1 overflow-auto custom-scrollbar">
+      <div className="hidden md:block overflow-x-auto custom-scrollbar">
         <table className="w-full text-left border-collapse whitespace-nowrap">
           <thead className="sticky top-0 z-10 bg-gray-50 shadow-sm">
             <tr className="text-xs uppercase text-gray-500 font-semibold border-b border-gray-200">
@@ -134,7 +134,12 @@ export const UnitList = ({
               >
                 위치 {getSortIcon('region')}
               </th>
-              <th className="px-4 py-3">교육기간</th>
+              <th
+                className="px-4 py-3 cursor-pointer hover:bg-gray-100"
+                onClick={() => onSort?.('educationStart')}
+              >
+                교육기간 {getSortIcon('educationStart')}
+              </th>
               <th className="px-4 py-3 w-16"></th>
             </tr>
           </thead>
@@ -165,33 +170,41 @@ export const UnitList = ({
                   <td className="px-4 py-3">
                     <div className="font-semibold text-gray-900 flex items-center gap-1">
                       {unit.name}
-                      {/* 주소 오류 및 데이터 검증 오류 경고 아이콘 */}
-                      {(unit.validationStatus === 'Invalid' ||
-                        !unit.addressDetail ||
-                        unit.lat === null) && (
-                        <span
-                          title={
-                            unit.validationStatus === 'Invalid'
-                              ? `[데이터 오류] ${unit.validationMessage}`
-                              : !unit.addressDetail
-                                ? '주소가 입력되지 않았습니다.'
-                                : '주소 좌표를 찾을 수 없습니다. 주소를 확인해주세요.'
-                          }
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                            className="w-4 h-4 text-red-500"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </span>
-                      )}
+                      {/* 주소/데이터/교육기간/장소 오류 경고 아이콘 */}
+                      {(() => {
+                        // 경고 메시지 우선순위 결정
+                        let warningMessage: string | null = null;
+                        if (unit.validationStatus === 'Invalid') {
+                          warningMessage = `[데이터 오류] ${unit.validationMessage}`;
+                        } else if (!unit.addressDetail) {
+                          warningMessage = '주소가 입력되지 않았습니다.';
+                        } else if (unit.lat === null) {
+                          warningMessage = '주소 좌표를 찾을 수 없습니다. 주소를 확인해주세요.';
+                        } else if (!unit.trainingPeriods || unit.trainingPeriods.length === 0) {
+                          warningMessage = '교육기간이 없습니다.';
+                        } else if (unit.trainingPeriods[0]?.locations?.length === 0) {
+                          warningMessage = '교육장소가 없습니다.';
+                        }
+
+                        if (!warningMessage) return null;
+
+                        return (
+                          <span title={warningMessage}>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                              className="w-4 h-4 text-red-500"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </span>
+                        );
+                      })()}
                     </div>
                     {(() => {
                       const colors = getUnitTypeColor(unit.unitType);
@@ -266,7 +279,7 @@ export const UnitList = ({
             <div
               key={unit.id}
               className={`
-                relative p-4 rounded-xl border-2 transition-all duration-200
+                relative p-3.5 rounded-xl border-2 transition-all duration-200
                 ${
                   isSelected
                     ? 'border-green-400 bg-green-50/50 shadow-sm'
@@ -289,13 +302,15 @@ export const UnitList = ({
               <div className="ml-8">
                 {/* 상단: 부대명 + 타입 */}
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="font-bold text-gray-900">{unit.name}</h3>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-gray-900 text-sm md:text-base truncate">
+                      {unit.name}
+                    </h3>
                     {(() => {
                       const colors = getUnitTypeColor(unit.unitType);
                       return (
                         <span
-                          className={`inline-block text-xs px-2 py-0.5 rounded-full mt-1 ${colors.bgColor} ${colors.textColor}`}
+                          className={`inline-block text-[10px] px-1.5 py-0.5 rounded-full mt-1 ${colors.bgColor} ${colors.textColor}`}
                         >
                           {getMilitaryTypeLabel(unit.unitType)}
                         </span>
@@ -303,7 +318,7 @@ export const UnitList = ({
                     })()}
                   </div>
                   <svg
-                    className="w-5 h-5 text-gray-400 flex-shrink-0 mt-1"
+                    className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -318,16 +333,16 @@ export const UnitList = ({
                 </div>
 
                 {/* 정보 그리드 */}
-                <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                  <div className="flex items-center gap-1.5 text-gray-600">
-                    <span className="text-base">📍</span>
+                <div className="mt-2.5 grid grid-cols-2 gap-2 text-[11px] md:text-sm">
+                  <div className="flex items-center gap-1 text-gray-600">
+                    <span className="text-sm">📍</span>
                     <span className="truncate">
                       {unit.wideArea} {unit.region}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-gray-600">
-                    <span className="text-base">📅</span>
-                    <span>
+                  <div className="flex items-center gap-1 text-gray-600">
+                    <span className="text-sm">📅</span>
+                    <span className="truncate">
                       {formatDateMD(start)} ~ {formatDateMD(end)}
                     </span>
                   </div>

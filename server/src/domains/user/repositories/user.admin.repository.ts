@@ -14,6 +14,7 @@ interface UserFilters {
   availableTo?: string; // YYYY-MM-DD 형식
   profileIncomplete?: boolean; // 정보 입력 미완료 강사
   excludeAdmins?: boolean; // 순수 관리자 제외 (유저 관리에서 사용)
+  excludeSuperAdmins?: boolean; // 슈퍼 관리자 제외
 }
 
 class AdminRepository {
@@ -37,6 +38,7 @@ class AdminRepository {
       profileIncomplete,
       excludeAdmins,
     } = filters;
+    const excludeSuperAdmins = filters.excludeSuperAdmins;
 
     const where: Prisma.UserWhereInput = {};
 
@@ -59,6 +61,16 @@ class AdminRepository {
         ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
         {
           OR: [{ admin: null }, { instructor: { isNot: null } }],
+        },
+      ];
+    }
+
+    // 슈퍼 관리자 제외 (SUPER level 관리자 숨김)
+    if (excludeSuperAdmins) {
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+        {
+          OR: [{ admin: null }, { admin: { level: { not: 'SUPER' } } }],
         },
       ];
     }

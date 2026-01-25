@@ -107,6 +107,26 @@ export const UserDetailDrawer = ({
 
   const userId = initialUser?.id;
 
+  // 현재 로그인한 사용자 ID 가져오기 (같은 관리자인지 체크용)
+  const getCurrentUserId = (): number | null => {
+    try {
+      const userStr = localStorage.getItem('currentUser');
+      if (userStr) {
+        const parsed = JSON.parse(userStr);
+        return parsed.id ?? null;
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  };
+  const currentUserId = getCurrentUserId();
+
+  // 같은 관리자인지 확인 (둘 다 admin이고 같은 ID)
+  const isSameAdmin = Boolean(
+    initialUser?.admin && currentUserId && initialUser.id === currentUserId,
+  );
+
   // 상세 데이터 조회
   const { data: detailUser } = useQuery({
     queryKey: ['adminUserDetail', userId],
@@ -745,7 +765,8 @@ export const UserDetailDrawer = ({
 
         {/* 푸터 */}
         <div className="px-4 md:px-6 py-3 md:py-4 border-t bg-white flex justify-between shrink-0">
-          {initialUser && (
+          {/* 삭제 버튼: 같은 관리자면 숨김 */}
+          {initialUser && !isSameAdmin && (
             <button
               type="button"
               onClick={() => onDelete(initialUser.id)}
@@ -773,13 +794,16 @@ export const UserDetailDrawer = ({
             <Button variant="outline" onClick={onClose}>
               취소
             </Button>
-            <button
-              type="submit"
-              form="user-form"
-              className="px-4 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700 text-sm"
-            >
-              저장
-            </button>
+            {/* 저장 버튼: 같은 관리자면 숨김 */}
+            {!isSameAdmin && (
+              <button
+                type="submit"
+                form="user-form"
+                className="px-4 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700 text-sm"
+              >
+                저장
+              </button>
+            )}
           </div>
         </div>
       </div>
