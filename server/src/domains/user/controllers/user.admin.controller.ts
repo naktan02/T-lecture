@@ -39,6 +39,8 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
     profileIncomplete,
     sortField,
     sortOrder,
+    excludeAdmins,
+    excludeSuperAdmins,
   } = req.query;
   const result = await adminService.getAllUsers({
     status: typeof status === 'string' ? status : undefined,
@@ -53,6 +55,8 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
     limit: typeof limit === 'string' ? limit : undefined,
     sortField: typeof sortField === 'string' ? sortField : undefined,
     sortOrder: sortOrder === 'asc' || sortOrder === 'desc' ? sortOrder : undefined,
+    excludeAdmins: typeof excludeAdmins === 'string' ? excludeAdmins : undefined,
+    excludeSuperAdmins: typeof excludeSuperAdmins === 'string' ? excludeSuperAdmins : undefined,
   });
   res.json(result);
 });

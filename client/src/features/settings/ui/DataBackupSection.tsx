@@ -5,7 +5,7 @@ import { showConfirm, showSuccess, showError, showWarning } from '../../../share
 import { apiClient, apiClientJson } from '../../../shared/apiClient';
 
 interface DeletePreview {
-  year: number;
+  year: number | 'all';
   units: number;
   schedules: number;
   assignments: number;
@@ -21,7 +21,11 @@ interface DatabaseSize {
 
 export const DataBackupSection = (): ReactElement => {
   const currentYear = new Date().getFullYear();
-  const targetYear = currentYear - 1; // 항상 작년 데이터 대상
+
+  // 연도 선택 (null = 전체)
+  const [selectedYear, setSelectedYear] = useState<string>('all');
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [isLoadingYears, setIsLoadingYears] = useState(true);
 
   const [isExporting, setIsExporting] = useState(false);
   const [preview, setPreview] = useState<DeletePreview | null>(null);
@@ -29,6 +33,21 @@ export const DataBackupSection = (): ReactElement => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [backupConfirmed, setBackupConfirmed] = useState(false);
   const [dbSize, setDbSize] = useState<DatabaseSize | null>(null);
+
+  // 사용 가능한 연도 목록 조회
+  useEffect(() => {
+    const fetchYears = async () => {
+      try {
+        const years = await apiClientJson<number[]>('/api/v1/data-backup/years');
+        setAvailableYears(years);
+      } catch {
+        // 조회 실패 시 빈 배열
+      } finally {
+        setIsLoadingYears(false);
+      }
+    };
+    fetchYears();
+  }, []);
 
   // 데이터베이스 용량 조회
   useEffect(() => {
@@ -43,22 +62,35 @@ export const DataBackupSection = (): ReactElement => {
     fetchDbSize();
   }, []);
 
+  // 연도 변경 시 미리보기 초기화
+  useEffect(() => {
+    setPreview(null);
+    setBackupConfirmed(false);
+  }, [selectedYear]);
+
+  const getYearLabel = () => {
+    return selectedYear === 'all' ? '전체' : `${selectedYear}년`;
+  };
+
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      const response = await apiClient(`/api/v1/data-backup/export?year=${targetYear}`);
+      const response = await apiClient(`/api/v1/data-backup/export?year=${selectedYear}`);
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `T-Lecture_${targetYear}_Archive.xlsx`;
+      a.download =
+        selectedYear === 'all'
+          ? 'T-Lecture_전체_Archive.xlsx'
+          : `T-Lecture_${selectedYear}_Archive.xlsx`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      showSuccess(`${targetYear}년 데이터를 성공적으로 다운로드했습니다.`);
+      showSuccess(`${getYearLabel()} 데이터를 성공적으로 다운로드했습니다.`);
       setBackupConfirmed(false);
     } catch {
       showError('데이터 다운로드에 실패했습니다.');
@@ -71,7 +103,7 @@ export const DataBackupSection = (): ReactElement => {
     setIsLoadingPreview(true);
     try {
       const data = await apiClientJson<DeletePreview>(
-        `/api/v1/data-backup/preview?year=${targetYear}`,
+        `/api/v1/data-backup/preview?year=${selectedYear}`,
       );
       setPreview(data);
     } catch {
@@ -82,29 +114,47 @@ export const DataBackupSection = (): ReactElement => {
   };
 
   const handleDelete = async () => {
+    if (selectedYear === 'all') {
+      showError('전체 데이터 삭제는 허용되지 않습니다. 특정 연도를 선택해주세요.');
+      return;
+    }
+
+    const yearNum = parseInt(selectedYear, 10);
+    if (yearNum >= currentYear) {
+      showError('현재 연도는 삭제할 수 없습니다.');
+      return;
+    }
+
     if (!backupConfirmed) {
       showWarning('먼저 엑셀 백업을 다운로드하고 확인해주세요.');
       return;
     }
 
     const confirmed = await showConfirm(
-      `정말로 ${targetYear}년 데이터를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`,
+      `정말로 ${selectedYear}년 데이터를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`,
     );
 
     if (!confirmed) return;
 
     setIsDeleting(true);
     try {
-      await apiClient(`/api/v1/data-backup/cleanup?year=${targetYear}`, {
+      await apiClient(`/api/v1/data-backup/cleanup?year=${selectedYear}`, {
         method: 'DELETE',
       });
-      showSuccess(`${targetYear}년 데이터가 삭제되었습니다.`);
+      showSuccess(`${selectedYear}년 데이터가 삭제되었습니다.`);
       setPreview(null);
       setBackupConfirmed(false);
       // 용량 새로고침
       try {
         const size = await apiClientJson<DatabaseSize>('/api/v1/data-backup/db-size');
         setDbSize(size);
+      } catch {
+        // ignore
+      }
+      // 연도 목록 새로고침
+      try {
+        const years = await apiClientJson<number[]>('/api/v1/data-backup/years');
+        setAvailableYears(years);
       } catch {
         // ignore
       }
@@ -122,23 +172,49 @@ export const DataBackupSection = (): ReactElement => {
     return 'bg-green-500';
   };
 
+  // 삭제 가능 여부 (전체 또는 현재/미래 연도는 삭제 불가)
+  const canDelete = selectedYear !== 'all' && parseInt(selectedYear, 10) < currentYear;
+
   return (
     <div className="max-w-2xl">
       <div className="mb-6">
         <h2 className="text-xl font-bold text-gray-800">데이터 백업</h2>
         <p className="text-sm text-gray-500 mt-1">
-          매년 {targetYear}년 데이터를 엑셀로 백업하고, 저장 공간 확보를 위해 삭제합니다.
+          연도별 데이터를 엑셀로 백업하고, 저장 공간 확보를 위해 삭제합니다.
         </p>
+      </div>
+
+      {/* 연도 선택 */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-2">백업/삭제 대상 연도</h3>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            disabled={isLoadingYears}
+            className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+          >
+            <option value="all">전체</option>
+            {availableYears.map((year) => (
+              <option key={year} value={year.toString()}>
+                {year}년
+              </option>
+            ))}
+          </select>
+          {isLoadingYears && <span className="text-sm text-gray-400">로딩 중...</span>}
+        </div>
       </div>
 
       {/* 엑셀 다운로드 */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-4">
         <h3 className="text-sm font-medium text-gray-700 mb-2">1단계: 엑셀 백업 다운로드</h3>
         <p className="text-xs text-gray-500 mb-4">
-          {targetYear}년의 모든 데이터(부대, 일정, 배정, 메시지 등)를 엑셀 파일로 다운로드합니다.
+          {getYearLabel()} 데이터를 보고서 형식의 엑셀 파일로 다운로드합니다.
+          <br />
+          <span className="text-blue-600">(주간보고, 월간 교육일정, 월간 결과보고 3개 시트)</span>
         </p>
         <Button variant="primary" onClick={handleExport} disabled={isExporting}>
-          {isExporting ? '다운로드 중...' : `📥 ${targetYear}년 데이터 다운로드`}
+          {isExporting ? '다운로드 중...' : `📥 ${getYearLabel()} 데이터 다운로드`}
         </Button>
       </div>
 
@@ -202,6 +278,16 @@ export const DataBackupSection = (): ReactElement => {
           </div>
         )}
 
+        {!canDelete && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+            <p className="text-xs text-amber-700">
+              {selectedYear === 'all'
+                ? '⚠️ 전체 데이터 삭제는 허용되지 않습니다. 특정 연도를 선택해주세요.'
+                : `⚠️ ${selectedYear}년은 현재/미래 연도이므로 삭제할 수 없습니다.`}
+            </p>
+          </div>
+        )}
+
         <p className="text-xs text-red-600 mb-4">
           ⚠️ 삭제된 데이터는 복구할 수 없습니다. 반드시 엑셀 백업을 먼저 받으세요.
         </p>
@@ -212,6 +298,7 @@ export const DataBackupSection = (): ReactElement => {
             id="backupConfirm"
             checked={backupConfirmed}
             onChange={(e) => setBackupConfirmed(e.target.checked)}
+            disabled={!canDelete}
             className="w-4 h-4 text-red-600 border-red-300 rounded focus:ring-red-500"
           />
           <label htmlFor="backupConfirm" className="text-sm text-gray-700">
@@ -222,9 +309,9 @@ export const DataBackupSection = (): ReactElement => {
         <Button
           variant="danger"
           onClick={handleDelete}
-          disabled={isDeleting || !backupConfirmed || !preview}
+          disabled={isDeleting || !backupConfirmed || !preview || !canDelete}
         >
-          {isDeleting ? '삭제 중...' : `🗑️ ${targetYear}년 데이터 삭제`}
+          {isDeleting ? '삭제 중...' : `🗑️ ${getYearLabel()} 데이터 삭제`}
         </Button>
       </div>
     </div>
