@@ -783,7 +783,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                                     e.stopPropagation();
                                     handleConfirmLocal(dateInfo.unitScheduleId, inst.instructorId);
                                   }}
-                                  className="absolute -top-2 -right-8 bg-green-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-green-600"
+                                  className="absolute -top-2 right-4 bg-green-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-green-600"
                                   title="확정 처리"
                                 >
                                   ✓

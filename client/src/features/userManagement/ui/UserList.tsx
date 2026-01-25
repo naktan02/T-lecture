@@ -280,17 +280,17 @@ export const UserList = ({
       </div>
 
       {/* 모바일: 카드 뷰 */}
-      <div className="md:hidden p-3 space-y-3">
+      <div className="md:hidden p-2 space-y-2">
         {/* 모바일 전체 선택 */}
-        <div className="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-lg">
+        <div className="flex items-center gap-2 px-2 py-1.5 bg-gray-50 rounded-lg">
           <input
             type="checkbox"
             checked={isAllSelected}
             onChange={handleToggleAll}
-            className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+            className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
           />
-          <span className="text-sm text-gray-600">전체 선택</span>
-          <span className="text-xs text-gray-400 ml-auto">{users.length}명</span>
+          <span className="text-xs text-gray-600">전체 선택</span>
+          <span className="text-[10px] text-gray-400 ml-auto">{users.length}명</span>
         </div>
 
         {users.map((user) => {
@@ -303,46 +303,46 @@ export const UserList = ({
             <div
               key={user.id}
               className={`
-                relative p-4 rounded-xl border-2 transition-all duration-200
+                relative p-2.5 rounded-lg border transition-all duration-200
                 ${
                   isSelected
-                    ? 'border-green-400 bg-green-50/50 shadow-sm'
+                    ? 'border-green-400 bg-green-50/50'
                     : 'border-gray-200 bg-white active:bg-gray-50'
                 }
               `}
               onClick={() => onUserClick?.(user)}
             >
               {/* 체크박스 */}
-              <div className="absolute top-3 left-3" onClick={(e) => e.stopPropagation()}>
+              <div className="absolute top-2.5 left-2" onClick={(e) => e.stopPropagation()}>
                 <input
                   type="checkbox"
                   checked={isSelected}
                   onChange={() => onToggleSelect?.(user.id)}
-                  className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                  className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
                 />
               </div>
 
               {/* 콘텐츠 */}
-              <div className="ml-8">
+              <div className="ml-6">
                 {/* 상단: 이름 + 뱃지 */}
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start justify-between gap-1">
                   <div>
-                    <h3 className="font-bold text-gray-900 flex items-center gap-1">
+                    <h3 className="font-semibold text-sm text-gray-900 flex items-center gap-1">
                       {user.name || '이름 없음'}
                       {user.instructor?.isTeamLeader && (
-                        <span className="text-[10px] text-amber-600 border border-amber-300 rounded px-1">
+                        <span className="text-[9px] text-amber-600 border border-amber-300 rounded px-0.5">
                           팀장
                         </span>
                       )}
                     </h3>
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    <div className="flex flex-wrap items-center gap-1 mt-0.5">
                       <span
-                        className={`text-[10px] md:text-xs px-1.5 py-0.5 rounded-full ${roleInfo.bgColor} ${roleInfo.textColor}`}
+                        className={`text-[9px] px-1 py-0.5 rounded-full ${roleInfo.bgColor} ${roleInfo.textColor}`}
                       >
                         {roleInfo.label}
                       </span>
                       <span
-                        className={`text-[10px] md:text-xs px-1.5 py-0.5 rounded-full ${statusInfo.bgColor} ${statusInfo.textColor}`}
+                        className={`text-[9px] px-1 py-0.5 rounded-full ${statusInfo.bgColor} ${statusInfo.textColor}`}
                       >
                         {statusInfo.label}
                       </span>
@@ -350,7 +350,7 @@ export const UserList = ({
                   </div>
                   {!isPending && (
                     <svg
-                      className="w-5 h-5 text-gray-400 flex-shrink-0 mt-1"
+                      className="w-4 h-4 text-gray-400 flex-shrink-0"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -366,30 +366,30 @@ export const UserList = ({
                 </div>
 
                 {/* 정보 */}
-                <div className="mt-2 text-xs md:text-sm text-gray-600 space-y-1">
-                  <div className="truncate">📧 {user.userEmail || '-'}</div>
+                <div className="mt-1 text-[10px] text-gray-500">
+                  <span className="truncate">📧 {user.userEmail || '-'}</span>
                   {user.instructor?.team && (
-                    <div className="truncate">
+                    <span className="ml-2">
                       🏢 {user.instructor.team.name}
                       {user.instructor.generation && (
                         <span className="text-gray-400"> ({user.instructor.generation}기)</span>
                       )}
-                    </div>
+                    </span>
                   )}
                 </div>
 
                 {/* 승인 대기 액션 */}
                 {isPending && (
-                  <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
+                  <div className="mt-1.5 flex gap-1" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => onApprove?.(user.id)}
-                      className="flex-1 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                      className="flex-1 py-1 text-[10px] bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
                     >
                       승인
                     </button>
                     <button
                       onClick={() => onReject?.(user.id)}
-                      className="flex-1 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                      className="flex-1 py-1 text-[10px] bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
                     >
                       거절
                     </button>
