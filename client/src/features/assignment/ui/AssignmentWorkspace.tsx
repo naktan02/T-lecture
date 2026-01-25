@@ -194,41 +194,41 @@ export const AssignmentWorkspace: React.FC = () => {
   return (
     <div className="flex flex-col h-full relative">
       {/* 1. Control Bar */}
-      <div className="bg-white p-4 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center shadow-sm gap-4">
-        <div className="flex items-center gap-4">
-          <h2 className="text-lg font-bold text-gray-800">배정 기간 설정</h2>
-          <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-300">
+      <div className="bg-white p-2 border-b border-gray-200 flex flex-wrap justify-between items-center shadow-sm gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-xs font-bold text-gray-800 whitespace-nowrap">배정 기간</h2>
+          <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg border border-gray-300">
             <input
               type="date"
               name="startDate"
               value={formatDate(dateRange.startDate)}
               onChange={handleDateChange}
-              className="bg-transparent focus:outline-none text-sm text-gray-700"
+              className="bg-transparent focus:outline-none text-xs text-gray-700 w-24"
             />
-            <span className="text-gray-400">~</span>
+            <span className="text-gray-400 text-xs">~</span>
             <input
               type="date"
               name="endDate"
               value={formatDate(dateRange.endDate)}
               onChange={handleDateChange}
-              className="bg-transparent focus:outline-none text-sm text-gray-700"
+              className="bg-transparent focus:outline-none text-xs text-gray-700 w-24"
             />
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={fetchData} disabled={loading} size="medium">
-            {loading ? '조회 중...' : '조회하기'}
+        <div className="flex flex-wrap gap-1">
+          <Button onClick={fetchData} disabled={loading} size="small">
+            {loading ? '조회중' : '조회'}
           </Button>
           <button
             onClick={handleAutoAssignClick}
             disabled={loading || groupedUnassignedUnits.length === 0}
-            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 
+            className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 
                            disabled:bg-gray-300 disabled:cursor-not-allowed
-                           shadow-sm transition-all text-sm font-bold flex items-center gap-2"
+                           shadow-sm transition-all text-xs font-bold flex items-center gap-1"
           >
             {loading ? (
               <>
-                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
                   <circle
                     className="opacity-25"
                     cx="12"
@@ -243,10 +243,10 @@ export const AssignmentWorkspace: React.FC = () => {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   />
                 </svg>
-                배정 중...
+                배정중
               </>
             ) : (
-              <>⚡ 자동 배정 실행</>
+              <>⚡ 자동배정</>
             )}
           </button>
         </div>
@@ -259,11 +259,11 @@ export const AssignmentWorkspace: React.FC = () => {
       )}
 
       {/* 2. Main Workspace (Grid) */}
-      <div className="flex-1 p-4 grid grid-cols-1 md:grid-cols-2 gap-4 overflow-hidden bg-gray-100">
+      <div className="flex-1 p-4 grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto md:overflow-hidden bg-gray-100">
         {/* Left Column */}
-        <div className="flex flex-col gap-4 overflow-hidden">
+        <div className="flex flex-col gap-4 md:overflow-hidden">
           {/* Panel 1: 미배정 부대 (교육단위별 그룹화) */}
-          <div className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
+          <div className="md:flex-1 max-h-[40vh] md:max-h-none bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
             <div className="p-3 bg-red-50 border-b border-red-100 border-l-4 border-l-red-500 font-bold text-gray-700 flex justify-between items-center gap-2">
               <span className="flex items-center gap-2 shrink-0">📋 배정 대상 부대 (부대별)</span>
               <input
@@ -331,7 +331,7 @@ export const AssignmentWorkspace: React.FC = () => {
           </div>
 
           {/* Panel 2: 가용 강사 */}
-          <div className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
+          <div className="md:flex-1 max-h-[40vh] md:max-h-none bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
             <div className="p-3 bg-slate-50 border-b border-slate-100 border-l-4 border-l-slate-700 font-bold text-gray-700 flex items-center gap-2">
               <span className="shrink-0">👤 가용 강사</span>
               <input
@@ -419,8 +419,8 @@ export const AssignmentWorkspace: React.FC = () => {
         </div>
 
         {/* Right Column */}
-        <div className="flex flex-col gap-4 overflow-hidden">
-          <div className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
+        <div className="flex flex-col gap-4 md:overflow-hidden">
+          <div className="md:flex-1 max-h-[40vh] md:max-h-none bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
             <div className="p-3 bg-orange-50 border-b border-orange-100 border-l-4 border-l-orange-500 font-bold text-gray-700 flex justify-between items-center">
               <span>⚖️ 배정 작업 공간 (부대별)</span>
               <div className="flex gap-2">
@@ -498,7 +498,7 @@ export const AssignmentWorkspace: React.FC = () => {
           </div>
 
           {/* Panel 4: 확정 배정 완료 */}
-          <div className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
+          <div className="md:flex-1 max-h-[40vh] md:max-h-none bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
             <div className="p-3 bg-blue-50 border-b border-blue-100 border-l-4 border-l-blue-500 font-bold text-gray-700 flex justify-between items-center">
               <span>✅ 확정 배정 완료</span>
               <button
