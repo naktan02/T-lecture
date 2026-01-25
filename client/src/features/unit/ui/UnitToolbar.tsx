@@ -96,9 +96,9 @@ export const UnitToolbar = ({
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
       {/* 상단: 제목 + 액션 버튼 */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg md:text-xl font-bold text-gray-800">부대 관리</h2>
-          <p className="text-xs md:text-sm text-gray-500 mt-0.5">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg md:text-xl font-bold text-gray-800 truncate">부대 관리</h2>
+          <p className="text-[10px] md:text-sm text-gray-500 mt-0.5">
             총 <span className="font-bold text-green-600">{totalCount.toLocaleString()}</span>개
           </p>
         </div>
@@ -109,21 +109,25 @@ export const UnitToolbar = ({
           <button
             onClick={() => setIsFilterOpen(!isFilterOpen)}
             className={`
-              md:hidden flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm
+              md:hidden flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs
               transition-all active:scale-95
               ${
-                isFilterOpen
+                isFilterOpen ||
+                filters.keyword ||
+                filters.startDate ||
+                filters.endDate ||
+                filters.hasError
                   ? 'bg-green-50 border-green-300 text-green-700'
                   : 'bg-white border-gray-200 text-gray-600'
               }
             `}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                d="M3 4a1 1 0 011-1h16|1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
               />
             </svg>
             필터
@@ -139,11 +143,16 @@ export const UnitToolbar = ({
           />
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200
-                       bg-white text-gray-600 text-sm hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
+            className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200
+                       bg-white text-gray-600 text-xs md:text-sm hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
             title="엑셀 업로드"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-3.5 h-3.5 md:w-4 md:h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -157,11 +166,16 @@ export const UnitToolbar = ({
           {/* 엑셀 양식 다운로드 */}
           <button
             onClick={() => unitApi.downloadExcelTemplate()}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200
-                       bg-white text-gray-600 text-sm hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
+            className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200
+                       bg-white text-gray-600 text-xs md:text-sm hover:bg-gray-50 active:scale-95 transition-all shadow-sm"
             title="엑셀 양식 다운로드"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-3.5 h-3.5 md:w-4 md:h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -175,11 +189,16 @@ export const UnitToolbar = ({
           {/* 신규 등록 */}
           <button
             onClick={onCreate}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg 
-                       bg-green-500 text-white text-sm font-medium
+            className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg 
+                       bg-green-500 text-white text-xs md:text-sm font-medium
                        hover:bg-green-600 active:scale-95 transition-all shadow-sm shadow-green-200"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-3.5 h-3.5 md:w-4 md:h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -307,61 +326,10 @@ export const UnitToolbar = ({
         <div className="md:hidden mt-4 pt-4 border-t border-gray-100 space-y-3">
           {/* 검색어 */}
           <div className="relative">
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <input
-              type="text"
-              name="keyword"
-              placeholder="검색어 입력..."
-              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg text-sm outline-none"
-              value={filters.keyword}
-              onChange={handleChange}
-            />
-          </div>
-
-          {/* 기간 */}
-          <div className="flex gap-2">
-            <input
-              type="date"
-              name="startDate"
-              value={filters.startDate}
-              onChange={handleChange}
-              max="2099-12-31"
-              className="flex-1 px-3 py-3 border border-gray-200 rounded-lg text-sm outline-none"
-            />
-            <input
-              type="date"
-              name="endDate"
-              value={filters.endDate}
-              onChange={handleChange}
-              max="2099-12-31"
-              className="flex-1 px-3 py-3 border border-gray-200 rounded-lg text-sm outline-none"
-            />
-          </div>
-
-          {/* 데이터 오류 체크 (모바일) */}
-          <label className="flex items-center gap-2 px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer">
-            <input
-              type="checkbox"
-              name="hasError"
-              checked={filters.hasError}
-              onChange={handleChange}
-              className="w-5 h-5 rounded text-red-500 focus:ring-red-500 border-gray-300"
-            />
-            <span className="text-sm text-gray-700 flex items-center gap-1">
+            <label className="text-[10px] font-medium text-gray-500 mb-1 block">검색어</label>
+            <div className="relative">
               <svg
-                className="w-4 h-4 text-red-500"
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -370,12 +338,72 @@ export const UnitToolbar = ({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                 />
               </svg>
-              데이터 오류만 보기
-            </span>
-          </label>
+              <input
+                type="text"
+                name="keyword"
+                placeholder="부대명, 지역, 주소 검색..."
+                className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-green-500"
+                value={filters.keyword}
+                onChange={handleChange}
+                onKeyDown={handleKeyDown}
+              />
+            </div>
+          </div>
+
+          {/* 기간 */}
+          <div>
+            <label className="text-[10px] font-medium text-gray-500 mb-1 block">기간 선택</label>
+            <div className="flex gap-2">
+              <input
+                type="date"
+                name="startDate"
+                value={filters.startDate}
+                onChange={handleChange}
+                max="2099-12-31"
+                className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-xs outline-none bg-white min-w-0"
+              />
+              <input
+                type="date"
+                name="endDate"
+                value={filters.endDate}
+                onChange={handleChange}
+                max="2099-12-31"
+                className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-xs outline-none bg-white min-w-0"
+              />
+            </div>
+          </div>
+
+          {/* 데이터 오류 체크 (모바일) */}
+          <div className="flex items-center justify-between gap-3">
+            <label className="flex flex-1 items-center gap-2 px-3 py-2.5 bg-white border border-gray-200 rounded-lg cursor-pointer">
+              <input
+                type="checkbox"
+                name="hasError"
+                checked={filters.hasError}
+                onChange={handleChange}
+                className="w-4 h-4 rounded text-red-500 focus:ring-red-500 border-gray-300"
+              />
+              <span className="text-xs text-gray-700 flex items-center gap-1 text-red-500 font-medium">
+                데이터 오류만 보기
+              </span>
+            </label>
+
+            <button
+              onClick={handleReset}
+              className="px-3 py-2.5 text-gray-500 text-xs font-medium hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
+            >
+              초기화
+            </button>
+            <button
+              onClick={handleSearch}
+              className="flex-1 px-4 py-2.5 bg-green-500 text-white rounded-lg text-xs font-bold shadow-md shadow-green-100"
+            >
+              검색 적용
+            </button>
+          </div>
         </div>
       )}
 

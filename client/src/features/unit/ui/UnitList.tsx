@@ -279,7 +279,7 @@ export const UnitList = ({
             <div
               key={unit.id}
               className={`
-                relative p-4 rounded-xl border-2 transition-all duration-200
+                relative p-3.5 rounded-xl border-2 transition-all duration-200
                 ${
                   isSelected
                     ? 'border-green-400 bg-green-50/50 shadow-sm'
@@ -302,13 +302,15 @@ export const UnitList = ({
               <div className="ml-8">
                 {/* 상단: 부대명 + 타입 */}
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="font-bold text-gray-900">{unit.name}</h3>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-gray-900 text-sm md:text-base truncate">
+                      {unit.name}
+                    </h3>
                     {(() => {
                       const colors = getUnitTypeColor(unit.unitType);
                       return (
                         <span
-                          className={`inline-block text-xs px-2 py-0.5 rounded-full mt-1 ${colors.bgColor} ${colors.textColor}`}
+                          className={`inline-block text-[10px] px-1.5 py-0.5 rounded-full mt-1 ${colors.bgColor} ${colors.textColor}`}
                         >
                           {getMilitaryTypeLabel(unit.unitType)}
                         </span>
@@ -316,7 +318,7 @@ export const UnitList = ({
                     })()}
                   </div>
                   <svg
-                    className="w-5 h-5 text-gray-400 flex-shrink-0 mt-1"
+                    className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -331,16 +333,16 @@ export const UnitList = ({
                 </div>
 
                 {/* 정보 그리드 */}
-                <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                  <div className="flex items-center gap-1.5 text-gray-600">
-                    <span className="text-base">📍</span>
+                <div className="mt-2.5 grid grid-cols-2 gap-2 text-[11px] md:text-sm">
+                  <div className="flex items-center gap-1 text-gray-600">
+                    <span className="text-sm">📍</span>
                     <span className="truncate">
                       {unit.wideArea} {unit.region}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-gray-600">
-                    <span className="text-base">📅</span>
-                    <span>
+                  <div className="flex items-center gap-1 text-gray-600">
+                    <span className="text-sm">📅</span>
+                    <span className="truncate">
                       {formatDateMD(start)} ~ {formatDateMD(end)}
                     </span>
                   </div>

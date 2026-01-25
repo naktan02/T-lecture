@@ -113,7 +113,7 @@ export const UnitWorkspace = (): ReactElement => {
     <>
       <main className="flex-1 w-full max-w-7xl mx-auto p-3 md:p-6 flex flex-col min-h-0">
         {/* 툴바 영역 */}
-        <div className="shrink-0 mb-3 md:mb-4">
+        <div className="shrink-0 mb-3">
           <UnitToolbar
             onSearch={handleSearch}
             onUploadExcel={uploadExcel}
@@ -125,20 +125,20 @@ export const UnitWorkspace = (): ReactElement => {
         {/* 선택 삭제 바 */}
         {selectedIds.length > 0 && (
           <div className="shrink-0 mb-3 flex flex-col gap-2">
-            <div className="flex flex-wrap gap-y-2 justify-between items-center bg-green-50 p-3 px-4 rounded-xl border border-green-200">
-              <div className="flex flex-wrap items-center gap-2 mr-2">
-                <span className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold shrink-0">
+            <div className="flex flex-wrap gap-y-2 justify-between items-center bg-green-50 p-2.5 md:p-3 px-4 rounded-xl border border-green-200 shadow-sm">
+              <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mr-2">
+                <span className="w-5 h-5 md:w-6 md:h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold shrink-0">
                   {selectAll ? meta?.total : selectedIds.length}
                 </span>
-                <span className="text-sm text-green-800 font-medium whitespace-nowrap">
-                  {selectAll ? `전체 ${meta?.total}개 데이터가 선택되었습니다.` : '개 선택됨'}
+                <span className="text-xs md:text-sm text-green-800 font-medium whitespace-nowrap">
+                  {selectAll ? `전체 ${meta?.total}개 선택됨` : '개 선택됨'}
                 </span>
                 {!selectAll && meta?.total > selectedIds.length && (
                   <button
                     onClick={handleSelectAllData}
-                    className="ml-2 sm:ml-4 text-sm text-blue-600 underline hover:text-blue-800 font-bold whitespace-nowrap"
+                    className="text-[11px] md:text-sm text-blue-600 underline hover:text-blue-800 font-bold whitespace-nowrap"
                   >
-                    검색된 모든 데이터 {meta?.total}개 선택하기
+                    전체 {meta?.total}개 선택
                   </button>
                 )}
                 {selectAll && (
@@ -147,7 +147,7 @@ export const UnitWorkspace = (): ReactElement => {
                       setSelectAll(false);
                       setSelectedIds([]);
                     }}
-                    className="ml-2 sm:ml-4 text-sm text-gray-500 underline hover:text-gray-700 whitespace-nowrap"
+                    className="text-[11px] md:text-sm text-gray-500 underline hover:text-gray-700 whitespace-nowrap"
                   >
                     선택 해제
                   </button>
@@ -155,8 +155,8 @@ export const UnitWorkspace = (): ReactElement => {
               </div>
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-red-500 text-white rounded-lg 
-                            hover:bg-red-600 active:scale-95 transition-all text-sm font-medium shrink-0 ml-auto md:ml-0"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-3 md:py-2 bg-red-500 text-white rounded-lg 
+                            hover:bg-red-600 active:scale-95 transition-all text-xs md:text-sm font-medium shrink-0 ml-auto"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path

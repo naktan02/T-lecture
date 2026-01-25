@@ -106,13 +106,13 @@ export const UserToolbar = ({
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       {/* 상단 헤더 */}
       <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg md:text-xl font-bold text-gray-800">유저 관리</h2>
-          <p className="text-xs md:text-sm text-gray-500 mt-0.5">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg md:text-xl font-bold text-gray-800 truncate">유저 관리</h2>
+          <p className="text-[10px] md:text-sm text-gray-500 mt-0.5">
             총 <span className="font-bold text-green-600">{totalCount.toLocaleString()}</span>명
             {pendingCount > 0 && (
-              <span className="ml-2 text-amber-600">
-                (승인 대기: <span className="font-bold">{pendingCount}</span>명)
+              <span className="ml-1 md:ml-2 text-amber-600">
+                (대기: <span className="font-bold">{pendingCount}</span>)
               </span>
             )}
           </p>
@@ -175,11 +175,14 @@ export const UserToolbar = ({
       {isFilterOpen && (
         <div className="border-t border-gray-100 p-4 bg-gray-50 space-y-4">
           {/* 검색어 입력 */}
+          {/* 검색어 입력 */}
           <div>
-            <label className="text-xs font-medium text-gray-600 mb-1 block">검색어</label>
+            <label className="text-[10px] md:text-xs font-medium text-gray-600 mb-1 block">
+              검색어
+            </label>
             <div className="relative">
               <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 md:w-4 md:h-4 text-gray-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -195,7 +198,7 @@ export const UserToolbar = ({
                 type="text"
                 name="name"
                 placeholder="이름, 이메일 검색..."
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                className="w-full pl-9 md:pl-10 pr-4 py-2 md:py-2.5 border border-gray-200 rounded-lg text-xs md:text-sm outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 value={filters.name}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
@@ -207,12 +210,14 @@ export const UserToolbar = ({
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {/* 상태 */}
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">상태</label>
+              <label className="text-[10px] md:text-xs font-medium text-gray-600 mb-1 block">
+                상태
+              </label>
               <select
                 name="status"
                 value={filters.status}
                 onChange={handleChange}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-2 md:px-3 py-2 md:py-2.5 border border-gray-200 rounded-lg text-xs md:text-sm bg-white outline-none focus:ring-2 focus:ring-green-500"
               >
                 {STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -224,12 +229,14 @@ export const UserToolbar = ({
 
             {/* 유형 */}
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">유형</label>
+              <label className="text-[10px] md:text-xs font-medium text-gray-600 mb-1 block">
+                유형
+              </label>
               <select
                 name="role"
                 value={filters.role}
                 onChange={handleChange}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-2 md:px-3 py-2 md:py-2.5 border border-gray-200 rounded-lg text-xs md:text-sm bg-white outline-none focus:ring-2 focus:ring-green-500"
               >
                 {ROLE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -241,12 +248,14 @@ export const UserToolbar = ({
 
             {/* 분류 (카테고리) */}
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">분류</label>
+              <label className="text-[10px] md:text-xs font-medium text-gray-600 mb-1 block">
+                분류
+              </label>
               <select
                 name="category"
                 value={filters.category}
                 onChange={handleChange}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-2 md:px-3 py-2 md:py-2.5 border border-gray-200 rounded-lg text-xs md:text-sm bg-white outline-none focus:ring-2 focus:ring-green-500"
               >
                 {CATEGORY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -258,12 +267,14 @@ export const UserToolbar = ({
 
             {/* 소속 팀 */}
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">소속 팀</label>
+              <label className="text-[10px] md:text-xs font-medium text-gray-600 mb-1 block">
+                소속 팀
+              </label>
               <select
                 name="teamId"
                 value={filters.teamId}
                 onChange={handleChange}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-2 md:px-3 py-2 md:py-2.5 border border-gray-200 rounded-lg text-xs md:text-sm bg-white outline-none focus:ring-2 focus:ring-green-500"
               >
                 <option value="">전체 팀</option>
                 {teams.map((team) => (
@@ -276,15 +287,17 @@ export const UserToolbar = ({
 
             {/* 근무 가능 기간 */}
             <div className="col-span-2">
-              <label className="text-xs font-medium text-gray-600 mb-1 block">근무 가능 기간</label>
-              <div className="flex gap-2 items-center">
+              <label className="text-[10px] md:text-xs font-medium text-gray-600 mb-1 block">
+                근무 가능 기간
+              </label>
+              <div className="flex gap-1.5 md:gap-2 items-center">
                 <input
                   type="date"
                   name="availableFrom"
                   value={filters.availableFrom}
                   onChange={handleChange}
                   max="2099-12-31"
-                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-green-500"
+                  className="flex-1 px-2 md:px-3 py-2 md:py-2.5 border border-gray-200 rounded-lg text-xs md:text-sm bg-white outline-none focus:ring-2 focus:ring-green-500 min-w-0"
                 />
                 <span className="text-gray-400">~</span>
                 <input
@@ -293,22 +306,24 @@ export const UserToolbar = ({
                   value={filters.availableTo}
                   onChange={handleChange}
                   max="2099-12-31"
-                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-green-500"
+                  className="flex-1 px-2 md:px-3 py-2 md:py-2.5 border border-gray-200 rounded-lg text-xs md:text-sm bg-white outline-none focus:ring-2 focus:ring-green-500 min-w-0"
                 />
               </div>
             </div>
 
             {/* 정보 입력 미완료 */}
             <div className="col-span-2">
-              <label className="flex items-center gap-2 cursor-pointer mt-2">
+              <label className="flex items-center gap-2 cursor-pointer mt-1 md:mt-2">
                 <input
                   type="checkbox"
                   name="profileIncomplete"
                   checked={filters.profileIncomplete}
                   onChange={(e) => setFilters({ ...filters, profileIncomplete: e.target.checked })}
-                  className="w-4 h-4 text-amber-500 border-gray-300 rounded focus:ring-amber-500"
+                  className="w-3.5 h-3.5 md:w-4 md:h-4 text-amber-500 border-gray-300 rounded focus:ring-amber-500"
                 />
-                <span className="text-sm text-gray-700">📝 정보 입력 미완료 강사만 보기</span>
+                <span className="text-xs md:text-sm text-gray-700">
+                  📝 정보 입력 미완료 강사만 보기
+                </span>
               </label>
             </div>
           </div>

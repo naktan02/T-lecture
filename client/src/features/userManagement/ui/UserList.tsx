@@ -280,7 +280,7 @@ export const UserList = ({
       </div>
 
       {/* 모바일: 카드 뷰 */}
-      <div className="md:hidden p-3 space-y-3 overflow-auto">
+      <div className="md:hidden flex-1 overflow-auto p-3 space-y-3 custom-scrollbar">
         {/* 모바일 전체 선택 */}
         <div className="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-lg">
           <input
@@ -335,14 +335,14 @@ export const UserList = ({
                         </span>
                       )}
                     </h3>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
                       <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${roleInfo.bgColor} ${roleInfo.textColor}`}
+                        className={`text-[10px] md:text-xs px-1.5 py-0.5 rounded-full ${roleInfo.bgColor} ${roleInfo.textColor}`}
                       >
                         {roleInfo.label}
                       </span>
                       <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${statusInfo.bgColor} ${statusInfo.textColor}`}
+                        className={`text-[10px] md:text-xs px-1.5 py-0.5 rounded-full ${statusInfo.bgColor} ${statusInfo.textColor}`}
                       >
                         {statusInfo.label}
                       </span>
@@ -366,10 +366,10 @@ export const UserList = ({
                 </div>
 
                 {/* 정보 */}
-                <div className="mt-2 text-sm text-gray-600 space-y-1">
-                  <div>📧 {user.userEmail || '-'}</div>
+                <div className="mt-2 text-xs md:text-sm text-gray-600 space-y-1">
+                  <div className="truncate">📧 {user.userEmail || '-'}</div>
                   {user.instructor?.team && (
-                    <div>
+                    <div className="truncate">
                       🏢 {user.instructor.team.name}
                       {user.instructor.generation && (
                         <span className="text-gray-400"> ({user.instructor.generation}기)</span>
