@@ -124,6 +124,11 @@ class InquiryService {
       throw new AppError('문의사항을 삭제할 권한이 없습니다.', 403, 'FORBIDDEN');
     }
 
+    // 관리자가 아닌 경우, 답변이 완료된 문의는 삭제 불가
+    if (!isAdmin && inquiry.status === 'Answered') {
+      throw new AppError('이미 답변이 완료된 문의사항은 취소할 수 없습니다.', 400, 'BAD_REQUEST');
+    }
+
     return await inquiryRepository.delete(id);
   }
 
