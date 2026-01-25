@@ -1020,12 +1020,26 @@ class UnitService {
       '※ 복수 교육장소: 동일 부대에 장소를 추가하려면 부대명을 비우고 교육장소 정보만 입력하세요.';
     guideCell.font = { color: { argb: 'FF0000FF' }, italic: true };
 
-    // 안내 문구 2: 교육불가일자 설명
+    // 안내 문구 2: 날짜/시간 형식
     sheet.mergeCells('A3:Z3');
     const guideCell2 = sheet.getCell('A3');
     guideCell2.value =
-      '※ 교육불가일자: 교육기간 중 교육이 불가능한 날짜입니다. 복수인 경우 콤마(,)로 구분하여 입력하세요. (예: 2026-03-03,2026-03-04)';
+      '※ 날짜: YYYY-MM-DD, YYYY/MM/DD, 엑셀날짜셀 가능 | 시간: HH:MM, HH:MM:SS, 9시30분 가능 | 전화번호: 하이픈(-) 있어도/없어도 가능';
     guideCell2.font = { color: { argb: 'FF0000FF' }, italic: true };
+
+    // 안내 문구 3: O/X 및 교육불가일자
+    sheet.mergeCells('A4:Z4');
+    const guideCell3 = sheet.getCell('A4');
+    guideCell3.value =
+      '※ O/X 필드: O, ○, 예, Y, 1 → 예 | X, 아니오, N, 0, 빈값 → 아니오 | 교육불가일자: 복수 시 콤마(,) 또는 세미콜론(;)으로 구분';
+    guideCell3.font = { color: { argb: 'FF0000FF' }, italic: true };
+
+    // 안내 문구 4: 열 순서 안내
+    sheet.mergeCells('A5:Z5');
+    const guideCell4 = sheet.getCell('A5');
+    guideCell4.value =
+      '※ 열 순서는 자유롭게 변경해도 됩니다. 헤더명(부대명, 군구분 등)만 일치하면 자동으로 인식됩니다.';
+    guideCell4.font = { color: { argb: 'FF008000' }, italic: true };
 
     // 헤더 정의
     const headers = [
@@ -1061,7 +1075,7 @@ class UnitService {
         width: 15,
         required: true,
         example: '2026-03-02',
-        note: 'YYYY-MM-DD',
+        note: 'YYYY-MM-DD, YYYY/MM/DD, 엑셀날짜셀 가능',
       },
       {
         header: '교육종료일자',
@@ -1069,7 +1083,7 @@ class UnitService {
         width: 15,
         required: true,
         example: '2026-03-06',
-        note: 'YYYY-MM-DD',
+        note: 'YYYY-MM-DD, YYYY/MM/DD, 엑셀날짜셀 가능',
       },
       {
         header: '교육불가일자',
@@ -1077,7 +1091,7 @@ class UnitService {
         width: 30,
         required: false,
         example: '2026-03-03,2026-03-04',
-        note: '교육기간 중 교육불가 날짜, 복수 시 콤마(,)로 구분',
+        note: '복수 시 콤마(,) 또는 세미콜론(;)으로 구분',
       },
       {
         header: '근무시작시간',
@@ -1085,7 +1099,7 @@ class UnitService {
         width: 15,
         required: false,
         example: '09:00',
-        note: 'HH:MM',
+        note: 'HH:MM, HH:MM:SS, 9시30분 형식 가능',
       },
       {
         header: '근무종료시간',
@@ -1093,7 +1107,7 @@ class UnitService {
         width: 15,
         required: false,
         example: '18:00',
-        note: 'HH:MM',
+        note: 'HH:MM, HH:MM:SS, 9시30분 형식 가능',
       },
       {
         header: '점심시작시간',
@@ -1101,7 +1115,7 @@ class UnitService {
         width: 15,
         required: false,
         example: '12:00',
-        note: 'HH:MM',
+        note: 'HH:MM, HH:MM:SS, 9시30분 형식 가능',
       },
       {
         header: '점심종료시간',
@@ -1109,7 +1123,7 @@ class UnitService {
         width: 15,
         required: false,
         example: '13:00',
-        note: 'HH:MM',
+        note: 'HH:MM, HH:MM:SS, 9시30분 형식 가능',
       },
       { header: '간부명', key: 'officerName', width: 12, required: false, example: '홍길동' },
       {
@@ -1118,6 +1132,7 @@ class UnitService {
         width: 18,
         required: false,
         example: '010-1234-5678',
+        note: '하이픈(-) 있어도/없어도 가능 (01012345678)',
       },
       {
         header: '간부 이메일 주소',
@@ -1132,7 +1147,7 @@ class UnitService {
         width: 14,
         required: false,
         example: 'O',
-        note: 'O 또는 X',
+        note: 'O, ○, 예, Y, 1 또는 X, 아니오, N, 0',
       },
       {
         header: '회관숙박여부',
@@ -1140,7 +1155,7 @@ class UnitService {
         width: 14,
         required: false,
         example: 'X',
-        note: 'O 또는 X',
+        note: 'O, ○, 예, Y, 1 또는 X, 아니오, N, 0',
       },
       {
         header: '사전사후 휴대폰 불출 여부',
@@ -1148,7 +1163,7 @@ class UnitService {
         width: 25,
         required: false,
         example: 'O',
-        note: 'O 또는 X',
+        note: 'O, ○, 예, Y, 1 또는 X, 아니오, N, 0',
       },
       {
         header: '기존교육장소',
@@ -1171,7 +1186,7 @@ class UnitService {
         width: 16,
         required: false,
         example: 'O',
-        note: 'O 또는 X',
+        note: 'O, ○, 예, Y, 1 또는 X, 아니오, N, 0',
       },
       {
         header: '여자화장실 여부',
@@ -1179,7 +1194,7 @@ class UnitService {
         width: 16,
         required: false,
         example: 'O',
-        note: 'O 또는 X',
+        note: 'O, ○, 예, Y, 1 또는 X, 아니오, N, 0',
       },
       {
         header: '계획인원',
@@ -1200,8 +1215,8 @@ class UnitService {
       { header: '특이사항', key: 'note', width: 30, required: false, example: '주차 가능' },
     ];
 
-    // 헤더 행 (4행)
-    const headerRow = sheet.getRow(4);
+    // 헤더 행 (6행)
+    const headerRow = sheet.getRow(6);
     headers.forEach((col, index) => {
       const cell = headerRow.getCell(index + 1);
       cell.value = col.header;
@@ -1275,7 +1290,7 @@ class UnitService {
     };
 
     // 예시 데이터 1: 기본 부대 (단일 장소, 교육불가일자 복수)
-    const example1 = sheet.getRow(5);
+    const example1 = sheet.getRow(7);
     headers.forEach((col, index) => {
       applyDataCellStyle(example1, index + 1, col.example, col.key);
     });
@@ -1309,7 +1324,7 @@ class UnitService {
       actualCount: 75,
       note: '',
     };
-    const example2 = sheet.getRow(6);
+    const example2 = sheet.getRow(8);
     headers.forEach((col, index) => {
       applyDataCellStyle(example2, index + 1, example2Values[col.key], col.key);
     });
@@ -1343,7 +1358,7 @@ class UnitService {
       actualCount: 58,
       note: '프로젝터 있음',
     };
-    const example3 = sheet.getRow(7);
+    const example3 = sheet.getRow(9);
     headers.forEach((col, index) => {
       const cell = example3.getCell(index + 1);
       applyDataCellStyle(example3, index + 1, example3Values[col.key], col.key);
@@ -1358,10 +1373,10 @@ class UnitService {
     });
 
     // 안내 행 추가
-    sheet.mergeCells('A8:Z8');
-    const noteRow = sheet.getCell('A8');
+    sheet.mergeCells('A10:Z10');
+    const noteRow = sheet.getCell('A10');
     noteRow.value =
-      '↑ 7행은 6행 부대에 추가되는 교육장소입니다. 부대명을 비우면 직전 부대에 장소가 추가됩니다.';
+      '↑ 9행은 8행 부대에 추가되는 교육장소입니다. 부대명을 비우면 직전 부대에 장소가 추가됩니다.';
     noteRow.font = { color: { argb: 'FFFF6600' }, italic: true, size: 10 };
 
     // 버퍼로 변환
