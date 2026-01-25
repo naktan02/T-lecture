@@ -80,10 +80,10 @@ const InquiryPage = (): ReactElement => {
   if (!shouldRender) return <></>;
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-gray-100">
       <UserHeader />
       <ContentWrapper>
-        <div className="flex-1 flex flex-col min-h-0 bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
           {/* 헤더 */}
           <div className="p-4 border-b border-gray-200">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
@@ -132,19 +132,16 @@ const InquiryPage = (): ReactElement => {
             </div>
           </div>
 
-          {/* 목록 */}
-          <div className="flex-1 overflow-auto">
-            <InquiryList
-              inquiries={inquiries}
-              onInquiryClick={handleInquiryClick}
-              currentPage={page}
-              totalCount={totalCount}
-              pageSize={30}
-              sortField={sortField}
-              sortOrder={sortOrder}
-              onSort={handleSort}
-            />
-          </div>
+          <InquiryList
+            inquiries={inquiries}
+            onInquiryClick={handleInquiryClick}
+            currentPage={page}
+            totalCount={totalCount}
+            pageSize={30}
+            sortField={sortField}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+          />
 
           {/* 페이지네이션 */}
           <div className="border-t border-gray-200 p-3">

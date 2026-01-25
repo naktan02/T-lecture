@@ -71,10 +71,10 @@ const NoticePage = (): ReactElement => {
   if (!shouldRender) return <></>;
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-gray-100">
       <UserHeader />
       <ContentWrapper>
-        <div className="flex-1 flex flex-col min-h-0 bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
           {/* 헤더 + 검색 */}
           <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <h1 className="text-xl font-bold text-gray-900">공지사항</h1>
@@ -92,18 +92,16 @@ const NoticePage = (): ReactElement => {
             </form>
           </div>
 
-          <div className="flex-1 overflow-auto">
-            <NoticeList
-              notices={notices}
-              onNoticeClick={handleNoticeClick}
-              currentPage={page}
-              totalCount={totalCount}
-              pageSize={30}
-              sortField={sortField}
-              sortOrder={sortOrder}
-              onSort={handleSort}
-            />
-          </div>
+          <NoticeList
+            notices={notices}
+            onNoticeClick={handleNoticeClick}
+            currentPage={page}
+            totalCount={totalCount}
+            pageSize={30}
+            sortField={sortField}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+          />
 
           <div className="border-t border-gray-200 p-3">
             <Pagination currentPage={page} totalPage={totalPage} onPageChange={setPage} />
