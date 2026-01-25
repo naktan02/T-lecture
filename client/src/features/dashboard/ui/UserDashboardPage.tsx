@@ -31,14 +31,16 @@ const colorStyles = {
 };
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, icon, color }) => (
-  <div className={`rounded-xl border p-5 ${colorStyles[color]} transition-all hover:shadow-md`}>
+  <div
+    className={`rounded-xl border p-4 md:p-5 ${colorStyles[color]} transition-all hover:shadow-md`}
+  >
     <div className="flex items-center justify-between">
       <div>
-        <p className="text-sm font-medium opacity-80">{title}</p>
-        <p className="mt-1 text-2xl font-bold">{value}</p>
-        {subtitle && <p className="mt-1 text-xs opacity-70">{subtitle}</p>}
+        <p className="text-[10px] md:text-sm font-medium opacity-80">{title}</p>
+        <p className="mt-0.5 md:mt-1 text-lg md:text-2xl font-bold">{value}</p>
+        {subtitle && <p className="mt-0.5 md:mt-1 text-[9px] md:text-xs opacity-70">{subtitle}</p>}
       </div>
-      <div className="rounded-full bg-white/60 p-3">{icon}</div>
+      <div className="rounded-full bg-white/60 p-2 md:p-3 shrink-0 ml-2">{icon}</div>
     </div>
   </div>
 );
@@ -50,30 +52,30 @@ interface MonthlyChartProps {
 
 const MonthlyChart: React.FC<MonthlyChartProps> = ({ data }) => {
   const maxCount = Math.max(...data.map((d) => d.count), 1);
-  const chartHeight = 120; // 차트 막대 영역 최대 높이 (px)
+  const chartHeight = 100; // 차트 막대 영역 최대 높이 (px) - 모바일에 맞춰 약간 축소
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
+    <div className="rounded-xl border border-gray-200 bg-white p-4 md:p-5">
       <div className="mb-4 flex items-center gap-2">
-        <ChartBarIcon className="h-5 w-5 text-gray-600" />
-        <h3 className="font-semibold text-gray-800">월별 활동 추이</h3>
+        <ChartBarIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-600" />
+        <h3 className="text-sm md:text-base font-semibold text-gray-800">월별 활동 추이</h3>
       </div>
       <div
         className="flex items-end justify-around gap-1"
-        style={{ height: `${chartHeight + 40}px` }}
+        style={{ height: `${chartHeight + 35}px` }}
       >
         {data.map((item) => {
           // 픽셀 기반 높이 계산 (0건이면 2px 최소 높이)
-          const barHeight = item.count > 0 ? Math.max((item.count / maxCount) * chartHeight, 8) : 2;
+          const barHeight = item.count > 0 ? Math.max((item.count / maxCount) * chartHeight, 6) : 2;
           const monthLabel = item.month.split('-')[1] + '월';
           return (
             <div key={item.month} className="flex flex-1 flex-col items-center justify-end gap-1">
-              <span className="text-xs font-medium text-gray-600">{item.count}건</span>
+              <span className="text-[10px] md:text-xs font-medium text-gray-600">{item.count}</span>
               <div
-                className="w-full max-w-[32px] rounded-t-md bg-gradient-to-t from-blue-500 to-blue-400"
+                className="w-full max-w-[24px] md:max-w-[32px] rounded-t-sm md:rounded-t-md bg-gradient-to-t from-blue-500 to-blue-400"
                 style={{ height: `${barHeight}px` }}
               />
-              <span className="text-xs text-gray-500">{monthLabel}</span>
+              <span className="text-[10px] md:text-xs text-gray-500">{monthLabel}</span>
             </div>
           );
         })}
@@ -103,13 +105,13 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({
   totalCount,
 }) => {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
+    <div className="rounded-xl border border-gray-200 bg-white p-4 md:p-5">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <CalendarDaysIcon className="h-5 w-5 text-gray-600" />
-          <h3 className="font-semibold text-gray-800">활동 내역</h3>
+          <CalendarDaysIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-600" />
+          <h3 className="text-sm md:text-base font-semibold text-gray-800">활동 내역</h3>
         </div>
-        <span className="text-xs text-gray-400">
+        <span className="text-[10px] md:text-xs text-gray-400">
           {rangeLabel} ({totalCount}건)
         </span>
       </div>
@@ -122,27 +124,31 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({
         <EmptyState title="해당 기간의 활동 내역이 없습니다." />
       ) : (
         <>
-          <div className="max-h-[500px] space-y-3 overflow-y-auto">
+          <div className="max-h-[400px] md:max-h-[500px] space-y-2 md:space-y-3 overflow-y-auto custom-scrollbar">
             {assignments.map((assignment) => (
               <div
                 key={assignment.id}
-                className="flex items-center justify-between rounded-lg bg-gray-50 p-3 transition-colors hover:bg-gray-100"
+                className="flex items-center justify-between rounded-lg bg-gray-50 p-2.5 md:p-3 transition-colors hover:bg-gray-100"
               >
-                <div className="flex-1">
-                  <p className="font-medium text-gray-800">{assignment.unitName}</p>
-                  <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs md:text-sm font-medium text-gray-800 truncate">
+                    {assignment.unitName}
+                  </p>
+                  <div className="mt-0.5 md:mt-1 flex flex-wrap items-center gap-x-2 md:gap-x-3 gap-y-1 text-[10px] md:text-xs text-gray-500">
                     <span>{assignment.date}</span>
-                    {assignment.region && <span>• {assignment.region}</span>}
+                    {assignment.region && (
+                      <span className="hidden sm:inline">• {assignment.region}</span>
+                    )}
                     {assignment.unitType && (
-                      <span className="rounded bg-gray-200 px-1.5 py-0.5">
+                      <span className="rounded bg-gray-200 px-1 py-0.5">
                         {getMilitaryTypeLabel(assignment.unitType)}
                       </span>
                     )}
                   </div>
                 </div>
-                <div className="text-right text-sm">
-                  <p className="text-gray-600">{assignment.workHours}시간</p>
-                  <p className="text-xs text-gray-400">{assignment.distance}km</p>
+                <div className="text-right text-[11px] md:text-sm ml-2 shrink-0">
+                  <p className="text-gray-600 font-medium">{assignment.workHours}H</p>
+                  <p className="text-[10px] md:text-xs text-gray-400">{assignment.distance}km</p>
                 </div>
               </div>
             ))}
@@ -150,19 +156,18 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-center gap-2">
+            <div className="mt-4 flex items-center justify-center gap-1 md:gap-2">
               <button
                 onClick={() => onPageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="rounded-lg p-2 hover:bg-gray-100 disabled:text-gray-300 disabled:hover:bg-transparent"
+                className="rounded-lg p-1.5 md:p-2 hover:bg-gray-100 disabled:text-gray-300 disabled:hover:bg-transparent"
               >
-                <ChevronLeftIcon className="h-4 w-4" />
+                <ChevronLeftIcon className="h-3.5 w-3.5 md:h-4 md:w-4" />
               </button>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5 md:gap-1">
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                   let pageNum = i + 1;
                   if (totalPages > 5) {
-                    // Current page centered if possible
                     if (currentPage > 3) {
                       pageNum = currentPage - 2 + i;
                     }
@@ -175,7 +180,7 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({
                     <button
                       key={pageNum}
                       onClick={() => onPageChange(pageNum)}
-                      className={`h-8 w-8 rounded-lg text-sm font-medium transition-colors ${
+                      className={`h-7 w-7 md:h-8 md:w-8 rounded-lg text-xs md:text-sm font-medium transition-colors ${
                         currentPage === pageNum
                           ? 'bg-blue-50 text-blue-600'
                           : 'text-gray-600 hover:bg-gray-100'
@@ -189,9 +194,9 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({
               <button
                 onClick={() => onPageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="rounded-lg p-2 hover:bg-gray-100 disabled:text-gray-300 disabled:hover:bg-transparent"
+                className="rounded-lg p-1.5 md:p-2 hover:bg-gray-100 disabled:text-gray-300 disabled:hover:bg-transparent"
               >
-                <ChevronRightIcon className="h-4 w-4" />
+                <ChevronRightIcon className="h-3.5 w-3.5 md:h-4 md:w-4" />
               </button>
             </div>
           )}
@@ -375,28 +380,28 @@ export const UserDashboardPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="space-y-4 md:space-y-6 p-3 md:p-6">
       {/* 페이지 헤더 */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">대시보드</h1>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 md:gap-3">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">대시보드</h1>
             {(isLoading || isActivitiesLoading) && stats && (
-              <div className="flex items-center gap-2 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-600">
-                <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                업데이트 중...
+              <div className="flex items-center gap-1.5 md:gap-2 rounded-full bg-blue-50 px-2 py-0.5 md:px-2.5 md:py-1 text-[10px] md:text-xs font-medium text-blue-600">
+                <div className="h-2.5 w-2.5 md:h-3 md:w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                <span className="md:inline">업데이트 중...</span>
               </div>
             )}
           </div>
-          <p className="mt-1 text-sm text-gray-500">나의 활동 통계 현황</p>
+          <p className="mt-0.5 md:mt-1 text-xs md:text-sm text-gray-500">나의 활동 통계 현황</p>
         </div>
 
         {/* 날짜 필터 컨트롤 */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
           <select
             value={rangeType}
             onChange={(e) => setRangeType(e.target.value)}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            className="flex-1 sm:flex-none rounded-lg border border-gray-300 bg-white px-3 py-1.5 md:py-2 text-xs md:text-sm focus:border-blue-500 focus:outline-none"
           >
             <option value="1m">최근 1개월</option>
             <option value="3m">최근 3개월</option>
@@ -406,19 +411,19 @@ export const UserDashboardPage: React.FC = () => {
           </select>
 
           {rangeType === 'custom' && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 md:gap-2 w-full sm:w-auto">
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 md:py-2 text-xs md:text-sm focus:border-blue-500 focus:outline-none"
               />
               <span className="text-gray-400">~</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 md:py-2 text-xs md:text-sm focus:border-blue-500 focus:outline-none"
               />
             </div>
           )}
@@ -434,33 +439,33 @@ export const UserDashboardPage: React.FC = () => {
       ) : (
         <>
           {/* 요약 카드 섹션 */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
             <StatCard
               title="총 근무 시간"
               value={`${stats.summary.totalWorkHours}시간`}
               subtitle={'선택 기간 내 교육 시간'}
-              icon={<ClockIcon className="h-6 w-6" />}
+              icon={<ClockIcon className="h-4 w-4 md:h-6 md:w-6" />}
               color="blue"
             />
             <StatCard
               title="총 이동 거리"
               value={`${stats.summary.totalDistance}km`}
               subtitle={'선택 기간 내 이동 거리'}
-              icon={<MapPinIcon className="h-6 w-6" />}
+              icon={<MapPinIcon className="h-4 w-4 md:h-6 md:w-6" />}
               color="green"
             />
             <StatCard
               title="배정 수락률"
               value={`${stats.performance.acceptanceRate}%`}
               subtitle={`${stats.performance.acceptedCount}/${stats.performance.totalProposals} 건`}
-              icon={<ArrowTrendingUpIcon className="h-6 w-6" />}
+              icon={<ArrowTrendingUpIcon className="h-4 w-4 md:h-6 md:w-6" />}
               color="purple"
             />
             <StatCard
               title="근무 일수"
               value={`${stats.summary.totalWorkDays}일`}
               subtitle={'선택 기간 내 근무일수'}
-              icon={<CheckCircleIcon className="h-6 w-6" />}
+              icon={<CheckCircleIcon className="h-4 w-4 md:h-6 md:w-6" />}
               color="orange"
             />
           </div>
