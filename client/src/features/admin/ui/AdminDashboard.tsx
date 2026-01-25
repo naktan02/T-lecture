@@ -357,7 +357,7 @@ export const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen overflow-auto">
+    <div className="p-4 md:p-8 bg-gray-50 min-h-screen overflow-auto">
       {/* Header */}
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h2 className="text-2xl font-bold text-gray-900">관리자 대시보드</h2>
