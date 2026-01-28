@@ -127,6 +127,17 @@ class UnitService {
         errorMessages.push('생성된 교육 일정이 없습니다. (교육 불가일자 확인 필요)');
       }
 
+      // 5. 최초계획 데이터 계산 (보고서용)
+      const initialPeriodDays = schedules.length; // 교육일정 개수
+      const initialLocationCount = rawData.trainingLocations?.length || 0; // 교육장소 개수
+      // 계획인원: 일일 최대값 (trainingLocations에서 최대 plannedCount)
+      const initialPlannedCount =
+        rawData.trainingLocations && rawData.trainingLocations.length > 0
+          ? Math.max(
+              ...rawData.trainingLocations.map((loc) => (loc.plannedCount as number) || 0),
+            )
+          : 0;
+
       // 검증 상태 결정
       if (errorMessages.length > 0) {
         validationStatus = 'Invalid';
@@ -161,6 +172,10 @@ class UnitService {
         // 교육장소 및 일정
         locations: rawData.trainingLocations || [],
         schedules,
+        // 최초계획 (보고서용)
+        initialPeriodDays,
+        initialLocationCount,
+        initialPlannedCount,
       });
 
       // 스케줄이 있으면 활성 강사들에 대해 거리 행 미리 생성
@@ -566,6 +581,15 @@ class UnitService {
       schedules = this._calculateSchedules(normalizedStart, normalizedEnd, normalizedExcludedDates);
     }
 
+    // 최초계획 데이터 계산 (보고서용)
+    const initialPeriodDays = schedules?.length || 0;
+    const initialLocationCount = data.locations?.length || 0;
+    const initialPlannedCount =
+      data.initialPlannedCount ??
+      (data.locations && data.locations.length > 0
+        ? Math.max(...data.locations.map((loc) => (loc.plannedCount as number) || 0))
+        : 0);
+
     const created = await unitRepository.createTrainingPeriod(unitId, {
       name: data.name,
       workStartTime: data.workStartTime
@@ -583,6 +607,11 @@ class UnitService {
       hasHallLodging: data.hasHallLodging ?? false,
       allowsPhoneBeforeAfter: data.allowsPhoneBeforeAfter ?? false,
       schedules,
+      locations: data.locations,
+      // 최초계획 (보고서용)
+      initialPeriodDays,
+      initialLocationCount,
+      initialPlannedCount,
     });
 
     return created;
