@@ -4,6 +4,17 @@ import path from 'path';
 import prisma from '../../libs/prisma';
 import { MilitaryType } from '../../generated/prisma/client.js';
 
+// SystemConfig에서 TRAINEES_PER_INSTRUCTOR 값 가져오기 (캐시)
+let cachedTraineesPerInstructor: number | null = null;
+async function getTraineesPerInstructor(): Promise<number> {
+  if (cachedTraineesPerInstructor !== null) return cachedTraineesPerInstructor;
+  const config = await prisma.systemConfig.findUnique({
+    where: { key: 'TRAINEES_PER_INSTRUCTOR' },
+  });
+  cachedTraineesPerInstructor = config?.value ? parseInt(config.value, 10) : 36;
+  return cachedTraineesPerInstructor;
+}
+
 export interface WeeklyReportParams {
   year: number;
   month: number;
@@ -83,35 +94,51 @@ export class ReportService {
         row.getCell(14).value = g.instructors.join(', ');
         row.getCell(15).value = g.instructors.length;
 
-        row.getCell(16).value = g.totalPlannedDays;
-        row.getCell(17).value = 1;
-        row.getCell(18).value = g.totalPlannedDays;
+        // 최초계획 (16-18열)
+        row.getCell(16).value = g.initialPeriodDays; // 최초 기간
+        row.getCell(17).value = g.initialLocationCount; // 최초 그룹수
+        row.getCell(18).value = g.initialTimes; // 최초 횟수
 
-        row.getCell(19).value = g.actualDaysCumulative;
-        row.getCell(20).value = 1;
-        row.getCell(21).value = g.actualDaysCumulative;
+        // 실시현황 (19-21열)
+        row.getCell(19).value = g.actualPeriodDays; // 실시 기간
+        row.getCell(20).value = g.actualLocationCount; // 실시 그룹수
+        row.getCell(21).value = g.actualTimes; // 실시 횟수
 
-        // 교육장소 체크 (22~26열)
-        const placeCols = { 생활관: 22, 종교시설: 23, 식당: 24, 강의실: 25, 기타: 26 };
-        let placeChecked = false;
+        // 교육장소 체크 (22~26열) - 기타는 개수만큼 카운트
+        const placeCols = { 생활관: 22, 종교시설: 23, 식당: 24, 강의실: 25 };
+        const checkedTypes = new Set<number>(); // 이미 체크한 장소 유형
+        let etcCount = 0; // 기타 개수
+
         g.places.forEach((p) => {
+          let matched = false;
           for (const [key, col] of Object.entries(placeCols)) {
             if (
               p.includes(key) ||
               (key === '강의실' && (p.includes('강당') || p.includes('교육장')))
             ) {
-              row.getCell(col).value = 1;
-              if (col === 22) placeTotals.p22++;
-              else if (col === 23) placeTotals.p23++;
-              else if (col === 24) placeTotals.p24++;
-              else if (col === 25) placeTotals.p25++;
-              placeChecked = true;
+              // 종류별 중복 제외 (같은 종류는 1번만 체크)
+              if (!checkedTypes.has(col)) {
+                row.getCell(col).value = 1;
+                checkedTypes.add(col);
+                if (col === 22) placeTotals.p22++;
+                else if (col === 23) placeTotals.p23++;
+                else if (col === 24) placeTotals.p24++;
+                else if (col === 25) placeTotals.p25++;
+              }
+              matched = true;
+              break; // 하나의 장소는 한 종류에만 매칭
             }
           }
+          // 매칭되지 않은 장소는 기타로 카운트
+          if (!matched) {
+            etcCount++;
+          }
         });
-        if (!placeChecked) {
-          row.getCell(26).value = 1;
-          placeTotals.p26++;
+
+        // 기타는 개수만큼 표시
+        if (etcCount > 0) {
+          row.getCell(26).value = etcCount;
+          placeTotals.p26 += etcCount;
         }
         row.commit();
       });
@@ -128,11 +155,27 @@ export class ReportService {
           acc.pCount += g.plannedCount;
           acc.aCount += g.actualCount;
           acc.iLen += g.instructors.length;
-          acc.tpDays += g.totalPlannedDays;
-          acc.adCum += g.actualDaysCumulative;
+          // 최초계획
+          acc.initPeriod += g.initialPeriodDays;
+          acc.initLoc += g.initialLocationCount;
+          acc.initTimes += g.initialTimes;
+          // 실시현황
+          acc.actPeriod += g.actualPeriodDays;
+          acc.actLoc += g.actualLocationCount;
+          acc.actTimes += g.actualTimes;
           return acc;
         },
-        { pCount: 0, aCount: 0, iLen: 0, tpDays: 0, adCum: 0 },
+        {
+          pCount: 0,
+          aCount: 0,
+          iLen: 0,
+          initPeriod: 0,
+          initLoc: 0,
+          initTimes: 0,
+          actPeriod: 0,
+          actLoc: 0,
+          actTimes: 0,
+        },
       );
 
       const lastRow = 5 + unitGroups.length - 1;
@@ -148,29 +191,31 @@ export class ReportService {
         formula: `SUBTOTAL(9, O5:O${lastRow})`,
         result: totals.iLen,
       };
+      // 최초계획
       summaryRow.getCell(16).value = {
         formula: `SUBTOTAL(9, P5:P${lastRow})`,
-        result: totals.tpDays,
+        result: totals.initPeriod,
       };
       summaryRow.getCell(17).value = {
         formula: `SUBTOTAL(9, Q5:Q${lastRow})`,
-        result: unitGroups.length,
+        result: totals.initLoc,
       };
       summaryRow.getCell(18).value = {
         formula: `SUBTOTAL(9, R5:R${lastRow})`,
-        result: totals.tpDays,
+        result: totals.initTimes,
       };
+      // 실시현황
       summaryRow.getCell(19).value = {
         formula: `SUBTOTAL(9, S5:S${lastRow})`,
-        result: totals.adCum,
+        result: totals.actPeriod,
       };
       summaryRow.getCell(20).value = {
         formula: `SUBTOTAL(9, T5:T${lastRow})`,
-        result: unitGroups.length,
+        result: totals.actLoc,
       };
       summaryRow.getCell(21).value = {
         formula: `SUBTOTAL(9, U5:U${lastRow})`,
-        result: totals.adCum,
+        result: totals.actTimes,
       };
 
       summaryRow.getCell(22).value = {
@@ -319,35 +364,49 @@ export class ReportService {
     // ========== 진행률 정보 (Row 10~13, 데이터 행 추가로 밀림) ==========
     const progressBaseRow = summaryRowNum + 3; // 합계 + 빈 행 2개 후
 
-    // 진행률 계산
-    const totalYearSchedules = await prisma.unitSchedule.count({
-      where: { trainingPeriod: { unit: { lectureYear: year } } },
+    // 진행률 계산: 실시횟수 / 계획횟수 * 100
+    // 월 진행률: 해당 월의 실시횟수 / 계획횟수
+    const monthProgress =
+      totals.tpDays > 0 ? Math.round((totals.adCum / totals.tpDays) * 100) : 0;
+
+    // 연간 누적 계산을 위한 쿼리
+    const traineesPerInstructor = await getTraineesPerInstructor();
+
+    // 해당 연도의 모든 TrainingPeriod에서 계획횟수 합계
+    const allYearPeriods = await prisma.trainingPeriod.findMany({
+      where: { unit: { lectureYear: year } },
+      include: { schedules: true, locations: true },
     });
-    const completedThisMonth = totals.adCum;
-    const completedUntilNow = await prisma.unitSchedule.count({
+
+    let totalYearPlanned = 0;
+    allYearPeriods.forEach((tp) => {
+      const tpAny = tp as any;
+      const initPeriod = tpAny.initialPeriodDays || tp.schedules.length;
+      const initPlanned = tpAny.initialPlannedCount || 0;
+      totalYearPlanned += Math.ceil(initPlanned / traineesPerInstructor) * initPeriod;
+    });
+
+    // 해당 월까지의 누적 실시횟수 (강사 배정 카운트)
+    const cumulativeActual = await prisma.instructorUnitAssignment.count({
       where: {
-        trainingPeriod: { unit: { lectureYear: year } },
-        date: { lte: endDate },
-        assignments: { some: { state: 'Accepted' } },
+        state: 'Accepted',
+        UnitSchedule: {
+          date: { lte: endDate },
+          trainingPeriod: { unit: { lectureYear: year } },
+        },
       },
     });
 
-    const monthlySchedules = await prisma.unitSchedule.count({
-      where: { date: { gte: startDate, lte: endDate } },
-    });
-
-    const monthProgress =
-      monthlySchedules > 0 ? Math.round((completedThisMonth / monthlySchedules) * 100) : 0;
     const totalProgress =
-      totalYearSchedules > 0 ? Math.round((completedUntilNow / totalYearSchedules) * 1000) / 10 : 0;
+      totalYearPlanned > 0 ? Math.round((cumulativeActual / totalYearPlanned) * 1000) / 10 : 0;
 
     postSheet.getRow(progressBaseRow).getCell(2).value =
       `* ${month}월 진행률 :  ${monthProgress}(%)`;
     postSheet.getRow(progressBaseRow + 1).getCell(2).value = `* 전체 진행률 :  ${totalProgress}(%)`;
     postSheet.getRow(progressBaseRow + 2).getCell(2).value = `총 진행 목표(${year})`;
-    postSheet.getRow(progressBaseRow + 2).getCell(3).value = totalYearSchedules;
+    postSheet.getRow(progressBaseRow + 2).getCell(3).value = totalYearPlanned;
     postSheet.getRow(progressBaseRow + 3).getCell(2).value = `누적 진행(${month}월)`;
-    postSheet.getRow(progressBaseRow + 3).getCell(3).value = completedUntilNow;
+    postSheet.getRow(progressBaseRow + 3).getCell(3).value = cumulativeActual;
 
     // 열 너비 내용에 맞춰 자동 조절
     this.autoResizeColumns(preSheet, 5); // 사전 시트: 데이터 row 5부터
@@ -357,7 +416,7 @@ export class ReportService {
   }
 
   // =====================================================
-  // 주간 보고서용 데이터 조회
+  // 주간 보고서용 데이터 조회 (새 로직: TrainingPeriod별 행 분리)
   // =====================================================
   private async getWeeklyReportData(startDate: Date, endDate: Date) {
     const schedulesInRange = await prisma.unitSchedule.findMany({
@@ -367,10 +426,13 @@ export class ReportService {
     const periodIds = Array.from(new Set(schedulesInRange.map((s) => s.trainingPeriodId)));
     if (periodIds.length === 0) return [];
 
+    const traineesPerInstructor = await getTraineesPerInstructor();
+
     const periods = await prisma.trainingPeriod.findMany({
       where: { id: { in: periodIds } },
       include: {
         unit: true,
+        locations: true, // 교육장소
         schedules: {
           where: { date: { gte: startDate, lte: endDate } },
           orderBy: { date: 'asc' },
@@ -385,78 +447,99 @@ export class ReportService {
       },
     });
 
-    const unitMap = new Map<number, any>();
-    for (const p of periods) {
-      if (!unitMap.has(p.unitId)) {
-        unitMap.set(p.unitId, {
-          unitName: p.unit.name,
-          unitType: p.unit.unitType,
-          wideArea: p.unit.wideArea,
-          region: p.unit.region,
-          periods: [],
-        });
-      }
-      unitMap.get(p.unitId).periods.push(p);
-    }
-
-    return Array.from(unitMap.values()).map((u) => {
+    // TrainingPeriod별로 행 생성 (정규교육/추가교육 분리)
+    const results = periods.map((p) => {
       const instructors = new Set<string>();
-      const places = new Set<string>();
+      const places = new Set<string>(); // 실제 사용된 장소
       const dailyPlanned = new Map<string, number>();
       const dailyActual = new Map<string, number>();
-      const periodStrings: string[] = [];
 
-      let totalPlannedDays = 0;
-      let actualDaysCumulative = 0;
+      // 실시현황 계산
+      let actualPeriodDays = 0; // 실제 배정된 일정 수
+      let totalAssignmentCount = 0; // 강사 배정 카운트 (실시 횟수)
 
-      u.periods.forEach((p: any) => {
-        const sortedDates = p.schedules
-          .map((s: any) => s.date)
-          .filter(Boolean)
-          .sort((a: any, b: any) => a.getTime() - b.getTime());
-        if (sortedDates.length > 0) {
-          periodStrings.push(this.formatPeriod(sortedDates));
+      const sortedDates = p.schedules
+        .map((s) => s.date)
+        .filter(Boolean)
+        .sort((a, b) => (a && b ? a.getTime() - b.getTime() : 0)) as Date[];
+
+      p.schedules.forEach((s) => {
+        const dateStr = s.date?.toISOString().split('T')[0] || 'Unknown';
+        if (!dailyPlanned.has(dateStr)) dailyPlanned.set(dateStr, 0);
+        if (!dailyActual.has(dateStr)) dailyActual.set(dateStr, 0);
+
+        s.scheduleLocations.forEach((sl) => {
+          dailyPlanned.set(dateStr, dailyPlanned.get(dateStr)! + (sl.plannedCount || 0));
+          dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount || 0));
+          const pl = sl.location?.originalPlace || sl.location?.changedPlace;
+          if (pl) places.add(pl);
+        });
+
+        // 실제 배정된 일정 카운트
+        if (s.assignments.length > 0) {
+          actualPeriodDays++;
+          totalAssignmentCount += s.assignments.length; // 강사 배정 수 합산
         }
-
-        totalPlannedDays += p.schedules.length;
-        p.schedules.forEach((s: any) => {
-          const dateStr = s.date?.toISOString().split('T')[0] || 'Unknown';
-          if (!dailyPlanned.has(dateStr)) dailyPlanned.set(dateStr, 0);
-          if (!dailyActual.has(dateStr)) dailyActual.set(dateStr, 0);
-
-          s.scheduleLocations.forEach((sl: any) => {
-            dailyPlanned.set(dateStr, dailyPlanned.get(dateStr)! + (sl.plannedCount || 0));
-            dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount || 0));
-            const pl = sl.location?.originalPlace || sl.location?.changedPlace;
-            if (pl) places.add(pl);
-          });
-
-          if (s.assignments.length > 0) actualDaysCumulative++;
-          s.assignments.forEach((a: any) => {
-            if (a.User?.name) instructors.add(a.User.name);
-          });
+        s.assignments.forEach((a) => {
+          if (a.User?.name) instructors.add(a.User.name);
         });
       });
 
+      // 계획인원/참여인원: 일일 최대값
       const plannedCount =
         dailyPlanned.size > 0 ? Math.max(...Array.from(dailyPlanned.values())) : 0;
       const actualCount = dailyActual.size > 0 ? Math.max(...Array.from(dailyActual.values())) : 0;
 
+      // 최초계획 데이터 (TrainingPeriod에 저장된 값)
+      // 타입 단언: Prisma 마이그레이션 전까지 새 필드 접근용
+      const pAny = p as any;
+      const initialPeriodDays = pAny.initialPeriodDays || p.schedules.length;
+      const initialLocationCount = pAny.initialLocationCount || p.locations.length;
+      const initialPlannedCount = pAny.initialPlannedCount || plannedCount;
+      // 최초 횟수: (계획인원 / 강사당교육생수) * 최초기간
+      const initialTimes = Math.ceil(initialPlannedCount / traineesPerInstructor) * initialPeriodDays;
+
+      // 실시 그룹수: 실제 사용된 교육장소 개수
+      const actualLocationCount = places.size;
+
+      // 첫 번째 일정 날짜 (정렬용)
+      const firstDate = sortedDates.length > 0 ? sortedDates[0] : null;
+
       return {
-        ...u,
-        periodStr: periodStrings.join(', '),
+        unitName: p.unit.name,
+        unitType: p.unit.unitType,
+        wideArea: p.unit.wideArea,
+        region: p.unit.region,
+        periodName: p.name, // 정규교육, 추가교육 등
+        periodStr: this.formatPeriod(sortedDates),
         plannedCount,
         actualCount,
-        totalPlannedDays,
-        actualDaysCumulative,
         instructors: Array.from(instructors),
         places: Array.from(places),
+        // 최초계획
+        initialPeriodDays,
+        initialLocationCount,
+        initialTimes,
+        // 실시현황
+        actualPeriodDays,
+        actualLocationCount,
+        actualTimes: totalAssignmentCount, // 강사 배정 횟수
+        // 정렬용
+        firstDate,
       };
+    });
+
+    // 교육 일자 순 정렬
+    return results.sort((a, b) => {
+      if (!a.firstDate && !b.firstDate) return 0;
+      if (!a.firstDate) return 1;
+      if (!b.firstDate) return -1;
+      return a.firstDate.getTime() - b.firstDate.getTime();
     });
   }
 
   // =====================================================
-  // 월간 보고서용 데이터 조회 (독립적)
+  // 월간 보고서용 데이터 조회 (새 로직: TrainingPeriod별 행 분리)
   // =====================================================
   private async getMonthlyReportData(startDate: Date, endDate: Date, year: number, month: number) {
     const schedulesInRange = await prisma.unitSchedule.findMany({
@@ -466,10 +549,13 @@ export class ReportService {
     const periodIds = Array.from(new Set(schedulesInRange.map((s) => s.trainingPeriodId)));
     if (periodIds.length === 0) return [];
 
+    const traineesPerInstructor = await getTraineesPerInstructor();
+
     const periods = await prisma.trainingPeriod.findMany({
       where: { id: { in: periodIds } },
       include: {
         unit: true,
+        locations: true,
         schedules: {
           where: { date: { gte: startDate, lte: endDate } },
           orderBy: { date: 'asc' },
@@ -484,93 +570,94 @@ export class ReportService {
       },
     });
 
-    const unitMap = new Map<number, any>();
-    for (const p of periods) {
-      if (!unitMap.has(p.unitId)) {
-        unitMap.set(p.unitId, {
-          unitName: p.unit.name,
-          unitType: p.unit.unitType,
-          wideArea: p.unit.wideArea,
-          region: p.unit.region,
-          officerName: p.officerName,
-          officerPhone: p.officerPhone,
-          periods: [],
-        });
-      }
-      // 담당관 정보 업데이트 (나중에 들어온 값으로)
-      if (p.officerName) unitMap.get(p.unitId).officerName = p.officerName;
-      if (p.officerPhone) unitMap.get(p.unitId).officerPhone = p.officerPhone;
-      unitMap.get(p.unitId).periods.push(p);
-    }
-
-    return Array.from(unitMap.values()).map((u) => {
+    // TrainingPeriod별로 행 생성 (정규교육/추가교육 분리)
+    const results = periods.map((p) => {
       const instructors = new Set<string>();
       const dailyPlanned = new Map<string, number>();
       const dailyActual = new Map<string, number>();
-      const periodStrings: string[] = [];
       const weeks = new Set<number>();
 
-      let totalPlannedDays = 0;
-      let actualDaysCumulative = 0;
+      // 실시현황 계산
+      let totalAssignmentCount = 0; // 강사 배정 카운트 (실시 횟수)
 
-      u.periods.forEach((p: any) => {
-        const sortedDates = p.schedules
-          .map((s: any) => s.date)
-          .filter(Boolean)
-          .sort((a: any, b: any) => a.getTime() - b.getTime());
-        if (sortedDates.length > 0) {
-          periodStrings.push(this.formatPeriod(sortedDates));
-          // 주차 계산
-          sortedDates.forEach((d: Date) => {
-            const weekNum = this.getWeekNumber(d, month);
-            if (weekNum > 0) weeks.add(weekNum);
-          });
-        }
+      const sortedDates = p.schedules
+        .map((s) => s.date)
+        .filter(Boolean)
+        .sort((a, b) => (a && b ? a.getTime() - b.getTime() : 0)) as Date[];
 
-        totalPlannedDays += p.schedules.length;
-        p.schedules.forEach((s: any) => {
-          const dateStr = s.date?.toISOString().split('T')[0] || 'Unknown';
-          if (!dailyPlanned.has(dateStr)) dailyPlanned.set(dateStr, 0);
-          if (!dailyActual.has(dateStr)) dailyActual.set(dateStr, 0);
+      // 주차 계산
+      sortedDates.forEach((d) => {
+        const weekNum = this.getWeekNumber(d, month);
+        if (weekNum > 0) weeks.add(weekNum);
+      });
 
-          s.scheduleLocations.forEach((sl: any) => {
-            dailyPlanned.set(dateStr, dailyPlanned.get(dateStr)! + (sl.plannedCount || 0));
-            dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount || 0));
-          });
+      p.schedules.forEach((s) => {
+        const dateStr = s.date?.toISOString().split('T')[0] || 'Unknown';
+        if (!dailyPlanned.has(dateStr)) dailyPlanned.set(dateStr, 0);
+        if (!dailyActual.has(dateStr)) dailyActual.set(dateStr, 0);
 
-          if (s.assignments.length > 0) actualDaysCumulative++;
-          s.assignments.forEach((a: any) => {
-            if (a.User?.name) instructors.add(a.User.name);
-          });
+        s.scheduleLocations.forEach((sl) => {
+          dailyPlanned.set(dateStr, dailyPlanned.get(dateStr)! + (sl.plannedCount || 0));
+          dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount || 0));
+        });
+
+        // 강사 배정 카운트
+        totalAssignmentCount += s.assignments.length;
+        s.assignments.forEach((a) => {
+          if (a.User?.name) instructors.add(a.User.name);
         });
       });
 
+      // 계획인원/참여인원: 일일 최대값
       const plannedCount =
         dailyPlanned.size > 0 ? Math.max(...Array.from(dailyPlanned.values())) : 0;
       const actualCount = dailyActual.size > 0 ? Math.max(...Array.from(dailyActual.values())) : 0;
 
+      // 최초계획 데이터 (TrainingPeriod에 저장된 값)
+      const pAny = p as any;
+      const initialPeriodDays = pAny.initialPeriodDays || p.schedules.length;
+      const initialPlannedCount = pAny.initialPlannedCount || plannedCount;
+      // 계획 횟수: (계획인원 / 강사당교육생수) * 최초기간
+      const totalPlannedDays = Math.ceil(initialPlannedCount / traineesPerInstructor) * initialPeriodDays;
+
       // 담당관 연락처 포맷
       const officerContact =
-        u.officerName && u.officerPhone
-          ? `${u.officerName} / ${u.officerPhone}`
-          : u.officerName || u.officerPhone || '';
+        p.officerName && p.officerPhone
+          ? `${p.officerName} / ${p.officerPhone}`
+          : p.officerName || p.officerPhone || '';
 
       // 주차 문자열
       const weekStr = Array.from(weeks)
         .sort((a, b) => a - b)
         .join(', ');
 
+      // 첫 번째 일정 날짜 (정렬용)
+      const firstDate = sortedDates.length > 0 ? sortedDates[0] : null;
+
       return {
-        ...u,
-        periodStr: periodStrings.join(', '),
+        unitName: p.unit.name,
+        unitType: p.unit.unitType,
+        wideArea: p.unit.wideArea,
+        region: p.unit.region,
+        periodName: p.name,
+        periodStr: this.formatPeriod(sortedDates),
         plannedCount,
         actualCount,
-        totalPlannedDays,
-        actualDaysCumulative,
+        totalPlannedDays, // 계획 횟수
+        actualDaysCumulative: totalAssignmentCount, // 실시 횟수
         instructors: Array.from(instructors),
         officerContact,
         weekStr,
+        firstDate,
       };
+    });
+
+    // 교육 일자 순 정렬
+    return results.sort((a, b) => {
+      if (!a.firstDate && !b.firstDate) return 0;
+      if (!a.firstDate) return 1;
+      if (!b.firstDate) return -1;
+      return a.firstDate.getTime() - b.firstDate.getTime();
     });
   }
 
