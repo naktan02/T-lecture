@@ -58,6 +58,11 @@ model TrainingPeriod {
   hasHallLodging         Boolean? @map("회관숙박여부")
   allowsPhoneBeforeAfter Boolean? @map("사전사후 휴대폰 불출 여부")
 
+  // 최초계획 (부대 등록 시점의 데이터, 보고서용)
+  initialPeriodDays    Int? @map("최초기간") // 교육일정 개수 (교육불가일자 제외)
+  initialLocationCount Int? @map("최초그룹수") // 교육장소 개수
+  initialPlannedCount  Int? @map("최초계획인원") // 일일 최대 계획인원
+
   unit      Unit               @relation(fields: [unitId], references: [id], onDelete: Cascade)
   locations TrainingLocation[]
   schedules UnitSchedule[]
