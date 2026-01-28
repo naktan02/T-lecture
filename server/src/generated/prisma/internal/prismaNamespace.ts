@@ -2675,7 +2675,10 @@ export const TrainingPeriodScalarFieldEnum = {
   excludedDates: 'excludedDates',
   hasCateredMeals: 'hasCateredMeals',
   hasHallLodging: 'hasHallLodging',
-  allowsPhoneBeforeAfter: 'allowsPhoneBeforeAfter'
+  allowsPhoneBeforeAfter: 'allowsPhoneBeforeAfter',
+  initialPeriodDays: 'initialPeriodDays',
+  initialLocationCount: 'initialLocationCount',
+  initialPlannedCount: 'initialPlannedCount'
 } as const
 
 export type TrainingPeriodScalarFieldEnum = (typeof TrainingPeriodScalarFieldEnum)[keyof typeof TrainingPeriodScalarFieldEnum]
