@@ -242,6 +242,10 @@ class UnitRepository {
       allowsPhoneBeforeAfter?: boolean;
       locations?: TrainingLocationData[];
       schedules?: ScheduleData[];
+      // 최초계획 (보고서용)
+      initialPeriodDays?: number | null;
+      initialLocationCount?: number | null;
+      initialPlannedCount?: number | null;
     },
   ) {
     // 시간 문자열을 Date로 변환 (HH:MM 형식 지원)
@@ -278,6 +282,10 @@ class UnitRepository {
             hasCateredMeals: periodData.hasCateredMeals ?? false,
             hasHallLodging: periodData.hasHallLodging ?? false,
             allowsPhoneBeforeAfter: periodData.allowsPhoneBeforeAfter ?? false,
+            // 최초계획 (보고서용)
+            initialPeriodDays: periodData.initialPeriodDays ?? null,
+            initialLocationCount: periodData.initialLocationCount ?? null,
+            initialPlannedCount: periodData.initialPlannedCount ?? null,
             locations: {
               create: (periodData.locations || []).map((l) => {
                 const d = this._mapLocationData(l);
@@ -802,8 +810,13 @@ class UnitRepository {
         hasInstructorLounge?: boolean;
         hasWomenRestroom?: boolean;
         note?: string | null;
+        plannedCount?: number | null;
       }[];
       schedules?: { date: string | Date }[];
+      // 최초계획 (보고서용)
+      initialPeriodDays?: number | null;
+      initialLocationCount?: number | null;
+      initialPlannedCount?: number | null;
     },
   ) {
     return prisma.trainingPeriod.create({
@@ -820,6 +833,10 @@ class UnitRepository {
         hasCateredMeals: data.hasCateredMeals ?? false,
         hasHallLodging: data.hasHallLodging ?? false,
         allowsPhoneBeforeAfter: data.allowsPhoneBeforeAfter ?? false,
+        // 최초계획 (보고서용)
+        initialPeriodDays: data.initialPeriodDays ?? null,
+        initialLocationCount: data.initialLocationCount ?? null,
+        initialPlannedCount: data.initialPlannedCount ?? null,
         locations: data.locations
           ? {
               create: data.locations.map((l) => ({
