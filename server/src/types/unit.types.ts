@@ -93,6 +93,8 @@ export interface TrainingLocationInput {
   hasInstructorLounge?: boolean | string;
   hasWomenRestroom?: boolean | string;
   note?: string;
+  plannedCount?: number | string | null;
+  actualCount?: number | string | null;
 }
 
 export interface ScheduleLocationInput {
@@ -298,4 +300,14 @@ export interface CreateTrainingPeriodInput {
   startDate?: string;
   endDate?: string;
   excludedDates?: string[];
+  // 최초계획 (보고서용) - 선택적
+  initialPlannedCount?: number | null;
+  locations?: Array<{
+    originalPlace?: string;
+    changedPlace?: string | null;
+    hasInstructorLounge?: boolean;
+    hasWomenRestroom?: boolean;
+    note?: string | null;
+    plannedCount?: number | null;
+  }>;
 }
