@@ -84,6 +84,11 @@ export class ReportController {
       );
       res.send(buffer);
     } catch (error) {
+      // 데이터 없음 에러는 404로 응답
+      if (error instanceof Error && error.message.includes('교육 데이터가 없습니다')) {
+        res.status(404).json({ message: error.message });
+        return;
+      }
       next(error);
     }
   }
@@ -114,6 +119,11 @@ export class ReportController {
       );
       res.send(buffer);
     } catch (error) {
+      // 데이터 없음 에러는 404로 응답
+      if (error instanceof Error && error.message.includes('교육 데이터가 없습니다')) {
+        res.status(404).json({ message: error.message });
+        return;
+      }
       next(error);
     }
   }

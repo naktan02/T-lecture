@@ -173,7 +173,7 @@ export class ReportService {
     // 주차 유효성 검사
     const availableWeeks = await this.getAvailableWeeks(year, month);
     if (!availableWeeks.includes(week)) {
-      throw new Error(`${year}년 ${month}월에 ${week}주차는 존재하지 않습니다. 유효한 주차: ${availableWeeks.join(', ')}`);
+      throw new Error(`${year}년 ${month}월 ${week}주차에 교육 데이터가 없습니다.`);
     }
 
     const { startDate, endDate } = this.getWeekRange(year, month, week);
@@ -385,7 +385,7 @@ export class ReportService {
     // 월 유효성 검사 - 해당 연도/월에 데이터가 있는지 확인
     const availableMonths = await this.getAvailableMonths(year);
     if (!availableMonths.includes(month)) {
-      throw new Error(`${year}년 ${month}월에 데이터가 존재하지 않습니다. 유효한 월: ${availableMonths.join(', ') || '없음'}`);
+      throw new Error(`${year}년 ${month}월에 교육 데이터가 없습니다.`);
     }
 
     // 주차 기반 월간 범위: 첫 번째 월요일 ~ 마지막 주 일요일
