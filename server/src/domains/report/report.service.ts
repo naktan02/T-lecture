@@ -375,14 +375,29 @@ export class ReportService {
     // 해당 연도의 모든 TrainingPeriod에서 계획횟수 합계
     const allYearPeriods = await prisma.trainingPeriod.findMany({
       where: { unit: { lectureYear: year } },
-      include: { schedules: true, locations: true },
+      include: {
+        schedules: {
+          include: { scheduleLocations: true },
+        },
+        locations: true,
+      },
     });
 
     let totalYearPlanned = 0;
     allYearPeriods.forEach((tp) => {
       const tpAny = tp as any;
       const initPeriod = tpAny.initialPeriodDays || tp.schedules.length;
-      const initPlanned = tpAny.initialPlannedCount || 0;
+      // 동적 계산: 각 날짜별 plannedCount 합계의 최대값
+      const dailyPlannedMap = new Map<string, number>();
+      tp.schedules.forEach((s) => {
+        const dateStr = s.date?.toISOString().split('T')[0] || '';
+        if (!dailyPlannedMap.has(dateStr)) dailyPlannedMap.set(dateStr, 0);
+        s.scheduleLocations.forEach((sl) => {
+          dailyPlannedMap.set(dateStr, dailyPlannedMap.get(dateStr)! + (sl.plannedCount || 0));
+        });
+      });
+      const initPlanned =
+        dailyPlannedMap.size > 0 ? Math.max(...Array.from(dailyPlannedMap.values())) : 0;
       totalYearPlanned += Math.ceil(initPlanned / traineesPerInstructor) * initPeriod;
     });
 
@@ -490,12 +505,13 @@ export class ReportService {
         dailyPlanned.size > 0 ? Math.max(...Array.from(dailyPlanned.values())) : 0;
       const actualCount = dailyActual.size > 0 ? Math.max(...Array.from(dailyActual.values())) : 0;
 
-      // 최초계획 데이터 (TrainingPeriod에 저장된 값)
+      // 최초계획 데이터
       // 타입 단언: Prisma 마이그레이션 전까지 새 필드 접근용
       const pAny = p as any;
       const initialPeriodDays = pAny.initialPeriodDays || p.schedules.length;
       const initialLocationCount = pAny.initialLocationCount || p.locations.length;
-      const initialPlannedCount = pAny.initialPlannedCount || plannedCount;
+      // 최초계획인원: 일일 계획인원 합계의 최대값 (동적 계산)
+      const initialPlannedCount = plannedCount;
       // 최초 횟수: (계획인원 / 강사당교육생수) * 최초기간
       const initialTimes = Math.ceil(initialPlannedCount / traineesPerInstructor) * initialPeriodDays;
 
@@ -613,10 +629,11 @@ export class ReportService {
         dailyPlanned.size > 0 ? Math.max(...Array.from(dailyPlanned.values())) : 0;
       const actualCount = dailyActual.size > 0 ? Math.max(...Array.from(dailyActual.values())) : 0;
 
-      // 최초계획 데이터 (TrainingPeriod에 저장된 값)
+      // 최초계획 데이터
       const pAny = p as any;
       const initialPeriodDays = pAny.initialPeriodDays || p.schedules.length;
-      const initialPlannedCount = pAny.initialPlannedCount || plannedCount;
+      // 최초계획인원: 일일 계획인원 합계의 최대값 (동적 계산)
+      const initialPlannedCount = plannedCount;
       // 계획 횟수: (계획인원 / 강사당교육생수) * 최초기간
       const totalPlannedDays = Math.ceil(initialPlannedCount / traineesPerInstructor) * initialPeriodDays;
 
