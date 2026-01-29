@@ -30,46 +30,127 @@ export class ReportService {
   private readonly templateDir = path.join(__dirname, '../../infra/report');
 
   /**
-   * 사용 가능한 연도 목록 조회 (Unit.lectureYear 기준)
-   * 1월 초 데이터 접근을 위해 이전 년도도 포함
+   * 사용 가능한 연도 목록 조회 (실제 일정 데이터 기준)
+   * 주차 기반으로 연도 계산 (12월 5주차에 다음해 1월 초 데이터 포함)
    */
   async getAvailableYears(): Promise<number[]> {
-    const result = await prisma.unit.findMany({
-      select: { lectureYear: true },
-      distinct: ['lectureYear'],
-      orderBy: { lectureYear: 'desc' },
+    // 실제 일정 데이터에서 연도 추출
+    const schedules = await prisma.unitSchedule.findMany({
+      where: { date: { not: null } },
+      select: { date: true },
     });
-    const years = result.map((r) => r.lectureYear);
-    // 최소 연도의 이전 년도 추가 (12월 5주차로 다음해 1월 초 데이터 접근용)
-    if (years.length > 0) {
-      const minYear = Math.min(...years);
-      if (!years.includes(minYear - 1)) {
-        years.push(minYear - 1);
-        years.sort((a, b) => b - a);
+
+    const yearsSet = new Set<number>();
+
+    schedules.forEach((s) => {
+      if (!s.date) return;
+      const d = new Date(s.date);
+      const scheduleYear = d.getFullYear();
+      const scheduleMonth = d.getMonth() + 1;
+      const dayOfMonth = d.getDate();
+
+      // 해당 월의 첫 번째 월요일 계산
+      const { firstMondayDate } = this.getFirstMondayOfMonth(scheduleYear, scheduleMonth);
+
+      if (dayOfMonth < firstMondayDate) {
+        // 첫 번째 월요일 이전: 이전 달의 마지막 주에 속함
+        if (scheduleMonth === 1) {
+          // 1월 초 → 전년도 12월 주차
+          yearsSet.add(scheduleYear - 1);
+        } else {
+          yearsSet.add(scheduleYear);
+        }
+      } else {
+        yearsSet.add(scheduleYear);
       }
-    }
-    return years;
+    });
+
+    return Array.from(yearsSet).sort((a, b) => b - a);
   }
 
   /**
-   * 해당 월에 존재하는 주차 목록 조회
-   * 월의 첫 번째 월요일부터 시작하여 마지막 주까지 계산
+   * 해당 연도에서 데이터가 있는 월 목록 조회
    */
-  getAvailableWeeks(year: number, month: number): number[] {
+  async getAvailableMonths(year: number): Promise<number[]> {
+    const schedules = await prisma.unitSchedule.findMany({
+      where: { date: { not: null } },
+      select: { date: true },
+    });
+
+    const monthsSet = new Set<number>();
+
+    schedules.forEach((s) => {
+      if (!s.date) return;
+      const d = new Date(s.date);
+      const scheduleYear = d.getFullYear();
+      const scheduleMonth = d.getMonth() + 1;
+      const dayOfMonth = d.getDate();
+
+      const { firstMondayDate } = this.getFirstMondayOfMonth(scheduleYear, scheduleMonth);
+
+      // 해당 일정이 어느 연도/월의 주차에 속하는지 계산
+      let targetYear = scheduleYear;
+      let targetMonth = scheduleMonth;
+
+      if (dayOfMonth < firstMondayDate) {
+        // 첫 번째 월요일 이전: 이전 달의 마지막 주에 속함
+        if (scheduleMonth === 1) {
+          targetYear = scheduleYear - 1;
+          targetMonth = 12;
+        } else {
+          targetMonth = scheduleMonth - 1;
+        }
+      }
+
+      if (targetYear === year) {
+        monthsSet.add(targetMonth);
+      }
+    });
+
+    return Array.from(monthsSet).sort((a, b) => a - b);
+  }
+
+  /**
+   * 해당 연도/월에서 데이터가 있는 주차 목록 조회
+   */
+  async getAvailableWeeks(year: number, month: number): Promise<number[]> {
+    // 해당 월의 모든 가능한 주차 범위 계산
     const { firstMondayDate } = this.getFirstMondayOfMonth(year, month);
     const lastDayOfMonth = new Date(year, month, 0).getDate();
 
-    const weeks: number[] = [];
-    let weekNum = 1;
-    let currentMonday = firstMondayDate;
-
-    while (currentMonday <= lastDayOfMonth) {
-      weeks.push(weekNum);
-      weekNum++;
-      currentMonday += 7;
+    // 마지막 주의 월요일
+    let lastMondayDate = firstMondayDate;
+    while (lastMondayDate + 7 <= lastDayOfMonth) {
+      lastMondayDate += 7;
     }
+    const maxWeek = Math.ceil((lastMondayDate - firstMondayDate) / 7) + 1;
 
-    return weeks;
+    // 해당 월 주차 범위 내의 일정 조회
+    // 시작: 첫 번째 주 월요일, 종료: 마지막 주 일요일
+    const startDate = new Date(Date.UTC(year, month - 1, firstMondayDate, 0, 0, 0));
+    const endDate = new Date(Date.UTC(year, month - 1, lastMondayDate + 6, 23, 59, 59, 999));
+
+    const schedules = await prisma.unitSchedule.findMany({
+      where: {
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      select: { date: true },
+    });
+
+    const weeksSet = new Set<number>();
+
+    schedules.forEach((s) => {
+      if (!s.date) return;
+      const weekNum = this.getWeekNumber(new Date(s.date), year, month);
+      if (weekNum > 0 && weekNum <= maxWeek) {
+        weeksSet.add(weekNum);
+      }
+    });
+
+    return Array.from(weeksSet).sort((a, b) => a - b);
   }
 
   /**
@@ -88,6 +169,13 @@ export class ReportService {
   // =====================================================
   async generateWeeklyReport(params: WeeklyReportParams): Promise<Buffer> {
     const { year, month, week } = params;
+
+    // 주차 유효성 검사
+    const availableWeeks = await this.getAvailableWeeks(year, month);
+    if (!availableWeeks.includes(week)) {
+      throw new Error(`${year}년 ${month}월에 ${week}주차는 존재하지 않습니다. 유효한 주차: ${availableWeeks.join(', ')}`);
+    }
+
     const { startDate, endDate } = this.getWeekRange(year, month, week);
 
     const workbook = new Workbook();
@@ -99,7 +187,7 @@ export class ReportService {
     const titleCell = sheet.getRow(1).getCell(2);
     titleCell.value = `[1그룹 푸른나무재단] ${month}월 ${week}주차 '${shortYear}년 병 집중인성교육 주간 결과보고`;
 
-    const unitGroups = await this.getWeeklyReportData(startDate, endDate);
+    const unitGroups = await this.getWeeklyReportData(startDate, endDate, year, month);
 
     if (unitGroups.length > 0) {
       // 합계 행 수식 버그 방지 (클리어)
@@ -127,7 +215,7 @@ export class ReportService {
         row.getCell(7).value = g.wideArea;
         row.getCell(8).value = g.region;
         row.getCell(9).value = month;
-        row.getCell(10).value = week;
+        row.getCell(10).value = g.calculatedWeek || week; // 실제 계산된 주차 사용
         row.getCell(11).value = g.periodStr;
 
         row.getCell(12).value = g.plannedCount;
@@ -293,6 +381,13 @@ export class ReportService {
   // =====================================================
   async generateMonthlyReport(params: MonthlyReportParams): Promise<Buffer> {
     const { year, month } = params;
+
+    // 월 유효성 검사 - 해당 연도/월에 데이터가 있는지 확인
+    const availableMonths = await this.getAvailableMonths(year);
+    if (!availableMonths.includes(month)) {
+      throw new Error(`${year}년 ${month}월에 데이터가 존재하지 않습니다. 유효한 월: ${availableMonths.join(', ') || '없음'}`);
+    }
+
     // 주차 기반 월간 범위: 첫 번째 월요일 ~ 마지막 주 일요일
     const { startDate, endDate } = this.getMonthRange(year, month);
 
@@ -475,7 +570,7 @@ export class ReportService {
   // =====================================================
   // 주간 보고서용 데이터 조회 (새 로직: TrainingPeriod별 행 분리)
   // =====================================================
-  private async getWeeklyReportData(startDate: Date, endDate: Date) {
+  private async getWeeklyReportData(startDate: Date, endDate: Date, year: number, month: number) {
     const schedulesInRange = await prisma.unitSchedule.findMany({
       where: { date: { gte: startDate, lte: endDate } },
       select: { trainingPeriodId: true },
@@ -564,6 +659,9 @@ export class ReportService {
       // 첫 번째 일정 날짜 (정렬용)
       const firstDate = sortedDates.length > 0 ? sortedDates[0] : null;
 
+      // 실제 주차 계산 (첫 번째 일정 기준)
+      const calculatedWeek = firstDate ? this.getWeekNumber(firstDate, year, month) : 0;
+
       return {
         unitName: p.unit.name,
         unitType: p.unit.unitType,
@@ -583,6 +681,8 @@ export class ReportService {
         actualPeriodDays,
         actualLocationCount,
         actualTimes: totalAssignmentCount, // 강사 배정 횟수
+        // 주차 정보
+        calculatedWeek,
         // 정렬용
         firstDate,
       };

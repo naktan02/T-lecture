@@ -17,8 +17,28 @@ export class ReportController {
   }
 
   /**
+   * GET /api/v1/reports/months?year=2026
+   * 해당 연도의 데이터가 있는 월 목록 조회
+   */
+  async getAvailableMonths(req: Request, res: Response, next: NextFunction) {
+    try {
+      const year = parseInt(req.query.year as string, 10);
+
+      if (isNaN(year)) {
+        res.status(400).json({ message: 'Year is required.' });
+        return;
+      }
+
+      const months = await reportService.getAvailableMonths(year);
+      res.json(months);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * GET /api/v1/reports/weeks?year=2025&month=1
-   * 해당 월의 사용 가능한 주차 목록 조회
+   * 해당 월의 데이터가 있는 주차 목록 조회
    */
   async getAvailableWeeks(req: Request, res: Response, next: NextFunction) {
     try {
@@ -30,7 +50,7 @@ export class ReportController {
         return;
       }
 
-      const weeks = reportService.getAvailableWeeks(year, month);
+      const weeks = await reportService.getAvailableWeeks(year, month);
       res.json(weeks);
     } catch (error) {
       next(error);
