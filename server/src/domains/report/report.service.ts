@@ -485,7 +485,8 @@ export class ReportService {
 
         s.scheduleLocations.forEach((sl) => {
           dailyPlanned.set(dateStr, dailyPlanned.get(dateStr)! + (sl.plannedCount || 0));
-          dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount || 0));
+          // actualCount가 없으면 plannedCount 사용
+          dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount ?? sl.plannedCount ?? 0));
           const pl = sl.location?.originalPlace || sl.location?.changedPlace;
           if (pl) places.add(pl);
         });
@@ -614,7 +615,8 @@ export class ReportService {
 
         s.scheduleLocations.forEach((sl) => {
           dailyPlanned.set(dateStr, dailyPlanned.get(dateStr)! + (sl.plannedCount || 0));
-          dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount || 0));
+          // actualCount가 없으면 plannedCount 사용
+          dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount ?? sl.plannedCount ?? 0));
         });
 
         // 강사 배정 카운트
