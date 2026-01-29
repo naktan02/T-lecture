@@ -539,11 +539,15 @@ export class ReportService {
     });
 
     // 해당 월까지의 누적 실시횟수 (강사 배정 카운트)
+    // 실시현황은 확정 + 날짜 < 오늘인 경우만 포함
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const cumulativeActual = await prisma.instructorUnitAssignment.count({
       where: {
         state: 'Accepted',
         UnitSchedule: {
-          date: { lte: endDate },
+          date: { lt: today }, // 오늘 이전 완료된 교육만
           trainingPeriod: { unit: { lectureYear: year } },
         },
       },
@@ -579,6 +583,10 @@ export class ReportService {
     if (periodIds.length === 0) return [];
 
     const traineesPerInstructor = await getTraineesPerInstructor();
+
+    // 오늘 날짜 (실시현황 계산에 사용 - 오늘 이전 완료된 교육만 포함)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     const periods = await prisma.trainingPeriod.findMany({
       where: { id: { in: periodIds } },
@@ -620,19 +628,25 @@ export class ReportService {
         if (!dailyPlanned.has(dateStr)) dailyPlanned.set(dateStr, 0);
         if (!dailyActual.has(dateStr)) dailyActual.set(dateStr, 0);
 
+        // 날짜 < 오늘 체크 (실시현황용)
+        const scheduleDate = s.date ? new Date(s.date) : null;
+        const isCompleted = scheduleDate && scheduleDate < today;
+
         s.scheduleLocations.forEach((sl) => {
           dailyPlanned.set(dateStr, dailyPlanned.get(dateStr)! + (sl.plannedCount || 0));
-          // actualCount가 없으면 plannedCount 사용
-          dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount ?? sl.plannedCount ?? 0));
+          // 참여인원은 완료된 날짜만 집계 (날짜 < 오늘)
+          if (isCompleted) {
+            dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount ?? sl.plannedCount ?? 0));
+          }
           const pl = sl.location?.originalPlace || sl.location?.changedPlace;
           if (pl) places.add(pl);
         });
 
-        // 실제 배정된 일정 카운트
-        if (s.assignments.length > 0) {
+        if (s.assignments.length > 0 && isCompleted) {
           actualPeriodDays++;
           totalAssignmentCount += s.assignments.length; // 강사 배정 수 합산
         }
+        // 강사 명단은 날짜와 관계없이 모두 포함 (배정된 강사 표시)
         s.assignments.forEach((a) => {
           if (a.User?.name) instructors.add(a.User.name);
         });
@@ -710,6 +724,10 @@ export class ReportService {
 
     const traineesPerInstructor = await getTraineesPerInstructor();
 
+    // 오늘 날짜 (실시현황 계산에 사용 - 오늘 이전 완료된 교육만 포함)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const periods = await prisma.trainingPeriod.findMany({
       where: { id: { in: periodIds } },
       include: {
@@ -755,14 +773,23 @@ export class ReportService {
         if (!dailyPlanned.has(dateStr)) dailyPlanned.set(dateStr, 0);
         if (!dailyActual.has(dateStr)) dailyActual.set(dateStr, 0);
 
+        // 날짜 < 오늘 체크 (실시현황용)
+        const scheduleDate = s.date ? new Date(s.date) : null;
+        const isCompleted = scheduleDate && scheduleDate < today;
+
         s.scheduleLocations.forEach((sl) => {
           dailyPlanned.set(dateStr, dailyPlanned.get(dateStr)! + (sl.plannedCount || 0));
-          // actualCount가 없으면 plannedCount 사용
-          dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount ?? sl.plannedCount ?? 0));
+          // 참여인원은 완료된 날짜만 집계 (날짜 < 오늘)
+          if (isCompleted) {
+            dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount ?? sl.plannedCount ?? 0));
+          }
         });
 
-        // 강사 배정 카운트
-        totalAssignmentCount += s.assignments.length;
+        // 강사 배정 카운트 (확정 + 날짜 < 오늘인 경우만 실시현황에 포함)
+        if (isCompleted) {
+          totalAssignmentCount += s.assignments.length;
+        }
+        // 강사 명단은 날짜와 관계없이 모두 포함 (배정된 강사 표시)
         s.assignments.forEach((a) => {
           if (a.User?.name) instructors.add(a.User.name);
         });
