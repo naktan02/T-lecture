@@ -31,7 +31,6 @@ export type TrainingPeriodAvgAggregateOutputType = {
   unitId: number | null
   initialPeriodDays: number | null
   initialLocationCount: number | null
-  initialPlannedCount: number | null
 }
 
 export type TrainingPeriodSumAggregateOutputType = {
@@ -39,7 +38,6 @@ export type TrainingPeriodSumAggregateOutputType = {
   unitId: number | null
   initialPeriodDays: number | null
   initialLocationCount: number | null
-  initialPlannedCount: number | null
 }
 
 export type TrainingPeriodMinAggregateOutputType = {
@@ -59,7 +57,6 @@ export type TrainingPeriodMinAggregateOutputType = {
   allowsPhoneBeforeAfter: boolean | null
   initialPeriodDays: number | null
   initialLocationCount: number | null
-  initialPlannedCount: number | null
 }
 
 export type TrainingPeriodMaxAggregateOutputType = {
@@ -79,7 +76,6 @@ export type TrainingPeriodMaxAggregateOutputType = {
   allowsPhoneBeforeAfter: boolean | null
   initialPeriodDays: number | null
   initialLocationCount: number | null
-  initialPlannedCount: number | null
 }
 
 export type TrainingPeriodCountAggregateOutputType = {
@@ -100,7 +96,6 @@ export type TrainingPeriodCountAggregateOutputType = {
   allowsPhoneBeforeAfter: number
   initialPeriodDays: number
   initialLocationCount: number
-  initialPlannedCount: number
   _all: number
 }
 
@@ -110,7 +105,6 @@ export type TrainingPeriodAvgAggregateInputType = {
   unitId?: true
   initialPeriodDays?: true
   initialLocationCount?: true
-  initialPlannedCount?: true
 }
 
 export type TrainingPeriodSumAggregateInputType = {
@@ -118,7 +112,6 @@ export type TrainingPeriodSumAggregateInputType = {
   unitId?: true
   initialPeriodDays?: true
   initialLocationCount?: true
-  initialPlannedCount?: true
 }
 
 export type TrainingPeriodMinAggregateInputType = {
@@ -138,7 +131,6 @@ export type TrainingPeriodMinAggregateInputType = {
   allowsPhoneBeforeAfter?: true
   initialPeriodDays?: true
   initialLocationCount?: true
-  initialPlannedCount?: true
 }
 
 export type TrainingPeriodMaxAggregateInputType = {
@@ -158,7 +150,6 @@ export type TrainingPeriodMaxAggregateInputType = {
   allowsPhoneBeforeAfter?: true
   initialPeriodDays?: true
   initialLocationCount?: true
-  initialPlannedCount?: true
 }
 
 export type TrainingPeriodCountAggregateInputType = {
@@ -179,7 +170,6 @@ export type TrainingPeriodCountAggregateInputType = {
   allowsPhoneBeforeAfter?: true
   initialPeriodDays?: true
   initialLocationCount?: true
-  initialPlannedCount?: true
   _all?: true
 }
 
@@ -287,7 +277,6 @@ export type TrainingPeriodGroupByOutputType = {
   allowsPhoneBeforeAfter: boolean | null
   initialPeriodDays: number | null
   initialLocationCount: number | null
-  initialPlannedCount: number | null
   _count: TrainingPeriodCountAggregateOutputType | null
   _avg: TrainingPeriodAvgAggregateOutputType | null
   _sum: TrainingPeriodSumAggregateOutputType | null
@@ -331,7 +320,6 @@ export type TrainingPeriodWhereInput = {
   allowsPhoneBeforeAfter?: Prisma.BoolNullableFilter<"TrainingPeriod"> | boolean | null
   initialPeriodDays?: Prisma.IntNullableFilter<"TrainingPeriod"> | number | null
   initialLocationCount?: Prisma.IntNullableFilter<"TrainingPeriod"> | number | null
-  initialPlannedCount?: Prisma.IntNullableFilter<"TrainingPeriod"> | number | null
   unit?: Prisma.XOR<Prisma.UnitScalarRelationFilter, Prisma.UnitWhereInput>
   locations?: Prisma.TrainingLocationListRelationFilter
   schedules?: Prisma.UnitScheduleListRelationFilter
@@ -355,7 +343,6 @@ export type TrainingPeriodOrderByWithRelationInput = {
   allowsPhoneBeforeAfter?: Prisma.SortOrderInput | Prisma.SortOrder
   initialPeriodDays?: Prisma.SortOrderInput | Prisma.SortOrder
   initialLocationCount?: Prisma.SortOrderInput | Prisma.SortOrder
-  initialPlannedCount?: Prisma.SortOrderInput | Prisma.SortOrder
   unit?: Prisma.UnitOrderByWithRelationInput
   locations?: Prisma.TrainingLocationOrderByRelationAggregateInput
   schedules?: Prisma.UnitScheduleOrderByRelationAggregateInput
@@ -382,7 +369,6 @@ export type TrainingPeriodWhereUniqueInput = Prisma.AtLeast<{
   allowsPhoneBeforeAfter?: Prisma.BoolNullableFilter<"TrainingPeriod"> | boolean | null
   initialPeriodDays?: Prisma.IntNullableFilter<"TrainingPeriod"> | number | null
   initialLocationCount?: Prisma.IntNullableFilter<"TrainingPeriod"> | number | null
-  initialPlannedCount?: Prisma.IntNullableFilter<"TrainingPeriod"> | number | null
   unit?: Prisma.XOR<Prisma.UnitScalarRelationFilter, Prisma.UnitWhereInput>
   locations?: Prisma.TrainingLocationListRelationFilter
   schedules?: Prisma.UnitScheduleListRelationFilter
@@ -406,7 +392,6 @@ export type TrainingPeriodOrderByWithAggregationInput = {
   allowsPhoneBeforeAfter?: Prisma.SortOrderInput | Prisma.SortOrder
   initialPeriodDays?: Prisma.SortOrderInput | Prisma.SortOrder
   initialLocationCount?: Prisma.SortOrderInput | Prisma.SortOrder
-  initialPlannedCount?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.TrainingPeriodCountOrderByAggregateInput
   _avg?: Prisma.TrainingPeriodAvgOrderByAggregateInput
   _max?: Prisma.TrainingPeriodMaxOrderByAggregateInput
@@ -435,7 +420,6 @@ export type TrainingPeriodScalarWhereWithAggregatesInput = {
   allowsPhoneBeforeAfter?: Prisma.BoolNullableWithAggregatesFilter<"TrainingPeriod"> | boolean | null
   initialPeriodDays?: Prisma.IntNullableWithAggregatesFilter<"TrainingPeriod"> | number | null
   initialLocationCount?: Prisma.IntNullableWithAggregatesFilter<"TrainingPeriod"> | number | null
-  initialPlannedCount?: Prisma.IntNullableWithAggregatesFilter<"TrainingPeriod"> | number | null
 }
 
 export type TrainingPeriodCreateInput = {
@@ -454,7 +438,6 @@ export type TrainingPeriodCreateInput = {
   allowsPhoneBeforeAfter?: boolean | null
   initialPeriodDays?: number | null
   initialLocationCount?: number | null
-  initialPlannedCount?: number | null
   unit: Prisma.UnitCreateNestedOneWithoutTrainingPeriodsInput
   locations?: Prisma.TrainingLocationCreateNestedManyWithoutTrainingPeriodInput
   schedules?: Prisma.UnitScheduleCreateNestedManyWithoutTrainingPeriodInput
@@ -478,7 +461,6 @@ export type TrainingPeriodUncheckedCreateInput = {
   allowsPhoneBeforeAfter?: boolean | null
   initialPeriodDays?: number | null
   initialLocationCount?: number | null
-  initialPlannedCount?: number | null
   locations?: Prisma.TrainingLocationUncheckedCreateNestedManyWithoutTrainingPeriodInput
   schedules?: Prisma.UnitScheduleUncheckedCreateNestedManyWithoutTrainingPeriodInput
 }
@@ -499,7 +481,6 @@ export type TrainingPeriodUpdateInput = {
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  initialPlannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   unit?: Prisma.UnitUpdateOneRequiredWithoutTrainingPeriodsNestedInput
   locations?: Prisma.TrainingLocationUpdateManyWithoutTrainingPeriodNestedInput
   schedules?: Prisma.UnitScheduleUpdateManyWithoutTrainingPeriodNestedInput
@@ -523,7 +504,6 @@ export type TrainingPeriodUncheckedUpdateInput = {
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  initialPlannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   locations?: Prisma.TrainingLocationUncheckedUpdateManyWithoutTrainingPeriodNestedInput
   schedules?: Prisma.UnitScheduleUncheckedUpdateManyWithoutTrainingPeriodNestedInput
 }
@@ -546,7 +526,6 @@ export type TrainingPeriodCreateManyInput = {
   allowsPhoneBeforeAfter?: boolean | null
   initialPeriodDays?: number | null
   initialLocationCount?: number | null
-  initialPlannedCount?: number | null
 }
 
 export type TrainingPeriodUpdateManyMutationInput = {
@@ -565,7 +544,6 @@ export type TrainingPeriodUpdateManyMutationInput = {
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  initialPlannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type TrainingPeriodUncheckedUpdateManyInput = {
@@ -586,7 +564,6 @@ export type TrainingPeriodUncheckedUpdateManyInput = {
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  initialPlannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type TrainingPeriodListRelationFilter = {
@@ -625,7 +602,6 @@ export type TrainingPeriodCountOrderByAggregateInput = {
   allowsPhoneBeforeAfter?: Prisma.SortOrder
   initialPeriodDays?: Prisma.SortOrder
   initialLocationCount?: Prisma.SortOrder
-  initialPlannedCount?: Prisma.SortOrder
 }
 
 export type TrainingPeriodAvgOrderByAggregateInput = {
@@ -633,7 +609,6 @@ export type TrainingPeriodAvgOrderByAggregateInput = {
   unitId?: Prisma.SortOrder
   initialPeriodDays?: Prisma.SortOrder
   initialLocationCount?: Prisma.SortOrder
-  initialPlannedCount?: Prisma.SortOrder
 }
 
 export type TrainingPeriodMaxOrderByAggregateInput = {
@@ -653,7 +628,6 @@ export type TrainingPeriodMaxOrderByAggregateInput = {
   allowsPhoneBeforeAfter?: Prisma.SortOrder
   initialPeriodDays?: Prisma.SortOrder
   initialLocationCount?: Prisma.SortOrder
-  initialPlannedCount?: Prisma.SortOrder
 }
 
 export type TrainingPeriodMinOrderByAggregateInput = {
@@ -673,7 +647,6 @@ export type TrainingPeriodMinOrderByAggregateInput = {
   allowsPhoneBeforeAfter?: Prisma.SortOrder
   initialPeriodDays?: Prisma.SortOrder
   initialLocationCount?: Prisma.SortOrder
-  initialPlannedCount?: Prisma.SortOrder
 }
 
 export type TrainingPeriodSumOrderByAggregateInput = {
@@ -681,7 +654,6 @@ export type TrainingPeriodSumOrderByAggregateInput = {
   unitId?: Prisma.SortOrder
   initialPeriodDays?: Prisma.SortOrder
   initialLocationCount?: Prisma.SortOrder
-  initialPlannedCount?: Prisma.SortOrder
 }
 
 export type TrainingPeriodScalarRelationFilter = {
@@ -788,7 +760,6 @@ export type TrainingPeriodCreateWithoutUnitInput = {
   allowsPhoneBeforeAfter?: boolean | null
   initialPeriodDays?: number | null
   initialLocationCount?: number | null
-  initialPlannedCount?: number | null
   locations?: Prisma.TrainingLocationCreateNestedManyWithoutTrainingPeriodInput
   schedules?: Prisma.UnitScheduleCreateNestedManyWithoutTrainingPeriodInput
 }
@@ -810,7 +781,6 @@ export type TrainingPeriodUncheckedCreateWithoutUnitInput = {
   allowsPhoneBeforeAfter?: boolean | null
   initialPeriodDays?: number | null
   initialLocationCount?: number | null
-  initialPlannedCount?: number | null
   locations?: Prisma.TrainingLocationUncheckedCreateNestedManyWithoutTrainingPeriodInput
   schedules?: Prisma.UnitScheduleUncheckedCreateNestedManyWithoutTrainingPeriodInput
 }
@@ -862,7 +832,6 @@ export type TrainingPeriodScalarWhereInput = {
   allowsPhoneBeforeAfter?: Prisma.BoolNullableFilter<"TrainingPeriod"> | boolean | null
   initialPeriodDays?: Prisma.IntNullableFilter<"TrainingPeriod"> | number | null
   initialLocationCount?: Prisma.IntNullableFilter<"TrainingPeriod"> | number | null
-  initialPlannedCount?: Prisma.IntNullableFilter<"TrainingPeriod"> | number | null
 }
 
 export type TrainingPeriodCreateWithoutLocationsInput = {
@@ -881,7 +850,6 @@ export type TrainingPeriodCreateWithoutLocationsInput = {
   allowsPhoneBeforeAfter?: boolean | null
   initialPeriodDays?: number | null
   initialLocationCount?: number | null
-  initialPlannedCount?: number | null
   unit: Prisma.UnitCreateNestedOneWithoutTrainingPeriodsInput
   schedules?: Prisma.UnitScheduleCreateNestedManyWithoutTrainingPeriodInput
 }
@@ -904,7 +872,6 @@ export type TrainingPeriodUncheckedCreateWithoutLocationsInput = {
   allowsPhoneBeforeAfter?: boolean | null
   initialPeriodDays?: number | null
   initialLocationCount?: number | null
-  initialPlannedCount?: number | null
   schedules?: Prisma.UnitScheduleUncheckedCreateNestedManyWithoutTrainingPeriodInput
 }
 
@@ -940,7 +907,6 @@ export type TrainingPeriodUpdateWithoutLocationsInput = {
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  initialPlannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   unit?: Prisma.UnitUpdateOneRequiredWithoutTrainingPeriodsNestedInput
   schedules?: Prisma.UnitScheduleUpdateManyWithoutTrainingPeriodNestedInput
 }
@@ -963,7 +929,6 @@ export type TrainingPeriodUncheckedUpdateWithoutLocationsInput = {
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  initialPlannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   schedules?: Prisma.UnitScheduleUncheckedUpdateManyWithoutTrainingPeriodNestedInput
 }
 
@@ -983,7 +948,6 @@ export type TrainingPeriodCreateWithoutSchedulesInput = {
   allowsPhoneBeforeAfter?: boolean | null
   initialPeriodDays?: number | null
   initialLocationCount?: number | null
-  initialPlannedCount?: number | null
   unit: Prisma.UnitCreateNestedOneWithoutTrainingPeriodsInput
   locations?: Prisma.TrainingLocationCreateNestedManyWithoutTrainingPeriodInput
 }
@@ -1006,7 +970,6 @@ export type TrainingPeriodUncheckedCreateWithoutSchedulesInput = {
   allowsPhoneBeforeAfter?: boolean | null
   initialPeriodDays?: number | null
   initialLocationCount?: number | null
-  initialPlannedCount?: number | null
   locations?: Prisma.TrainingLocationUncheckedCreateNestedManyWithoutTrainingPeriodInput
 }
 
@@ -1042,7 +1005,6 @@ export type TrainingPeriodUpdateWithoutSchedulesInput = {
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  initialPlannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   unit?: Prisma.UnitUpdateOneRequiredWithoutTrainingPeriodsNestedInput
   locations?: Prisma.TrainingLocationUpdateManyWithoutTrainingPeriodNestedInput
 }
@@ -1065,7 +1027,6 @@ export type TrainingPeriodUncheckedUpdateWithoutSchedulesInput = {
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  initialPlannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   locations?: Prisma.TrainingLocationUncheckedUpdateManyWithoutTrainingPeriodNestedInput
 }
 
@@ -1086,7 +1047,6 @@ export type TrainingPeriodCreateManyUnitInput = {
   allowsPhoneBeforeAfter?: boolean | null
   initialPeriodDays?: number | null
   initialLocationCount?: number | null
-  initialPlannedCount?: number | null
 }
 
 export type TrainingPeriodUpdateWithoutUnitInput = {
@@ -1105,7 +1065,6 @@ export type TrainingPeriodUpdateWithoutUnitInput = {
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  initialPlannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   locations?: Prisma.TrainingLocationUpdateManyWithoutTrainingPeriodNestedInput
   schedules?: Prisma.UnitScheduleUpdateManyWithoutTrainingPeriodNestedInput
 }
@@ -1127,7 +1086,6 @@ export type TrainingPeriodUncheckedUpdateWithoutUnitInput = {
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  initialPlannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   locations?: Prisma.TrainingLocationUncheckedUpdateManyWithoutTrainingPeriodNestedInput
   schedules?: Prisma.UnitScheduleUncheckedUpdateManyWithoutTrainingPeriodNestedInput
 }
@@ -1149,7 +1107,6 @@ export type TrainingPeriodUncheckedUpdateManyWithoutUnitInput = {
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
-  initialPlannedCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 
@@ -1210,7 +1167,6 @@ export type TrainingPeriodSelect<ExtArgs extends runtime.Types.Extensions.Intern
   allowsPhoneBeforeAfter?: boolean
   initialPeriodDays?: boolean
   initialLocationCount?: boolean
-  initialPlannedCount?: boolean
   unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
   locations?: boolean | Prisma.TrainingPeriod$locationsArgs<ExtArgs>
   schedules?: boolean | Prisma.TrainingPeriod$schedulesArgs<ExtArgs>
@@ -1235,7 +1191,6 @@ export type TrainingPeriodSelectCreateManyAndReturn<ExtArgs extends runtime.Type
   allowsPhoneBeforeAfter?: boolean
   initialPeriodDays?: boolean
   initialLocationCount?: boolean
-  initialPlannedCount?: boolean
   unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["trainingPeriod"]>
 
@@ -1257,7 +1212,6 @@ export type TrainingPeriodSelectUpdateManyAndReturn<ExtArgs extends runtime.Type
   allowsPhoneBeforeAfter?: boolean
   initialPeriodDays?: boolean
   initialLocationCount?: boolean
-  initialPlannedCount?: boolean
   unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["trainingPeriod"]>
 
@@ -1279,10 +1233,9 @@ export type TrainingPeriodSelectScalar = {
   allowsPhoneBeforeAfter?: boolean
   initialPeriodDays?: boolean
   initialLocationCount?: boolean
-  initialPlannedCount?: boolean
 }
 
-export type TrainingPeriodOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "unitId" | "name" | "workStartTime" | "workEndTime" | "lunchStartTime" | "lunchEndTime" | "officerName" | "officerPhone" | "officerEmail" | "isStaffLocked" | "excludedDates" | "hasCateredMeals" | "hasHallLodging" | "allowsPhoneBeforeAfter" | "initialPeriodDays" | "initialLocationCount" | "initialPlannedCount", ExtArgs["result"]["trainingPeriod"]>
+export type TrainingPeriodOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "unitId" | "name" | "workStartTime" | "workEndTime" | "lunchStartTime" | "lunchEndTime" | "officerName" | "officerPhone" | "officerEmail" | "isStaffLocked" | "excludedDates" | "hasCateredMeals" | "hasHallLodging" | "allowsPhoneBeforeAfter" | "initialPeriodDays" | "initialLocationCount", ExtArgs["result"]["trainingPeriod"]>
 export type TrainingPeriodInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
   locations?: boolean | Prisma.TrainingPeriod$locationsArgs<ExtArgs>
@@ -1321,7 +1274,6 @@ export type $TrainingPeriodPayload<ExtArgs extends runtime.Types.Extensions.Inte
     allowsPhoneBeforeAfter: boolean | null
     initialPeriodDays: number | null
     initialLocationCount: number | null
-    initialPlannedCount: number | null
   }, ExtArgs["result"]["trainingPeriod"]>
   composites: {}
 }
@@ -1765,7 +1717,6 @@ export interface TrainingPeriodFieldRefs {
   readonly allowsPhoneBeforeAfter: Prisma.FieldRef<"TrainingPeriod", 'Boolean'>
   readonly initialPeriodDays: Prisma.FieldRef<"TrainingPeriod", 'Int'>
   readonly initialLocationCount: Prisma.FieldRef<"TrainingPeriod", 'Int'>
-  readonly initialPlannedCount: Prisma.FieldRef<"TrainingPeriod", 'Int'>
 }
     
 
