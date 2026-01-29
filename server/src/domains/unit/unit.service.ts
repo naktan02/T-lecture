@@ -130,13 +130,6 @@ class UnitService {
       // 5. 최초계획 데이터 계산 (보고서용)
       const initialPeriodDays = schedules.length; // 교육일정 개수
       const initialLocationCount = rawData.trainingLocations?.length || 0; // 교육장소 개수
-      // 계획인원: 일일 최대값 (trainingLocations에서 최대 plannedCount)
-      const initialPlannedCount =
-        rawData.trainingLocations && rawData.trainingLocations.length > 0
-          ? Math.max(
-              ...rawData.trainingLocations.map((loc) => (loc.plannedCount as number) || 0),
-            )
-          : 0;
 
       // 검증 상태 결정
       if (errorMessages.length > 0) {
@@ -175,7 +168,6 @@ class UnitService {
         // 최초계획 (보고서용)
         initialPeriodDays,
         initialLocationCount,
-        initialPlannedCount,
       });
 
       // 스케줄이 있으면 활성 강사들에 대해 거리 행 미리 생성
@@ -584,11 +576,6 @@ class UnitService {
     // 최초계획 데이터 계산 (보고서용)
     const initialPeriodDays = schedules?.length || 0;
     const initialLocationCount = data.locations?.length || 0;
-    const initialPlannedCount =
-      data.initialPlannedCount ??
-      (data.locations && data.locations.length > 0
-        ? Math.max(...data.locations.map((loc) => (loc.plannedCount as number) || 0))
-        : 0);
 
     const created = await unitRepository.createTrainingPeriod(unitId, {
       name: data.name,
@@ -611,7 +598,6 @@ class UnitService {
       // 최초계획 (보고서용)
       initialPeriodDays,
       initialLocationCount,
-      initialPlannedCount,
     });
 
     return created;
