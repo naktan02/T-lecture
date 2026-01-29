@@ -300,8 +300,6 @@ export interface CreateTrainingPeriodInput {
   startDate?: string;
   endDate?: string;
   excludedDates?: string[];
-  // 최초계획 (보고서용) - 선택적
-  initialPlannedCount?: number | null;
   locations?: Array<{
     originalPlace?: string;
     changedPlace?: string | null;
