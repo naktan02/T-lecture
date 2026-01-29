@@ -245,7 +245,6 @@ class UnitRepository {
       // 최초계획 (보고서용)
       initialPeriodDays?: number | null;
       initialLocationCount?: number | null;
-      initialPlannedCount?: number | null;
     },
   ) {
     // 시간 문자열을 Date로 변환 (HH:MM 형식 지원)
@@ -285,7 +284,6 @@ class UnitRepository {
             // 최초계획 (보고서용)
             initialPeriodDays: periodData.initialPeriodDays ?? null,
             initialLocationCount: periodData.initialLocationCount ?? null,
-            initialPlannedCount: periodData.initialPlannedCount ?? null,
             locations: {
               create: (periodData.locations || []).map((l) => {
                 const d = this._mapLocationData(l);
@@ -816,7 +814,6 @@ class UnitRepository {
       // 최초계획 (보고서용)
       initialPeriodDays?: number | null;
       initialLocationCount?: number | null;
-      initialPlannedCount?: number | null;
     },
   ) {
     return prisma.trainingPeriod.create({
@@ -836,7 +833,6 @@ class UnitRepository {
         // 최초계획 (보고서용)
         initialPeriodDays: data.initialPeriodDays ?? null,
         initialLocationCount: data.initialLocationCount ?? null,
-        initialPlannedCount: data.initialPlannedCount ?? null,
         locations: data.locations
           ? {
               create: data.locations.map((l) => ({
