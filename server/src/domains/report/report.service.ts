@@ -31,6 +31,7 @@ export class ReportService {
 
   /**
    * 사용 가능한 연도 목록 조회 (Unit.lectureYear 기준)
+   * 1월 초 데이터 접근을 위해 이전 년도도 포함
    */
   async getAvailableYears(): Promise<number[]> {
     const result = await prisma.unit.findMany({
@@ -38,7 +39,48 @@ export class ReportService {
       distinct: ['lectureYear'],
       orderBy: { lectureYear: 'desc' },
     });
-    return result.map((r) => r.lectureYear);
+    const years = result.map((r) => r.lectureYear);
+    // 최소 연도의 이전 년도 추가 (12월 5주차로 다음해 1월 초 데이터 접근용)
+    if (years.length > 0) {
+      const minYear = Math.min(...years);
+      if (!years.includes(minYear - 1)) {
+        years.push(minYear - 1);
+        years.sort((a, b) => b - a);
+      }
+    }
+    return years;
+  }
+
+  /**
+   * 해당 월에 존재하는 주차 목록 조회
+   * 월의 첫 번째 월요일부터 시작하여 마지막 주까지 계산
+   */
+  getAvailableWeeks(year: number, month: number): number[] {
+    const { firstMondayDate } = this.getFirstMondayOfMonth(year, month);
+    const lastDayOfMonth = new Date(year, month, 0).getDate();
+
+    const weeks: number[] = [];
+    let weekNum = 1;
+    let currentMonday = firstMondayDate;
+
+    while (currentMonday <= lastDayOfMonth) {
+      weeks.push(weekNum);
+      weekNum++;
+      currentMonday += 7;
+    }
+
+    return weeks;
+  }
+
+  /**
+   * 월의 첫 번째 월요일 날짜 계산
+   */
+  private getFirstMondayOfMonth(year: number, month: number): { firstMondayDate: number } {
+    const firstDayOfMonth = new Date(year, month - 1, 1);
+    const dayOfFirst = firstDayOfMonth.getDay(); // 0: 일요일, 1: 월요일, ...
+    // 첫 번째 월요일 날짜 계산
+    const firstMondayDate = 1 + (dayOfFirst === 0 ? 1 : dayOfFirst === 1 ? 0 : 8 - dayOfFirst);
+    return { firstMondayDate };
   }
 
   // =====================================================
@@ -604,7 +646,7 @@ export class ReportService {
 
       // 주차 계산
       sortedDates.forEach((d) => {
-        const weekNum = this.getWeekNumber(d, month);
+        const weekNum = this.getWeekNumber(d, year, month);
         if (weekNum > 0) weeks.add(weekNum);
       });
 
@@ -684,11 +726,11 @@ export class ReportService {
   // 헬퍼 함수들
   // =====================================================
   private getWeekRange(year: number, month: number, week: number) {
-    const firstDayOfMonth = new Date(year, month - 1, 1);
-    const dayOfFirst = firstDayOfMonth.getDay();
-    const firstMondayDate = 1 + (dayOfFirst === 1 ? 0 : dayOfFirst === 0 ? 1 : 8 - dayOfFirst);
+    const { firstMondayDate } = this.getFirstMondayOfMonth(year, month);
     const startDay = firstMondayDate + (week - 1) * 7;
+    // 시작일: 해당 월의 해당 주 월요일
     const startDate = new Date(Date.UTC(year, month - 1, startDay, 0, 0, 0));
+    // 종료일: 시작일 + 6일 (일요일, 다음 달로 넘어갈 수 있음)
     const endDate = new Date(Date.UTC(year, month - 1, startDay + 6, 23, 59, 59, 999));
     return { startDate, endDate };
   }
@@ -719,16 +761,49 @@ export class ReportService {
     return { startDate, endDate };
   }
 
-  private getWeekNumber(date: Date, month: number): number {
+  /**
+   * 날짜가 해당 월의 몇 주차에 속하는지 계산
+   * - 해당 월의 첫 번째 월요일 기준으로 계산
+   * - 첫 번째 월요일 이전 날짜는 이전 달 마지막 주차 소속 (0 반환)
+   * - 다음 달로 넘어간 날짜도 해당 주차로 포함 (주의 연속성 유지)
+   */
+  private getWeekNumber(date: Date, targetYear: number, targetMonth: number): number {
     const d = new Date(date);
-    if (d.getMonth() + 1 !== month) return 0;
-    const firstDayOfMonth = new Date(d.getFullYear(), d.getMonth(), 1);
-    const dayOfFirst = firstDayOfMonth.getDay();
-    const firstMondayDate = 1 + (dayOfFirst === 1 ? 0 : dayOfFirst === 0 ? 1 : 8 - dayOfFirst);
+    const dateYear = d.getFullYear();
+    const dateMonth = d.getMonth() + 1;
     const dayOfMonth = d.getDate();
-    // 국립어학원 기준: 첫 번째 월요일 이전 날짜는 0주차 (이전 달 소속)
-    if (dayOfMonth < firstMondayDate) return 0;
-    return Math.ceil((dayOfMonth - firstMondayDate + 1) / 7);
+
+    const { firstMondayDate } = this.getFirstMondayOfMonth(targetYear, targetMonth);
+
+    // 날짜가 타겟 월에 속하는 경우
+    if (dateYear === targetYear && dateMonth === targetMonth) {
+      if (dayOfMonth < firstMondayDate) {
+        // 첫 번째 월요일 이전: 이전 달 마지막 주차 소속
+        return 0;
+      }
+      return Math.ceil((dayOfMonth - firstMondayDate + 1) / 7);
+    }
+
+    // 날짜가 다음 달에 속하지만 현재 월의 마지막 주에 포함되는 경우
+    // (예: 1월 5주차가 2월 1-2일까지 포함)
+    if (
+      (dateYear === targetYear && dateMonth === targetMonth + 1) ||
+      (dateYear === targetYear + 1 && targetMonth === 12 && dateMonth === 1)
+    ) {
+      // 이 날짜가 타겟 월의 마지막 주에 속하는지 확인
+      const dayOfWeek = d.getDay(); // 0: 일요일
+      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const mondayOfThisWeek = new Date(d);
+      mondayOfThisWeek.setDate(d.getDate() - daysFromMonday);
+
+      // 이 주의 월요일이 타겟 월에 속하면 해당 주차 반환
+      if (mondayOfThisWeek.getFullYear() === targetYear && mondayOfThisWeek.getMonth() + 1 === targetMonth) {
+        const mondayDate = mondayOfThisWeek.getDate();
+        return Math.ceil((mondayDate - firstMondayDate + 1) / 7);
+      }
+    }
+
+    return 0;
   }
 
   private formatPeriod(dates: Date[]): string {
