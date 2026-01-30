@@ -31,10 +31,9 @@ export class ReportService {
 
   /**
    * 사용 가능한 연도 목록 조회 (실제 일정 데이터 기준)
-   * 주차 기반으로 연도 계산 (12월 5주차에 다음해 1월 초 데이터 포함)
+   * ISO 8601: 해당 주의 목요일이 속한 연도 기준
    */
   async getAvailableYears(): Promise<number[]> {
-    // 실제 일정 데이터에서 연도 추출
     const schedules = await prisma.unitSchedule.findMany({
       where: { date: { not: null } },
       select: { date: true },
@@ -44,25 +43,8 @@ export class ReportService {
 
     schedules.forEach((s) => {
       if (!s.date) return;
-      const d = new Date(s.date);
-      const scheduleYear = d.getFullYear();
-      const scheduleMonth = d.getMonth() + 1;
-      const dayOfMonth = d.getDate();
-
-      // 해당 월의 첫 번째 월요일 계산
-      const { firstMondayDate } = this.getFirstMondayOfMonth(scheduleYear, scheduleMonth);
-
-      if (dayOfMonth < firstMondayDate) {
-        // 첫 번째 월요일 이전: 이전 달의 마지막 주에 속함
-        if (scheduleMonth === 1) {
-          // 1월 초 → 전년도 12월 주차
-          yearsSet.add(scheduleYear - 1);
-        } else {
-          yearsSet.add(scheduleYear);
-        }
-      } else {
-        yearsSet.add(scheduleYear);
-      }
+      const weekInfo = this.getISO8601WeekInfo(new Date(s.date));
+      yearsSet.add(weekInfo.year);
     });
 
     return Array.from(yearsSet).sort((a, b) => b - a);
@@ -70,6 +52,7 @@ export class ReportService {
 
   /**
    * 해당 연도에서 데이터가 있는 월 목록 조회
+   * ISO 8601: 해당 주의 목요일이 속한 월 기준
    */
   async getAvailableMonths(year: number): Promise<number[]> {
     const schedules = await prisma.unitSchedule.findMany({
@@ -81,29 +64,9 @@ export class ReportService {
 
     schedules.forEach((s) => {
       if (!s.date) return;
-      const d = new Date(s.date);
-      const scheduleYear = d.getFullYear();
-      const scheduleMonth = d.getMonth() + 1;
-      const dayOfMonth = d.getDate();
-
-      const { firstMondayDate } = this.getFirstMondayOfMonth(scheduleYear, scheduleMonth);
-
-      // 해당 일정이 어느 연도/월의 주차에 속하는지 계산
-      let targetYear = scheduleYear;
-      let targetMonth = scheduleMonth;
-
-      if (dayOfMonth < firstMondayDate) {
-        // 첫 번째 월요일 이전: 이전 달의 마지막 주에 속함
-        if (scheduleMonth === 1) {
-          targetYear = scheduleYear - 1;
-          targetMonth = 12;
-        } else {
-          targetMonth = scheduleMonth - 1;
-        }
-      }
-
-      if (targetYear === year) {
-        monthsSet.add(targetMonth);
+      const weekInfo = this.getISO8601WeekInfo(new Date(s.date));
+      if (weekInfo.year === year) {
+        monthsSet.add(weekInfo.month);
       }
     });
 
@@ -112,23 +75,11 @@ export class ReportService {
 
   /**
    * 해당 연도/월에서 데이터가 있는 주차 목록 조회
+   * ISO 8601: 해당 주의 목요일이 속한 월 기준
    */
   async getAvailableWeeks(year: number, month: number): Promise<number[]> {
-    // 해당 월의 모든 가능한 주차 범위 계산
-    const { firstMondayDate } = this.getFirstMondayOfMonth(year, month);
-    const lastDayOfMonth = new Date(year, month, 0).getDate();
-
-    // 마지막 주의 월요일
-    let lastMondayDate = firstMondayDate;
-    while (lastMondayDate + 7 <= lastDayOfMonth) {
-      lastMondayDate += 7;
-    }
-    const maxWeek = Math.ceil((lastMondayDate - firstMondayDate) / 7) + 1;
-
-    // 해당 월 주차 범위 내의 일정 조회
-    // 시작: 첫 번째 주 월요일, 종료: 마지막 주 일요일
-    const startDate = new Date(Date.UTC(year, month - 1, firstMondayDate, 0, 0, 0));
-    const endDate = new Date(Date.UTC(year, month - 1, lastMondayDate + 6, 23, 59, 59, 999));
+    // 해당 월의 전체 주차 범위 가져오기
+    const { startDate, endDate } = this.getMonthRangeISO8601(year, month);
 
     const schedules = await prisma.unitSchedule.findMany({
       where: {
@@ -144,24 +95,142 @@ export class ReportService {
 
     schedules.forEach((s) => {
       if (!s.date) return;
-      const weekNum = this.getWeekNumber(new Date(s.date), year, month);
-      if (weekNum > 0 && weekNum <= maxWeek) {
-        weeksSet.add(weekNum);
+      const weekInfo = this.getISO8601WeekInfo(new Date(s.date));
+      // ISO 8601 기준으로 해당 연/월에 속하는 주차만 추가
+      if (weekInfo.year === year && weekInfo.month === month) {
+        weeksSet.add(weekInfo.week);
       }
     });
 
     return Array.from(weeksSet).sort((a, b) => a - b);
   }
 
+  // =====================================================
+  // ISO 8601 주차 계산 헬퍼 함수들
+  // =====================================================
+
   /**
-   * 월의 첫 번째 월요일 날짜 계산
+   * 주어진 날짜가 속한 주의 목요일을 반환
+   * ISO 8601: 목요일이 속한 달/연도가 해당 주의 소속을 결정
    */
-  private getFirstMondayOfMonth(year: number, month: number): { firstMondayDate: number } {
+  private getThursdayOfWeek(date: Date): Date {
+    const d = new Date(date);
+    const day = d.getDay(); // 0: 일요일, 1: 월요일, ..., 4: 목요일
+    // 목요일까지의 차이 계산 (일요일=0을 7로 처리)
+    const diff = 4 - (day === 0 ? 7 : day);
+    d.setDate(d.getDate() + diff);
+    return d;
+  }
+
+  /**
+   * 주어진 날짜가 속한 주의 월요일을 반환
+   */
+  private getMondayOfWeek(date: Date): Date {
+    const d = new Date(date);
+    const day = d.getDay(); // 0: 일요일
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    return d;
+  }
+
+  /**
+   * 주어진 날짜가 속한 주의 일요일을 반환
+   */
+  private getSundayOfWeek(date: Date): Date {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = day === 0 ? 0 : 7 - day;
+    d.setDate(d.getDate() + diff);
+    return d;
+  }
+
+  /**
+   * ISO 8601 기준으로 해당 날짜가 속한 월의 주차 번호 반환
+   * 해당 주의 목요일이 속한 달이 해당 주의 소속 월
+   * @returns { year, month, week } - 해당 날짜가 실제로 속한 연도, 월, 주차
+   */
+  private getISO8601WeekInfo(date: Date): { year: number; month: number; week: number } {
+    const thursday = this.getThursdayOfWeek(date);
+    const thursdayYear = thursday.getFullYear();
+    const thursdayMonth = thursday.getMonth() + 1;
+
+    // 해당 월의 첫 번째 목요일 찾기
+    const firstDayOfMonth = new Date(thursdayYear, thursdayMonth - 1, 1);
+    let firstThursday = new Date(firstDayOfMonth);
+    const dayOfFirst = firstDayOfMonth.getDay();
+    // 첫 번째 목요일까지의 차이
+    const daysUntilThursday = (4 - dayOfFirst + 7) % 7;
+    firstThursday.setDate(1 + daysUntilThursday);
+
+    // 주차 계산: (목요일 날짜 - 첫 번째 목요일 날짜) / 7 + 1
+    const weekNumber = Math.floor((thursday.getDate() - firstThursday.getDate()) / 7) + 1;
+
+    return { year: thursdayYear, month: thursdayMonth, week: weekNumber };
+  }
+
+  /**
+   * 해당 월의 최대 주차 수 계산 (ISO 8601 기준)
+   */
+  private getMaxWeeksInMonth(year: number, month: number): number {
+    // 해당 월의 마지막 날
+    const lastDay = new Date(year, month, 0);
+    const lastDayInfo = this.getISO8601WeekInfo(lastDay);
+
+    // 마지막 날이 해당 월에 속하면 그 주차, 아니면 그 전 주 확인
+    if (lastDayInfo.year === year && lastDayInfo.month === month) {
+      return lastDayInfo.week;
+    }
+
+    // 마지막 날의 주가 다음 달에 속하면 그 전 날짜 확인
+    const prevWeekDay = new Date(lastDay);
+    prevWeekDay.setDate(prevWeekDay.getDate() - 7);
+    const prevWeekInfo = this.getISO8601WeekInfo(prevWeekDay);
+    return prevWeekInfo.week;
+  }
+
+  /**
+   * 해당 월의 특정 주차의 날짜 범위 반환 (월요일 ~ 일요일)
+   */
+  private getWeekRangeISO8601(
+    year: number,
+    month: number,
+    week: number,
+  ): { startDate: Date; endDate: Date } {
+    // 해당 월의 첫 번째 목요일 찾기
     const firstDayOfMonth = new Date(year, month - 1, 1);
-    const dayOfFirst = firstDayOfMonth.getDay(); // 0: 일요일, 1: 월요일, ...
-    // 첫 번째 월요일 날짜 계산
-    const firstMondayDate = 1 + (dayOfFirst === 0 ? 1 : dayOfFirst === 1 ? 0 : 8 - dayOfFirst);
-    return { firstMondayDate };
+    const dayOfFirst = firstDayOfMonth.getDay();
+    const daysUntilThursday = (4 - dayOfFirst + 7) % 7;
+    const firstThursday = new Date(year, month - 1, 1 + daysUntilThursday);
+
+    // week 주차의 목요일
+    const targetThursday = new Date(firstThursday);
+    targetThursday.setDate(firstThursday.getDate() + (week - 1) * 7);
+
+    // 해당 주의 월요일과 일요일
+    const monday = this.getMondayOfWeek(targetThursday);
+    const sunday = this.getSundayOfWeek(targetThursday);
+
+    return {
+      startDate: new Date(Date.UTC(monday.getFullYear(), monday.getMonth(), monday.getDate(), 0, 0, 0)),
+      endDate: new Date(
+        Date.UTC(sunday.getFullYear(), sunday.getMonth(), sunday.getDate(), 23, 59, 59, 999),
+      ),
+    };
+  }
+
+  /**
+   * 해당 월의 전체 주차 범위의 날짜 반환 (월간 보고서용)
+   * 1주차 월요일 ~ 마지막 주차 일요일
+   */
+  private getMonthRangeISO8601(year: number, month: number): { startDate: Date; endDate: Date } {
+    const maxWeek = this.getMaxWeeksInMonth(year, month);
+    const firstWeekRange = this.getWeekRangeISO8601(year, month, 1);
+    const lastWeekRange = this.getWeekRangeISO8601(year, month, maxWeek);
+
+    return {
+      startDate: firstWeekRange.startDate,
+      endDate: lastWeekRange.endDate,
+    };
   }
 
   // =====================================================
@@ -176,7 +245,7 @@ export class ReportService {
       throw new Error(`${year}년 ${month}월 ${week}주차에 교육 데이터가 없습니다.`);
     }
 
-    const { startDate, endDate } = this.getWeekRange(year, month, week);
+    const { startDate, endDate } = this.getWeekRangeISO8601(year, month, week);
 
     const workbook = new Workbook();
     const templatePath = path.join(this.templateDir, 'report_week.xlsx');
@@ -388,8 +457,8 @@ export class ReportService {
       throw new Error(`${year}년 ${month}월에 교육 데이터가 없습니다.`);
     }
 
-    // 주차 기반 월간 범위: 첫 번째 월요일 ~ 마지막 주 일요일
-    const { startDate, endDate } = this.getMonthRange(year, month);
+    // ISO 8601 기준 월간 범위: 1주차 월요일 ~ 마지막 주차 일요일
+    const { startDate, endDate } = this.getMonthRangeISO8601(year, month);
 
     const workbook = new Workbook();
     const templatePath = path.join(this.templateDir, 'report_month.xlsx');
@@ -573,8 +642,10 @@ export class ReportService {
 
   // =====================================================
   // 주간 보고서용 데이터 조회 (새 로직: TrainingPeriod별 행 분리)
+  // 경계에 걸친 교육은 전체 기간을 표시
   // =====================================================
   private async getWeeklyReportData(startDate: Date, endDate: Date, year: number, month: number) {
+    // 1. 해당 주차에 일정이 있는 TrainingPeriod ID 조회
     const schedulesInRange = await prisma.unitSchedule.findMany({
       where: { date: { gte: startDate, lte: endDate } },
       select: { trainingPeriodId: true },
@@ -588,13 +659,14 @@ export class ReportService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    // 2. TrainingPeriod의 전체 일정 조회 (경계에 걸친 교육도 전체 기간 표시)
     const periods = await prisma.trainingPeriod.findMany({
       where: { id: { in: periodIds } },
       include: {
         unit: true,
         locations: true, // 교육장소
         schedules: {
-          where: { date: { gte: startDate, lte: endDate } },
+          // 전체 일정 조회 (날짜 범위 필터 제거)
           orderBy: { date: 'asc' },
           include: {
             scheduleLocations: { include: { location: true } },
@@ -673,8 +745,8 @@ export class ReportService {
       // 첫 번째 일정 날짜 (정렬용)
       const firstDate = sortedDates.length > 0 ? sortedDates[0] : null;
 
-      // 실제 주차 계산 (첫 번째 일정 기준)
-      const calculatedWeek = firstDate ? this.getWeekNumber(firstDate, year, month) : 0;
+      // 실제 주차 계산 (첫 번째 일정 기준, ISO 8601)
+      const calculatedWeek = firstDate ? this.getISO8601WeekInfo(firstDate).week : 0;
 
       return {
         unitName: p.unit.name,
@@ -713,8 +785,10 @@ export class ReportService {
 
   // =====================================================
   // 월간 보고서용 데이터 조회 (새 로직: TrainingPeriod별 행 분리)
+  // 경계에 걸친 교육은 전체 기간을 표시
   // =====================================================
   private async getMonthlyReportData(startDate: Date, endDate: Date, year: number, month: number) {
+    // 1. 해당 월에 일정이 있는 TrainingPeriod ID 조회
     const schedulesInRange = await prisma.unitSchedule.findMany({
       where: { date: { gte: startDate, lte: endDate } },
       select: { trainingPeriodId: true },
@@ -728,13 +802,14 @@ export class ReportService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    // 2. TrainingPeriod의 전체 일정 조회 (경계에 걸친 교육도 전체 기간 표시)
     const periods = await prisma.trainingPeriod.findMany({
       where: { id: { in: periodIds } },
       include: {
         unit: true,
         locations: true,
         schedules: {
-          where: { date: { gte: startDate, lte: endDate } },
+          // 전체 일정 조회 (날짜 범위 필터 제거)
           orderBy: { date: 'asc' },
           include: {
             scheduleLocations: { include: { location: true } },
@@ -762,10 +837,13 @@ export class ReportService {
         .filter(Boolean)
         .sort((a, b) => (a && b ? a.getTime() - b.getTime() : 0)) as Date[];
 
-      // 주차 계산
+      // 주차 계산 (ISO 8601)
       sortedDates.forEach((d) => {
-        const weekNum = this.getWeekNumber(d, year, month);
-        if (weekNum > 0) weeks.add(weekNum);
+        const weekInfo = this.getISO8601WeekInfo(d);
+        // 해당 연/월에 속하는 주차만 추가
+        if (weekInfo.year === year && weekInfo.month === month) {
+          weeks.add(weekInfo.week);
+        }
       });
 
       p.schedules.forEach((s) => {
@@ -852,87 +930,6 @@ export class ReportService {
   // =====================================================
   // 헬퍼 함수들
   // =====================================================
-  private getWeekRange(year: number, month: number, week: number) {
-    const { firstMondayDate } = this.getFirstMondayOfMonth(year, month);
-    const startDay = firstMondayDate + (week - 1) * 7;
-    // 시작일: 해당 월의 해당 주 월요일
-    const startDate = new Date(Date.UTC(year, month - 1, startDay, 0, 0, 0));
-    // 종료일: 시작일 + 6일 (일요일, 다음 달로 넘어갈 수 있음)
-    const endDate = new Date(Date.UTC(year, month - 1, startDay + 6, 23, 59, 59, 999));
-    return { startDate, endDate };
-  }
-
-  // 월간 보고서용 주차 기반 날짜 범위
-  private getMonthRange(year: number, month: number) {
-    // 해당 월의 첫 번째 월요일 계산
-    const firstDayOfMonth = new Date(year, month - 1, 1);
-    const dayOfFirst = firstDayOfMonth.getDay();
-    const firstMondayDate = 1 + (dayOfFirst === 1 ? 0 : dayOfFirst === 0 ? 1 : 8 - dayOfFirst);
-
-    // 해당 월의 마지막 날
-    const lastDayOfMonth = new Date(year, month, 0).getDate();
-
-    // 마지막 주의 월요일 계산
-    let lastMondayDate = firstMondayDate;
-    while (lastMondayDate + 7 <= lastDayOfMonth) {
-      lastMondayDate += 7;
-    }
-
-    // 마지막 주 일요일 (다음 달로 넘어갈 수 있음)
-    const lastSundayDate = lastMondayDate + 6;
-
-    const startDate = new Date(Date.UTC(year, month - 1, firstMondayDate, 0, 0, 0));
-    // 일요일이 다음 달로 넘어가는 경우 처리
-    const endDate = new Date(Date.UTC(year, month - 1, lastSundayDate, 23, 59, 59, 999));
-
-    return { startDate, endDate };
-  }
-
-  /**
-   * 날짜가 해당 월의 몇 주차에 속하는지 계산
-   * - 해당 월의 첫 번째 월요일 기준으로 계산
-   * - 첫 번째 월요일 이전 날짜는 이전 달 마지막 주차 소속 (0 반환)
-   * - 다음 달로 넘어간 날짜도 해당 주차로 포함 (주의 연속성 유지)
-   */
-  private getWeekNumber(date: Date, targetYear: number, targetMonth: number): number {
-    const d = new Date(date);
-    const dateYear = d.getFullYear();
-    const dateMonth = d.getMonth() + 1;
-    const dayOfMonth = d.getDate();
-
-    const { firstMondayDate } = this.getFirstMondayOfMonth(targetYear, targetMonth);
-
-    // 날짜가 타겟 월에 속하는 경우
-    if (dateYear === targetYear && dateMonth === targetMonth) {
-      if (dayOfMonth < firstMondayDate) {
-        // 첫 번째 월요일 이전: 이전 달 마지막 주차 소속
-        return 0;
-      }
-      return Math.ceil((dayOfMonth - firstMondayDate + 1) / 7);
-    }
-
-    // 날짜가 다음 달에 속하지만 현재 월의 마지막 주에 포함되는 경우
-    // (예: 1월 5주차가 2월 1-2일까지 포함)
-    if (
-      (dateYear === targetYear && dateMonth === targetMonth + 1) ||
-      (dateYear === targetYear + 1 && targetMonth === 12 && dateMonth === 1)
-    ) {
-      // 이 날짜가 타겟 월의 마지막 주에 속하는지 확인
-      const dayOfWeek = d.getDay(); // 0: 일요일
-      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-      const mondayOfThisWeek = new Date(d);
-      mondayOfThisWeek.setDate(d.getDate() - daysFromMonday);
-
-      // 이 주의 월요일이 타겟 월에 속하면 해당 주차 반환
-      if (mondayOfThisWeek.getFullYear() === targetYear && mondayOfThisWeek.getMonth() + 1 === targetMonth) {
-        const mondayDate = mondayOfThisWeek.getDate();
-        return Math.ceil((mondayDate - firstMondayDate + 1) / 7);
-      }
-    }
-
-    return 0;
-  }
-
   private formatPeriod(dates: Date[]): string {
     if (dates.length === 0) return '';
     const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
