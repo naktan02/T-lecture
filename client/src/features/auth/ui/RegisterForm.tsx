@@ -273,11 +273,11 @@ export const RegisterForm: React.FC = () => {
             />
             <span className="text-sm text-gray-600">
               [필수]{' '}
-              <Link to="/terms" target="_blank" className="text-green-600 hover:underline">
+              <Link to="/terms" className="text-green-600 hover:underline">
                 이용약관
               </Link>{' '}
               및{' '}
-              <Link to="/privacy" target="_blank" className="text-green-600 hover:underline">
+              <Link to="/privacy" className="text-green-600 hover:underline">
                 개인정보 처리방침
               </Link>
               에 동의합니다.

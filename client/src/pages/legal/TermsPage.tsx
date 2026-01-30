@@ -5,6 +5,15 @@ import { useNavigate } from 'react-router-dom';
 export default function TermsPage(): ReactElement {
   const navigate = useNavigate();
 
+  const handleBack = () => {
+    // 새 탭에서 열린 경우 (히스토리가 없음) /signup으로 이동
+    if (window.history.length <= 1) {
+      navigate('/signup');
+    } else {
+      navigate(-1);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4">
       <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8">
@@ -12,7 +21,7 @@ export default function TermsPage(): ReactElement {
         <div className="flex items-center gap-4 mb-6 pb-4 border-b">
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={handleBack}
             className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
             title="뒤로가기"
           >
