@@ -284,7 +284,7 @@ export class ReportService {
         row.getCell(7).value = g.wideArea;
         row.getCell(8).value = g.region;
         row.getCell(9).value = month;
-        row.getCell(10).value = g.calculatedWeek || week; // 실제 계산된 주차 사용
+        row.getCell(10).value = g.weekStr || week; // 실제 계산된 주차 사용 (여러 주차일 수 있음)
         row.getCell(11).value = g.periodStr;
 
         row.getCell(12).value = g.plannedCount;
@@ -685,6 +685,7 @@ export class ReportService {
       const places = new Set<string>(); // 실제 사용된 장소
       const dailyPlanned = new Map<string, number>();
       const dailyActual = new Map<string, number>();
+      const weeks = new Set<number>(); // 교육이 걸친 모든 주차
 
       // 실시현황 계산
       let actualPeriodDays = 0; // 실제 배정된 일정 수
@@ -694,6 +695,15 @@ export class ReportService {
         .map((s) => s.date)
         .filter(Boolean)
         .sort((a, b) => (a && b ? a.getTime() - b.getTime() : 0)) as Date[];
+
+      // 모든 날짜에서 주차 수집 (ISO 8601)
+      sortedDates.forEach((d) => {
+        const weekInfo = this.getISO8601WeekInfo(d);
+        // 해당 연/월에 속하는 주차만 추가
+        if (weekInfo.year === year && weekInfo.month === month) {
+          weeks.add(weekInfo.week);
+        }
+      });
 
       p.schedules.forEach((s) => {
         const dateStr = s.date?.toISOString().split('T')[0] || 'Unknown';
@@ -745,8 +755,10 @@ export class ReportService {
       // 첫 번째 일정 날짜 (정렬용)
       const firstDate = sortedDates.length > 0 ? sortedDates[0] : null;
 
-      // 실제 주차 계산 (첫 번째 일정 기준, ISO 8601)
-      const calculatedWeek = firstDate ? this.getISO8601WeekInfo(firstDate).week : 0;
+      // 주차 문자열 (여러 주차에 걸친 경우 모두 표시)
+      const weekStr = Array.from(weeks)
+        .sort((a, b) => a - b)
+        .join(', ');
 
       return {
         unitName: p.unit.name,
@@ -768,7 +780,7 @@ export class ReportService {
         actualLocationCount,
         actualTimes: totalAssignmentCount, // 강사 배정 횟수
         // 주차 정보
-        calculatedWeek,
+        weekStr,
         // 정렬용
         firstDate,
       };
