@@ -283,8 +283,8 @@ export class ReportService {
         row.getCell(6).value = g.unitName;
         row.getCell(7).value = g.wideArea;
         row.getCell(8).value = g.region;
-        row.getCell(9).value = month;
-        row.getCell(10).value = g.weekStr || week; // 실제 계산된 주차 사용 (여러 주차일 수 있음)
+        row.getCell(9).value = g.monthStr || month; // 시기 (달 경계 넘으면 "1월/2월")
+        row.getCell(10).value = g.weekStr || week; // 주차 (달 경계 넘으면 "4, 1")
         row.getCell(11).value = g.periodStr;
 
         row.getCell(12).value = g.plannedCount;
@@ -485,7 +485,7 @@ export class ReportService {
       row.getCell(4).value = g.unitName; // D: 부대명
       row.getCell(5).value = g.wideArea; // E: 지역(광역)
       row.getCell(6).value = g.region; // F: 지역(기초)
-      row.getCell(7).value = `${month}월`; // G: 시기
+      row.getCell(7).value = g.monthStr || `${month}월`; // G: 시기 (달 경계 시 "1월, 2월")
       row.getCell(8).value = g.weekStr || ''; // H: 주차
       row.getCell(9).value = g.periodStr; // I: 시행기간
       row.getCell(10).value = g.plannedCount; // J: 계획인원
@@ -522,7 +522,7 @@ export class ReportService {
       row.getCell(4).value = g.unitName; // D: 부대명
       row.getCell(5).value = g.wideArea; // E: 지역(광역)
       row.getCell(6).value = g.region; // F: 지역(기초)
-      row.getCell(7).value = month; // G: 시기
+      row.getCell(7).value = g.monthStrNumOnly || month; // G: 시기 (달 경계 시 "1, 2" - "월" 없이)
       row.getCell(8).value = g.weekStr || ''; // H: 주차
       row.getCell(9).value = g.periodStr; // I: 시행기간
       row.getCell(10).value = g.actualCount; // J: 참여인원
@@ -685,7 +685,8 @@ export class ReportService {
       const places = new Set<string>(); // 실제 사용된 장소
       const dailyPlanned = new Map<string, number>();
       const dailyActual = new Map<string, number>();
-      const weeks = new Set<number>(); // 교육이 걸친 모든 주차
+      // 월-주차 정보 수집 (달 경계 넘는 경우 처리)
+      const monthWeekMap = new Map<number, Set<number>>(); // month -> weeks
 
       // 실시현황 계산
       let actualPeriodDays = 0; // 실제 배정된 일정 수
@@ -696,12 +697,15 @@ export class ReportService {
         .filter(Boolean)
         .sort((a, b) => (a && b ? a.getTime() - b.getTime() : 0)) as Date[];
 
-      // 모든 날짜에서 주차 수집 (ISO 8601)
+      // 모든 날짜에서 월-주차 수집 (ISO 8601, 달 경계 포함)
       sortedDates.forEach((d) => {
         const weekInfo = this.getISO8601WeekInfo(d);
-        // 해당 연/월에 속하는 주차만 추가
-        if (weekInfo.year === year && weekInfo.month === month) {
-          weeks.add(weekInfo.week);
+        // 같은 연도의 모든 월-주차 수집 (달 경계 넘는 경우 대응)
+        if (weekInfo.year === year) {
+          if (!monthWeekMap.has(weekInfo.month)) {
+            monthWeekMap.set(weekInfo.month, new Set<number>());
+          }
+          monthWeekMap.get(weekInfo.month)!.add(weekInfo.week);
         }
       });
 
@@ -755,9 +759,13 @@ export class ReportService {
       // 첫 번째 일정 날짜 (정렬용)
       const firstDate = sortedDates.length > 0 ? sortedDates[0] : null;
 
-      // 주차 문자열 (여러 주차에 걸친 경우 모두 표시)
-      const weekStr = Array.from(weeks)
-        .sort((a, b) => a - b)
+      // 월-주차 문자열 생성 (달 경계 넘는 경우 대응)
+      const sortedMonths = Array.from(monthWeekMap.keys()).sort((a, b) => a - b);
+      // 시기: "1월" 또는 "1월, 2월"
+      const monthStr = sortedMonths.map((m) => `${m}월`).join(', ');
+      // 주차: 월별로 주차를 순서대로 나열 (예: 1월 4주, 2월 1주 → "4, 1")
+      const weekStr = sortedMonths
+        .flatMap((m) => Array.from(monthWeekMap.get(m)!).sort((a, b) => a - b))
         .join(', ');
 
       return {
@@ -779,7 +787,8 @@ export class ReportService {
         actualPeriodDays,
         actualLocationCount,
         actualTimes: totalAssignmentCount, // 강사 배정 횟수
-        // 주차 정보
+        // 시기/주차 정보
+        monthStr,
         weekStr,
         // 정렬용
         firstDate,
@@ -839,7 +848,8 @@ export class ReportService {
       const instructors = new Set<string>();
       const dailyPlanned = new Map<string, number>();
       const dailyActual = new Map<string, number>();
-      const weeks = new Set<number>();
+      // 월-주차 정보 수집 (달 경계 넘는 경우 처리)
+      const monthWeekMap = new Map<number, Set<number>>(); // month -> weeks
 
       // 실시현황 계산
       let totalAssignmentCount = 0; // 강사 배정 카운트 (실시 횟수)
@@ -849,12 +859,15 @@ export class ReportService {
         .filter(Boolean)
         .sort((a, b) => (a && b ? a.getTime() - b.getTime() : 0)) as Date[];
 
-      // 주차 계산 (ISO 8601)
+      // 모든 날짜에서 월-주차 수집 (ISO 8601, 달 경계 포함)
       sortedDates.forEach((d) => {
         const weekInfo = this.getISO8601WeekInfo(d);
-        // 해당 연/월에 속하는 주차만 추가
-        if (weekInfo.year === year && weekInfo.month === month) {
-          weeks.add(weekInfo.week);
+        // 같은 연도의 모든 월-주차 수집 (달 경계 넘는 경우 대응)
+        if (weekInfo.year === year) {
+          if (!monthWeekMap.has(weekInfo.month)) {
+            monthWeekMap.set(weekInfo.month, new Set<number>());
+          }
+          monthWeekMap.get(weekInfo.month)!.add(weekInfo.week);
         }
       });
 
@@ -904,13 +917,19 @@ export class ReportService {
           ? `${p.officerName} / ${p.officerPhone}`
           : p.officerName || p.officerPhone || '';
 
-      // 주차 문자열
-      const weekStr = Array.from(weeks)
-        .sort((a, b) => a - b)
-        .join(', ');
-
       // 첫 번째 일정 날짜 (정렬용)
       const firstDate = sortedDates.length > 0 ? sortedDates[0] : null;
+
+      // 월-주차 문자열 생성 (달 경계 넘는 경우 대응)
+      const sortedMonths = Array.from(monthWeekMap.keys()).sort((a, b) => a - b);
+      // 시기 (사전 시트용): "1월" 또는 "1월, 2월"
+      const monthStr = sortedMonths.map((m) => `${m}월`).join(', ');
+      // 시기 (사후 시트용): "1" 또는 "1, 2" ("월" 없이)
+      const monthStrNumOnly = sortedMonths.join(', ');
+      // 주차: 월별로 주차를 순서대로 나열 (예: 1월 4주, 2월 1주 → "4, 1")
+      const weekStr = sortedMonths
+        .flatMap((m) => Array.from(monthWeekMap.get(m)!).sort((a, b) => a - b))
+        .join(', ');
 
       return {
         unitName: p.unit.name,
@@ -925,6 +944,8 @@ export class ReportService {
         actualDaysCumulative: totalAssignmentCount, // 실시 횟수
         instructors: Array.from(instructors),
         officerContact,
+        monthStr, // 사전 시트용 (예: "1월, 2월")
+        monthStrNumOnly, // 사후 시트용 (예: "1, 2")
         weekStr,
         firstDate,
       };
