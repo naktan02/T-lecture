@@ -347,20 +347,20 @@ const UserProfilePage: React.FC = () => {
 
         {/* 상단 헤더 카드 */}
         <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="bg-indigo-600 px-4 py-8 sm:px-6 flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="h-16 w-16 bg-white rounded-full flex items-center justify-center text-2xl font-bold text-indigo-600 border-4 border-indigo-200">
+          <div className="bg-indigo-600 px-4 py-6 sm:py-8 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center min-w-0">
+              <div className="h-12 w-12 sm:h-16 sm:w-16 shrink-0 bg-white rounded-full flex items-center justify-center text-xl sm:text-2xl font-bold text-indigo-600 border-4 border-indigo-200">
                 {user.name.charAt(0)}
               </div>
-              <div className="ml-4 text-white">
-                <h2 className="text-2xl font-bold">{user.name}</h2>
-                <p className="text-indigo-100">{user.userEmail}</p>
+              <div className="ml-3 sm:ml-4 text-white min-w-0">
+                <h2 className="text-xl sm:text-2xl font-bold truncate">{user.name}</h2>
+                <p className="text-indigo-100 text-sm sm:text-base truncate">{user.userEmail}</p>
               </div>
             </div>
             {!isEditing && (
               <button
                 onClick={handleEditClick}
-                className="bg-white text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-md font-medium text-sm transition-colors shadow-sm"
+                className="shrink-0 self-end sm:self-auto bg-white text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-md font-medium text-sm transition-colors shadow-sm whitespace-nowrap"
               >
                 정보 수정
               </button>

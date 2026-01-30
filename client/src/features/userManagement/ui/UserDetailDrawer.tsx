@@ -410,7 +410,7 @@ export const UserDetailDrawer = ({
                     👤 기본 정보
                     <span className="text-xs text-gray-400 font-normal">ID: {boundUser?.id}</span>
                   </h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <InputField
                       label="이름"
                       name="name"
@@ -489,13 +489,13 @@ export const UserDetailDrawer = ({
                   <div className="space-y-3">
                     <div>
                       <label className="text-sm font-medium">주소</label>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <input
                           type="text"
                           name="address"
                           value={formData.address}
                           readOnly
-                          className="flex-1 mt-1 p-2 border rounded-lg bg-gray-50 cursor-pointer"
+                          className="flex-1 min-w-0 mt-1 p-2 border rounded-lg bg-gray-50 cursor-pointer text-sm"
                           placeholder="주소 검색 버튼을 눌러주세요"
                           onClick={() => {
                             // 스크립트 로드 확인 후 실행
@@ -526,14 +526,26 @@ export const UserDetailDrawer = ({
                             }
                           }}
                         />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!window.daum?.Postcode) {
-                              const script = document.createElement('script');
-                              script.src =
-                                '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
-                              script.onload = () => {
+                        <div className="flex gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!window.daum?.Postcode) {
+                                const script = document.createElement('script');
+                                script.src =
+                                  '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+                                script.onload = () => {
+                                  new window.daum.Postcode({
+                                    oncomplete: function (data: DaumPostcodeData) {
+                                      setFormData((prev) => ({
+                                        ...prev,
+                                        address: data.roadAddress || data.jibunAddress,
+                                      }));
+                                    },
+                                  }).open();
+                                };
+                                document.head.appendChild(script);
+                              } else {
                                 new window.daum.Postcode({
                                   oncomplete: function (data: DaumPostcodeData) {
                                     setFormData((prev) => ({
@@ -542,39 +554,29 @@ export const UserDetailDrawer = ({
                                     }));
                                   },
                                 }).open();
-                              };
-                              document.head.appendChild(script);
-                            } else {
-                              new window.daum.Postcode({
-                                oncomplete: function (data: DaumPostcodeData) {
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    address: data.roadAddress || data.jibunAddress,
-                                  }));
-                                },
-                              }).open();
-                            }
-                          }}
-                          className="mt-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium whitespace-nowrap"
-                        >
-                          🔍 주소 검색
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleSaveAddress}
-                          disabled={!isAddressChanged}
-                          className={`mt-1 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
-                            isAddressChanged
-                              ? 'bg-green-500 text-white hover:bg-green-600'
-                              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          }`}
-                        >
-                          💾 주소 저장
-                        </button>
+                              }
+                            }}
+                            className="sm:mt-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-xs sm:text-sm font-medium whitespace-nowrap"
+                          >
+                            검색
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSaveAddress}
+                            disabled={!isAddressChanged}
+                            className={`sm:mt-1 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${
+                              isAddressChanged
+                                ? 'bg-green-500 text-white hover:bg-green-600'
+                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            }`}
+                          >
+                            저장
+                          </button>
+                        </div>
                       </div>
                       {isAddressChanged && (
                         <p className="text-xs text-amber-600 mt-1">
-                          ⚠️ 주소가 변경되었습니다. [주소 저장]을 눌러 저장하세요.
+                          ⚠️ 주소가 변경되었습니다. [저장]을 눌러 저장하세요.
                         </p>
                       )}
                     </div>
@@ -582,9 +584,9 @@ export const UserDetailDrawer = ({
                 </section>
 
                 {/* 강사 조직 정보 */}
-                <section className="bg-white p-4 rounded-xl border shadow-sm">
+                <section className="bg-white p-4 rounded-xl border shadow-sm overflow-hidden">
                   <h3 className="font-bold mb-4">🏢 조직 정보</h3>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="text-sm font-medium">분류</label>
                       <select

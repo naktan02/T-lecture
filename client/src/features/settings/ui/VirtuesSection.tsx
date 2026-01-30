@@ -131,7 +131,7 @@ export const VirtuesSection = (): ReactElement => {
                 </td>
               </tr>
             )}
-            {virtues.map((virtue) => (
+            {[...virtues].sort((a, b) => b.id - a.id).map((virtue) => (
               <tr key={virtue.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm text-gray-600">{virtue.id}</td>
                 <td className="px-4 py-3">
