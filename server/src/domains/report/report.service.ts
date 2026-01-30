@@ -576,49 +576,21 @@ export class ReportService {
       totals.tpDays > 0 ? Math.round((totals.adCum / totals.tpDays) * 100) : 0;
 
     // 연간 누적 계산을 위한 쿼리
-    const traineesPerInstructor = await getTraineesPerInstructor();
-
-    // 해당 연도의 모든 TrainingPeriod에서 계획횟수 합계
-    const allYearPeriods = await prisma.trainingPeriod.findMany({
-      where: { unit: { lectureYear: year } },
-      include: {
-        schedules: {
-          include: { scheduleLocations: true },
-        },
-        locations: true,
+    // 총 진행 목표: 해당 연도의 전체 일정(UnitSchedule) 수
+    const totalYearPlanned = await prisma.unitSchedule.count({
+      where: {
+        trainingPeriod: { unit: { lectureYear: year } },
       },
     });
 
-    let totalYearPlanned = 0;
-    allYearPeriods.forEach((tp) => {
-      const tpAny = tp as any;
-      const initPeriod = tpAny.initialPeriodDays || tp.schedules.length;
-      // 동적 계산: 각 날짜별 plannedCount 합계의 최대값
-      const dailyPlannedMap = new Map<string, number>();
-      tp.schedules.forEach((s) => {
-        const dateStr = s.date?.toISOString().split('T')[0] || '';
-        if (!dailyPlannedMap.has(dateStr)) dailyPlannedMap.set(dateStr, 0);
-        s.scheduleLocations.forEach((sl) => {
-          dailyPlannedMap.set(dateStr, dailyPlannedMap.get(dateStr)! + (sl.plannedCount || 0));
-        });
-      });
-      const initPlanned =
-        dailyPlannedMap.size > 0 ? Math.max(...Array.from(dailyPlannedMap.values())) : 0;
-      totalYearPlanned += Math.ceil(initPlanned / traineesPerInstructor) * initPeriod;
-    });
-
-    // 해당 월까지의 누적 실시횟수 (강사 배정 카운트)
-    // 실시현황은 확정 + 날짜 < 오늘인 경우만 포함
+    // 누적 진행: 해당 연도의 완료된 일정 수 (날짜 < 오늘)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const cumulativeActual = await prisma.instructorUnitAssignment.count({
+    const cumulativeActual = await prisma.unitSchedule.count({
       where: {
-        state: 'Accepted',
-        UnitSchedule: {
-          date: { lt: today }, // 오늘 이전 완료된 교육만
-          trainingPeriod: { unit: { lectureYear: year } },
-        },
+        date: { lt: today },
+        trainingPeriod: { unit: { lectureYear: year } },
       },
     });
 
@@ -720,10 +692,8 @@ export class ReportService {
 
         s.scheduleLocations.forEach((sl) => {
           dailyPlanned.set(dateStr, dailyPlanned.get(dateStr)! + (sl.plannedCount || 0));
-          // 참여인원은 완료된 날짜만 집계 (날짜 < 오늘)
-          if (isCompleted) {
-            dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount ?? sl.plannedCount ?? 0));
-          }
+          // 참여인원: actualCount가 있으면 사용, 없으면 plannedCount 사용 (배정/교육 상황 무관)
+          dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount ?? sl.plannedCount ?? 0));
           const pl = sl.location?.originalPlace || sl.location?.changedPlace;
           if (pl) places.add(pl);
         });
@@ -882,10 +852,8 @@ export class ReportService {
 
         s.scheduleLocations.forEach((sl) => {
           dailyPlanned.set(dateStr, dailyPlanned.get(dateStr)! + (sl.plannedCount || 0));
-          // 참여인원은 완료된 날짜만 집계 (날짜 < 오늘)
-          if (isCompleted) {
-            dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount ?? sl.plannedCount ?? 0));
-          }
+          // 참여인원: actualCount가 있으면 사용, 없으면 plannedCount 사용 (배정/교육 상황 무관)
+          dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount ?? sl.plannedCount ?? 0));
         });
 
         // 강사 배정 카운트 (확정 + 날짜 < 오늘인 경우만 실시현황에 포함)
