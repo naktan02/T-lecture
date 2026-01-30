@@ -40,7 +40,13 @@ export const ReportSection = (): ReactElement => {
         `/api/v1/reports/weekly?year=${year}&month=${month}&week=${week}`,
       );
 
-      if (!response.ok) throw new Error('Download failed');
+      if (!response.ok) {
+        // 서버 에러 메시지 추출
+        const errorData = await response.json().catch(() => null);
+        const errorMessage =
+          errorData?.message || `${year}년 ${month}월 ${week}주차에 교육 데이터가 없습니다.`;
+        throw new Error(errorMessage);
+      }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -60,8 +66,9 @@ export const ReportSection = (): ReactElement => {
       document.body.removeChild(a);
 
       showSuccess(`${month}월 ${week}주차 주간 보고서를 다운로드했습니다.`);
-    } catch {
-      showError('주간 보고서 다운로드에 실패했습니다.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '주간 보고서 다운로드에 실패했습니다.';
+      showError(message);
     } finally {
       setIsDownloadingWeekly(false);
     }
@@ -72,7 +79,12 @@ export const ReportSection = (): ReactElement => {
     try {
       const response = await apiClient(`/api/v1/reports/monthly?year=${year}&month=${month}`);
 
-      if (!response.ok) throw new Error('Download failed');
+      if (!response.ok) {
+        // 서버 에러 메시지 추출
+        const errorData = await response.json().catch(() => null);
+        const errorMessage = errorData?.message || `${year}년 ${month}월에 교육 데이터가 없습니다.`;
+        throw new Error(errorMessage);
+      }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -92,8 +104,9 @@ export const ReportSection = (): ReactElement => {
       document.body.removeChild(a);
 
       showSuccess(`${month}월 월간 보고서를 다운로드했습니다.`);
-    } catch {
-      showError('월간 보고서 다운로드에 실패했습니다.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '월간 보고서 다운로드에 실패했습니다.';
+      showError(message);
     } finally {
       setIsDownloadingMonthly(false);
     }
