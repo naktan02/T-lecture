@@ -9,6 +9,7 @@ const queryClient = new QueryClient();
 // Pages
 import LoginPage from '../pages/auth/LoginPage';
 import SignupPage from '../pages/auth/SignupPage';
+import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import InstructorSchedulePage from '../pages/instructor/SchedulePage';
 import InstructorDashboardPage from '../pages/instructor/DashboardPage';
 import DispatchInboxPage from '../pages/instructor/DispatchInboxPage';
@@ -53,6 +54,7 @@ function App(): ReactElement {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
           {/* 일반 유저 및 강사 */}
           <Route path="/instructor/schedule" element={<InstructorSchedulePage />} />

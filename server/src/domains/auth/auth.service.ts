@@ -26,6 +26,22 @@ class AuthService {
     return { message: '인증번호가 발송되었습니다. (유효시간 3분)' };
   }
 
+  // 비밀번호 재설정용 인증 코드 발송 (가입 여부 확인)
+  async sendPasswordResetCode(email: string) {
+    const user = await userRepository.findByEmail(email);
+    if (!user) {
+      throw new AppError('가입되지 않은 이메일입니다.', 404, 'USER_NOT_FOUND');
+    }
+
+    const code = crypto.randomInt(100000, 999999).toString();
+    const expiresAt = new Date(Date.now() + 3 * 60 * 1000); // 3분 유효
+
+    await authRepository.createVerificationCode(email, code, expiresAt);
+    await sendAuthCode(email, code);
+
+    return { message: '인증번호가 발송되었습니다. (유효시간 3분)' };
+  }
+
   // 인증번호 검증
   async verifyCode(email: string, code: string) {
     const record = await authRepository.findLatestVerification(email);
