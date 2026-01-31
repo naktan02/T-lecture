@@ -108,13 +108,10 @@ export async function getInstructorMeta(): Promise<InstructorMetaResponse> {
 export const logout = async (): Promise<void> => {
   const deviceId = getDeviceId();
   // apiClient가 base URL과 토큰 헤더를 자동으로 처리함
+  // localStorage 정리는 useAuth.ts의 onSettled에서 처리
   await apiClient('/api/v1/auth/logout', {
     method: 'POST',
     body: JSON.stringify({ deviceId }),
-    skipInterceptor: true, // 로그아웃 시 토큰 만료 에러 무시 가능
+    skipInterceptor: true, // 로그아웃 시 토큰 만료 에러 무시
   });
-  // 로컬 스토리지 클리어
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('currentUser');
-  localStorage.removeItem('userRole');
 };
