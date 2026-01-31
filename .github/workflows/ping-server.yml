@@ -4,7 +4,7 @@ on:
   schedule:
     # 13분마다 - Render 서버 깨우기 (무료 티어 슬립 방지)
     # 단, 새벽 2~5시 KST (UTC 17~20시)는 제외
-    - cron: '*/13 0-16,21-23 * * *'
+    - cron: '*/9 0-16,21-23 * * *'
   workflow_dispatch:
 
 env:

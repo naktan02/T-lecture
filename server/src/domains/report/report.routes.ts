@@ -5,6 +5,8 @@ import reportController from './report.controller';
 const router = Router();
 
 router.get('/years', reportController.getAvailableYears);
+router.get('/months', reportController.getAvailableMonths);
+router.get('/weeks', reportController.getAvailableWeeks);
 router.get('/weekly', reportController.downloadWeekly);
 router.get('/monthly', reportController.downloadMonthly);
 
