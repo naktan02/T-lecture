@@ -131,64 +131,66 @@ export const VirtuesSection = (): ReactElement => {
                 </td>
               </tr>
             )}
-            {[...virtues].sort((a, b) => b.id - a.id).map((virtue) => (
-              <tr key={virtue.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm text-gray-600">{virtue.id}</td>
-                <td className="px-4 py-3">
-                  {editingId === virtue.id ? (
-                    <input
-                      type="text"
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      autoFocus
-                    />
-                  ) : (
-                    <span className="text-sm text-gray-800">{virtue.name || '-'}</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  {editingId === virtue.id ? (
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="small"
-                        onClick={handleCancel}
-                        disabled={isUpdating}
-                      >
-                        취소
-                      </Button>
-                      <Button
-                        variant="primary"
-                        size="small"
-                        onClick={() => handleSave(virtue.id)}
-                        disabled={isUpdating}
-                      >
-                        저장
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="small"
-                        onClick={() => handleEdit(virtue.id, virtue.name)}
-                      >
-                        수정
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="small"
-                        onClick={() => handleDelete(virtue.id, virtue.name)}
-                        disabled={isDeleting}
-                      >
-                        삭제
-                      </Button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {[...virtues]
+              .sort((a, b) => b.id - a.id)
+              .map((virtue) => (
+                <tr key={virtue.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm text-gray-600">{virtue.id}</td>
+                  <td className="px-4 py-3">
+                    {editingId === virtue.id ? (
+                      <input
+                        type="text"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        autoFocus
+                      />
+                    ) : (
+                      <span className="text-sm text-gray-800">{virtue.name || '-'}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {editingId === virtue.id ? (
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="small"
+                          onClick={handleCancel}
+                          disabled={isUpdating}
+                        >
+                          취소
+                        </Button>
+                        <Button
+                          variant="primary"
+                          size="small"
+                          onClick={() => handleSave(virtue.id)}
+                          disabled={isUpdating}
+                        >
+                          저장
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="small"
+                          onClick={() => handleEdit(virtue.id, virtue.name)}
+                        >
+                          수정
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="small"
+                          onClick={() => handleDelete(virtue.id, virtue.name)}
+                          disabled={isDeleting}
+                        >
+                          삭제
+                        </Button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
 
