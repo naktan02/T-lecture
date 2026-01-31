@@ -31,7 +31,11 @@ export interface AssignmentGroup {
   [key: string]: unknown;
 }
 
-export const AssignmentWorkspace: React.FC = () => {
+interface AssignmentWorkspaceProps {
+  onRefreshReady?: (refresh: () => void) => void;
+}
+
+export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefreshReady }) => {
   const {
     dateRange,
     setDateRange,
@@ -99,6 +103,13 @@ export const AssignmentWorkspace: React.FC = () => {
     y: 0,
     dates: [],
   });
+
+  // 부모 컴포넌트에 refresh 함수 전달
+  useEffect(() => {
+    if (onRefreshReady) {
+      onRefreshReady(fetchData);
+    }
+  }, [onRefreshReady, fetchData]);
 
   // 날짜별 이미 배정된 강사 ID 맵 생성 (모든 부대 통합)
   const assignedByDate = useMemo(() => {
@@ -188,7 +199,10 @@ export const AssignmentWorkspace: React.FC = () => {
   };
 
   const handleMouseLeave = (): void => {
-    setCalendarPopup({ visible: false, x: 0, y: 0, dates: [] });
+    // 마우스가 팝업으로 이동할 시간을 주기 위해 딜레이 추가
+    closeTimeoutRef.current = setTimeout(() => {
+      setCalendarPopup({ visible: false, x: 0, y: 0, dates: [] });
+    }, 150);
   };
 
   return (

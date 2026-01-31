@@ -76,6 +76,7 @@ model Notice {
   author   User            @relation("NoticeAuthor", fields: [authorId], references: [id])
   receipts NoticeReceipt[]
 
+  @@index([createdAt], map: "공지_createdAt_idx")
   @@map("공지사항")
 }
 
@@ -118,5 +119,6 @@ model Inquiry {
   author         User  @relation("InquiryAuthor", fields: [authorId], references: [id])
   answeredByUser User? @relation("InquiryAnswerer", fields: [answeredBy], references: [id])
 
+  @@index([authorId, status], map: "문의_authorId_status_idx")
   @@map("문의사항")
 }
