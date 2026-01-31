@@ -305,33 +305,31 @@ export class ReportService {
         row.getCell(20).value = g.actualLocationCount; // 실시 그룹수
         row.getCell(21).value = g.actualTimes; // 실시 횟수
 
-        // 교육장소 체크 (22~26열) - 기타는 개수만큼 카운트
-        const placeCols = { 생활관: 22, 종교시설: 23, 식당: 24, 강의실: 25 };
-        const checkedTypes = new Set<number>(); // 이미 체크한 장소 유형
+        // 교육장소 체크 (22~26열) - 정확한 장소명 매칭, 나머지는 기타
+        // 장소명이 정확히 일치해야 매칭 (부분 문자열 매칭 X)
+        const placeMapping: Record<string, number> = {
+          생활관: 22,
+          종교시설: 23,
+          식당: 24,
+          교육장: 25,
+        };
+        const checkedCols = new Set<number>(); // 이미 체크한 열
         let etcCount = 0; // 기타 개수
 
-        g.places.forEach((p) => {
-          let matched = false;
-          for (const [key, col] of Object.entries(placeCols)) {
-            if (
-              p.includes(key) ||
-              (key === '강의실' && (p.includes('강당') || p.includes('교육장')))
-            ) {
-              // 종류별 중복 제외 (같은 종류는 1번만 체크)
-              if (!checkedTypes.has(col)) {
-                row.getCell(col).value = 1;
-                checkedTypes.add(col);
-                if (col === 22) placeTotals.p22++;
-                else if (col === 23) placeTotals.p23++;
-                else if (col === 24) placeTotals.p24++;
-                else if (col === 25) placeTotals.p25++;
-              }
-              matched = true;
-              break; // 하나의 장소는 한 종류에만 매칭
+        g.places.forEach((placeName) => {
+          const col = placeMapping[placeName];
+          if (col !== undefined) {
+            // 정확히 일치하는 장소명인 경우
+            if (!checkedCols.has(col)) {
+              row.getCell(col).value = 1;
+              checkedCols.add(col);
+              if (col === 22) placeTotals.p22++;
+              else if (col === 23) placeTotals.p23++;
+              else if (col === 24) placeTotals.p24++;
+              else if (col === 25) placeTotals.p25++;
             }
-          }
-          // 매칭되지 않은 장소는 기타로 카운트
-          if (!matched) {
+          } else {
+            // 매칭되지 않은 장소는 기타로 카운트
             etcCount++;
           }
         });
@@ -698,7 +696,7 @@ export class ReportService {
             dateStr,
             dailyActual.get(dateStr)! + (sl.actualCount ?? sl.plannedCount ?? 0),
           );
-          const pl = sl.location?.originalPlace || sl.location?.changedPlace;
+          const pl = sl.location?.originalPlace?.trim() || sl.location?.changedPlace?.trim();
           if (pl) places.add(pl);
         });
 
