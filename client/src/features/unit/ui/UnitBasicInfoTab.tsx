@@ -265,7 +265,7 @@ export const UnitBasicInfoTab = ({
             </div>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* 부대명 */}
           <div>
             <label className="block text-xs text-gray-500 mb-1">
@@ -389,7 +389,7 @@ export const UnitBasicInfoTab = ({
         {/* 인라인 교육기간 추가 폼 */}
         {isAddingPeriod && (
           <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* 이름 */}
               <div className="col-span-2">
                 <label className="block text-xs text-gray-600 mb-1">
@@ -505,7 +505,7 @@ export const UnitBasicInfoTab = ({
                 <div key={period.id ?? `period-${index}`}>
                   {/* 교육기간 행 */}
                   <div
-                    className={`flex items-center justify-between p-3 rounded-lg transition cursor-pointer ${
+                    className={`p-3 rounded-lg transition cursor-pointer ${
                       isExpanded
                         ? 'bg-blue-50 border border-blue-200'
                         : 'bg-gray-50 hover:bg-gray-100'
@@ -521,61 +521,63 @@ export const UnitBasicInfoTab = ({
                       }
                     }}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="font-medium text-gray-800">{period.name}</span>
-                      <span className="text-xs text-gray-500">
-                        {formatDateMD(period.startDate)} ~ {formatDateMD(period.endDate)}
-                      </span>
-                      <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
-                        {period.scheduleCount}일
-                      </span>
-                      <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded">
-                        장소 {period.locationCount}개
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isExpanded) {
-                            setExpandedPeriodIndex(null);
-                          } else {
-                            if (periodData) {
-                              hydrateEditStateFromSchedules(periodData.schedules);
-                            }
-                            setExpandedPeriodIndex(index);
-                          }
-                        }}
-                        className="text-blue-500 hover:text-blue-700 text-sm px-2"
-                      >
-                        {isExpanded ? '접기' : '수정'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          const confirmed = await showConfirm(
-                            `"${period.name}" 교육기간을 삭제하시겠습니까?`,
-                          );
-                          if (confirmed) {
-                            onPeriodRemove(index);
-                            if (expandedPeriodIndex === index) {
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium text-gray-800">{period.name}</span>
+                        <span className="text-xs text-gray-500">
+                          {formatDateMD(period.startDate)} ~ {formatDateMD(period.endDate)}
+                        </span>
+                        <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                          {period.scheduleCount}일
+                        </span>
+                        <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded">
+                          장소 {period.locationCount}개
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isExpanded) {
                               setExpandedPeriodIndex(null);
+                            } else {
+                              if (periodData) {
+                                hydrateEditStateFromSchedules(periodData.schedules);
+                              }
+                              setExpandedPeriodIndex(index);
                             }
-                          }
-                        }}
-                        className="text-red-500 hover:text-red-700 text-sm px-2"
-                      >
-                        삭제
-                      </button>
+                          }}
+                          className="text-blue-500 hover:text-blue-700 text-sm px-2"
+                        >
+                          {isExpanded ? '접기' : '수정'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const confirmed = await showConfirm(
+                              `"${period.name}" 교육기간을 삭제하시겠습니까?`,
+                            );
+                            if (confirmed) {
+                              onPeriodRemove(index);
+                              if (expandedPeriodIndex === index) {
+                                setExpandedPeriodIndex(null);
+                              }
+                            }
+                          }}
+                          className="text-red-500 hover:text-red-700 text-sm px-2"
+                        >
+                          삭제
+                        </button>
+                      </div>
                     </div>
                   </div>
 
                   {/* 인라인 수정 폼 */}
                   {isExpanded && periodData && (
                     <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {/* 이름 */}
                         <div className="col-span-2">
                           <label className="block text-xs text-gray-600 mb-1">교육기간명</label>

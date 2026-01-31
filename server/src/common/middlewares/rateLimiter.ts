@@ -22,11 +22,14 @@ export const apiLimiter = rateLimit({
 
 /**
  * 인증 API용 Rate Limiter (로그인, 인증코드 발송 등)
- * - 15분당 IP당 10회 (브루트포스 방지)
+ * - 운영: 15분당 IP당 20회 (브루트포스 방지)
+ * - 개발: 15분당 IP당 1000회 (테스트 편의)
  */
+const isProd = process.env.NODE_ENV === 'production';
+
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15분
-  max: 1000, // IP당 1000회 (부하 테스트 테스트 위해 상향)
+  max: isProd ? 20 : 1000, // 운영: 20회, 개발: 1000회
   message: {
     success: false,
     error: 'Too many authentication attempts',

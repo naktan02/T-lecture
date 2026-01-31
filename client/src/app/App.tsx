@@ -24,6 +24,8 @@ import AdminNoticePage from '../pages/admin/NoticePage';
 import InstructorNoticePage from '../pages/instructor/NoticePage';
 import AdminInquiryPage from '../pages/admin/InquiryPage';
 import InstructorInquiryPage from '../pages/instructor/InquiryPage';
+import TermsPage from '../pages/legal/TermsPage';
+import PrivacyPage from '../pages/legal/PrivacyPage';
 
 function App(): ReactElement {
   // 전역 백스페이스 이전 페이지 이동 방지
@@ -80,6 +82,10 @@ function App(): ReactElement {
           {/* 문의사항 관리 */}
           <Route path="/admin/inquiries" element={<AdminInquiryPage />} />
           <Route path="/instructor/inquiries" element={<InstructorInquiryPage />} />
+
+          {/* 약관 페이지 */}
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/login" replace />} />

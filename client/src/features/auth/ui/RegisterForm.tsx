@@ -2,7 +2,7 @@
 import { useState, ChangeEvent, FormEvent } from 'react';
 import { Button } from '../../../shared/ui';
 import { sendVerificationCode, verifyEmailCode, registerUser } from '../authApi';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 import { UserBasicFields } from '../../../entities/user/ui/UserBasicFields';
 import { InstructorFields } from '../../../entities/user/ui/InstructorFields';
@@ -263,16 +263,24 @@ export const RegisterForm: React.FC = () => {
           )}
 
           {/* 약관 동의 */}
-          <div className="flex items-center gap-2 mt-6">
+          <div className="flex items-start gap-2 mt-6">
             <input
               type="checkbox"
-              className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+              className="w-4 h-4 mt-0.5 text-green-600 rounded focus:ring-green-500"
               checked={form.agreed}
               onChange={handleChange('agreed')}
               required
             />
             <span className="text-sm text-gray-600">
-              [필수] 이용약관 및 개인정보 처리방침에 동의합니다.
+              [필수]{' '}
+              <Link to="/terms" className="text-green-600 hover:underline">
+                이용약관
+              </Link>{' '}
+              및{' '}
+              <Link to="/privacy" className="text-green-600 hover:underline">
+                개인정보 처리방침
+              </Link>
+              에 동의합니다.
             </span>
           </div>
 

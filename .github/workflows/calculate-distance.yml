@@ -15,6 +15,15 @@ jobs:
     name: Calculate Distance
     runs-on: ubuntu-latest
     steps:
+      - name: Wake up server (Cold Start 방지)
+        shell: bash
+        run: |
+          echo "🔄 Waking up server..."
+          # 서버가 Sleep 상태일 수 있으므로 먼저 깨움
+          curl -sS --max-time 120 "$SERVER_URL/api/health" || echo "⚠️ Health check failed, but continuing..."
+          echo "⏳ Waiting for server to fully wake up..."
+          sleep 15
+
       - name: Trigger distance calculation
         shell: bash
         run: |
@@ -23,7 +32,7 @@ jobs:
 
           # body + http_code 같이 받기
           tmp="$(mktemp)"
-          http_code=$(curl -sS --max-time 120 -o "$tmp" -w "%{http_code}" -X POST \
+          http_code=$(curl -sS --max-time 180 -o "$tmp" -w "%{http_code}" -X POST \
             -H "Authorization: Bearer $BATCH_API_SECRET" \
             -H "Content-Type: application/json" \
             "$SERVER_URL/api/v1/batch/distance?limit=200" || echo "000")

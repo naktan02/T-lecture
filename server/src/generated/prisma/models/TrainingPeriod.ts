@@ -29,11 +29,15 @@ export type AggregateTrainingPeriod = {
 export type TrainingPeriodAvgAggregateOutputType = {
   id: number | null
   unitId: number | null
+  initialPeriodDays: number | null
+  initialLocationCount: number | null
 }
 
 export type TrainingPeriodSumAggregateOutputType = {
   id: number | null
   unitId: number | null
+  initialPeriodDays: number | null
+  initialLocationCount: number | null
 }
 
 export type TrainingPeriodMinAggregateOutputType = {
@@ -51,6 +55,8 @@ export type TrainingPeriodMinAggregateOutputType = {
   hasCateredMeals: boolean | null
   hasHallLodging: boolean | null
   allowsPhoneBeforeAfter: boolean | null
+  initialPeriodDays: number | null
+  initialLocationCount: number | null
 }
 
 export type TrainingPeriodMaxAggregateOutputType = {
@@ -68,6 +74,8 @@ export type TrainingPeriodMaxAggregateOutputType = {
   hasCateredMeals: boolean | null
   hasHallLodging: boolean | null
   allowsPhoneBeforeAfter: boolean | null
+  initialPeriodDays: number | null
+  initialLocationCount: number | null
 }
 
 export type TrainingPeriodCountAggregateOutputType = {
@@ -86,6 +94,8 @@ export type TrainingPeriodCountAggregateOutputType = {
   hasCateredMeals: number
   hasHallLodging: number
   allowsPhoneBeforeAfter: number
+  initialPeriodDays: number
+  initialLocationCount: number
   _all: number
 }
 
@@ -93,11 +103,15 @@ export type TrainingPeriodCountAggregateOutputType = {
 export type TrainingPeriodAvgAggregateInputType = {
   id?: true
   unitId?: true
+  initialPeriodDays?: true
+  initialLocationCount?: true
 }
 
 export type TrainingPeriodSumAggregateInputType = {
   id?: true
   unitId?: true
+  initialPeriodDays?: true
+  initialLocationCount?: true
 }
 
 export type TrainingPeriodMinAggregateInputType = {
@@ -115,6 +129,8 @@ export type TrainingPeriodMinAggregateInputType = {
   hasCateredMeals?: true
   hasHallLodging?: true
   allowsPhoneBeforeAfter?: true
+  initialPeriodDays?: true
+  initialLocationCount?: true
 }
 
 export type TrainingPeriodMaxAggregateInputType = {
@@ -132,6 +148,8 @@ export type TrainingPeriodMaxAggregateInputType = {
   hasCateredMeals?: true
   hasHallLodging?: true
   allowsPhoneBeforeAfter?: true
+  initialPeriodDays?: true
+  initialLocationCount?: true
 }
 
 export type TrainingPeriodCountAggregateInputType = {
@@ -150,6 +168,8 @@ export type TrainingPeriodCountAggregateInputType = {
   hasCateredMeals?: true
   hasHallLodging?: true
   allowsPhoneBeforeAfter?: true
+  initialPeriodDays?: true
+  initialLocationCount?: true
   _all?: true
 }
 
@@ -255,6 +275,8 @@ export type TrainingPeriodGroupByOutputType = {
   hasCateredMeals: boolean | null
   hasHallLodging: boolean | null
   allowsPhoneBeforeAfter: boolean | null
+  initialPeriodDays: number | null
+  initialLocationCount: number | null
   _count: TrainingPeriodCountAggregateOutputType | null
   _avg: TrainingPeriodAvgAggregateOutputType | null
   _sum: TrainingPeriodSumAggregateOutputType | null
@@ -296,6 +318,8 @@ export type TrainingPeriodWhereInput = {
   hasCateredMeals?: Prisma.BoolNullableFilter<"TrainingPeriod"> | boolean | null
   hasHallLodging?: Prisma.BoolNullableFilter<"TrainingPeriod"> | boolean | null
   allowsPhoneBeforeAfter?: Prisma.BoolNullableFilter<"TrainingPeriod"> | boolean | null
+  initialPeriodDays?: Prisma.IntNullableFilter<"TrainingPeriod"> | number | null
+  initialLocationCount?: Prisma.IntNullableFilter<"TrainingPeriod"> | number | null
   unit?: Prisma.XOR<Prisma.UnitScalarRelationFilter, Prisma.UnitWhereInput>
   locations?: Prisma.TrainingLocationListRelationFilter
   schedules?: Prisma.UnitScheduleListRelationFilter
@@ -317,6 +341,8 @@ export type TrainingPeriodOrderByWithRelationInput = {
   hasCateredMeals?: Prisma.SortOrderInput | Prisma.SortOrder
   hasHallLodging?: Prisma.SortOrderInput | Prisma.SortOrder
   allowsPhoneBeforeAfter?: Prisma.SortOrderInput | Prisma.SortOrder
+  initialPeriodDays?: Prisma.SortOrderInput | Prisma.SortOrder
+  initialLocationCount?: Prisma.SortOrderInput | Prisma.SortOrder
   unit?: Prisma.UnitOrderByWithRelationInput
   locations?: Prisma.TrainingLocationOrderByRelationAggregateInput
   schedules?: Prisma.UnitScheduleOrderByRelationAggregateInput
@@ -341,6 +367,8 @@ export type TrainingPeriodWhereUniqueInput = Prisma.AtLeast<{
   hasCateredMeals?: Prisma.BoolNullableFilter<"TrainingPeriod"> | boolean | null
   hasHallLodging?: Prisma.BoolNullableFilter<"TrainingPeriod"> | boolean | null
   allowsPhoneBeforeAfter?: Prisma.BoolNullableFilter<"TrainingPeriod"> | boolean | null
+  initialPeriodDays?: Prisma.IntNullableFilter<"TrainingPeriod"> | number | null
+  initialLocationCount?: Prisma.IntNullableFilter<"TrainingPeriod"> | number | null
   unit?: Prisma.XOR<Prisma.UnitScalarRelationFilter, Prisma.UnitWhereInput>
   locations?: Prisma.TrainingLocationListRelationFilter
   schedules?: Prisma.UnitScheduleListRelationFilter
@@ -362,6 +390,8 @@ export type TrainingPeriodOrderByWithAggregationInput = {
   hasCateredMeals?: Prisma.SortOrderInput | Prisma.SortOrder
   hasHallLodging?: Prisma.SortOrderInput | Prisma.SortOrder
   allowsPhoneBeforeAfter?: Prisma.SortOrderInput | Prisma.SortOrder
+  initialPeriodDays?: Prisma.SortOrderInput | Prisma.SortOrder
+  initialLocationCount?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.TrainingPeriodCountOrderByAggregateInput
   _avg?: Prisma.TrainingPeriodAvgOrderByAggregateInput
   _max?: Prisma.TrainingPeriodMaxOrderByAggregateInput
@@ -388,6 +418,8 @@ export type TrainingPeriodScalarWhereWithAggregatesInput = {
   hasCateredMeals?: Prisma.BoolNullableWithAggregatesFilter<"TrainingPeriod"> | boolean | null
   hasHallLodging?: Prisma.BoolNullableWithAggregatesFilter<"TrainingPeriod"> | boolean | null
   allowsPhoneBeforeAfter?: Prisma.BoolNullableWithAggregatesFilter<"TrainingPeriod"> | boolean | null
+  initialPeriodDays?: Prisma.IntNullableWithAggregatesFilter<"TrainingPeriod"> | number | null
+  initialLocationCount?: Prisma.IntNullableWithAggregatesFilter<"TrainingPeriod"> | number | null
 }
 
 export type TrainingPeriodCreateInput = {
@@ -404,6 +436,8 @@ export type TrainingPeriodCreateInput = {
   hasCateredMeals?: boolean | null
   hasHallLodging?: boolean | null
   allowsPhoneBeforeAfter?: boolean | null
+  initialPeriodDays?: number | null
+  initialLocationCount?: number | null
   unit: Prisma.UnitCreateNestedOneWithoutTrainingPeriodsInput
   locations?: Prisma.TrainingLocationCreateNestedManyWithoutTrainingPeriodInput
   schedules?: Prisma.UnitScheduleCreateNestedManyWithoutTrainingPeriodInput
@@ -425,6 +459,8 @@ export type TrainingPeriodUncheckedCreateInput = {
   hasCateredMeals?: boolean | null
   hasHallLodging?: boolean | null
   allowsPhoneBeforeAfter?: boolean | null
+  initialPeriodDays?: number | null
+  initialLocationCount?: number | null
   locations?: Prisma.TrainingLocationUncheckedCreateNestedManyWithoutTrainingPeriodInput
   schedules?: Prisma.UnitScheduleUncheckedCreateNestedManyWithoutTrainingPeriodInput
 }
@@ -443,6 +479,8 @@ export type TrainingPeriodUpdateInput = {
   hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   unit?: Prisma.UnitUpdateOneRequiredWithoutTrainingPeriodsNestedInput
   locations?: Prisma.TrainingLocationUpdateManyWithoutTrainingPeriodNestedInput
   schedules?: Prisma.UnitScheduleUpdateManyWithoutTrainingPeriodNestedInput
@@ -464,6 +502,8 @@ export type TrainingPeriodUncheckedUpdateInput = {
   hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   locations?: Prisma.TrainingLocationUncheckedUpdateManyWithoutTrainingPeriodNestedInput
   schedules?: Prisma.UnitScheduleUncheckedUpdateManyWithoutTrainingPeriodNestedInput
 }
@@ -484,6 +524,8 @@ export type TrainingPeriodCreateManyInput = {
   hasCateredMeals?: boolean | null
   hasHallLodging?: boolean | null
   allowsPhoneBeforeAfter?: boolean | null
+  initialPeriodDays?: number | null
+  initialLocationCount?: number | null
 }
 
 export type TrainingPeriodUpdateManyMutationInput = {
@@ -500,6 +542,8 @@ export type TrainingPeriodUpdateManyMutationInput = {
   hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type TrainingPeriodUncheckedUpdateManyInput = {
@@ -518,6 +562,8 @@ export type TrainingPeriodUncheckedUpdateManyInput = {
   hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type TrainingPeriodListRelationFilter = {
@@ -554,11 +600,15 @@ export type TrainingPeriodCountOrderByAggregateInput = {
   hasCateredMeals?: Prisma.SortOrder
   hasHallLodging?: Prisma.SortOrder
   allowsPhoneBeforeAfter?: Prisma.SortOrder
+  initialPeriodDays?: Prisma.SortOrder
+  initialLocationCount?: Prisma.SortOrder
 }
 
 export type TrainingPeriodAvgOrderByAggregateInput = {
   id?: Prisma.SortOrder
   unitId?: Prisma.SortOrder
+  initialPeriodDays?: Prisma.SortOrder
+  initialLocationCount?: Prisma.SortOrder
 }
 
 export type TrainingPeriodMaxOrderByAggregateInput = {
@@ -576,6 +626,8 @@ export type TrainingPeriodMaxOrderByAggregateInput = {
   hasCateredMeals?: Prisma.SortOrder
   hasHallLodging?: Prisma.SortOrder
   allowsPhoneBeforeAfter?: Prisma.SortOrder
+  initialPeriodDays?: Prisma.SortOrder
+  initialLocationCount?: Prisma.SortOrder
 }
 
 export type TrainingPeriodMinOrderByAggregateInput = {
@@ -593,11 +645,15 @@ export type TrainingPeriodMinOrderByAggregateInput = {
   hasCateredMeals?: Prisma.SortOrder
   hasHallLodging?: Prisma.SortOrder
   allowsPhoneBeforeAfter?: Prisma.SortOrder
+  initialPeriodDays?: Prisma.SortOrder
+  initialLocationCount?: Prisma.SortOrder
 }
 
 export type TrainingPeriodSumOrderByAggregateInput = {
   id?: Prisma.SortOrder
   unitId?: Prisma.SortOrder
+  initialPeriodDays?: Prisma.SortOrder
+  initialLocationCount?: Prisma.SortOrder
 }
 
 export type TrainingPeriodScalarRelationFilter = {
@@ -702,6 +758,8 @@ export type TrainingPeriodCreateWithoutUnitInput = {
   hasCateredMeals?: boolean | null
   hasHallLodging?: boolean | null
   allowsPhoneBeforeAfter?: boolean | null
+  initialPeriodDays?: number | null
+  initialLocationCount?: number | null
   locations?: Prisma.TrainingLocationCreateNestedManyWithoutTrainingPeriodInput
   schedules?: Prisma.UnitScheduleCreateNestedManyWithoutTrainingPeriodInput
 }
@@ -721,6 +779,8 @@ export type TrainingPeriodUncheckedCreateWithoutUnitInput = {
   hasCateredMeals?: boolean | null
   hasHallLodging?: boolean | null
   allowsPhoneBeforeAfter?: boolean | null
+  initialPeriodDays?: number | null
+  initialLocationCount?: number | null
   locations?: Prisma.TrainingLocationUncheckedCreateNestedManyWithoutTrainingPeriodInput
   schedules?: Prisma.UnitScheduleUncheckedCreateNestedManyWithoutTrainingPeriodInput
 }
@@ -770,6 +830,8 @@ export type TrainingPeriodScalarWhereInput = {
   hasCateredMeals?: Prisma.BoolNullableFilter<"TrainingPeriod"> | boolean | null
   hasHallLodging?: Prisma.BoolNullableFilter<"TrainingPeriod"> | boolean | null
   allowsPhoneBeforeAfter?: Prisma.BoolNullableFilter<"TrainingPeriod"> | boolean | null
+  initialPeriodDays?: Prisma.IntNullableFilter<"TrainingPeriod"> | number | null
+  initialLocationCount?: Prisma.IntNullableFilter<"TrainingPeriod"> | number | null
 }
 
 export type TrainingPeriodCreateWithoutLocationsInput = {
@@ -786,6 +848,8 @@ export type TrainingPeriodCreateWithoutLocationsInput = {
   hasCateredMeals?: boolean | null
   hasHallLodging?: boolean | null
   allowsPhoneBeforeAfter?: boolean | null
+  initialPeriodDays?: number | null
+  initialLocationCount?: number | null
   unit: Prisma.UnitCreateNestedOneWithoutTrainingPeriodsInput
   schedules?: Prisma.UnitScheduleCreateNestedManyWithoutTrainingPeriodInput
 }
@@ -806,6 +870,8 @@ export type TrainingPeriodUncheckedCreateWithoutLocationsInput = {
   hasCateredMeals?: boolean | null
   hasHallLodging?: boolean | null
   allowsPhoneBeforeAfter?: boolean | null
+  initialPeriodDays?: number | null
+  initialLocationCount?: number | null
   schedules?: Prisma.UnitScheduleUncheckedCreateNestedManyWithoutTrainingPeriodInput
 }
 
@@ -839,6 +905,8 @@ export type TrainingPeriodUpdateWithoutLocationsInput = {
   hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   unit?: Prisma.UnitUpdateOneRequiredWithoutTrainingPeriodsNestedInput
   schedules?: Prisma.UnitScheduleUpdateManyWithoutTrainingPeriodNestedInput
 }
@@ -859,6 +927,8 @@ export type TrainingPeriodUncheckedUpdateWithoutLocationsInput = {
   hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   schedules?: Prisma.UnitScheduleUncheckedUpdateManyWithoutTrainingPeriodNestedInput
 }
 
@@ -876,6 +946,8 @@ export type TrainingPeriodCreateWithoutSchedulesInput = {
   hasCateredMeals?: boolean | null
   hasHallLodging?: boolean | null
   allowsPhoneBeforeAfter?: boolean | null
+  initialPeriodDays?: number | null
+  initialLocationCount?: number | null
   unit: Prisma.UnitCreateNestedOneWithoutTrainingPeriodsInput
   locations?: Prisma.TrainingLocationCreateNestedManyWithoutTrainingPeriodInput
 }
@@ -896,6 +968,8 @@ export type TrainingPeriodUncheckedCreateWithoutSchedulesInput = {
   hasCateredMeals?: boolean | null
   hasHallLodging?: boolean | null
   allowsPhoneBeforeAfter?: boolean | null
+  initialPeriodDays?: number | null
+  initialLocationCount?: number | null
   locations?: Prisma.TrainingLocationUncheckedCreateNestedManyWithoutTrainingPeriodInput
 }
 
@@ -929,6 +1003,8 @@ export type TrainingPeriodUpdateWithoutSchedulesInput = {
   hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   unit?: Prisma.UnitUpdateOneRequiredWithoutTrainingPeriodsNestedInput
   locations?: Prisma.TrainingLocationUpdateManyWithoutTrainingPeriodNestedInput
 }
@@ -949,6 +1025,8 @@ export type TrainingPeriodUncheckedUpdateWithoutSchedulesInput = {
   hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   locations?: Prisma.TrainingLocationUncheckedUpdateManyWithoutTrainingPeriodNestedInput
 }
 
@@ -967,6 +1045,8 @@ export type TrainingPeriodCreateManyUnitInput = {
   hasCateredMeals?: boolean | null
   hasHallLodging?: boolean | null
   allowsPhoneBeforeAfter?: boolean | null
+  initialPeriodDays?: number | null
+  initialLocationCount?: number | null
 }
 
 export type TrainingPeriodUpdateWithoutUnitInput = {
@@ -983,6 +1063,8 @@ export type TrainingPeriodUpdateWithoutUnitInput = {
   hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   locations?: Prisma.TrainingLocationUpdateManyWithoutTrainingPeriodNestedInput
   schedules?: Prisma.UnitScheduleUpdateManyWithoutTrainingPeriodNestedInput
 }
@@ -1002,6 +1084,8 @@ export type TrainingPeriodUncheckedUpdateWithoutUnitInput = {
   hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   locations?: Prisma.TrainingLocationUncheckedUpdateManyWithoutTrainingPeriodNestedInput
   schedules?: Prisma.UnitScheduleUncheckedUpdateManyWithoutTrainingPeriodNestedInput
 }
@@ -1021,6 +1105,8 @@ export type TrainingPeriodUncheckedUpdateManyWithoutUnitInput = {
   hasCateredMeals?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   hasHallLodging?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   allowsPhoneBeforeAfter?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  initialPeriodDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  initialLocationCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 
@@ -1079,6 +1165,8 @@ export type TrainingPeriodSelect<ExtArgs extends runtime.Types.Extensions.Intern
   hasCateredMeals?: boolean
   hasHallLodging?: boolean
   allowsPhoneBeforeAfter?: boolean
+  initialPeriodDays?: boolean
+  initialLocationCount?: boolean
   unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
   locations?: boolean | Prisma.TrainingPeriod$locationsArgs<ExtArgs>
   schedules?: boolean | Prisma.TrainingPeriod$schedulesArgs<ExtArgs>
@@ -1101,6 +1189,8 @@ export type TrainingPeriodSelectCreateManyAndReturn<ExtArgs extends runtime.Type
   hasCateredMeals?: boolean
   hasHallLodging?: boolean
   allowsPhoneBeforeAfter?: boolean
+  initialPeriodDays?: boolean
+  initialLocationCount?: boolean
   unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["trainingPeriod"]>
 
@@ -1120,6 +1210,8 @@ export type TrainingPeriodSelectUpdateManyAndReturn<ExtArgs extends runtime.Type
   hasCateredMeals?: boolean
   hasHallLodging?: boolean
   allowsPhoneBeforeAfter?: boolean
+  initialPeriodDays?: boolean
+  initialLocationCount?: boolean
   unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["trainingPeriod"]>
 
@@ -1139,9 +1231,11 @@ export type TrainingPeriodSelectScalar = {
   hasCateredMeals?: boolean
   hasHallLodging?: boolean
   allowsPhoneBeforeAfter?: boolean
+  initialPeriodDays?: boolean
+  initialLocationCount?: boolean
 }
 
-export type TrainingPeriodOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "unitId" | "name" | "workStartTime" | "workEndTime" | "lunchStartTime" | "lunchEndTime" | "officerName" | "officerPhone" | "officerEmail" | "isStaffLocked" | "excludedDates" | "hasCateredMeals" | "hasHallLodging" | "allowsPhoneBeforeAfter", ExtArgs["result"]["trainingPeriod"]>
+export type TrainingPeriodOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "unitId" | "name" | "workStartTime" | "workEndTime" | "lunchStartTime" | "lunchEndTime" | "officerName" | "officerPhone" | "officerEmail" | "isStaffLocked" | "excludedDates" | "hasCateredMeals" | "hasHallLodging" | "allowsPhoneBeforeAfter" | "initialPeriodDays" | "initialLocationCount", ExtArgs["result"]["trainingPeriod"]>
 export type TrainingPeriodInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
   locations?: boolean | Prisma.TrainingPeriod$locationsArgs<ExtArgs>
@@ -1178,6 +1272,8 @@ export type $TrainingPeriodPayload<ExtArgs extends runtime.Types.Extensions.Inte
     hasCateredMeals: boolean | null
     hasHallLodging: boolean | null
     allowsPhoneBeforeAfter: boolean | null
+    initialPeriodDays: number | null
+    initialLocationCount: number | null
   }, ExtArgs["result"]["trainingPeriod"]>
   composites: {}
 }
@@ -1619,6 +1715,8 @@ export interface TrainingPeriodFieldRefs {
   readonly hasCateredMeals: Prisma.FieldRef<"TrainingPeriod", 'Boolean'>
   readonly hasHallLodging: Prisma.FieldRef<"TrainingPeriod", 'Boolean'>
   readonly allowsPhoneBeforeAfter: Prisma.FieldRef<"TrainingPeriod", 'Boolean'>
+  readonly initialPeriodDays: Prisma.FieldRef<"TrainingPeriod", 'Int'>
+  readonly initialLocationCount: Prisma.FieldRef<"TrainingPeriod", 'Int'>
 }
     
 
