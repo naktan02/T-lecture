@@ -458,7 +458,7 @@ class UnitRepository {
       const reassignedUserIds = new Set<number>();
       if (deletedAssignments.length > 0) {
         for (const deleted of deletedAssignments) {
-          // 같은 TrainingPeriod의 다른 일정 조회
+          // 같은 TrainingPeriod의 다른 일정 조회 (scheduleLocations 포함)
           const otherSchedules = await tx.unitSchedule.findMany({
             where: {
               trainingPeriodId: deleted.trainingPeriodId,
@@ -467,7 +467,15 @@ class UnitRepository {
             include: {
               assignments: {
                 where: { state: { in: ['Pending', 'Accepted'] } },
-                select: { userId: true },
+                select: { userId: true, trainingLocationId: true },
+              },
+              scheduleLocations: {
+                select: {
+                  trainingLocationId: true,
+                  requiredCount: true,
+                  actualCount: true,
+                  plannedCount: true,
+                },
               },
             },
           });
@@ -475,6 +483,45 @@ class UnitRepository {
           for (const schedule of otherSchedules) {
             if (!schedule.date) continue;
             if (schedule.assignments.some((a) => a.userId === deleted.userId)) continue;
+
+            // 해당 날짜/장소의 필요인원 확인
+            const targetLocationId = deleted.trainingLocationId;
+            const scheduleLoc = schedule.scheduleLocations.find(
+              (sl) => sl.trainingLocationId === targetLocationId,
+            );
+
+            // 필요인원 계산: requiredCount > actualCount/36 > plannedCount/36 > 1
+            const traineesPerInstructor = 36;
+            let requiredCount = 1;
+            if (
+              scheduleLoc?.requiredCount !== null &&
+              scheduleLoc?.requiredCount !== undefined &&
+              scheduleLoc.requiredCount > 0
+            ) {
+              requiredCount = scheduleLoc.requiredCount;
+            } else if (
+              scheduleLoc?.actualCount !== null &&
+              scheduleLoc?.actualCount !== undefined &&
+              scheduleLoc.actualCount > 0
+            ) {
+              requiredCount = Math.ceil(scheduleLoc.actualCount / traineesPerInstructor);
+            } else if (
+              scheduleLoc?.plannedCount !== null &&
+              scheduleLoc?.plannedCount !== undefined &&
+              scheduleLoc.plannedCount > 0
+            ) {
+              requiredCount = Math.ceil(scheduleLoc.plannedCount / traineesPerInstructor);
+            }
+
+            // 현재 해당 장소에 배정된 인원 수
+            const currentAssignedCount = schedule.assignments.filter(
+              (a) => a.trainingLocationId === targetLocationId || a.trainingLocationId === null,
+            ).length;
+
+            // 슬롯이 꽉 찼으면 재배정 불가 -> 다음 일정 확인
+            if (currentAssignedCount >= requiredCount) {
+              continue;
+            }
 
             // 해당 날짜에 다른 부대 배정 확인
             const otherAssignment = await tx.instructorUnitAssignment.findFirst({

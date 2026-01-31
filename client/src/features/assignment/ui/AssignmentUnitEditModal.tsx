@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { Button } from '../../../shared/ui';
-import { showSuccess, showError } from '../../../shared/utils/toast';
+import { showSuccess, showError, showConfirm } from '../../../shared/utils/toast';
 import {
   TrainingPeriodTab,
   TrainingPeriodFormData,
@@ -21,7 +21,8 @@ import { GroupedUnassignedUnit } from '../model/useAssignment';
 interface Props {
   unit: GroupedUnassignedUnit;
   onClose: () => void;
-  onSave?: () => void;
+  onSave?: (updatedSchedules?: { id: number; date: string }[]) => void;
+  assignedDates?: Set<string>; // 이미 이 부대에 배정(임시/확정)이 있는 날짜들
 }
 
 // Time format helper
@@ -38,7 +39,12 @@ const formatTimeForInput = (timeStr?: string | null): string => {
   }
 };
 
-export const AssignmentUnitEditModal: React.FC<Props> = ({ unit, onClose, onSave: _onSave }) => {
+export const AssignmentUnitEditModal: React.FC<Props> = ({
+  unit,
+  onClose,
+  onSave: _onSave,
+  assignedDates,
+}) => {
   const { detail } = unit;
 
   // trainingPeriodId - GroupedUnassignedUnit에서 직접 가져옴
@@ -167,7 +173,8 @@ export const AssignmentUnitEditModal: React.FC<Props> = ({ unit, onClose, onSave
       return;
     }
 
-    // 로컬에서 새 날짜 계산 (주말 제외)
+    // 현재 일정과 새 일정을 비교하여 삭제되는 날짜 중 배정이 있는지 확인
+    const currentDates = new Set(unit.uniqueDates);
     const calculateWeekdayDates = (start: string, end: string, excludes: string[]): string[] => {
       const dates: string[] = [];
       const excludeSet = new Set(excludes);
@@ -187,7 +194,32 @@ export const AssignmentUnitEditModal: React.FC<Props> = ({ unit, onClose, onSave
       return dates;
     };
 
-    const newDates = calculateWeekdayDates(editStartDate, editEndDate, editExcludedDates);
+    const newDatesSet = new Set(
+      calculateWeekdayDates(editStartDate, editEndDate, editExcludedDates),
+    );
+
+    // 삭제될 날짜들 중 배정이 있는 날짜 확인
+    const deletedDatesWithAssignments: string[] = [];
+    if (assignedDates) {
+      for (const date of currentDates) {
+        if (!newDatesSet.has(date) && assignedDates.has(date)) {
+          deletedDatesWithAssignments.push(date);
+        }
+      }
+    }
+
+    // 배정된 날짜가 삭제되는 경우 확인
+    if (deletedDatesWithAssignments.length > 0) {
+      const dateList = deletedDatesWithAssignments.sort().join(', ');
+      const confirmed = await showConfirm(
+        `다음 날짜에 이미 배정된 강사가 있습니다:\n${dateList}\n\n일정을 변경하면 삭제되는 날짜에 배정된 강사에게 우선배정 크레딧이 부여됩니다.\n\n계속하시겠습니까?`,
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    const newDates = [...newDatesSet].sort();
 
     // 즉시 UI 업데이트 - 기존 날짜 매핑 유지
     // 1. 기존 일정의 날짜 -> schedule ID 매핑 생성
@@ -235,7 +267,22 @@ export const AssignmentUnitEditModal: React.FC<Props> = ({ unit, onClose, onSave
         endDate: editEndDate,
         excludedDates: editExcludedDates,
       });
-      showSuccess('일정이 수정되었습니다');
+
+      // API 응답에서 크레딧 정보 확인
+      const data = response.data || response;
+      const deletedCount = data.deleted ?? 0;
+      const addedCount = data.added ?? 0;
+      const creditsGiven = data.creditsGiven ?? 0;
+
+      // 결과 메시지 표시
+      if (deletedCount > 0 || addedCount > 0 || creditsGiven > 0) {
+        showSuccess(
+          `일정 수정 완료: ${deletedCount}개 삭제, ${addedCount}개 추가` +
+            (creditsGiven > 0 ? `, ${creditsGiven}명에게 크레딧 부여` : ''),
+        );
+      } else {
+        showSuccess('일정이 수정되었습니다');
+      }
 
       // 서버 응답으로부터 실제 schedule ID 업데이트
       const schedules = response.schedules || response.data?.schedules;
@@ -249,6 +296,13 @@ export const AssignmentUnitEditModal: React.FC<Props> = ({ unit, onClose, onSave
           schedules: serverSchedules,
         }));
       }
+
+      // 부모 컴포넌트에 업데이트된 일정 데이터 전달 (로컬 상태 즉시 업데이트)
+      const finalSchedules =
+        schedules && Array.isArray(schedules)
+          ? schedules.map((s: { id: number; date: string }) => ({ id: s.id, date: s.date }))
+          : periodForm.schedules.map((s) => ({ id: s.id ?? 0, date: s.date }));
+      _onSave?.(finalSchedules);
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('일정 수정 실패:', error);
