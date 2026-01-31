@@ -174,6 +174,18 @@ export default function PrivacyPage(): ReactElement {
                       주소-좌표 변환(지오코딩), 경로 탐색 API
                     </td>
                   </tr>
+                  <tr>
+                    <td className="border border-gray-300 px-4 py-2">Supabase (미국)</td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      데이터베이스 호스팅 및 관리
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border border-gray-300 px-4 py-2">Brevo (프랑스)</td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      이메일 발송 (인증 코드, 알림)
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
