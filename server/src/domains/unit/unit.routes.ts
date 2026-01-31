@@ -55,6 +55,9 @@ router.patch(
   unitController.updateTrainingPeriodScheduleLocations,
 );
 
+// 교육기간 기본정보 수정 (근무시간, 담당관, 시설정보, 교육기간명)
+router.patch('/training-periods/:periodId/info', unitController.updateTrainingPeriodInfo);
+
 // 교육기간 삭제
 router.delete('/training-periods/:periodId', unitController.deleteTrainingPeriod);
 

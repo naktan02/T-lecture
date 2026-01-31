@@ -210,4 +210,5 @@ module.exports = {
   toCreateUnitDto,
   excelRowToRawUnit,
   groupExcelRowsByUnit,
+  normalizePhone,
 };

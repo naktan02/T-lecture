@@ -76,11 +76,25 @@ export const useSchedule = (year: number, month: number) => {
   });
 
   // 날짜 토글 (day: 1~31)
-  const toggleDay = useCallback((day: number) => {
-    setSelectedDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
-    );
-  }, []);
+  const toggleDay = useCallback(
+    (day: number) => {
+      // UTC 자정 기준 오늘
+      const now = new Date();
+      const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+      // 대상 날짜 (UTC 자정)
+      const targetDateUTC = new Date(Date.UTC(year, month - 1, day));
+
+      if (targetDateUTC <= todayUTC) {
+        showError('오늘 이전 날짜는 수정할 수 없습니다.');
+        return;
+      }
+
+      setSelectedDays((prev) =>
+        prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
+      );
+    },
+    [year, month],
+  );
 
   // 저장
   const saveSchedule = async () => {

@@ -241,7 +241,8 @@ export const useUnitDrawer = ({
   const updateMutation = useMutation({
     mutationFn: (payload: UpdateUnitWithPeriodsPayload) => unitApi.updateUnit(unitId!, payload),
     onSuccess: () => {
-      // 로컬 상태를 유지하므로 invalidate하지 않음
+      // 저장 후 캐시 무효화 - drawer 재진입 시 최신 데이터 표시
+      queryClient.invalidateQueries({ queryKey: ['unitDetail', unitId] });
     },
   });
 
@@ -280,14 +281,16 @@ export const useUnitDrawer = ({
       };
     }) => unitApi.updateTrainingPeriodScheduleLocations(periodId, data),
     onSuccess: () => {
-      // 로컬 상태를 유지하므로 invalidate하지 않음
+      // 저장 후 캐시 무효화 - drawer 재진입 시 최신 데이터 표시
+      queryClient.invalidateQueries({ queryKey: ['unitDetail', unitId] });
     },
   });
 
   const updateAddressMutation = useMutation({
     mutationFn: (address: string) => unitApi.updateUnitAddress(unitId!, address),
     onSuccess: () => {
-      // 로컬 상태를 유지하므로 invalidate하지 않음
+      // 저장 후 캐시 무효화 - drawer 재진입 시 최신 데이터 표시
+      queryClient.invalidateQueries({ queryKey: ['unitDetail', unitId] });
     },
   });
 
@@ -300,7 +303,33 @@ export const useUnitDrawer = ({
       data: { startDate: string; endDate: string; excludedDates: string[] };
     }) => unitApi.updateTrainingPeriodSchedule(periodId, data),
     onSuccess: () => {
-      // 로컬 상태를 유지하므로 invalidate하지 않음
+      // 저장 후 캐시 무효화 - drawer 재진입 시 최신 데이터 표시
+      queryClient.invalidateQueries({ queryKey: ['unitDetail', unitId] });
+    },
+  });
+
+  const updateTrainingPeriodInfoMutation = useMutation({
+    mutationFn: ({
+      periodId,
+      data,
+    }: {
+      periodId: number;
+      data: {
+        name?: string;
+        workStartTime?: string | null;
+        workEndTime?: string | null;
+        lunchStartTime?: string | null;
+        lunchEndTime?: string | null;
+        officerName?: string | null;
+        officerPhone?: string | null;
+        officerEmail?: string | null;
+        hasCateredMeals?: boolean;
+        hasHallLodging?: boolean;
+        allowsPhoneBeforeAfter?: boolean;
+      };
+    }) => unitApi.updateTrainingPeriodInfo(periodId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['unitDetail', unitId] });
     },
   });
 
@@ -664,7 +693,7 @@ export const useUnitDrawer = ({
 
   // 정보 섹션 저장 (근무시간, 담당관, 시설정보만 전송)
   const handleInfoSave = useCallback(async () => {
-    if (typeof activeTab !== 'number' || !unitId) return;
+    if (typeof activeTab !== 'number') return;
     const period = trainingPeriods[activeTab];
     if (!period.id) {
       showWarning('교육기간을 먼저 저장해주세요.');
@@ -672,34 +701,27 @@ export const useUnitDrawer = ({
     }
 
     try {
-      await updateMutation.mutateAsync({
-        name: basicForm.name,
-        unitType: basicForm.unitType,
-        wideArea: basicForm.wideArea,
-        region: basicForm.region,
-        trainingPeriods: [
-          {
-            id: period.id,
-            name: period.name,
-            workStartTime: period.workStartTime || null,
-            workEndTime: period.workEndTime || null,
-            lunchStartTime: period.lunchStartTime || null,
-            lunchEndTime: period.lunchEndTime || null,
-            officerName: period.officerName || null,
-            officerPhone: period.officerPhone || null,
-            officerEmail: period.officerEmail || null,
-            hasCateredMeals: period.hasCateredMeals,
-            hasHallLodging: period.hasHallLodging,
-            allowsPhoneBeforeAfter: period.allowsPhoneBeforeAfter,
-            // locations 제외 - 장소 정보는 handleLocationsSave에서 처리
-          },
-        ],
+      await updateTrainingPeriodInfoMutation.mutateAsync({
+        periodId: period.id,
+        data: {
+          name: period.name,
+          workStartTime: period.workStartTime || null,
+          workEndTime: period.workEndTime || null,
+          lunchStartTime: period.lunchStartTime || null,
+          lunchEndTime: period.lunchEndTime || null,
+          officerName: period.officerName || null,
+          officerPhone: period.officerPhone || null,
+          officerEmail: period.officerEmail || null,
+          hasCateredMeals: period.hasCateredMeals,
+          hasHallLodging: period.hasHallLodging,
+          allowsPhoneBeforeAfter: period.allowsPhoneBeforeAfter,
+        },
       });
       showSuccess('기본 정보가 저장되었습니다.');
     } catch {
       showError('기본 정보 저장에 실패했습니다.');
     }
-  }, [activeTab, unitId, trainingPeriods, basicForm, updateMutation]);
+  }, [activeTab, trainingPeriods, updateTrainingPeriodInfoMutation]);
 
   // 장소 섹션 저장 (장소 + 일정별 장소 매칭 동시 처리)
   const handleLocationsSave = useCallback(async () => {
