@@ -36,7 +36,7 @@ const DropdownMenu = ({ item, isActive }: { item: NavLink; isActive: boolean }) 
       onMouseLeave={() => setIsOpen(false)}
     >
       <button
-        className={`flex items-center gap-1.5 px-3 py-2 rounded-md transition-all duration-200 ${
+        className={`flex items-center gap-1.5 px-2 lg:px-3 py-1.5 lg:py-2 rounded-md transition-all duration-200 text-xs lg:text-sm whitespace-nowrap ${
           isActive || isChildActive
             ? 'text-white bg-white/10'
             : 'text-gray-300 hover:text-white hover:bg-white/5'
@@ -236,8 +236,8 @@ export const CommonHeader = ({
       return (
         <button
           onClick={() => navigate('/user-main')}
-          className="px-3 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-sm 
-                     transition-all duration-200 active:scale-95 hidden sm:block"
+          className="px-2 lg:px-3 py-1.5 lg:py-2 bg-green-600 hover:bg-green-700 rounded-lg text-xs lg:text-sm 
+                     transition-all duration-200 active:scale-95 hidden sm:block whitespace-nowrap"
         >
           사용자 모드
         </button>
@@ -249,8 +249,8 @@ export const CommonHeader = ({
       return (
         <button
           onClick={() => navigate(isSuperAdmin ? '/admin/super' : '/admin')}
-          className="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm 
-                     transition-all duration-200 active:scale-95 hidden sm:block"
+          className="px-2 lg:px-3 py-1.5 lg:py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-xs lg:text-sm 
+                     transition-all duration-200 active:scale-95 hidden sm:block whitespace-nowrap"
         >
           관리자 모드
         </button>
@@ -269,11 +269,13 @@ export const CommonHeader = ({
         {/* 1. 왼쪽: 타이틀 및 메뉴 */}
         <div className="flex items-center gap-4 md:gap-8">
           <Link to={logoPath} className="hover:opacity-80 transition-opacity">
-            <h1 className="text-lg md:text-xl font-bold text-green-400">{title}</h1>
+            <h1 className="text-sm lg:text-lg xl:text-xl font-bold text-green-400 whitespace-nowrap">
+              {title}
+            </h1>
           </Link>
 
           {/* 데스크톱 네비게이션 */}
-          <nav className="hidden md:flex gap-6 text-sm">
+          <nav className="hidden md:flex gap-1 lg:gap-3 xl:gap-6 text-xs lg:text-sm">
             {links.map((link) =>
               link.children && link.children.length > 0 ? (
                 // 드롭다운 메뉴
@@ -283,11 +285,10 @@ export const CommonHeader = ({
                   isActive={location.pathname === link.path}
                 />
               ) : (
-                // 단일 링크 - 드롭다운 버튼과 같은 스타일
                 <Link
                   key={link.path}
                   to={link.path || '#'}
-                  className={`px-3 py-2 rounded-md transition-all duration-200 ${
+                  className={`px-2 lg:px-3 py-1.5 lg:py-2 rounded-md transition-all duration-200 whitespace-nowrap ${
                     location.pathname === link.path
                       ? 'text-white bg-white/10'
                       : 'text-gray-300 hover:text-white hover:bg-white/5'
@@ -324,14 +325,14 @@ export const CommonHeader = ({
           <div className="hidden md:block">{renderModeSwitch()}</div>
 
           {/* 유저 라벨 */}
-          <span className="hidden sm:inline text-xs md:text-sm font-medium border border-gray-600 rounded px-2 py-1 bg-gray-700">
+          <span className="hidden sm:inline text-xs lg:text-sm font-medium border border-gray-600 rounded px-1.5 lg:px-2 py-0.5 lg:py-1 bg-gray-700 whitespace-nowrap">
             {displayLabel}
           </span>
 
           {/* 데스크톱 로그아웃 */}
           <button
             onClick={handleLogout}
-            className="hidden md:block px-3 py-1 bg-red-600 hover:bg-red-700 rounded-md text-sm transition duration-150"
+            className="hidden md:block px-2 lg:px-3 py-1 bg-red-600 hover:bg-red-700 rounded-md text-xs lg:text-sm transition duration-150 whitespace-nowrap"
           >
             로그아웃
           </button>

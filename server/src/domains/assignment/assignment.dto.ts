@@ -94,29 +94,23 @@ class AssignmentDTO {
       // 2. 스케줄(날짜)별로 반복 (TrainingPeriod.schedules)
       (period.schedules || []).forEach((schedule: ScheduleRaw) => {
         const dateStr = toKSTDateString(schedule.date);
+        const scheduleLocs = schedule.scheduleLocations || [];
 
-        // 3. 교육장소별로 카드 생성
-        locations.forEach((loc: TrainingLocationRaw) => {
-          // ScheduleLocation에서 actualCount 가져오기
-          const scheduleLoc = schedule.scheduleLocations?.find(
-            (sl) => sl.trainingLocationId === loc.id,
-          );
-          const actualCount = scheduleLoc?.actualCount ?? 0;
-
+        // ScheduleLocation 기반으로 반복 (실제 매핑된 장소만)
+        if (scheduleLocs.length === 0) {
+          // 매핑된 장소가 없으면 첫 번째 장소 또는 기본 장소로 카드 생성
+          const defaultLoc = locations[0] || { id: 'def', originalPlace: '교육장소 미정' };
           list.push({
             type: 'UNIT',
-            id: `u-${unit.id}-s-${schedule.id}-l-${loc.id}`,
-            trainingPeriodId: period.id, // 자동 배정용
-
-            // [Card UI]
+            id: `u-${unit.id}-s-${schedule.id}-l-${defaultLoc.id}`,
+            trainingPeriodId: period.id,
             unitName: unit.name,
-            originalPlace: loc.originalPlace,
-            actualCount: actualCount,
+            originalPlace: defaultLoc.originalPlace,
+            actualCount: 0,
+            requiredCount: null,
             date: dateStr,
             time: toKSTTimeString(period.workStartTime),
             location: unit.region,
-
-            // [Modal Detail]
             detail: {
               unitName: unit.name,
               region: unit.region,
@@ -126,13 +120,11 @@ class AssignmentDTO {
               officerName: period.officerName,
               officerPhone: period.officerPhone,
               officerEmail: period.officerEmail,
-              originalPlace: loc.originalPlace,
-              changedPlace: loc.changedPlace,
-              plannedCount: scheduleLoc?.plannedCount ?? 0,
-              actualCount: actualCount,
-              note: loc.note,
-
-              // TrainingPeriod의 schedules에서 첫/끝 날짜 가져오기
+              originalPlace: defaultLoc.originalPlace,
+              changedPlace: (defaultLoc as TrainingLocationRaw).changedPlace || null,
+              plannedCount: 0,
+              actualCount: 0,
+              note: (defaultLoc as TrainingLocationRaw).note || null,
               educationStart: period.schedules[0]
                 ? toKSTDateString(period.schedules[0].date)
                 : null,
@@ -143,16 +135,67 @@ class AssignmentDTO {
               workEndTime: toKSTTimeString(period.workEndTime),
               lunchStartTime: toKSTTimeString(period.lunchStartTime),
               lunchEndTime: toKSTTimeString(period.lunchEndTime),
-
-              hasInstructorLounge: loc.hasInstructorLounge,
-              hasWomenRestroom: loc.hasWomenRestroom,
-              // NOTE: 이 3개 필드는 TrainingPeriod에 있음
+              hasInstructorLounge: (defaultLoc as TrainingLocationRaw).hasInstructorLounge || false,
+              hasWomenRestroom: (defaultLoc as TrainingLocationRaw).hasWomenRestroom || false,
               hasCateredMeals: period.hasCateredMeals,
               hasHallLodging: period.hasHallLodging,
               allowsPhoneBeforeAfter: period.allowsPhoneBeforeAfter,
+              excludedDates: (period.excludedDates as string[]) || [],
             },
           });
-        });
+        } else {
+          // 실제 매핑된 장소만 카드 생성
+          scheduleLocs.forEach((sl) => {
+            const loc = locations.find(
+              (l: TrainingLocationRaw) => l.id === sl.trainingLocationId,
+            ) as TrainingLocationRaw | undefined;
+            if (!loc) return; // 장소가 삭제된 경우 스킵
+
+            list.push({
+              type: 'UNIT',
+              id: `u-${unit.id}-s-${schedule.id}-l-${loc.id}`,
+              trainingPeriodId: period.id,
+              unitName: unit.name,
+              originalPlace: loc.originalPlace,
+              actualCount: sl.actualCount ?? 0,
+              requiredCount: sl.requiredCount ?? null,
+              date: dateStr,
+              time: toKSTTimeString(period.workStartTime),
+              location: unit.region,
+              detail: {
+                unitName: unit.name,
+                region: unit.region,
+                wideArea: unit.wideArea,
+                address: unit.addressDetail,
+                detailAddress: unit.detailAddress,
+                officerName: period.officerName,
+                officerPhone: period.officerPhone,
+                officerEmail: period.officerEmail,
+                originalPlace: loc.originalPlace,
+                changedPlace: loc.changedPlace,
+                plannedCount: sl.plannedCount ?? 0,
+                actualCount: sl.actualCount ?? 0,
+                note: loc.note,
+                educationStart: period.schedules[0]
+                  ? toKSTDateString(period.schedules[0].date)
+                  : null,
+                educationEnd: period.schedules[period.schedules.length - 1]
+                  ? toKSTDateString(period.schedules[period.schedules.length - 1].date)
+                  : null,
+                workStartTime: toKSTTimeString(period.workStartTime),
+                workEndTime: toKSTTimeString(period.workEndTime),
+                lunchStartTime: toKSTTimeString(period.lunchStartTime),
+                lunchEndTime: toKSTTimeString(period.lunchEndTime),
+                hasInstructorLounge: loc.hasInstructorLounge,
+                hasWomenRestroom: loc.hasWomenRestroom,
+                hasCateredMeals: period.hasCateredMeals,
+                hasHallLodging: period.hasHallLodging,
+                allowsPhoneBeforeAfter: period.allowsPhoneBeforeAfter,
+                excludedDates: (period.excludedDates as string[]) || [],
+              },
+            });
+          });
+        }
       });
     });
     return list;

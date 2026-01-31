@@ -16,6 +16,7 @@ import {
   groupUnassignedUnits,
   GroupedUnassignedUnit,
   LocationSchedule,
+  ScheduleLocationInfo,
 } from './groupUnassignedUnits';
 
 interface DateRange {
@@ -42,7 +43,7 @@ export interface AssignmentData {
 }
 
 // 타입은 groupUnassignedUnits.ts에서 re-export
-export type { GroupedUnassignedUnit, LocationSchedule };
+export type { GroupedUnassignedUnit, LocationSchedule, ScheduleLocationInfo };
 
 interface UseAssignmentReturn {
   dateRange: DateRange;

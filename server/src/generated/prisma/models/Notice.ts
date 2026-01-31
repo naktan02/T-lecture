@@ -67,6 +67,7 @@ export type NoticeCountAggregateOutputType = {
   authorId: number
   viewCount: number
   isPinned: number
+  targetSetting: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -114,6 +115,7 @@ export type NoticeCountAggregateInputType = {
   authorId?: true
   viewCount?: true
   isPinned?: true
+  targetSetting?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -212,6 +214,7 @@ export type NoticeGroupByOutputType = {
   authorId: number
   viewCount: number
   isPinned: boolean
+  targetSetting: runtime.JsonValue | null
   createdAt: Date
   updatedAt: Date
   _count: NoticeCountAggregateOutputType | null
@@ -246,6 +249,7 @@ export type NoticeWhereInput = {
   authorId?: Prisma.IntFilter<"Notice"> | number
   viewCount?: Prisma.IntFilter<"Notice"> | number
   isPinned?: Prisma.BoolFilter<"Notice"> | boolean
+  targetSetting?: Prisma.JsonNullableFilter<"Notice">
   createdAt?: Prisma.DateTimeFilter<"Notice"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Notice"> | Date | string
   author?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -259,6 +263,7 @@ export type NoticeOrderByWithRelationInput = {
   authorId?: Prisma.SortOrder
   viewCount?: Prisma.SortOrder
   isPinned?: Prisma.SortOrder
+  targetSetting?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   author?: Prisma.UserOrderByWithRelationInput
@@ -275,6 +280,7 @@ export type NoticeWhereUniqueInput = Prisma.AtLeast<{
   authorId?: Prisma.IntFilter<"Notice"> | number
   viewCount?: Prisma.IntFilter<"Notice"> | number
   isPinned?: Prisma.BoolFilter<"Notice"> | boolean
+  targetSetting?: Prisma.JsonNullableFilter<"Notice">
   createdAt?: Prisma.DateTimeFilter<"Notice"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Notice"> | Date | string
   author?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -288,6 +294,7 @@ export type NoticeOrderByWithAggregationInput = {
   authorId?: Prisma.SortOrder
   viewCount?: Prisma.SortOrder
   isPinned?: Prisma.SortOrder
+  targetSetting?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.NoticeCountOrderByAggregateInput
@@ -307,6 +314,7 @@ export type NoticeScalarWhereWithAggregatesInput = {
   authorId?: Prisma.IntWithAggregatesFilter<"Notice"> | number
   viewCount?: Prisma.IntWithAggregatesFilter<"Notice"> | number
   isPinned?: Prisma.BoolWithAggregatesFilter<"Notice"> | boolean
+  targetSetting?: Prisma.JsonNullableWithAggregatesFilter<"Notice">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Notice"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Notice"> | Date | string
 }
@@ -316,6 +324,7 @@ export type NoticeCreateInput = {
   body: string
   viewCount?: number
   isPinned?: boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   author: Prisma.UserCreateNestedOneWithoutAuthoredNoticesInput
@@ -329,6 +338,7 @@ export type NoticeUncheckedCreateInput = {
   authorId: number
   viewCount?: number
   isPinned?: boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   receipts?: Prisma.NoticeReceiptUncheckedCreateNestedManyWithoutNoticeInput
@@ -339,6 +349,7 @@ export type NoticeUpdateInput = {
   body?: Prisma.StringFieldUpdateOperationsInput | string
   viewCount?: Prisma.IntFieldUpdateOperationsInput | number
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   author?: Prisma.UserUpdateOneRequiredWithoutAuthoredNoticesNestedInput
@@ -352,6 +363,7 @@ export type NoticeUncheckedUpdateInput = {
   authorId?: Prisma.IntFieldUpdateOperationsInput | number
   viewCount?: Prisma.IntFieldUpdateOperationsInput | number
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   receipts?: Prisma.NoticeReceiptUncheckedUpdateManyWithoutNoticeNestedInput
@@ -364,6 +376,7 @@ export type NoticeCreateManyInput = {
   authorId: number
   viewCount?: number
   isPinned?: boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -373,6 +386,7 @@ export type NoticeUpdateManyMutationInput = {
   body?: Prisma.StringFieldUpdateOperationsInput | string
   viewCount?: Prisma.IntFieldUpdateOperationsInput | number
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -384,6 +398,7 @@ export type NoticeUncheckedUpdateManyInput = {
   authorId?: Prisma.IntFieldUpdateOperationsInput | number
   viewCount?: Prisma.IntFieldUpdateOperationsInput | number
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -395,6 +410,7 @@ export type NoticeCountOrderByAggregateInput = {
   authorId?: Prisma.SortOrder
   viewCount?: Prisma.SortOrder
   isPinned?: Prisma.SortOrder
+  targetSetting?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -509,6 +525,7 @@ export type NoticeCreateWithoutReceiptsInput = {
   body: string
   viewCount?: number
   isPinned?: boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   author: Prisma.UserCreateNestedOneWithoutAuthoredNoticesInput
@@ -521,6 +538,7 @@ export type NoticeUncheckedCreateWithoutReceiptsInput = {
   authorId: number
   viewCount?: number
   isPinned?: boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -546,6 +564,7 @@ export type NoticeUpdateWithoutReceiptsInput = {
   body?: Prisma.StringFieldUpdateOperationsInput | string
   viewCount?: Prisma.IntFieldUpdateOperationsInput | number
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   author?: Prisma.UserUpdateOneRequiredWithoutAuthoredNoticesNestedInput
@@ -558,6 +577,7 @@ export type NoticeUncheckedUpdateWithoutReceiptsInput = {
   authorId?: Prisma.IntFieldUpdateOperationsInput | number
   viewCount?: Prisma.IntFieldUpdateOperationsInput | number
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -567,6 +587,7 @@ export type NoticeCreateWithoutAuthorInput = {
   body: string
   viewCount?: number
   isPinned?: boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   receipts?: Prisma.NoticeReceiptCreateNestedManyWithoutNoticeInput
@@ -578,6 +599,7 @@ export type NoticeUncheckedCreateWithoutAuthorInput = {
   body: string
   viewCount?: number
   isPinned?: boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   receipts?: Prisma.NoticeReceiptUncheckedCreateNestedManyWithoutNoticeInput
@@ -619,6 +641,7 @@ export type NoticeScalarWhereInput = {
   authorId?: Prisma.IntFilter<"Notice"> | number
   viewCount?: Prisma.IntFilter<"Notice"> | number
   isPinned?: Prisma.BoolFilter<"Notice"> | boolean
+  targetSetting?: Prisma.JsonNullableFilter<"Notice">
   createdAt?: Prisma.DateTimeFilter<"Notice"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Notice"> | Date | string
 }
@@ -629,6 +652,7 @@ export type NoticeCreateManyAuthorInput = {
   body: string
   viewCount?: number
   isPinned?: boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -638,6 +662,7 @@ export type NoticeUpdateWithoutAuthorInput = {
   body?: Prisma.StringFieldUpdateOperationsInput | string
   viewCount?: Prisma.IntFieldUpdateOperationsInput | number
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   receipts?: Prisma.NoticeReceiptUpdateManyWithoutNoticeNestedInput
@@ -649,6 +674,7 @@ export type NoticeUncheckedUpdateWithoutAuthorInput = {
   body?: Prisma.StringFieldUpdateOperationsInput | string
   viewCount?: Prisma.IntFieldUpdateOperationsInput | number
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   receipts?: Prisma.NoticeReceiptUncheckedUpdateManyWithoutNoticeNestedInput
@@ -660,6 +686,7 @@ export type NoticeUncheckedUpdateManyWithoutAuthorInput = {
   body?: Prisma.StringFieldUpdateOperationsInput | string
   viewCount?: Prisma.IntFieldUpdateOperationsInput | number
   isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -702,6 +729,7 @@ export type NoticeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   authorId?: boolean
   viewCount?: boolean
   isPinned?: boolean
+  targetSetting?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   author?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -716,6 +744,7 @@ export type NoticeSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   authorId?: boolean
   viewCount?: boolean
   isPinned?: boolean
+  targetSetting?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   author?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -728,6 +757,7 @@ export type NoticeSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   authorId?: boolean
   viewCount?: boolean
   isPinned?: boolean
+  targetSetting?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   author?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -740,11 +770,12 @@ export type NoticeSelectScalar = {
   authorId?: boolean
   viewCount?: boolean
   isPinned?: boolean
+  targetSetting?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type NoticeOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "body" | "authorId" | "viewCount" | "isPinned" | "createdAt" | "updatedAt", ExtArgs["result"]["notice"]>
+export type NoticeOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "body" | "authorId" | "viewCount" | "isPinned" | "targetSetting" | "createdAt" | "updatedAt", ExtArgs["result"]["notice"]>
 export type NoticeInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   author?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   receipts?: boolean | Prisma.Notice$receiptsArgs<ExtArgs>
@@ -770,6 +801,7 @@ export type $NoticePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     authorId: number
     viewCount: number
     isPinned: boolean
+    targetSetting: runtime.JsonValue | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["notice"]>
@@ -1203,6 +1235,7 @@ export interface NoticeFieldRefs {
   readonly authorId: Prisma.FieldRef<"Notice", 'Int'>
   readonly viewCount: Prisma.FieldRef<"Notice", 'Int'>
   readonly isPinned: Prisma.FieldRef<"Notice", 'Boolean'>
+  readonly targetSetting: Prisma.FieldRef<"Notice", 'Json'>
   readonly createdAt: Prisma.FieldRef<"Notice", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Notice", 'DateTime'>
 }

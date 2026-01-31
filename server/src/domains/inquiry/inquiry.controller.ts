@@ -5,8 +5,9 @@ import asyncHandler from '../../common/middlewares/asyncHandler';
 
 // 문의사항 목록 조회
 export const getInquiries = asyncHandler(async (req: Request, res: Response) => {
-  const { page, limit, status, search, sortField, sortOrder } = req.query;
-  const isAdmin = req.user?.isAdmin === true;
+  const { page, limit, status, search, sortField, sortOrder, viewAs } = req.query;
+  const isInstructorView = viewAs === 'instructor';
+  const isAdmin = req.user?.isAdmin === true && !isInstructorView;
   const authorId = isAdmin ? undefined : req.user?.id;
 
   const result = await inquiryService.getAll({

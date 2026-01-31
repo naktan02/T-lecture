@@ -2,13 +2,15 @@
 import { useState, ChangeEvent, FormEvent } from 'react';
 import { Button } from '../../../shared/ui';
 import { sendVerificationCode, verifyEmailCode, registerUser } from '../authApi';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import { UserBasicFields } from '../../../entities/user/ui/UserBasicFields';
 import { InstructorFields } from '../../../entities/user/ui/InstructorFields';
 import { useInstructorMeta } from '../../../entities/user/model/useInstructorMeta';
 
 type UserType = 'INSTRUCTOR' | 'USER';
+
+const STORAGE_KEY = 'registerFormData';
 
 interface RegisterFormData {
   name: string;
@@ -25,23 +27,37 @@ interface RegisterFormData {
   category: string;
 }
 
+const defaultFormData: RegisterFormData = {
+  name: '',
+  email: '',
+  password: '',
+  passwordConfirm: '',
+  phoneNumber: '',
+  code: '',
+  address: '',
+  hasCar: false,
+  agreed: false,
+  virtueIds: [],
+  teamId: '',
+  category: '',
+};
+
 export const RegisterForm: React.FC = () => {
   const [userType, setUserType] = useState<UserType>('INSTRUCTOR');
   const navigate = useNavigate();
 
-  const [form, setForm] = useState<RegisterFormData>({
-    name: '',
-    email: '',
-    password: '',
-    passwordConfirm: '',
-    phoneNumber: '',
-    code: '',
-    address: '',
-    hasCar: false,
-    agreed: false,
-    virtueIds: [],
-    teamId: '',
-    category: '',
+  // sessionStorage에서 폼 데이터 복원
+  const [form, setForm] = useState<RegisterFormData>(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        sessionStorage.removeItem(STORAGE_KEY); // 복원 후 삭제
+        return JSON.parse(saved);
+      }
+    } catch {
+      // ignore
+    }
+    return defaultFormData;
   });
 
   const { options, loading: loadingOptions, error: metaError } = useInstructorMeta();
@@ -175,18 +191,18 @@ export const RegisterForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-full flex items-center justify-center bg-gray-100 p-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-6">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-2 md:p-4">
+      <div className="max-w-md w-full bg-white rounded-xl shadow-lg px-10 py-12 md:p-6">
         {/* 헤더 - 뒤로가기 + 제목 */}
-        <div className="flex items-center gap-4 mb-5">
+        <div className="flex items-center gap-5 md:gap-4 mb-8 md:mb-5">
           <button
             type="button"
             onClick={() => navigate('/login')}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+            className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
             title="로그인으로 돌아가기"
           >
             <svg
-              className="w-5 h-5 text-gray-600"
+              className="w-6 h-6 md:w-5 md:h-5 text-gray-600"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -200,31 +216,34 @@ export const RegisterForm: React.FC = () => {
             </svg>
           </button>
           <div>
-            <h2 className="text-xl font-bold text-gray-800">회원가입</h2>
-            <p className="text-sm text-gray-500">푸른나무재단에 오신 것을 환영합니다.</p>
+            <h2 className="text-2xl md:text-xl font-bold text-gray-800">회원가입</h2>
+            <p className="text-base md:text-sm text-gray-500">
+              푸른나무재단에 오신 것을 환영합니다.
+            </p>
           </div>
         </div>
 
         {/* 안내/에러 메시지 */}
         {displayError && (
-          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded">
+          <div className="mb-6 md:mb-4 bg-red-50 border border-red-200 text-red-700 text-base md:text-sm px-4 md:px-3 py-3 md:py-2 rounded">
             {error}
           </div>
         )}
         {info && !displayError && (
-          <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm px-3 py-2 rounded">
+          <div className="mb-6 md:mb-4 bg-green-50 border border-green-200 text-green-700 text-base md:text-sm px-4 md:px-3 py-3 md:py-2 rounded">
             {info}
           </div>
         )}
 
         {/* 탭 버튼 */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-3 md:gap-2 mb-10 md:mb-6">
           <Button
             type="button"
             fullWidth
             size="small"
             variant={userType === 'INSTRUCTOR' ? 'primary' : 'secondary'}
             onClick={() => setUserType('INSTRUCTOR')}
+            className="py-3 md:py-2 text-base md:text-sm"
           >
             강사
           </Button>
@@ -234,12 +253,13 @@ export const RegisterForm: React.FC = () => {
             size="small"
             variant={userType === 'USER' ? 'primary' : 'secondary'}
             onClick={() => setUserType('USER')}
+            className="py-3 md:py-2 text-base md:text-sm"
           >
             일반
           </Button>
         </div>
 
-        <form className="space-y-3" onSubmit={handleSubmit}>
+        <form className="space-y-5 md:space-y-3" onSubmit={handleSubmit}>
           {/* 공통 기본 정보 입력 */}
           <UserBasicFields
             form={form}
@@ -263,30 +283,50 @@ export const RegisterForm: React.FC = () => {
           )}
 
           {/* 약관 동의 */}
-          <div className="flex items-start gap-2 mt-6">
+          <div className="flex items-start gap-3 md:gap-2 mt-10 md:mt-6">
             <input
               type="checkbox"
-              className="w-4 h-4 mt-0.5 text-green-600 rounded focus:ring-green-500"
+              className="w-5 h-5 md:w-4 md:h-4 mt-0.5 text-green-600 rounded focus:ring-green-500"
               checked={form.agreed}
               onChange={handleChange('agreed')}
               required
             />
-            <span className="text-sm text-gray-600">
+            <span className="text-base md:text-sm text-gray-600">
               [필수]{' '}
-              <Link to="/terms" className="text-green-600 hover:underline">
+              <button
+                type="button"
+                onClick={() => {
+                  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+                  navigate('/terms');
+                }}
+                className="text-green-600 hover:underline"
+              >
                 이용약관
-              </Link>{' '}
+              </button>{' '}
               및{' '}
-              <Link to="/privacy" className="text-green-600 hover:underline">
+              <button
+                type="button"
+                onClick={() => {
+                  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+                  navigate('/privacy');
+                }}
+                className="text-green-600 hover:underline"
+              >
                 개인정보 처리방침
-              </Link>
+              </button>
               에 동의합니다.
             </span>
           </div>
 
           {/* 제출 버튼 */}
-          <div className="pt-4">
-            <Button type="submit" fullWidth variant="primary" disabled={submitting}>
+          <div className="pt-8 md:pt-4">
+            <Button
+              type="submit"
+              fullWidth
+              variant="primary"
+              disabled={submitting}
+              className="py-3 md:py-2 text-base md:text-sm"
+            >
               {submitting ? '가입 신청 중...' : '가입 신청'}
             </Button>
           </div>

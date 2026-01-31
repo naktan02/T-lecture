@@ -63,14 +63,15 @@ model MessageTemplate {
 // ==========================================
 
 model Notice {
-  id        Int      @id @default(autoincrement())
-  title     String   @map("제목")
-  body      String   @map("본문") @db.Text
-  authorId  Int      @map("작성자id")
-  viewCount Int      @default(0) @map("조회수")
-  isPinned  Boolean  @default(false) @map("상단고정")
-  createdAt DateTime @default(now()) @map("생성일시")
-  updatedAt DateTime @updatedAt @map("수정일시")
+  id            Int      @id @default(autoincrement())
+  title         String   @map("제목")
+  body          String   @map("본문") @db.Text
+  authorId      Int      @map("작성자id")
+  viewCount     Int      @default(0) @map("조회수")
+  isPinned      Boolean  @default(false) @map("상단고정")
+  targetSetting Json?    @map("대상설정") @db.JsonB
+  createdAt     DateTime @default(now()) @map("생성일시")
+  updatedAt     DateTime @updatedAt @map("수정일시")
 
   // 관계
   author   User            @relation("NoticeAuthor", fields: [authorId], references: [id])

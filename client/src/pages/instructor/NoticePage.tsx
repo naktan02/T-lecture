@@ -31,6 +31,7 @@ const NoticePage = (): ReactElement => {
         search: searchQuery || undefined,
         sortField,
         sortOrder,
+        viewAs: 'instructor',
       });
       setNotices(data.notices);
       setTotalPage(data.meta.lastPage);

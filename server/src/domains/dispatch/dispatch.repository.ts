@@ -325,6 +325,40 @@ class DispatchRepository {
       },
     });
   }
+
+  // 여러 유저-유닛 조합의 배정을 일괄 조회 (N+1 문제 해결용)
+  async findAllAssignmentsForUserUnits(userUnitPairs: { userId: number; unitId: number }[]) {
+    if (userUnitPairs.length === 0) return [];
+
+    // 유니크 unitIds 추출
+    const unitIds = [...new Set(userUnitPairs.map((p) => p.unitId))];
+    const userIds = [...new Set(userUnitPairs.map((p) => p.userId))];
+
+    return await prisma.instructorUnitAssignment.findMany({
+      where: {
+        userId: { in: userIds },
+        UnitSchedule: {
+          trainingPeriod: {
+            unitId: { in: unitIds },
+          },
+        },
+        state: 'Pending',
+      },
+      include: {
+        UnitSchedule: {
+          select: {
+            date: true,
+            trainingPeriod: {
+              select: { unitId: true },
+            },
+          },
+        },
+      },
+      orderBy: {
+        UnitSchedule: { date: 'asc' },
+      },
+    });
+  }
 }
 
 export default new DispatchRepository();

@@ -458,7 +458,7 @@ class UnitRepository {
       const reassignedUserIds = new Set<number>();
       if (deletedAssignments.length > 0) {
         for (const deleted of deletedAssignments) {
-          // 같은 TrainingPeriod의 다른 일정 조회
+          // 같은 TrainingPeriod의 다른 일정 조회 (scheduleLocations 포함)
           const otherSchedules = await tx.unitSchedule.findMany({
             where: {
               trainingPeriodId: deleted.trainingPeriodId,
@@ -467,7 +467,15 @@ class UnitRepository {
             include: {
               assignments: {
                 where: { state: { in: ['Pending', 'Accepted'] } },
-                select: { userId: true },
+                select: { userId: true, trainingLocationId: true },
+              },
+              scheduleLocations: {
+                select: {
+                  trainingLocationId: true,
+                  requiredCount: true,
+                  actualCount: true,
+                  plannedCount: true,
+                },
               },
             },
           });
@@ -475,6 +483,45 @@ class UnitRepository {
           for (const schedule of otherSchedules) {
             if (!schedule.date) continue;
             if (schedule.assignments.some((a) => a.userId === deleted.userId)) continue;
+
+            // 해당 날짜/장소의 필요인원 확인
+            const targetLocationId = deleted.trainingLocationId;
+            const scheduleLoc = schedule.scheduleLocations.find(
+              (sl) => sl.trainingLocationId === targetLocationId,
+            );
+
+            // 필요인원 계산: requiredCount > actualCount/36 > plannedCount/36 > 1
+            const traineesPerInstructor = 36;
+            let requiredCount = 1;
+            if (
+              scheduleLoc?.requiredCount !== null &&
+              scheduleLoc?.requiredCount !== undefined &&
+              scheduleLoc.requiredCount > 0
+            ) {
+              requiredCount = scheduleLoc.requiredCount;
+            } else if (
+              scheduleLoc?.actualCount !== null &&
+              scheduleLoc?.actualCount !== undefined &&
+              scheduleLoc.actualCount > 0
+            ) {
+              requiredCount = Math.ceil(scheduleLoc.actualCount / traineesPerInstructor);
+            } else if (
+              scheduleLoc?.plannedCount !== null &&
+              scheduleLoc?.plannedCount !== undefined &&
+              scheduleLoc.plannedCount > 0
+            ) {
+              requiredCount = Math.ceil(scheduleLoc.plannedCount / traineesPerInstructor);
+            }
+
+            // 현재 해당 장소에 배정된 인원 수
+            const currentAssignedCount = schedule.assignments.filter(
+              (a) => a.trainingLocationId === targetLocationId || a.trainingLocationId === null,
+            ).length;
+
+            // 슬롯이 꽉 찼으면 재배정 불가 -> 다음 일정 확인
+            if (currentAssignedCount >= requiredCount) {
+              continue;
+            }
 
             // 해당 날짜에 다른 부대 배정 확인
             const otherAssignment = await tx.instructorUnitAssignment.findFirst({
@@ -500,7 +547,22 @@ class UnitRepository {
             });
             if (!availability) continue;
 
-            // 자동 재배정
+            // 해당 스케줄에 이미 배정이 있는지 확인
+            const existingAssignment = await tx.instructorUnitAssignment.findUnique({
+              where: {
+                unitScheduleId_userId: {
+                  unitScheduleId: schedule.id,
+                  userId: deleted.userId,
+                },
+              },
+            });
+
+            if (existingAssignment) {
+              // 이미 존재하면 재배정으로 간주하지 않음 (크레딧 부여 대상)
+              continue;
+            }
+
+            // 새로 배정 생성
             await tx.instructorUnitAssignment.create({
               data: {
                 userId: deleted.userId,
@@ -909,6 +971,14 @@ class UnitRepository {
         hasWomenRestroom: data.hasWomenRestroom ?? false,
         note: data.note || null,
       },
+    });
+  }
+
+  // 교육불가일자(excludedDates) 업데이트
+  async updateTrainingPeriodExcludedDates(trainingPeriodId: number, excludedDates: string[]) {
+    return await prisma.trainingPeriod.update({
+      where: { id: trainingPeriodId },
+      data: { excludedDates },
     });
   }
 }

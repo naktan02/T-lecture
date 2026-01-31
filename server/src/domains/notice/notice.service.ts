@@ -18,6 +18,7 @@ interface NoticeGetParams {
   search?: string;
   sortField?: string;
   sortOrder?: 'asc' | 'desc';
+  userId?: number; // 필터링을 위한 유저 ID
 }
 
 class NoticeService {
@@ -27,11 +28,18 @@ class NoticeService {
       throw new AppError('제목과 내용을 모두 입력해주세요.', 400, 'VALIDATION_ERROR');
     }
 
+    const targetSetting = {
+      targetType: data.targetType || 'ALL',
+      targetTeamIds: data.targetTeamIds || [],
+      targetUserIds: data.targetUserIds || [],
+    };
+
     const notice = await noticeRepository.create({
       title: data.title,
       content: data.content,
       authorId,
       isPinned: data.isPinned,
+      targetSetting,
     });
 
     // 타겟팅에 따른 수신자 생성
@@ -77,6 +85,7 @@ class NoticeService {
       take: limit,
       search,
       orderBy,
+      userId: params.userId,
     });
 
     // 작성자 이름 일괄 조회
@@ -110,9 +119,42 @@ class NoticeService {
   }
 
   // 공지사항 수정
-  async update(id: number, data: { title?: string; content?: string; isPinned?: boolean }) {
-    await this.getNoticeHelper(id);
-    const updated = await noticeRepository.update(id, data);
+  // 공지사항 수정
+  async update(id: number, data: NoticeCreateData) {
+    const existing = await this.getNoticeHelper(id);
+
+    // 대상 설정 데이터 구성
+    const targetSetting = {
+      targetType: data.targetType || 'ALL',
+      targetTeamIds: data.targetTeamIds || [],
+      targetUserIds: data.targetUserIds || [],
+    };
+
+    const updated = await noticeRepository.update(id, {
+      title: data.title,
+      content: data.content,
+      isPinned: data.isPinned,
+      targetSetting,
+    });
+
+    // 수신자 동기화 (설정이 변경되었을 수 있으므로 기존 삭제 후 재생성)
+    await noticeRepository.deleteReceipts(id);
+
+    let userIds: number[] = [];
+    const targetType = data.targetType || 'ALL';
+
+    if (targetType === 'ALL') {
+      userIds = await noticeRepository.findAllApprovedUserIds();
+    } else if (targetType === 'TEAM' && data.targetTeamIds?.length) {
+      userIds = await noticeRepository.findUserIdsByTeamIds(data.targetTeamIds);
+    } else if (targetType === 'INDIVIDUAL' && data.targetUserIds?.length) {
+      userIds = data.targetUserIds;
+    }
+
+    if (userIds.length > 0) {
+      await noticeRepository.createReceipts(id, userIds);
+    }
+
     const author = updated.authorId
       ? await noticeRepository.findAuthorById(updated.authorId)
       : null;
@@ -156,6 +198,7 @@ class NoticeService {
       updatedAt: notice.updatedAt,
       viewCount: notice.viewCount,
       isPinned: notice.isPinned,
+      targetSetting: notice.targetSetting,
       author: { name: authorName },
     };
   }

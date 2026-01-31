@@ -752,6 +752,28 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                             <div>
                               <div className="flex items-center gap-1.5">
                                 <span className="text-sm font-bold text-gray-800">{inst.name}</span>
+                                {/* 직책 라벨 (주/부/보조/실습) */}
+                                {inst.category && (
+                                  <span
+                                    className={`px-1 py-0.5 text-[9px] font-bold rounded ${
+                                      inst.category === 'Main'
+                                        ? 'bg-purple-500 text-white'
+                                        : inst.category === 'Co'
+                                          ? 'bg-indigo-400 text-white'
+                                          : inst.category === 'Assistant'
+                                            ? 'bg-teal-400 text-white'
+                                            : 'bg-gray-400 text-white'
+                                    }`}
+                                  >
+                                    {inst.category === 'Main'
+                                      ? '주'
+                                      : inst.category === 'Co'
+                                        ? '부'
+                                        : inst.category === 'Assistant'
+                                          ? '보조'
+                                          : '실습'}
+                                  </span>
+                                )}
                                 {inst.role === 'Head' && (
                                   <span className="px-1.5 py-0.5 text-[10px] font-bold bg-amber-500 text-white rounded">
                                     총괄

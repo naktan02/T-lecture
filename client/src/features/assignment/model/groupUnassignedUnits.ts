@@ -3,12 +3,21 @@
 
 import { UnitSchedule, UnitScheduleDetail } from '../assignmentApi';
 
+// 개별 스케줄의 장소 정보
+export interface ScheduleLocationInfo {
+  date: string;
+  scheduleId: string;
+  plannedCount: number | null;
+  actualCount: number | null;
+  requiredCount: number | null; // 수동 설정 필요인원
+}
+
 // 장소별 스케줄 정보
 export interface LocationSchedule {
   locationId: string;
   locationName: string;
   instructorsRequired: number;
-  schedules: { date: string; scheduleId: string }[];
+  schedules: ScheduleLocationInfo[];
 }
 
 // 부대별 그룹화된 미배정 데이터
@@ -20,6 +29,7 @@ export interface GroupedUnassignedUnit {
   uniqueDates: string[]; // 중복 제거된 날짜 목록
   locations: LocationSchedule[];
   detail: UnitScheduleDetail; // 부대 상세 정보
+  trainingPeriodId: number; // 교육기간 ID (수정 API용)
 }
 
 /**
@@ -27,6 +37,7 @@ export interface GroupedUnassignedUnit {
  * - 같은 부대의 여러 장소/스케줄을 하나로 묶음
  * - 날짜 중복 제거
  * - 장소별 필요 인원 합산
+ * - 각 일정별 plannedCount/actualCount 보존
  *
  * @param units - API에서 받은 미배정 부대 목록
  * @returns 부대별 그룹화된 데이터
@@ -51,6 +62,7 @@ export const groupUnassignedUnits = (units: UnitSchedule[]): GroupedUnassignedUn
         uniqueDates: [],
         locations: [],
         detail: unit.detail,
+        trainingPeriodId: unit.trainingPeriodId, // 교육기간 ID 저장
       });
     }
 
@@ -76,8 +88,14 @@ export const groupUnassignedUnits = (units: UnitSchedule[]): GroupedUnassignedUn
       group.totalRequired += requiredInstructors;
     }
 
-    // 스케줄 추가
-    location.schedules.push({ date: unit.date, scheduleId });
+    // 스케줄 추가 (일정별 plannedCount/actualCount 포함)
+    location.schedules.push({
+      date: unit.date,
+      scheduleId,
+      plannedCount: unit.detail.plannedCount,
+      actualCount: unit.actualCount,
+      requiredCount: unit.requiredCount,
+    });
 
     // 고유 날짜 추가
     if (!group.uniqueDates.includes(unit.date)) {

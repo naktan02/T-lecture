@@ -6,6 +6,7 @@ import kakaoService from '../../infra/kakao.service';
 import distanceService from '../distance/distance.service';
 import AppError from '../../common/errors/AppError';
 import logger from '../../config/logger';
+import { isKoreanHoliday } from '../../common/utils/koreanHolidays';
 import { Prisma, MilitaryType } from '../../generated/prisma/client.js';
 import ExcelJS from 'exceljs';
 import {
@@ -789,6 +790,8 @@ class UnitService {
 
   /**
    * 교육불가 기간(시작~종료)을 YYYY-MM-DD 문자열 배열로 변환
+   * - 주말(토, 일)은 자동으로 제외됨
+   * - 한국 공휴일도 자동으로 제외됨 (설날, 추석, 광복절 등)
    */
   _calculateSchedules(
     start: string | Date | undefined,
@@ -804,8 +807,12 @@ class UnitService {
     const current = new Date(startDate);
     while (current <= endDate) {
       const dateStr = current.toISOString().split('T')[0];
-      // 제외된 날짜는 스케줄에 추가하지 않음
-      if (!excludedSet.has(dateStr)) {
+      const dayOfWeek = current.getUTCDay(); // 0=일요일, 6=토요일
+
+      // 주말(토, 일), 공휴일, 또는 제외된 날짜는 스케줄에 추가하지 않음
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const isHoliday = isKoreanHoliday(current);
+      if (!isWeekend && !isHoliday && !excludedSet.has(dateStr)) {
         // UTC 자정으로 저장 (타임존 일관성)
         schedules.push({
           date: new Date(`${dateStr}T00:00:00.000Z`),
@@ -1027,6 +1034,12 @@ class UnitService {
     const datesToDelete = [...existingDates].filter((d) => d && !newDates.has(d));
     const datesToAdd = [...newDates].filter((d) => d && !existingDates.has(d));
 
+    // 3.5 교육불가일자를 TrainingPeriod에 저장
+    await unitRepository.updateTrainingPeriodExcludedDates(
+      trainingPeriodId,
+      normalizedExcludedDates,
+    );
+
     // 4. 삭제 처리 (크레딧 부여 + 자동 재배정)
     let deleteResult = { deleted: 0, creditsGiven: 0, reassigned: 0 };
     if (datesToDelete.length > 0) {
@@ -1054,11 +1067,23 @@ class UnitService {
       addResult = await unitRepository.addSchedulesToPeriod(trainingPeriodId, datesToAdd);
     }
 
+    // 6. 최종 일정 목록 조회하여 반환
+    const finalSchedules = await unitRepository.findSchedulesByPeriodId(trainingPeriodId);
+    const toKSTDateString = (date: Date | string | null): string | null => {
+      if (!date) return null;
+      const d = new Date(date);
+      return d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+    };
+
     return {
       deleted: deleteResult.deleted,
       added: addResult.count,
       creditsGiven: deleteResult.creditsGiven,
       reassigned: deleteResult.reassigned,
+      schedules: finalSchedules.map((s) => ({
+        id: s.id,
+        date: toKSTDateString(s.date),
+      })),
     };
   }
 
