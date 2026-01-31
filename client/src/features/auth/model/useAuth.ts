@@ -55,7 +55,12 @@ export const useAuth = () => {
     onSettled: () => {
       // React Query 캐시 전체 삭제 (이전 사용자 데이터 제거)
       queryClient.clear();
-      localStorage.clear();
+      // deviceId는 유지하고 인증 관련 정보만 삭제
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('isInstructor');
+      localStorage.removeItem('instructorProfileCompleted');
       navigate('/login');
     },
   });
