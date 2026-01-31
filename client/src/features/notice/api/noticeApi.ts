@@ -11,6 +11,11 @@ export interface Notice {
   author: {
     name: string | null;
   };
+  targetSetting?: {
+    targetType: 'ALL' | 'TEAM' | 'INDIVIDUAL';
+    targetTeamIds: number[];
+    targetUserIds: number[];
+  };
 }
 
 export interface NoticeListResponse {
@@ -75,7 +80,14 @@ export const noticeApi = {
 
   updateNotice: async (
     id: number,
-    data: { title?: string; content?: string; isPinned?: boolean },
+    data: {
+      title?: string;
+      content?: string;
+      isPinned?: boolean;
+      targetType?: 'ALL' | 'TEAM' | 'INDIVIDUAL';
+      targetTeamIds?: number[];
+      targetUserIds?: number[];
+    },
   ) => {
     const response = await apiClient(`${BASE_PATH}/${id}`, {
       method: 'PUT',

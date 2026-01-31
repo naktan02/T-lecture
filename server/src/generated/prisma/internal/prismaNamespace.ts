@@ -2542,6 +2542,7 @@ export const NoticeScalarFieldEnum = {
   authorId: 'authorId',
   viewCount: 'viewCount',
   isPinned: 'isPinned',
+  targetSetting: 'targetSetting',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

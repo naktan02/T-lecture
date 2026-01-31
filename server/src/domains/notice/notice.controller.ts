@@ -13,6 +13,7 @@ export const getNotices = asyncHandler(async (req: Request, res: Response) => {
     sortField: typeof sortField === 'string' ? sortField : undefined,
     sortOrder:
       sortOrder === 'asc' || sortOrder === 'desc' ? (sortOrder as 'asc' | 'desc') : undefined,
+    userId: !req.user?.isAdmin ? req.user?.id : undefined,
   });
   res.json(result);
 });
@@ -38,8 +39,15 @@ export const createNotice = asyncHandler(async (req: Request, res: Response) => 
 // 공지사항 수정 (관리자 전용)
 export const updateNotice = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { title, content, isPinned } = req.body;
-  const notice = await noticeService.update(Number(id), { title, content, isPinned });
+  const { title, content, isPinned, targetType, targetTeamIds, targetUserIds } = req.body;
+  const notice = await noticeService.update(Number(id), {
+    title,
+    content,
+    isPinned,
+    targetType,
+    targetTeamIds,
+    targetUserIds,
+  });
   res.json(notice);
 });
 

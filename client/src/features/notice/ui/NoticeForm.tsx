@@ -61,6 +61,16 @@ export const NoticeForm = ({
     }
   }, [targetType]);
 
+  // 초기 데이터 설정 (수정 모드 시)
+  useEffect(() => {
+    if (initialData?.targetTeamIds) {
+      setSelectedTeamIds(initialData.targetTeamIds);
+    }
+    if (initialData?.targetUserIds) {
+      setSelectedUserIds(initialData.targetUserIds);
+    }
+  }, [initialData]);
+
   const handleFormSubmit = (data: NoticeFormData) => {
     onSubmit({
       ...data,
@@ -119,10 +129,9 @@ export const NoticeForm = ({
         {errors.content && <p className="mt-1 text-sm text-red-600">{errors.content.message}</p>}
       </div>
 
-      {/* 대상 선택 - 등록 시에만 표시 */}
-      {!isEditMode && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">발송 대상</label>
+      {/* 대상 선택 */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">발송 대상</label>
           <div className="flex gap-4">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -153,10 +162,9 @@ export const NoticeForm = ({
             </label>
           </div>
         </div>
-      )}
 
-      {/* 팀 선택 (TEAM일 때만, 등록 시에만) */}
-      {!isEditMode && targetType === 'TEAM' && (
+      {/* 팀 선택 (TEAM일 때만) */}
+      {targetType === 'TEAM' && (
         <div className="bg-gray-50 p-3 rounded-md">
           <p className="text-sm font-medium text-gray-700 mb-2">
             팀 선택 <span className="text-indigo-600">({selectedTeamIds.length}개)</span>
@@ -183,8 +191,8 @@ export const NoticeForm = ({
         </div>
       )}
 
-      {/* 개인 선택 (INDIVIDUAL일 때, 등록 시에만) */}
-      {!isEditMode && targetType === 'INDIVIDUAL' && (
+      {/* 개인 선택 (INDIVIDUAL일 때) */}
+      {targetType === 'INDIVIDUAL' && (
         <div className="bg-gray-50 p-3 rounded-md">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-medium text-gray-700">

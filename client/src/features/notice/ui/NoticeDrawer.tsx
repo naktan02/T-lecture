@@ -67,6 +67,9 @@ export const NoticeDrawer = ({
                                 title: notice.title,
                                 content: notice.content,
                                 isPinned: notice.isPinned,
+                                targetType: notice.targetSetting?.targetType || 'ALL',
+                                targetTeamIds: notice.targetSetting?.targetTeamIds || [],
+                                targetUserIds: notice.targetSetting?.targetUserIds || [],
                               }
                             : undefined
                         }
