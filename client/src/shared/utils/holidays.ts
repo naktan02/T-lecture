@@ -1,8 +1,22 @@
 // shared/utils/holidays.ts
-import Holidays from 'date-holidays';
+// 한국 공휴일 유틸리티 - @hyunbinseo/holidays-kr 라이브러리 사용
+// 한국천문연구원(KASI) 공식 데이터 기반, 대체공휴일 포함
 
-// 한국 공휴일 인스턴스 (싱글톤)
-const hd = new Holidays('KR');
+import {
+  y2024,
+  y2025,
+  y2026,
+  isHoliday as isHolidayLib,
+  getHolidayNames,
+} from '@hyunbinseo/holidays-kr';
+
+// 연도별 공휴일 데이터
+type HolidayData = Record<string, readonly string[]>;
+const holidayDataByYear: Record<number, HolidayData> = {
+  2024: y2024,
+  2025: y2025,
+  2026: y2026,
+};
 
 // 월별 공휴일 캐시 (year-month -> holidays map)
 const holidayCache = new Map<string, Map<string, string>>();
@@ -18,16 +32,19 @@ export const getHolidaysForMonth = (year: number, month: number): Map<string, st
     return holidayCache.get(cacheKey)!;
   }
 
-  const holidays = hd.getHolidays(year);
   const monthHolidays = new Map<string, string>();
+  const yearData = holidayDataByYear[year];
 
-  holidays.forEach((holiday) => {
-    const date = new Date(holiday.date);
-    if (date.getMonth() + 1 === month && holiday.type === 'public') {
-      const dateStr = formatDate(date);
-      monthHolidays.set(dateStr, holiday.name);
+  if (yearData) {
+    // 해당 연도의 모든 공휴일 순회
+    for (const [dateStr, names] of Object.entries(yearData)) {
+      const [, m] = dateStr.split('-').map(Number);
+      if (m === month) {
+        // 여러 이름이 있으면 첫 번째 사용
+        monthHolidays.set(dateStr, names[0]);
+      }
     }
-  });
+  }
 
   holidayCache.set(cacheKey, monthHolidays);
   return monthHolidays;
@@ -37,16 +54,28 @@ export const getHolidaysForMonth = (year: number, month: number): Map<string, st
  * 특정 날짜가 공휴일인지 확인합니다
  */
 export const isHoliday = (date: Date): boolean => {
-  const holidays = getHolidaysForMonth(date.getFullYear(), date.getMonth() + 1);
-  return holidays.has(formatDate(date));
+  const year = date.getFullYear();
+  // 라이브러리에 연도 데이터가 있으면 직접 사용
+  if (holidayDataByYear[year]) {
+    const holidays = getHolidaysForMonth(year, date.getMonth() + 1);
+    return holidays.has(formatDate(date));
+  }
+  // 없으면 라이브러리 함수 사용 (Date 객체 필요)
+  return isHolidayLib(date);
 };
 
 /**
  * 특정 날짜의 공휴일명을 반환합니다
  */
 export const getHolidayName = (date: Date): string | undefined => {
-  const holidays = getHolidaysForMonth(date.getFullYear(), date.getMonth() + 1);
-  return holidays.get(formatDate(date));
+  const year = date.getFullYear();
+  if (holidayDataByYear[year]) {
+    const holidays = getHolidaysForMonth(year, date.getMonth() + 1);
+    return holidays.get(formatDate(date));
+  }
+  // 라이브러리 함수 사용
+  const names = getHolidayNames(date);
+  return names && names.length > 0 ? names[0] : undefined;
 };
 
 /**
