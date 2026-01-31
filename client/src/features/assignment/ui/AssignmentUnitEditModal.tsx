@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { Button } from '../../../shared/ui';
 import { showSuccess, showError, showConfirm } from '../../../shared/utils/toast';
+import { isHoliday } from '../../../shared/utils/holidays';
 import {
   TrainingPeriodTab,
   TrainingPeriodFormData,
@@ -59,9 +60,33 @@ export const AssignmentUnitEditModal: React.FC<Props> = ({
     const dates = unit.uniqueDates.sort();
     return dates[dates.length - 1] || '';
   });
-  const [editExcludedDates, setEditExcludedDates] = useState<string[]>(
-    () => unit.detail?.excludedDates || [],
-  );
+  const [editExcludedDates, setEditExcludedDates] = useState<string[]>(() => {
+    // 부대관리와 동일한 로직: 시작일~종료일 범위에서 실제 스케줄에 없는 날짜를 계산
+    const dates = unit.uniqueDates.sort();
+    if (dates.length === 0) return [];
+
+    const start = dates[0];
+    const end = dates[dates.length - 1];
+    const scheduleDates = new Set(dates);
+    const excluded: string[] = [];
+
+    const current = new Date(start + 'T00:00:00');
+    const endDate = new Date(end + 'T00:00:00');
+
+    while (current <= endDate) {
+      const year = current.getFullYear();
+      const month = String(current.getMonth() + 1).padStart(2, '0');
+      const day = String(current.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+
+      if (!scheduleDates.has(dateStr)) {
+        excluded.push(dateStr);
+      }
+      current.setDate(current.getDate() + 1);
+    }
+
+    return excluded;
+  });
   const [editExcludedDateInput, setEditExcludedDateInput] = useState('');
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
 
@@ -188,7 +213,8 @@ export const AssignmentUnitEditModal: React.FC<Props> = ({
         const dayOfWeek = current.getDay(); // 0=일, 6=토
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-        if (!isWeekend && !excludeSet.has(dateStr)) {
+        // 주말, 공휴일, 제외일 필터링
+        if (!isWeekend && !isHoliday(current) && !excludeSet.has(dateStr)) {
           dates.push(dateStr);
         }
         current.setDate(current.getDate() + 1);

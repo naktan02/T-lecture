@@ -69,21 +69,32 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
       ? groupedUnassignedUnits.find((u) => u.unitId === selectionKey.unitId)
       : null;
 
-  // 선택된 부대에 배정된 날짜들 계산 (assignments/confirmedAssignments 데이터 활용)
+  // 선택된 부대에 배정된 날짜들 계산 (실제로 강사가 배정된 날짜만)
   const selectedUnitAssignedDates = useMemo(() => {
     if (!selectedUnit) return new Set<string>();
 
     const dates = new Set<string>();
     const allGroups = [...assignments, ...confirmedAssignments];
 
-    // 해당 unitId에 일치하는 그룹에서 모든 날짜 추출
+    // 해당 unitId에 일치하는 그룹에서 실제 배정된 날짜만 추출
     for (const group of allGroups) {
       if (group.unitId === selectedUnit.unitId) {
-        // trainingLocations.dates에서 날짜 추출
-        const locations = group.trainingLocations as Array<{ dates?: Array<{ date: string }> }>;
+        // trainingLocations.dates에서 실제 강사가 배정된 날짜만 추출
+        const locations = group.trainingLocations as Array<{
+          dates?: Array<{
+            date: string;
+            instructors?: Array<{ instructorId: number; state?: string }>;
+          }>;
+        }>;
         for (const loc of locations) {
           for (const d of loc.dates || []) {
-            if (d.date) dates.add(d.date);
+            // 실제로 배정된 강사가 있는 경우만 (Pending 또는 Accepted 상태)
+            const hasAssignedInstructors =
+              d.instructors &&
+              d.instructors.some((inst) => inst.state === 'Pending' || inst.state === 'Accepted');
+            if (d.date && hasAssignedInstructors) {
+              dates.add(d.date);
+            }
           }
         }
       }

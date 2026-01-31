@@ -2,20 +2,11 @@
 // 한국 공휴일 유틸리티 - @hyunbinseo/holidays-kr 라이브러리 사용
 // 한국 천문연구원 공식 데이터 기반 (설날/추석 전날, 대체공휴일 포함)
 
-import {
-  isHoliday as checkHoliday,
-  getHolidayNames,
-  y2024,
-  y2025,
-  y2026,
-} from '@hyunbinseo/holidays-kr';
+import { isHoliday as checkHoliday, getHolidayNames } from '@hyunbinseo/holidays-kr';
 
-// 연도별 공휴일 데이터 맵 (readonly 타입 허용)
-const holidayDataByYear: Record<number, Record<string, readonly string[]>> = {
-  2024: y2024,
-  2025: y2025,
-  2026: y2026,
-};
+// 월별 공휴일 캐시 (year-month -> holidays map)
+// 동적으로 모든 연도를 캐싱 - 연도 explicit import 불필요
+const holidayCache = new Map<string, string[]>();
 
 /**
  * 특정 날짜가 한국 공휴일인지 확인
@@ -33,9 +24,27 @@ export function isKoreanHoliday(date: Date | string): boolean {
  * @returns 공휴일 날짜 배열
  */
 export function getHolidaysForYear(year: number): string[] {
-  const data = holidayDataByYear[year];
-  if (!data) return [];
-  return Object.keys(data).sort();
+  const cacheKey = `year-${year}`;
+  if (holidayCache.has(cacheKey)) {
+    return holidayCache.get(cacheKey)!;
+  }
+
+  const holidays: string[] = [];
+
+  // 1년의 모든 날짜를 순회하며 공휴일 체크
+  for (let month = 0; month < 12; month++) {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      if (checkHoliday(date)) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        holidays.push(dateStr);
+      }
+    }
+  }
+
+  holidayCache.set(cacheKey, holidays);
+  return holidays;
 }
 
 /**

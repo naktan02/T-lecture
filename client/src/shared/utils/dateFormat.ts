@@ -86,9 +86,7 @@ export const generateDateRange = (
 
 // ============ Holiday Support ============
 
-import Holidays from 'date-holidays';
-
-const hd = new Holidays('KR');
+import { isHoliday } from './holidays';
 
 /**
  * 영업일 기준 날짜 범위 생성 (주말, 공휴일, 제외일 제외)
@@ -121,9 +119,8 @@ export const generateBusinessDateRange = (
     // 2. 사용자가 지정한 제외일 제외
     if (excluded.has(dateStr)) continue;
 
-    // 3. 공휴일 제외 (date-holidays 사용)
-    // timezone 이슈 방지를 위해 문자열로 체크
-    if (hd.isHoliday(dateStr)) continue;
+    // 3. 공휴일 제외 (@hyunbinseo/holidays-kr 사용)
+    if (isHoliday(d)) continue;
 
     result.push(dateStr);
   }
