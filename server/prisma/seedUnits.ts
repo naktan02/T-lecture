@@ -374,26 +374,26 @@ async function createUnit(
   const unitName = generateUniqueUnitName(index);
   const militaryType = getMilitaryType();
 
-  // 교육 시작일: 해당 월의 1~20일 중 랜덤
-  const dayOfMonth = randomInt(1, 20);
-  const startDate = new Date(Date.UTC(2026, month, dayOfMonth));
+  // 교육 시작일: 해당 월의 월요일(5, 12, 19, 26) 중 하나 선택
+  const mondays = [5, 12, 19, 26];
+  const monday = randomChoice(mondays);
+  
+  // 2박 3일 보장 (불가일자 포함 시 4일 소요되므로 월/화 시작, 미포함 시 월/화/수 시작)
+  const startDayOffset = hasExcludedDates ? randomInt(0, 1) : randomInt(0, 2);
+  const startDate = new Date(Date.UTC(2026, month, monday + startDayOffset));
 
-  // 교육 기간: 2~4일 (기본 3일)
-  const educationDays = randomInt(2, 4);
+  // 교육 기간: 실제 교육일수 3일 고정
+  const educationDays = 3;
+  const calendarDays = hasExcludedDates ? 4 : 3;
   const endDate = new Date(startDate);
-  endDate.setUTCDate(startDate.getUTCDate() + educationDays - 1);
+  endDate.setUTCDate(startDate.getUTCDate() + calendarDays - 1);
 
-  // 불가일자 생성 (교육 기간 중 1일)
+  // 불가일자 생성 (교육 기간 중 2번째 날짜를 불가일자로 설정)
   let excludedDates: string[] = [];
-  const actualEducationDays = educationDays;
-
-  if (hasExcludedDates && educationDays >= 3) {
-    // 중간 날짜를 불가일자로 설정
+  if (hasExcludedDates) {
     const excludedDate = new Date(startDate);
     excludedDate.setUTCDate(startDate.getUTCDate() + 1);
     excludedDates = [formatDate(excludedDate)];
-    // 불가일자가 있으면 교육 종료일을 1일 연장
-    endDate.setUTCDate(endDate.getUTCDate() + 1);
   }
 
   const officerName = `${randomChoice(LAST_NAMES)}${randomChoice(FIRST_NAMES)}`;

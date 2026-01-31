@@ -173,13 +173,18 @@ function parseDays(dayString: string | null): number[] {
   return days;
 }
 
-// 주차 날짜 범위 정의 (2026년 1-2월, 엑셀 데이터의 7-8월을 1-2월로 변경)
-const WEEK_RANGES = [
+// 주차 날짜 범위 정의 (2026년 1월 및 2월 각 4주차)
+const JAN_WEEKS = [
   { start: new Date(Date.UTC(2026, 0, 5)), days: 5 }, // 1/5(월)~1/9(금)
   { start: new Date(Date.UTC(2026, 0, 12)), days: 5 }, // 1/12(월)~1/16(금)
   { start: new Date(Date.UTC(2026, 0, 19)), days: 5 }, // 1/19(월)~1/23(금)
   { start: new Date(Date.UTC(2026, 0, 26)), days: 5 }, // 1/26(월)~1/30(금)
+];
+const FEB_WEEKS = [
   { start: new Date(Date.UTC(2026, 1, 2)), days: 5 }, // 2/2(월)~2/6(금)
+  { start: new Date(Date.UTC(2026, 1, 9)), days: 5 }, // 2/9(월)~2/13(금)
+  { start: new Date(Date.UTC(2026, 1, 16)), days: 5 }, // 2/16(월)~2/20(금)
+  { start: new Date(Date.UTC(2026, 1, 23)), days: 5 }, // 2/23(월)~2/27(금)
 ];
 
 // Excel에서 강사 일정 읽기
@@ -187,37 +192,55 @@ async function readInstructorSchedule() {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile('../instruct_schedule.xlsx');
 
-  const sheet = workbook.worksheets[0]; // 7월 시트
-  const instructors: Array<{ name: string; availableDates: Date[] }> = [];
+  const instructors: Record<string, { name: string; availableDates: Date[] }> = {};
 
-  // Row 2부터 강사 데이터 (Row 1은 헤더)
-  for (let rowNum = 2; rowNum <= sheet.rowCount && instructors.length < 50; rowNum++) {
-    const row = sheet.getRow(rowNum);
-    const name = row.getCell(2).value as string; // 성함
-    if (!name) continue;
+  // 7월 시트 -> 1월 매핑 (최대 5주까지 있을 수 있으나 JAN_WEEKS 4개 사용)
+  const sheet7 = workbook.getWorksheet('7월');
+  if (sheet7) {
+    for (let rowNum = 2; rowNum <= sheet7.rowCount; rowNum++) {
+      const row = sheet7.getRow(rowNum);
+      const name = row.getCell(2).value as string;
+      if (!name) continue;
 
-    const availableDates: Date[] = [];
+      if (!instructors[name]) instructors[name] = { name, availableDates: [] };
 
-    // 각 주차별 가능한 요일 파싱 (컬럼 3~7: 5개 주차)
-    for (let weekIdx = 0; weekIdx < 5 && weekIdx < WEEK_RANGES.length; weekIdx++) {
-      const cellValue = row.getCell(3 + weekIdx).value;
-      const dayString = cellValue ? String(cellValue) : null;
-      const days = parseDays(dayString);
-
-      // 해당 주의 시작일로부터 가능한 요일에 해당하는 날짜 생성
-      const weekStart = WEEK_RANGES[weekIdx].start;
-      for (const day of days) {
-        // day는 1(월)~5(금), 월요일이 weekStart이므로 day-1을 더함
-        const date = new Date(weekStart);
-        date.setUTCDate(date.getUTCDate() + (day - 1));
-        availableDates.push(date);
+      for (let weekIdx = 0; weekIdx < 4; weekIdx++) {
+        const cellValue = row.getCell(3 + weekIdx).value;
+        const days = parseDays(cellValue ? String(cellValue) : null);
+        const weekStart = JAN_WEEKS[weekIdx].start;
+        for (const day of days) {
+          const date = new Date(weekStart);
+          date.setUTCDate(date.getUTCDate() + (day - 1));
+          instructors[name].availableDates.push(date);
+        }
       }
     }
-
-    instructors.push({ name, availableDates });
   }
 
-  return instructors;
+  // 8월 시트 -> 2월 매핑
+  const sheet8 = workbook.getWorksheet('8월');
+  if (sheet8) {
+    for (let rowNum = 2; rowNum <= sheet8.rowCount; rowNum++) {
+      const row = sheet8.getRow(rowNum);
+      const name = row.getCell(2).value as string;
+      if (!name) continue;
+
+      if (!instructors[name]) instructors[name] = { name, availableDates: [] };
+
+      for (let weekIdx = 0; weekIdx < 4; weekIdx++) {
+        const cellValue = row.getCell(3 + weekIdx).value;
+        const days = parseDays(cellValue ? String(cellValue) : null);
+        const weekStart = FEB_WEEKS[weekIdx].start;
+        for (const day of days) {
+          const date = new Date(weekStart);
+          date.setUTCDate(date.getUTCDate() + (day - 1));
+          instructors[name].availableDates.push(date);
+        }
+      }
+    }
+  }
+
+  return Object.values(instructors);
 }
 
 export async function runSeedInstructors() {
