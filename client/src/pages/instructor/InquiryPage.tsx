@@ -35,6 +35,7 @@ const InquiryPage = (): ReactElement => {
         search: searchQuery || undefined,
         sortField,
         sortOrder,
+        viewAs: 'instructor',
       });
       setInquiries(data.inquiries);
       setTotalPage(data.meta.lastPage);

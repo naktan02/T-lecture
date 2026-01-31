@@ -6,6 +6,7 @@ interface NoticeCreateData {
   content: string;
   authorId: number;
   isPinned?: boolean;
+  targetSetting?: any; // JSON
 }
 
 import { Prisma } from '../../generated/prisma/client.js';
@@ -15,6 +16,7 @@ interface NoticeFindAllParams {
   take: number;
   search?: string;
   orderBy?: Prisma.NoticeOrderByWithRelationInput;
+  userId?: number; // 필터링을 위한 유저 ID
 }
 
 class NoticeRepository {
@@ -26,17 +28,25 @@ class NoticeRepository {
         body: data.content,
         authorId: data.authorId,
         isPinned: data.isPinned ?? false,
+        targetSetting: data.targetSetting,
       },
     });
   }
 
   // 공지사항 목록 조회 (content 포함)
-  async findAll({ skip, take, search, orderBy }: NoticeFindAllParams) {
-    const where = search
+  async findAll({ skip, take, search, orderBy, userId }: NoticeFindAllParams) {
+    const where: Prisma.NoticeWhereInput = search
       ? {
           OR: [{ title: { contains: search } }, { body: { contains: search } }],
         }
       : {};
+
+    // 일반 사용자라면 본인이 수신자인 공지만 조회
+    if (userId) {
+      where.receipts = {
+        some: { userId },
+      };
+    }
 
     // Pinned always on top, then custom sort or default createdAt desc
     const sortRule: Prisma.NoticeOrderByWithRelationInput[] = [{ isPinned: 'desc' }];
@@ -71,14 +81,25 @@ class NoticeRepository {
   }
 
   // 공지사항 수정
-  async update(id: number, data: { title?: string; content?: string; isPinned?: boolean }) {
+  async update(
+    id: number,
+    data: { title?: string; content?: string; isPinned?: boolean; targetSetting?: any },
+  ) {
     return await prisma.notice.update({
       where: { id },
       data: {
         title: data.title,
         body: data.content,
         isPinned: data.isPinned,
+        targetSetting: data.targetSetting,
       },
+    });
+  }
+
+  // 수신자 목록 초기화 (수정 시 사용)
+  async deleteReceipts(noticeId: number) {
+    await prisma.noticeReceipt.deleteMany({
+      where: { noticeId },
     });
   }
 

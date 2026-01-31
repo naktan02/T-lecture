@@ -1,6 +1,5 @@
 // src/pages/auth/SignupPage.tsx
 import { RegisterForm } from '../../features/auth/ui/RegisterForm';
-import { ContentWrapper } from '../../shared/ui';
 import { useAuthGuard } from '../../features/auth/model/useAuthGuard';
 
 const SignupPage: React.FC = () => {
@@ -8,13 +7,7 @@ const SignupPage: React.FC = () => {
 
   if (!shouldRender) return null;
 
-  return (
-    <ContentWrapper>
-      <div className="py-8 md:py-12">
-        <RegisterForm />
-      </div>
-    </ContentWrapper>
-  );
+  return <RegisterForm />;
 };
 
 export default SignupPage;

@@ -101,8 +101,9 @@ class AuthService {
         );
       }
 
-      // 프로필 완성 조건: 주소, 분류, 덕목 있으면 완성 (팀은 선택)
-      const isProfileComplete = !!(address && category && virtueIds.length > 0);
+      // 프로필 완성 조건: 주소, 분류, 기수가 모두 있어야 함 (팀은 선택)
+      // 현재 가입 시에는 기수(generation)를 받지 않으므로 초기 상태는 미완료(false)가 됨
+      const isProfileComplete = false;
 
       newUser = await userRepository.createInstructor(commonData, {
         location: address,
@@ -166,8 +167,7 @@ class AuthService {
     const isInstructor = !!user.instructor;
     const isAdmin = !!user.admin;
     const adminLevel = user.admin?.level || null;
-    // 강사 프로필 완성 = 주소가 있으면 완성 (덕목은 프론트에서 추가 체크)
-    const instructorProfileCompleted = isInstructor ? !!user.instructor?.location : null;
+    const instructorProfileCompleted = isInstructor ? user.instructor?.profileCompleted : null;
 
     return {
       accessToken,

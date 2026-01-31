@@ -115,6 +115,19 @@ class UserMeService {
           })),
         };
       }
+
+      // 프로필 완료 여부 자동 계산
+      // 필수 필드: 주소, 분류, 기수
+      const finalLocation = user.instructor!.location;
+      const finalCategory = user.instructor!.category;
+      const finalGeneration = user.instructor!.generation;
+
+      instructorData.profileCompleted = !!(
+        finalLocation &&
+        finalCategory &&
+        finalGeneration !== null &&
+        finalGeneration !== undefined
+      );
     }
 
     const updatedUser = await userRepository.update(userId, userData, instructorData);
@@ -175,6 +188,19 @@ class UserMeService {
       instructorData.lat = null;
       instructorData.lng = null;
     }
+
+    // 프로필 완료 여부 자동 계산
+    // 필수 필드: 주소, 분류, 기수
+    const finalLocation = address;
+    const finalCategory = user.instructor.category;
+    const finalGeneration = user.instructor.generation;
+
+    instructorData.profileCompleted = !!(
+      finalLocation &&
+      finalCategory &&
+      finalGeneration !== null &&
+      finalGeneration !== undefined
+    );
 
     const updatedUser = await userRepository.update(userId, {}, instructorData);
 
