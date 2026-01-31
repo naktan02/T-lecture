@@ -68,27 +68,7 @@ export const mainInstructorFilter: AssignmentFilter = {
   },
 };
 
-/**
- * 연수자 필터
- * - 연수자(Practicum)는 같은 팀의 주강사와 함께 배정 불가
- */
-export const traineeFilter: AssignmentFilter = {
-  id: 'TRAINEE',
-  name: '연수자 필터',
-  description: '연수자는 같은 팀의 주강사와 함께 배정 불가',
-  check(candidate: InstructorCandidate, context: AssignmentContext): boolean {
-    if (candidate.category !== 'Practicum') return true;
-
-    // 연수자는 같은 팀 주강사와 함께 배정 불가
-    const sameTeamMainAssigned = context.currentAssignments.some(
-      (a) =>
-        a.scheduleId === context.currentScheduleId &&
-        a.teamId === candidate.teamId &&
-        a.category === 'Main',
-    );
-    return !sameTeamMainAssigned;
-  },
-};
+// NOTE: traineeFilter 제거됨 - Practicum은 같은 팀 주강사와 함께 배정 가능
 
 /**
  * 이미 배정된 강사 필터
@@ -144,16 +124,17 @@ export const internDistanceFilter: AssignmentFilter = {
 };
 
 /**
- * 보조강사 거리 제한 필터 (Assistant/Co)
- * - 보조강사는 설정된 거리 이내만 배정 (null이면 제한 없음)
+ * 보조강사 거리 제한 필터 (Assistant만)
+ * - 보조강사(Assistant)만 설정된 거리 이내 배정 (null이면 제한 없음)
+ * - Co(부강사)는 거리 제한 없음
  */
 export const subDistanceFilter: AssignmentFilter = {
   id: 'SUB_DISTANCE',
   name: '보조강사 거리 제한',
-  description: '보조강사는 설정된 최대 거리 이내만 배정',
+  description: '보조강사(Assistant)만 설정된 최대 거리 이내 배정',
   check(candidate: InstructorCandidate, context: AssignmentContext): boolean {
-    // Assistant 또는 Co가 아니면 통과
-    if (candidate.category !== 'Assistant' && candidate.category !== 'Co') return true;
+    // Assistant가 아니면 통과 (Co는 거리 제한 없음)
+    if (candidate.category !== 'Assistant') return true;
 
     // 거리 제한이 null이면 제한 없음
     const maxDistance = context.config.subMaxDistanceKm;
@@ -177,5 +158,5 @@ export const allFilters: AssignmentFilter[] = [
   internDistanceFilter,
   subDistanceFilter,
   mainInstructorFilter,
-  traineeFilter,
+  // traineeFilter 제거 - Practicum은 같은 팀 주강사와 배정 가능
 ];

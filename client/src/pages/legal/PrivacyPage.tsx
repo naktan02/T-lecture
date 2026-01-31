@@ -311,6 +311,25 @@ export default function PrivacyPage(): ReactElement {
               본 개인정보 처리방침은 2025년 1월 1일부터 시행됩니다.
             </p>
           </section>
+
+          {/* 하단 돌아가기 버튼 */}
+          <div className="mt-8 flex justify-center">
+            <button
+              type="button"
+              onClick={handleBack}
+              className="flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 font-medium transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+              돌아가기
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -232,6 +232,51 @@ export const opportunityCostScorer: AssignmentScorer = {
 };
 
 /**
+ * 팀 다양성 스코어러 (교육기간 간 팀 분산)
+ * - 다른 교육기간(부대)에 한 팀이 너무 많이 배정되면 감점
+ * - 같은 교육기간 내에서는 적용 안 함 (teamMatchingScorer가 보너스 부여)
+ */
+export const teamDiversityScorer: AssignmentScorer = {
+  id: 'TEAM_DIVERSITY',
+  name: '팀 다양성 점수',
+  description: '다른 교육기간에 한 팀이 집중되면 감점 (팀 골고루 배분)',
+  defaultWeight: -15, // 음수: 많이 배정된 팀은 감점
+  calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
+    if (!candidate.teamId) return 0;
+
+    // 현재 교육기간 제외, 다른 교육기간에서 이 팀이 배정된 횟수
+    const teamAssignmentsInOtherPeriods = context.currentAssignments.filter(
+      (a) =>
+        a.teamId === candidate.teamId && a.trainingPeriodId !== context.currentTrainingPeriodId,
+    ).length;
+
+    // 전체 배정 중 이 팀 비율 계산
+    const totalOtherAssignments = context.currentAssignments.filter(
+      (a) => a.trainingPeriodId !== context.currentTrainingPeriodId,
+    ).length;
+
+    if (totalOtherAssignments === 0) return 0;
+
+    // 팀 배정 비율이 평균보다 높으면 감점
+    // 7개 팀 기준: 평균 14.3% 이상이면 감점
+    const ratio = teamAssignmentsInOtherPeriods / totalOtherAssignments;
+    const avgRatio = 1 / 7; // 7개 팀 기준
+
+    if (ratio > avgRatio * 2) {
+      // 평균의 2배 이상 → 큰 감점
+      return 3;
+    } else if (ratio > avgRatio * 1.5) {
+      // 평균의 1.5배 이상 → 중간 감점
+      return 2;
+    } else if (ratio > avgRatio) {
+      // 평균 이상 → 작은 감점
+      return 1;
+    }
+    return 0;
+  },
+};
+
+/**
  * 모든 스코어러 목록
  */
 export const allScorers: AssignmentScorer[] = [
@@ -239,6 +284,7 @@ export const allScorers: AssignmentScorer[] = [
   fairnessScorer,
   consecutiveDaysScorer,
   teamMatchingScorer,
+  teamDiversityScorer, // 팀 다양성 추가
   distanceScorer,
   priorityScorer,
   penaltyScorer,

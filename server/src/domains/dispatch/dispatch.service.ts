@@ -60,6 +60,26 @@ class DispatchService {
       groupMap.get(key)!.assignments.push(assign);
     });
 
+    // N+1 문제 해결: 루프 전에 모든 유저-유닛 조합의 배정을 일괄 조회
+    const userUnitPairs = Array.from(groupMap.values()).map(({ user, trainingPeriod }) => ({
+      userId: user.id,
+      unitId: trainingPeriod.unit.id,
+    }));
+    const allUserAssignmentsBatch =
+      await dispatchRepository.findAllAssignmentsForUserUnits(userUnitPairs);
+
+    // userId-unitId 키로 배정 그룹화 (메모리 내 필터링용)
+    const assignmentsByUserUnit = new Map<string, typeof allUserAssignmentsBatch>();
+    for (const assign of allUserAssignmentsBatch) {
+      const unitId = assign.UnitSchedule.trainingPeriod?.unitId;
+      if (!unitId) continue;
+      const key = `${assign.userId}-${unitId}`;
+      if (!assignmentsByUserUnit.has(key)) {
+        assignmentsByUserUnit.set(key, []);
+      }
+      assignmentsByUserUnit.get(key)!.push(assign);
+    }
+
     const dispatchesToCreate: Array<{
       type: 'Temporary';
       title: string;
@@ -135,11 +155,9 @@ class DispatchService {
       // 장소 목록 (locations 포맷 변수) - 이제 trainingPeriod.locations
       const locationsList = buildLocationsFormat(trainingPeriod.locations || []);
 
-      // 본인 일정 (self.mySchedules) - 해당 부대의 모든 배정 일정 (필터 기간 무관)
-      const allUserAssignments = await dispatchRepository.findAllAssignmentsForUserInUnit(
-        user.id,
-        unit.id,
-      );
+      // 본인 일정 (self.mySchedules) - 해당 부대의 모든 배정 일정 (배치 조회 결과에서 필터링)
+      const userUnitKey = `${user.id}-${unit.id}`;
+      const allUserAssignments = assignmentsByUserUnit.get(userUnitKey) || [];
       const mySchedulesList = buildMySchedulesFormat(
         allUserAssignments.map((a) => ({ date: a.UnitSchedule.date ?? new Date() })),
         user.name || '',

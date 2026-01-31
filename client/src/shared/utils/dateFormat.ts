@@ -83,3 +83,47 @@ export const generateDateRange = (
 
   return result;
 };
+
+// ============ Holiday Support ============
+
+import { isHoliday } from './holidays';
+
+/**
+ * 영업일 기준 날짜 범위 생성 (주말, 공휴일, 제외일 제외)
+ * @param startDate - 시작일 (YYYY-MM-DD)
+ * @param endDate - 종료일 (YYYY-MM-DD)
+ * @param excludedDates - 제외할 날짜 배열 (YYYY-MM-DD[])
+ * @returns YYYY-MM-DD 형식의 날짜 배열
+ */
+export const generateBusinessDateRange = (
+  startDate: string,
+  endDate: string,
+  excludedDates: string[] = [],
+): string[] => {
+  const result: string[] = [];
+  const excluded = new Set(excludedDates);
+
+  const start = toUTCMidnight(startDate);
+  const end = toUTCMidnight(endDate);
+
+  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    const year = d.getUTCFullYear();
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    const dayOfWeek = d.getUTCDay(); // 0: Sun, 6: Sat
+
+    // 1. 주말 제외
+    if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+
+    // 2. 사용자가 지정한 제외일 제외
+    if (excluded.has(dateStr)) continue;
+
+    // 3. 공휴일 제외 (@hyunbinseo/holidays-kr 사용)
+    if (isHoliday(d)) continue;
+
+    result.push(dateStr);
+  }
+
+  return result;
+};
