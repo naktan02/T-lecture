@@ -154,7 +154,8 @@ export const InstructorSelectionPopup: React.FC<InstructorSelectionPopupProps> =
                 <Button
                   size="xsmall"
                   variant="outline"
-                  onClick={() => {
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation(); // 행 클릭 이벤트 전파 방지
                     handleSelectInstructor(inst);
                   }}
                 >
