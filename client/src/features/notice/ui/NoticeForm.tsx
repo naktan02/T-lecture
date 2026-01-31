@@ -39,6 +39,7 @@ export const NoticeForm = ({
     register,
     handleSubmit,
     watch,
+    reset,
     formState: { errors },
   } = useForm<NoticeFormData>({
     defaultValues: initialData || { title: '', content: '', isPinned: false, targetType: 'ALL' },
@@ -63,13 +64,16 @@ export const NoticeForm = ({
 
   // 초기 데이터 설정 (수정 모드 시)
   useEffect(() => {
-    if (initialData?.targetTeamIds) {
-      setSelectedTeamIds(initialData.targetTeamIds);
+    if (initialData) {
+      reset(initialData);
+      if (initialData.targetTeamIds) {
+        setSelectedTeamIds(initialData.targetTeamIds);
+      }
+      if (initialData.targetUserIds) {
+        setSelectedUserIds(initialData.targetUserIds);
+      }
     }
-    if (initialData?.targetUserIds) {
-      setSelectedUserIds(initialData.targetUserIds);
-    }
-  }, [initialData]);
+  }, [initialData, reset]);
 
   const handleFormSubmit = (data: NoticeFormData) => {
     onSubmit({
