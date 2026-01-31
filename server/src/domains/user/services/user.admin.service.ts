@@ -337,12 +337,17 @@ class AdminService {
       }
 
       // 프로필 완료 여부 자동 계산
-      // 필수 필드: 주소, 분류, 팀 (기수는 관리자가 입력하므로 제외)
+      // 필수 필드: 주소, 분류, 기수 (팀 소속은 무소속 가능하므로 제외)
       const finalLocation = address !== undefined ? address : user.instructor!.location;
       const finalCategory = category !== undefined ? category : user.instructor!.category;
-      const finalTeamId = teamId !== undefined ? teamId : user.instructor!.teamId;
+      const finalGeneration = generation !== undefined ? generation : user.instructor!.generation;
 
-      const isProfileComplete = !!(finalLocation && finalCategory && finalTeamId);
+      const isProfileComplete = !!(
+        finalLocation &&
+        finalCategory &&
+        finalGeneration !== null &&
+        finalGeneration !== undefined
+      );
 
       instructorData.profileCompleted = isProfileComplete;
 
