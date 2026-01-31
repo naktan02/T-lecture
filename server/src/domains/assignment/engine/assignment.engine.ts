@@ -144,6 +144,11 @@ export class AssignmentEngine {
        * - 각 스케줄별 상위 K명의 후보자 breakdown을 수집
        */
       debugTopK?: number;
+      /**
+       * 강사-부대 거리 데이터 (km 단위)
+       * - 키 형식: `${instructorId}-${unitId}`
+       */
+      instructorDistances?: Map<string, number>;
     },
   ): EngineResult {
     const assignments: AssignmentResult[] = [];
@@ -155,8 +160,8 @@ export class AssignmentEngine {
     const avgAssignmentCount =
       candidates.reduce((sum, c) => sum + c.recentAssignmentCount, 0) / candidates.length || 1;
 
-    // 거리 맵 생성 (나중에 실제 데이터로 채움)
-    const instructorDistances = new Map<string, number>();
+    // 거리 맵 (옵션으로 전달받은 데이터 사용, 없으면 빈 Map)
+    const instructorDistances = options?.instructorDistances ?? new Map<string, number>();
 
     // =========================================
     // Slack 기반 스케줄 우선순위 정렬

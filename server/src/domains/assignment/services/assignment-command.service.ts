@@ -7,6 +7,7 @@ import {
   assignmentConfigRepository,
 } from '../repositories';
 import instructorRepository from '../../instructor/instructor.repository';
+import distanceRepository from '../../distance/distance.repository';
 import AppError from '../../../common/errors/AppError';
 import assignmentAlgorithm from '../engine/adapter';
 import { DEFAULT_ASSIGNMENT_CONFIG } from '../engine/config-loader';
@@ -247,6 +248,19 @@ class AssignmentCommandService {
         rejectionSince,
       );
 
+    // 6) 거리 데이터 조회 및 변환 (미터 → km)
+    const unitIds = Array.from(unitMap.keys());
+    const distanceData = await distanceRepository.findManyByUnitIds(unitIds);
+    const instructorDistances = new Map<string, number>();
+    for (const d of distanceData) {
+      // distance는 미터 단위로 저장되어 있음 → km로 변환
+      const distanceKm = d.distance ? Number(d.distance) / 1000 : null;
+      if (distanceKm !== null) {
+        const key = `${d.userId}-${d.unitId}`;
+        instructorDistances.set(key, distanceKm);
+      }
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const matchResult = assignmentAlgorithm.execute(units as any, instructors as any, {
       traineesPerInstructor,
@@ -255,6 +269,7 @@ class AssignmentCommandService {
       recentRejectionCountByInstructorId,
       internMaxDistanceKm,
       subMaxDistanceKm,
+      instructorDistances,
     });
 
     const { assignments: matchResults } = matchResult;
@@ -352,6 +367,18 @@ class AssignmentCommandService {
     const internMaxDistanceKm = await this.getSystemConfigNumber('INTERN_MAX_DISTANCE_KM', 50);
     const subMaxDistanceKm = await this.getSystemConfigNumberOrNull('SUB_MAX_DISTANCE_KM');
 
+    // 거리 데이터 조회 및 변환 (미터 → km)
+    const unitIds = units.map((u) => u.id);
+    const distanceData = await distanceRepository.findManyByUnitIds(unitIds);
+    const instructorDistances = new Map<string, number>();
+    for (const d of distanceData) {
+      const distanceKm = d.distance ? Number(d.distance) / 1000 : null;
+      if (distanceKm !== null) {
+        const key = `${d.userId}-${d.unitId}`;
+        instructorDistances.set(key, distanceKm);
+      }
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const matchResult = assignmentAlgorithm.execute(units as any, instructors as any, {
       traineesPerInstructor,
@@ -361,6 +388,7 @@ class AssignmentCommandService {
       debugTopK,
       internMaxDistanceKm,
       subMaxDistanceKm,
+      instructorDistances,
     });
 
     const { assignments: matchResults, debug } = matchResult;
