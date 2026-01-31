@@ -5,7 +5,10 @@ import asyncHandler from '../../common/middlewares/asyncHandler';
 
 // 공지사항 목록 조회
 export const getNotices = asyncHandler(async (req: Request, res: Response) => {
-  const { page, limit, search, sortField, sortOrder } = req.query;
+  const { page, limit, search, sortField, sortOrder, viewAs } = req.query;
+  const isInstructorView = viewAs === 'instructor';
+  const userId = !req.user?.isAdmin || isInstructorView ? req.user?.id : undefined;
+
   const result = await noticeService.getAll({
     page: page ? Number(page) : undefined,
     limit: limit ? Number(limit) : undefined,
@@ -13,7 +16,7 @@ export const getNotices = asyncHandler(async (req: Request, res: Response) => {
     sortField: typeof sortField === 'string' ? sortField : undefined,
     sortOrder:
       sortOrder === 'asc' || sortOrder === 'desc' ? (sortOrder as 'asc' | 'desc') : undefined,
-    userId: !req.user?.isAdmin ? req.user?.id : undefined,
+    userId,
   });
   res.json(result);
 });
