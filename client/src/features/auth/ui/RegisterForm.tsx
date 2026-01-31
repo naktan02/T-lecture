@@ -201,7 +201,9 @@ export const RegisterForm: React.FC = () => {
           </button>
           <div>
             <h2 className="text-2xl md:text-xl font-bold text-gray-800">회원가입</h2>
-            <p className="text-base md:text-sm text-gray-500">푸른나무재단에 오신 것을 환영합니다.</p>
+            <p className="text-base md:text-sm text-gray-500">
+              푸른나무재단에 오신 것을 환영합니다.
+            </p>
           </div>
         </div>
 
@@ -288,7 +290,13 @@ export const RegisterForm: React.FC = () => {
 
           {/* 제출 버튼 */}
           <div className="pt-8 md:pt-4">
-            <Button type="submit" fullWidth variant="primary" disabled={submitting} className="py-3 md:py-2 text-base md:text-sm">
+            <Button
+              type="submit"
+              fullWidth
+              variant="primary"
+              disabled={submitting}
+              className="py-3 md:py-2 text-base md:text-sm"
+            >
               {submitting ? '가입 신청 중...' : '가입 신청'}
             </Button>
           </div>

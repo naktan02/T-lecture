@@ -34,7 +34,9 @@ export const LoginForm: React.FC = () => {
             BTF
           </div>
           <h1 className="text-2xl md:text-xl font-bold text-gray-800 mb-2 md:mb-1">T-lecture</h1>
-          <p className="text-base md:text-sm text-gray-500">Instructor Dispatch Automation System</p>
+          <p className="text-base md:text-sm text-gray-500">
+            Instructor Dispatch Automation System
+          </p>
         </div>
 
         {error && (
@@ -87,7 +89,12 @@ export const LoginForm: React.FC = () => {
           </div>
 
           <div className="mt-10 md:mt-6">
-            <Button type="submit" fullWidth disabled={isLoading} className="py-3 md:py-2 text-base md:text-sm">
+            <Button
+              type="submit"
+              fullWidth
+              disabled={isLoading}
+              className="py-3 md:py-2 text-base md:text-sm"
+            >
               {isLoading
                 ? '로그인 중...'
                 : loginType === USER_ROLES.ADMIN
