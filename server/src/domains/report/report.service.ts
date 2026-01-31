@@ -156,7 +156,7 @@ export class ReportService {
 
     // 해당 월의 첫 번째 목요일 찾기
     const firstDayOfMonth = new Date(thursdayYear, thursdayMonth - 1, 1);
-    let firstThursday = new Date(firstDayOfMonth);
+    const firstThursday = new Date(firstDayOfMonth);
     const dayOfFirst = firstDayOfMonth.getDay();
     // 첫 번째 목요일까지의 차이
     const daysUntilThursday = (4 - dayOfFirst + 7) % 7;

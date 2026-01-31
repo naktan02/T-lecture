@@ -49,8 +49,9 @@ export default function TermsPage(): ReactElement {
           <section>
             <h2 className="text-lg font-semibold text-gray-800 mt-6 mb-3">제1조 (목적)</h2>
             <p>
-              본 약관은 푸른나무재단(이하 "재단")이 운영하는 강사 배정 관리 시스템(이하 "서비스")의
-              이용과 관련하여 재단과 이용자 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.
+              본 약관은 푸른나무재단(이하 &ldquo;재단&rdquo;)이 운영하는 강사 배정 관리
+              시스템(이하 &ldquo;서비스&rdquo;)의 이용과 관련하여 재단과 이용자 간의 권리, 의무 및
+              책임사항을 규정함을 목적으로 합니다.
             </p>
           </section>
 
@@ -58,14 +59,19 @@ export default function TermsPage(): ReactElement {
             <h2 className="text-lg font-semibold text-gray-800 mt-6 mb-3">제2조 (정의)</h2>
             <ol className="list-decimal list-inside space-y-2">
               <li>
-                "서비스"란 재단이 제공하는 군부대 인성교육 강사 배정 및 관리를 위한 웹 기반
-                플랫폼을 말합니다.
+                &ldquo;서비스&rdquo;란 재단이 제공하는 군부대 인성교육 강사 배정 및 관리를 위한 웹
+                기반 플랫폼을 말합니다.
               </li>
               <li>
-                "이용자"란 본 약관에 따라 서비스를 이용하는 강사, 관리자 및 일반 회원을 말합니다.
+                &ldquo;이용자&rdquo;란 본 약관에 따라 서비스를 이용하는 강사, 관리자 및 일반 회원을
+                말합니다.
               </li>
-              <li>"강사"란 재단에 등록되어 인성교육을 수행하는 자를 말합니다.</li>
-              <li>"관리자"란 재단 소속으로 서비스 운영 권한을 가진 자를 말합니다.</li>
+              <li>
+                &ldquo;강사&rdquo;란 재단에 등록되어 인성교육을 수행하는 자를 말합니다.
+              </li>
+              <li>
+                &ldquo;관리자&rdquo;란 재단 소속으로 서비스 운영 권한을 가진 자를 말합니다.
+              </li>
             </ol>
           </section>
 
