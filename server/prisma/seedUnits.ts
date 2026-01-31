@@ -361,6 +361,7 @@ interface UnitConfig {
   month: number; // 0 = January, 1 = February
   hasMultipleLocations: boolean;
   hasExcludedDates: boolean;
+  hasAdditionalTraining: boolean;
   locationIndex: number;
 }
 
@@ -369,34 +370,10 @@ async function createUnit(
   config: UnitConfig,
   location: { address: string; wideArea: string; region: string; lat: number; lng: number },
 ) {
-  const { month, hasMultipleLocations, hasExcludedDates, locationIndex } = config;
+  const { month, hasMultipleLocations, hasExcludedDates, hasAdditionalTraining, locationIndex } = config;
 
   const unitName = generateUniqueUnitName(index);
   const militaryType = getMilitaryType();
-
-  // 교육 시작일: 해당 월의 월요일(5, 12, 19, 26) 중 하나 선택
-  const mondays = [5, 12, 19, 26];
-  const monday = randomChoice(mondays);
-  
-  // 2박 3일 보장 (불가일자 포함 시 4일 소요되므로 월/화 시작, 미포함 시 월/화/수 시작)
-  const startDayOffset = hasExcludedDates ? randomInt(0, 1) : randomInt(0, 2);
-  const startDate = new Date(Date.UTC(2026, month, monday + startDayOffset));
-
-  // 교육 기간: 실제 교육일수 3일 고정
-  const educationDays = 3;
-  const calendarDays = hasExcludedDates ? 4 : 3;
-  const endDate = new Date(startDate);
-  endDate.setUTCDate(startDate.getUTCDate() + calendarDays - 1);
-
-  // 불가일자 생성 (교육 기간 중 2번째 날짜를 불가일자로 설정)
-  let excludedDates: string[] = [];
-  if (hasExcludedDates) {
-    const excludedDate = new Date(startDate);
-    excludedDate.setUTCDate(startDate.getUTCDate() + 1);
-    excludedDates = [formatDate(excludedDate)];
-  }
-
-  const officerName = `${randomChoice(LAST_NAMES)}${randomChoice(FIRST_NAMES)}`;
 
   // 부대 생성
   const unit = await prisma.unit.create({
@@ -413,127 +390,145 @@ async function createUnit(
     },
   });
 
-  // TrainingPeriod 생성 (정규교육)
-  const trainingPeriod = await prisma.trainingPeriod.create({
-    data: {
-      unitId: unit.id,
-      name: '정규교육',
-      workStartTime: new Date('1970-01-01T09:00:00Z'),
-      workEndTime: new Date('1970-01-01T18:00:00Z'),
-      lunchStartTime: new Date('1970-01-01T12:00:00Z'),
-      lunchEndTime: new Date('1970-01-01T13:00:00Z'),
-      officerName: officerName,
-      officerPhone: `010-${randomInt(1000, 9999)}-${randomInt(1000, 9999)}`,
-      officerEmail: `officer${index}@army.mil.kr`,
-      isStaffLocked: false,
-      excludedDates: excludedDates,
-      hasCateredMeals: Math.random() > 0.3,
-      hasHallLodging: Math.random() > 0.4,
-      allowsPhoneBeforeAfter: true,
-    },
-  });
+  // 공통 시디팅 로직
+  const seedPeriod = async (name: string, startDate: Date, hasExcluded: boolean) => {
+    // 불가일자 생성 (교육 기간 중 2번째 날짜를 불가일자로 설정)
+    let excludedDates: string[] = [];
+    const calendarDays = hasExcluded ? 4 : 3;
+    if (hasExcluded) {
+      const excludedDate = new Date(startDate);
+      excludedDate.setUTCDate(startDate.getUTCDate() + 1);
+      excludedDates = [formatDate(excludedDate)];
+    }
 
-  // 교육장소 생성
-  const locationCount = hasMultipleLocations ? randomInt(2, 3) : 1;
-  const locationIds: number[] = [];
+    const endDate = new Date(startDate);
+    endDate.setUTCDate(startDate.getUTCDate() + calendarDays - 1);
 
-  for (let loc = 0; loc < locationCount; loc++) {
-    const trainingLocation = await prisma.trainingLocation.create({
+    const trainingPeriod = await prisma.trainingPeriod.create({
       data: {
-        trainingPeriodId: trainingPeriod.id,
-        originalPlace: loc === 0 ? randomChoice(PLACES) : `추가장소${loc + 1}`,
-        changedPlace: null,
-        hasInstructorLounge: true,
-        hasWomenRestroom: true,
-        note: null,
+        unitId: unit.id,
+        name,
+        workStartTime: new Date('1970-01-01T09:00:00Z'),
+        workEndTime: new Date('1970-01-01T18:00:00Z'),
+        lunchStartTime: new Date('1970-01-01T12:00:00Z'),
+        lunchEndTime: new Date('1970-01-01T13:00:00Z'),
+        officerName: `${randomChoice(LAST_NAMES)}${randomChoice(FIRST_NAMES)}`,
+        officerPhone: `010-${randomInt(1000, 9999)}-${randomInt(1000, 9999)}`,
+        officerEmail: `officer${index}@army.mil.kr`,
+        isStaffLocked: false,
+        excludedDates,
+        hasCateredMeals: Math.random() > 0.3,
+        hasHallLodging: Math.random() > 0.4,
+        allowsPhoneBeforeAfter: true,
       },
     });
-    locationIds.push(trainingLocation.id);
-  }
 
-  // UnitSchedule 및 ScheduleLocation 생성 (불가일자 제외)
-  const excludedSet = new Set(excludedDates);
-  const currentDate = new Date(startDate);
-  let scheduleCount = 0;
-
-  while (currentDate <= endDate) {
-    const dateStr = formatDate(currentDate);
-    if (!excludedSet.has(dateStr)) {
-      const schedule = await prisma.unitSchedule.create({
-        data: { trainingPeriodId: trainingPeriod.id, date: new Date(currentDate) },
+    const locCount = hasMultipleLocations ? randomInt(2, 3) : 1;
+    const locIds: number[] = [];
+    const NOTES = ['주차 가능', '프로젝터 있음', '음향시설 완비', '에어컨 가동', ''];
+    for (let l = 0; l < locCount; l++) {
+      const tl = await prisma.trainingLocation.create({
+        data: {
+          trainingPeriodId: trainingPeriod.id,
+          originalPlace: l === 0 ? randomChoice(PLACES) : `추가장소${l + 1}`,
+          hasInstructorLounge: true,
+          hasWomenRestroom: true,
+          note: l === 0 ? randomChoice(NOTES) : null, // 첫 번째 장소에만 랜덤 특이사항
+        },
       });
-
-      // 각 장소별 ScheduleLocation 생성
-      for (const locId of locationIds) {
-        const plannedCount = randomInt(40, 150);
-        await prisma.scheduleLocation.create({
-          data: {
-            unitScheduleId: schedule.id,
-            trainingLocationId: locId,
-            plannedCount: plannedCount,
-            actualCount: Math.floor(plannedCount * (0.8 + Math.random() * 0.2)),
-          },
-        });
-      }
-      scheduleCount++;
+      locIds.push(tl.id);
     }
-    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+
+    const excludedSet = new Set(excludedDates);
+    const curr = new Date(startDate);
+    let sCount = 0;
+    while (curr <= endDate) {
+      const ds = formatDate(curr);
+      if (!excludedSet.has(ds)) {
+        const schedule = await prisma.unitSchedule.create({
+          data: { trainingPeriodId: trainingPeriod.id, date: new Date(curr) },
+        });
+        for (const locId of locIds) {
+          const pc = randomInt(50, 150);
+          await prisma.scheduleLocation.create({
+            data: {
+              unitScheduleId: schedule.id,
+              trainingLocationId: locId,
+              plannedCount: pc,
+              actualCount: Math.floor(pc * (0.8 + Math.random() * 0.2)),
+            },
+          });
+        }
+        sCount++;
+      }
+      curr.setUTCDate(curr.getUTCDate() + 1);
+    }
+    return { sCount, locCount };
+  };
+
+  // 1. 정규 교육
+  const mondays = [5, 12, 19, 26];
+  const monday = randomChoice(mondays);
+  const startDayOffset = hasExcludedDates ? randomInt(0, 1) : randomInt(0, 2);
+  const regularStart = new Date(Date.UTC(2026, month, monday + startDayOffset));
+  const regularResult = await seedPeriod('정규교육', regularStart, hasExcludedDates);
+
+  // 2. 추가 교육 (10%)
+  let additionalResult = { sCount: 0, locCount: 0 };
+  if (hasAdditionalTraining) {
+    // 정규 교육 2주 후 (간단하게 14일 뒤)
+    const additionalStart = new Date(regularStart);
+    additionalStart.setUTCDate(regularStart.getUTCDate() + 14);
+    // 추가 교육은 불가일자 없음으로 단순화 (3일 고정)
+    additionalResult = await seedPeriod('추가교육', additionalStart, false);
   }
 
-  // 거리 테이블 생성 (신규 부대 - 활성 강사들에 대해 거리 행 생성)
+  // 거리 테이블 생성
   try {
     await distanceService.createDistanceRowsForNewUnit(unit.id);
-  } catch (error) {
+  } catch (e) {
     console.warn(`  ⚠️ 거리 테이블 생성 실패 (부대 ID: ${unit.id})`);
   }
 
-  return { unitId: unit.id, scheduleCount, locationCount };
+  return {
+    unitId: unit.id,
+    scheduleCount: regularResult.sCount + additionalResult.sCount,
+    locationCount: regularResult.locCount, // 부대 기준 장소 수는 정규교육 기준
+  };
 }
 
 export async function runSeedUnits() {
   console.log('🏢 부대 100개 생성 시작 (2026년 1~2월)...\n');
 
-  // Kakao API로 주소를 좌표로 변환
   const locations = await convertAddressesToCoordinates();
 
-  if (locations.length < 100) {
-    console.warn(`⚠️ 좌표 변환된 주소가 ${locations.length}개로 100개 미만입니다.`);
-    console.warn('   일부 부대는 중복 주소를 사용합니다.\n');
-  }
-
-  // 설정: 1월 60개, 2월 40개 / 복수장소 20% / 불가일자 25%
-  const units: UnitConfig[] = [];
-
-  // 1월 부대 60개
-  for (let i = 0; i < 60; i++) {
-    units.push({
-      month: 0, // January
-      hasMultipleLocations: i < 12, // 20% of 60 = 12개
-      hasExcludedDates: i < 15, // 25% of 60 = 15개
+  // 설정 분배
+  // 1월 60개, 2월 40개
+  const configs: UnitConfig[] = [];
+  for (let i = 0; i < 100; i++) {
+    configs.push({
+      month: i < 60 ? 0 : 1,
+      hasMultipleLocations: false,
+      hasExcludedDates: i < 25, // 25% 불가일자
+      hasAdditionalTraining: false,
       locationIndex: i % locations.length,
     });
   }
 
-  // 2월 부대 40개
-  for (let i = 0; i < 40; i++) {
-    units.push({
-      month: 1, // February
-      hasMultipleLocations: i < 8, // 20% of 40 = 8개
-      hasExcludedDates: i < 10, // 25% of 40 = 10개
-      locationIndex: (60 + i) % locations.length,
-    });
-  }
+  // 정확히 20% 복수 장소 (20개)
+  for (let i = 0; i < 20; i++) configs[i].hasMultipleLocations = true;
+  // 정확히 10% 추가 교육 (10개)
+  for (let i = 20; i < 30; i++) configs[i].hasAdditionalTraining = true;
 
   // 셔플
-  units.sort(() => Math.random() - 0.5);
+  configs.sort(() => Math.random() - 0.5);
 
   let createdCount = 0;
   let totalSchedules = 0;
   let totalLocations = 0;
 
-  console.log('📅 2026년 1~2월 부대 100개 생성 중...');
-  for (let i = 0; i < units.length; i++) {
-    const config = units[i];
+  for (let i = 0; i < configs.length; i++) {
+    const config = configs[i];
     const location = locations[config.locationIndex];
 
     try {
@@ -553,54 +548,128 @@ export async function runSeedUnits() {
 
   console.log(`  ✅ 부대 ${createdCount}개 생성 완료\n`);
 
-  // 통계 출력
-  const jan = await prisma.unit.count({
-    where: {
-      lectureYear: 2026,
-      trainingPeriods: {
-        some: {
-          schedules: {
-            some: {
-              date: {
-                gte: new Date('2026-01-01'),
-                lt: new Date('2026-02-01'),
-              },
-            },
-          },
-        },
-      },
-    },
-  });
-
-  const feb = await prisma.unit.count({
-    where: {
-      lectureYear: 2026,
-      trainingPeriods: {
-        some: {
-          schedules: {
-            some: {
-              date: {
-                gte: new Date('2026-02-01'),
-                lt: new Date('2026-03-01'),
-              },
-            },
-          },
-        },
-      },
-    },
+  // 통계
+  const extraCount = await prisma.trainingPeriod.count({ where: { name: '추가교육' } });
+  const multiLocCount = await prisma.unit.count({
+    where: { trainingPeriods: { some: { locations: { some: { originalPlace: '추가장소2' } } } } },
   });
 
   console.log('='.repeat(50));
   console.log('📊 부대 생성 결과');
   console.log('='.repeat(50));
   console.log(`총 부대: ${createdCount}개`);
-  console.log(`  - 1월: 약 ${jan}개`);
-  console.log(`  - 2월: 약 ${feb}개`);
-  console.log(`총 교육일정: ${totalSchedules}개`);
-  console.log(`총 교육장소: ${totalLocations}개`);
-  console.log(`복수 교육장소 부대: 20개 (20%)`);
-  console.log(`교육불가일자 있는 부대: 25개 (25%)`);
+  console.log(`추가 교육 부대: ${extraCount}개 (목표: 10개)`);
+  console.log(`복수 장소 부대: ${multiLocCount}개 (목표: 약 20개)`);
   console.log('='.repeat(50));
+
+  // Excel 테스트 파일 생성
+  console.log('\n📄 Excel 테스트 파일 생성 중...');
+  await generateExcelTestFile();
+}
+
+// 생성된 부대 데이터를 Excel 파일로 내보내기 (업로드 테스트용)
+async function generateExcelTestFile() {
+  const ExcelJS = (await import('exceljs')).default;
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'T-Lecture Seed';
+  workbook.created = new Date();
+
+  const sheet = workbook.addWorksheet('부대 업로드 테스트');
+
+  // 메타데이터 행
+  sheet.getCell('A1').value = '강의년도';
+  sheet.getCell('B1').value = 2026;
+
+  // 헤더 정의 (6행)
+  const headers = [
+    '부대명', '군구분', '광역', '지역', '부대주소', '부대상세주소',
+    '교육시작일자', '교육종료일자', '교육불가일자',
+    '근무시작시간', '근무종료시간', '점심시작시간', '점심종료시간',
+    '간부명', '간부 전화번호', '간부 이메일 주소',
+    '수탁급식여부', '회관숙박여부', '사전사후 휴대폰 불출 여부',
+    '기존교육장소', '변경교육장소', '강사휴게실 여부', '여자화장실 여부',
+    '계획인원', '참여인원', '특이사항'
+  ];
+  const headerRow = sheet.getRow(6);
+  headers.forEach((h, i) => {
+    headerRow.getCell(i + 1).value = h;
+    headerRow.getCell(i + 1).font = { bold: true };
+  });
+
+  // DB에서 최근 생성된 부대 50개 조회 (테스트 파일용)
+  const units = await prisma.unit.findMany({
+    take: 50,
+    orderBy: { id: 'desc' },
+    include: {
+      trainingPeriods: {
+        include: {
+          locations: true,
+          schedules: {
+            include: { scheduleLocations: true },
+            take: 1, // 첫 번째 일정만
+          },
+        },
+      },
+    },
+  });
+
+  let rowNum = 7;
+  for (const unit of units) {
+    const period = unit.trainingPeriods[0];
+    if (!period) continue;
+
+    // 일정에서 시작/종료 날짜 계산
+    const schedules = await prisma.unitSchedule.findMany({
+      where: { trainingPeriodId: period.id },
+      orderBy: { date: 'asc' },
+    });
+    const startDate = schedules[0]?.date?.toISOString().split('T')[0] || '';
+    const endDate = schedules[schedules.length - 1]?.date?.toISOString().split('T')[0] || '';
+
+    // 각 장소별로 행 생성
+    for (let locIdx = 0; locIdx < period.locations.length; locIdx++) {
+      const loc = period.locations[locIdx];
+      const schedLoc = period.schedules[0]?.scheduleLocations.find(
+        (sl) => sl.trainingLocationId === loc.id
+      );
+
+      const row = sheet.getRow(rowNum);
+      row.getCell(1).value = locIdx === 0 ? unit.name : ''; // 부대명은 첫 번째 장소만
+      row.getCell(2).value = locIdx === 0 ? (unit.unitType || '') : '';
+      row.getCell(3).value = locIdx === 0 ? (unit.wideArea || '') : '';
+      row.getCell(4).value = locIdx === 0 ? (unit.region || '') : '';
+      row.getCell(5).value = locIdx === 0 ? (unit.addressDetail || '') : '';
+      row.getCell(6).value = locIdx === 0 ? (unit.detailAddress || '') : '';
+      row.getCell(7).value = locIdx === 0 ? startDate : '';
+      row.getCell(8).value = locIdx === 0 ? endDate : '';
+      row.getCell(9).value = locIdx === 0 ? (period.excludedDates || []).join(',') : '';
+      row.getCell(10).value = locIdx === 0 ? '09:00' : '';
+      row.getCell(11).value = locIdx === 0 ? '18:00' : '';
+      row.getCell(12).value = locIdx === 0 ? '12:00' : '';
+      row.getCell(13).value = locIdx === 0 ? '13:00' : '';
+      row.getCell(14).value = locIdx === 0 ? (period.officerName || '') : '';
+      row.getCell(15).value = locIdx === 0 ? (period.officerPhone || '') : '';
+      row.getCell(16).value = locIdx === 0 ? (period.officerEmail || '') : '';
+      row.getCell(17).value = locIdx === 0 ? (period.hasCateredMeals ? 'O' : 'X') : '';
+      row.getCell(18).value = locIdx === 0 ? (period.hasHallLodging ? 'O' : 'X') : '';
+      row.getCell(19).value = locIdx === 0 ? (period.allowsPhoneBeforeAfter ? 'O' : 'X') : '';
+      row.getCell(20).value = loc.originalPlace || '';
+      row.getCell(21).value = loc.changedPlace || '';
+      row.getCell(22).value = loc.hasInstructorLounge ? 'O' : 'X';
+      row.getCell(23).value = loc.hasWomenRestroom ? 'O' : 'X';
+      row.getCell(24).value = schedLoc?.plannedCount || '';
+      row.getCell(25).value = schedLoc?.actualCount || '';
+      row.getCell(26).value = loc.note || '';
+
+      rowNum++;
+    }
+  }
+
+  // 파일 저장 (프로젝트 루트)
+  const filePath = '../seeded_units_2026.xlsx';
+  await workbook.xlsx.writeFile(filePath);
+  console.log(`  ✅ Excel 테스트 파일 생성 완료: ${filePath}`);
+  console.log(`  📌 이 파일을 부대 관리에서 업로드하여 테스트할 수 있습니다.`);
 }
 
 // 직접 실행 시
