@@ -60,11 +60,11 @@ const testUnits = [
     region: '수원시 영통구',
     address: '경기도 수원시 영통구 광교로 156',
     detailAddress: '본관 3층',
-    // 시나리오 3: 설날 연휴(2/16-18) 포함
+    // 시나리오 3: 설날 연휴(2/16-18) 포함 (보정 후: 2/16, 2/17, 2/18이 공휴일)
     startDate: '2026-02-13', // 금요일
     endDate: '2026-02-20',   // 금요일
     excludedDates: '',
-    description: '설날 연휴(2/16-18) + 주말(2/14-15) 포함 → 2/13, 2/19, 2/20만 생성 (3일)',
+    description: '설날(2/16-18)+주말(2/14-15) → 2/13, 2/19, 2/20 생성 (3일)',
     expectedSchedules: 3,
   },
   {
@@ -88,12 +88,12 @@ const testUnits = [
     region: '원주시',
     address: '강원특별자치도 원주시 서원대로 158',
     detailAddress: '교육관 1층',
-    // 시나리오 5: 어린이날(5/5) + 대체공휴일(5/6) 포함
+    // 시나리오 5: 어린이날(5/5)만 공휴일 (5/6은 대체공휴일 아님)
     startDate: '2026-05-04', // 월요일
     endDate: '2026-05-08',   // 금요일
     excludedDates: '',
-    description: '어린이날(5/5)+대체공휴일(5/6) 포함 → 5/4, 5/7, 5/8만 생성 (3일)',
-    expectedSchedules: 3,
+    description: '어린이날(5/5)만 공휴일 → 5/4, 5/6, 5/7, 5/8 생성 (4일)',
+    expectedSchedules: 4,
   },
   {
     name: '공군6전투비행단(테스트)',
@@ -116,12 +116,12 @@ const testUnits = [
     region: '여수시',
     address: '전라남도 여수시 시청로 1',
     detailAddress: '대강당',
-    // 시나리오 7: 삼일절(3/1, 일요일) 포함
+    // 시나리오 7: 삼일절(3/1, 일요일) + 대체공휴일(3/2) 포함
     startDate: '2026-02-27', // 금요일
     endDate: '2026-03-04',   // 수요일
     excludedDates: '',
-    description: '삼일절(3/1,일)+주말(2/28-3/1) 포함 → 2/27, 3/2, 3/3, 3/4만 생성 (4일)',
-    expectedSchedules: 4,
+    description: '삼일절(3/1)+대체(3/2)+주말 → 2/27, 3/3, 3/4 생성 (3일)',
+    expectedSchedules: 3,
   },
   {
     name: '육군8사단(테스트)',
@@ -130,12 +130,12 @@ const testUnits = [
     region: '포항시 남구',
     address: '경상북도 포항시 남구 시청로 1',
     detailAddress: '체육관',
-    // 시나리오 8: 광복절(8/15, 토요일) 포함
+    // 시나리오 8: 광복절(8/15, 토요일) + 대체공휴일(8/17) 포함
     startDate: '2026-08-13', // 목요일
     endDate: '2026-08-18',   // 화요일
     excludedDates: '',
-    description: '광복절(8/15,토)+주말(8/15-16) 포함 → 8/13, 8/14, 8/17, 8/18만 생성 (4일)',
-    expectedSchedules: 4,
+    description: '광복절(8/15)+대체(8/17)+주말 → 8/13, 8/14, 8/18 생성 (3일)',
+    expectedSchedules: 3,
   },
   {
     name: '국직9부대(테스트)',
@@ -158,12 +158,12 @@ const testUnits = [
     region: '파주시',
     address: '경기도 파주시 문발로 242',
     detailAddress: '훈련장',
-    // 시나리오 10: 한글날(10/9, 금요일) + 개천절(10/3, 토요일) + 주말 포함
+    // 시나리오 10: 개천절(10/3, 토) + 대체(10/5) + 한글날(10/9) + 주말 포함
     startDate: '2026-10-02', // 금요일
     endDate: '2026-10-12',   // 월요일
     excludedDates: '',
-    description: '개천절(10/3,토)+주말(10/3-4,10-11)+한글날(10/9) 포함 → 10/2, 10/5, 10/6, 10/7, 10/8, 10/12만 생성 (6일)',
-    expectedSchedules: 6,
+    description: '개천절+대체(10/5)+한글날(10/9)+주말 → 10/2, 10/6, 10/7, 10/8, 10/12 생성 (5일)',
+    expectedSchedules: 5,
   },
 ];
 
