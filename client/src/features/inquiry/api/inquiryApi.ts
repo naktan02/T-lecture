@@ -33,6 +33,7 @@ export interface InquirySearchParams {
   search?: string;
   sortField?: string;
   sortOrder?: 'asc' | 'desc';
+  viewAs?: string;
 }
 
 // API 경로: /api/v1/inquiries (독립 도메인)
@@ -41,7 +42,7 @@ const BASE_PATH = '/api/v1/inquiries';
 export const inquiryApi = {
   // 문의사항 목록 조회
   getInquiries: async (params: InquirySearchParams = {}) => {
-    const { page = 1, limit = 10, status, search, sortField, sortOrder } = params;
+    const { page = 1, limit = 10, status, search, sortField, sortOrder, viewAs } = params;
     const urlParams = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
@@ -57,6 +58,9 @@ export const inquiryApi = {
     }
     if (sortOrder) {
       urlParams.append('sortOrder', sortOrder);
+    }
+    if (viewAs) {
+      urlParams.append('viewAs', viewAs);
     }
     const response = await apiClient(`${BASE_PATH}?${urlParams.toString()}`);
     return response.json() as Promise<InquiryListResponse>;

@@ -11,6 +11,11 @@ export interface Notice {
   author: {
     name: string | null;
   };
+  targetSetting?: {
+    targetType: 'ALL' | 'TEAM' | 'INDIVIDUAL';
+    targetTeamIds: number[];
+    targetUserIds: number[];
+  };
 }
 
 export interface NoticeListResponse {
@@ -28,6 +33,7 @@ export interface NoticeSearchParams {
   search?: string;
   sortField?: string;
   sortOrder?: 'asc' | 'desc';
+  viewAs?: string;
 }
 
 // API 경로: /api/v1/notices (독립 도메인)
@@ -35,7 +41,7 @@ const BASE_PATH = '/api/v1/notices';
 
 export const noticeApi = {
   getNotices: async (params: NoticeSearchParams = {}) => {
-    const { page = 1, limit = 10, search, sortField, sortOrder } = params;
+    const { page = 1, limit = 10, search, sortField, sortOrder, viewAs } = params;
     const urlParams = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
@@ -48,6 +54,9 @@ export const noticeApi = {
     }
     if (sortOrder) {
       urlParams.append('sortOrder', sortOrder);
+    }
+    if (viewAs) {
+      urlParams.append('viewAs', viewAs);
     }
     const response = await apiClient(`${BASE_PATH}?${urlParams.toString()}`);
     return response.json() as Promise<NoticeListResponse>;
@@ -75,7 +84,14 @@ export const noticeApi = {
 
   updateNotice: async (
     id: number,
-    data: { title?: string; content?: string; isPinned?: boolean },
+    data: {
+      title?: string;
+      content?: string;
+      isPinned?: boolean;
+      targetType?: 'ALL' | 'TEAM' | 'INDIVIDUAL';
+      targetTeamIds?: number[];
+      targetUserIds?: number[];
+    },
   ) => {
     const response = await apiClient(`${BASE_PATH}/${id}`, {
       method: 'PUT',
