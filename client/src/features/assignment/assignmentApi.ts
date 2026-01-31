@@ -37,6 +37,7 @@ export interface UnitSchedule {
   unitName: string;
   originalPlace: string;
   actualCount: number | null; // 서버에서 계산된 참여인원
+  requiredCount: number | null; // 수동 설정 필요인원
   date: string;
   time: string;
   location: string;

@@ -597,7 +597,11 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
 
       {/* 미배정 부대 상세 모달 */}
       {selectedUnit && (
-        <UnassignedUnitDetailModal unit={selectedUnit} onClose={() => setSelectionKey(null)} />
+        <UnassignedUnitDetailModal
+          unit={selectedUnit}
+          onClose={() => setSelectionKey(null)}
+          onSave={fetchData}
+        />
       )}
 
       {/* 강사 상세 모달 */}

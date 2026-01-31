@@ -1,172 +1,210 @@
 // src/features/assignment/ui/UnassignedUnitDetailModal.tsx
-// 미배정 부대 상세 모달 - 부대 정보 + 장소별 상세
+// 미배정 부대 상세 모달 - 부대 정보 표시 + 편집 기능 연결
 
 import { useState } from 'react';
 import { Button } from '../../../shared/ui';
 import { formatBool, formatTimeDisplay, formatDateDisplay } from '../../../shared/utils';
-import { GroupedUnassignedUnit } from '../model/useAssignment';
+import { GroupedUnassignedUnit, LocationSchedule } from '../model/useAssignment';
+import { AssignmentUnitEditModal } from './AssignmentUnitEditModal';
 
 interface Props {
   unit: GroupedUnassignedUnit;
   onClose: () => void;
+  onSave?: () => void; // 저장 후 목록 새로고침
 }
 
-export const UnassignedUnitDetailModal: React.FC<Props> = ({ unit, onClose }) => {
+export const UnassignedUnitDetailModal: React.FC<Props> = ({ unit, onClose, onSave }) => {
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
-  const selectedLocation = unit.locations.find((l) => l.locationId === selectedLocationId);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // detail에서 부대 정보와 장소 정보 추출
   const { detail } = unit;
 
+  // 선택된 장소
+  const selectedLocation = unit.locations.find((l) => l.locationId === selectedLocationId);
+
+  // 편집 모달 열기
+  const handleOpenEdit = () => {
+    setShowEditModal(true);
+  };
+
+  // 편집 저장 후
+  const handleEditSave = () => {
+    setShowEditModal(false);
+    onSave?.();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden animate-fadeInScale">
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-200 flex justify-between items-start bg-gradient-to-r from-red-50 to-white">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-              {unit.unitName}
-              {unit.locations.length > 1 && (
-                <span className="text-sm font-normal text-purple-600 bg-purple-100 px-2 py-1 rounded-md">
-                  {unit.locations.length}개 장소
-                </span>
-              )}
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              📍 {unit.region} | 📅 {unit.uniqueDates.length}일 | 👤 총 {unit.totalRequired}명 필요
-            </p>
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden animate-fadeInScale">
+          {/* Header */}
+          <div className="px-6 py-5 border-b border-gray-200 flex justify-between items-start bg-gradient-to-r from-red-50 to-white">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                {unit.unitName}
+                {unit.locations.length > 1 && (
+                  <span className="text-sm font-normal text-purple-600 bg-purple-100 px-2 py-1 rounded-md">
+                    {unit.locations.length}개 장소
+                  </span>
+                )}
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                📍 {unit.region} | 📅 {unit.uniqueDates.length}일 | 👤 총 {unit.totalRequired}명
+                필요
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="primary" size="small" onClick={handleOpenEdit}>
+                ✏️ 상세 편집
+              </Button>
+              <Button
+                variant="ghost"
+                size="small"
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
+              >
+                ✕
+              </Button>
+            </div>
           </div>
-          <Button
-            variant="ghost"
-            size="small"
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
-          >
-            ✕
-          </Button>
-        </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto">
-          {/* 부대 공통 정보 - Unit 모델의 모든 필드 */}
-          <div className="px-6 py-4 border-b bg-gray-50">
-            <h3 className="font-bold text-gray-700 mb-3">🏢 부대 정보</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-              <InfoRow label="부대명" value={unit.unitName} />
-              <InfoRow label="광역" value={String(detail.wideArea || '-')} />
-              <InfoRow label="지역" value={unit.region} />
-              <InfoRow label="부대주소" value={String(detail.address || '-')} isLong />
-              <InfoRow label="상세주소" value={String(detail.detailAddress || '-')} isLong />
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto">
+            {/* 부대 공통 정보 */}
+            <div className="px-6 py-4 border-b bg-gray-50">
+              <h3 className="font-bold text-gray-700 mb-3">🏢 부대 정보</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                <InfoRow label="부대명" value={unit.unitName} />
+                <InfoRow label="광역" value={String(detail.wideArea || '-')} />
+                <InfoRow label="지역" value={unit.region} />
+                <InfoRow label="부대주소" value={String(detail.address || '-')} isLong />
+                <InfoRow label="상세주소" value={String(detail.detailAddress || '-')} isLong />
 
-              {/* 교육 기간 */}
-              <InfoRow label="교육 시작일" value={formatDateDisplay(detail.educationStart)} />
-              <InfoRow label="교육 종료일" value={formatDateDisplay(detail.educationEnd)} />
+                {/* 교육 기간 */}
+                <InfoRow label="교육 시작일" value={formatDateDisplay(detail.educationStart)} />
+                <InfoRow label="교육 종료일" value={formatDateDisplay(detail.educationEnd)} />
 
-              {/* 근무 시간 */}
-              <InfoRow label="근무 시작" value={formatTimeDisplay(detail.workStartTime)} />
-              <InfoRow label="근무 종료" value={formatTimeDisplay(detail.workEndTime)} />
-              <InfoRow label="점심 시작" value={formatTimeDisplay(detail.lunchStartTime)} />
-              <InfoRow label="점심 종료" value={formatTimeDisplay(detail.lunchEndTime)} />
+                {/* 근무 시간 */}
+                <InfoRow label="근무 시작" value={formatTimeDisplay(detail.workStartTime)} />
+                <InfoRow label="근무 종료" value={formatTimeDisplay(detail.workEndTime)} />
+                <InfoRow label="점심 시작" value={formatTimeDisplay(detail.lunchStartTime)} />
+                <InfoRow label="점심 종료" value={formatTimeDisplay(detail.lunchEndTime)} />
 
-              {/* 담당자 정보 */}
-              <InfoRow label="간부명" value={String(detail.officerName || '-')} />
-              <InfoRow label="간부 전화번호" value={String(detail.officerPhone || '-')} />
-              <InfoRow label="간부 이메일" value={String(detail.officerEmail || '-')} isLong />
+                {/* 담당자 정보 */}
+                <InfoRow label="간부명" value={String(detail.officerName || '-')} />
+                <InfoRow label="간부 전화번호" value={String(detail.officerPhone || '-')} />
+                <InfoRow label="간부 이메일" value={String(detail.officerEmail || '-')} isLong />
 
-              {/* 교육기간 편의시설 (TrainingPeriod 필드) */}
-              <InfoRow label="수탁 급식" value={formatBool(detail.hasCateredMeals)} />
-              <InfoRow label="회관 숙박" value={formatBool(detail.hasHallLodging)} />
-              <InfoRow label="휴대폰 불출" value={formatBool(detail.allowsPhoneBeforeAfter)} />
+                {/* 교육기간 편의시설 */}
+                <InfoRow label="수탁 급식" value={formatBool(detail.hasCateredMeals)} />
+                <InfoRow label="회관 숙박" value={formatBool(detail.hasHallLodging)} />
+                <InfoRow label="휴대폰 불출" value={formatBool(detail.allowsPhoneBeforeAfter)} />
+              </div>
+
+              {/* 일정 표시 */}
+              <div className="mt-4">
+                <span className="text-xs font-bold text-gray-500">교육 일정</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {unit.uniqueDates.map((date) => (
+                    <span
+                      key={date}
+                      className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded"
+                    >
+                      {date}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            {/* 일정 표시 */}
-            <div className="mt-4">
-              <span className="text-xs font-bold text-gray-500">교육 일정</span>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {unit.uniqueDates.map((date) => (
-                  <span key={date} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                    {date}
-                  </span>
+            {/* 장소 선택 */}
+            <div className="px-6 py-4">
+              <h3 className="font-bold text-gray-700 mb-3">🏫 교육 장소 선택</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {unit.locations.map((loc: LocationSchedule) => (
+                  <button
+                    key={loc.locationId}
+                    onClick={() =>
+                      setSelectedLocationId(
+                        selectedLocationId === loc.locationId ? null : loc.locationId,
+                      )
+                    }
+                    className={`p-4 rounded-lg border-2 text-left transition-all ${
+                      selectedLocationId === loc.locationId
+                        ? 'border-indigo-500 bg-indigo-50 shadow-md'
+                        : 'border-gray-200 bg-white hover:border-indigo-300 hover:shadow'
+                    }`}
+                  >
+                    <div className="font-bold text-gray-800">{loc.locationName}</div>
+                    <div className="text-sm text-gray-500 mt-1">
+                      👤 {loc.instructorsRequired}명 필요
+                    </div>
+                  </button>
                 ))}
               </div>
             </div>
-          </div>
 
-          {/* 장소 선택 */}
-          <div className="px-6 py-4">
-            <h3 className="font-bold text-gray-700 mb-3">🏫 교육 장소 선택</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {unit.locations.map((loc) => (
-                <button
-                  key={loc.locationId}
-                  onClick={() =>
-                    setSelectedLocationId(
-                      selectedLocationId === loc.locationId ? null : loc.locationId,
-                    )
-                  }
-                  className={`p-4 rounded-lg border-2 text-left transition-all ${
-                    selectedLocationId === loc.locationId
-                      ? 'border-indigo-500 bg-indigo-50 shadow-md'
-                      : 'border-gray-200 bg-white hover:border-indigo-300 hover:shadow'
-                  }`}
-                >
-                  <div className="font-bold text-gray-800">{loc.locationName}</div>
-                  <div className="text-sm text-gray-500 mt-1">
-                    👤 {loc.instructorsRequired}명 필요
+            {/* 선택된 장소 상세 */}
+            {selectedLocation && (
+              <div className="px-6 py-4 border-t bg-indigo-50">
+                <h3 className="font-bold text-indigo-900 mb-3">
+                  📋 {selectedLocation.locationName} 상세
+                </h3>
+                <div className="bg-white rounded-lg p-4 border border-indigo-200">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                    <InfoRow label="기존 교육장소" value={String(detail.originalPlace || '-')} />
+                    <InfoRow label="변경 교육장소" value={String(detail.changedPlace || '-')} />
+                    <InfoRow
+                      label="필요 인원"
+                      value={`${selectedLocation.instructorsRequired}명`}
+                    />
+
+                    <InfoRow
+                      label="계획 인원"
+                      value={detail.plannedCount ? `${detail.plannedCount}명` : '-'}
+                    />
+                    <InfoRow
+                      label="참여 인원"
+                      value={detail.actualCount ? `${detail.actualCount}명` : '-'}
+                    />
+
+                    <InfoRow label="강사 휴게실" value={formatBool(detail.hasInstructorLounge)} />
+                    <InfoRow label="여자 화장실" value={formatBool(detail.hasWomenRestroom)} />
                   </div>
-                </button>
-              ))}
-            </div>
-          </div>
 
-          {/* 선택된 장소 상세 - TrainingLocation 모델의 모든 필드 */}
-          {selectedLocation && (
-            <div className="px-6 py-4 border-t bg-indigo-50">
-              <h3 className="font-bold text-indigo-900 mb-3">
-                📋 {selectedLocation.locationName} 상세
-              </h3>
-              <div className="bg-white rounded-lg p-4 border border-indigo-200">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                  {/* 장소 기본 정보 */}
-                  <InfoRow label="기존 교육장소" value={String(detail.originalPlace || '-')} />
-                  <InfoRow label="변경 교육장소" value={String(detail.changedPlace || '-')} />
-                  <InfoRow label="필요 인원" value={`${selectedLocation.instructorsRequired}명`} />
-
-                  {/* 인원 정보 */}
-                  <InfoRow
-                    label="계획 인원"
-                    value={detail.plannedCount ? `${detail.plannedCount}명` : '-'}
-                  />
-                  <InfoRow
-                    label="참여 인원"
-                    value={detail.actualCount ? `${detail.actualCount}명` : '-'}
-                  />
-
-                  {/* 시설 정보 (TrainingLocation 필드만) */}
-                  <InfoRow label="강사 휴게실" value={formatBool(detail.hasInstructorLounge)} />
-                  <InfoRow label="여자 화장실" value={formatBool(detail.hasWomenRestroom)} />
-                </div>
-
-                {/* 특이사항 */}
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <span className="text-xs font-bold text-gray-500">특이사항</span>
-                  <p className="mt-1 text-sm text-gray-700">
-                    {detail.note ? String(detail.note) : '-'}
-                  </p>
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <span className="text-xs font-bold text-gray-500">특이사항</span>
+                    <p className="mt-1 text-sm text-gray-700">
+                      {detail.note ? String(detail.note) : '-'}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t bg-white flex justify-end">
-          <Button variant="secondary" onClick={onClose}>
-            닫기
-          </Button>
+          {/* Footer */}
+          <div className="px-6 py-4 border-t bg-white flex justify-between">
+            <Button variant="primary" onClick={handleOpenEdit}>
+              ✏️ 상세 편집
+            </Button>
+            <Button variant="secondary" onClick={onClose}>
+              닫기
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* 편집 모달 */}
+      {showEditModal && (
+        <AssignmentUnitEditModal
+          unit={unit}
+          onClose={() => setShowEditModal(false)}
+          onSave={handleEditSave}
+        />
+      )}
+    </>
   );
 };
 
