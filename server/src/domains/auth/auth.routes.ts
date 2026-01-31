@@ -23,7 +23,14 @@ router.post('/refresh', authController.refresh);
 // 로그아웃
 router.post('/logout', auth, authController.logout);
 
+// 비밀번호 재설정용 인증 코드 발송 (Rate Limit: 15분당 10회)
+router.post(
+  '/password-reset/send-code',
+  rateLimiter.authLimiter,
+  authController.sendPasswordResetCode,
+);
+
 // 비밀번호 재설정 (Rate Limit: 15분당 10회)
-router.post('/reset-password', rateLimiter.authLimiter, authController.resetPassword);
+router.post('/password-reset/reset', rateLimiter.authLimiter, authController.resetPassword);
 
 export default router;

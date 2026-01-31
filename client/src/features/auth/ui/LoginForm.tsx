@@ -96,7 +96,11 @@ export const LoginForm: React.FC = () => {
         </form>
 
         <div className="mt-6 flex justify-between text-xs text-gray-500 items-center">
-          <button type="button" className="hover:text-gray-700">
+          <button
+            type="button"
+            className="hover:text-gray-700"
+            onClick={() => navigate('/forgot-password')}
+          >
             비밀번호 찾기
           </button>
 

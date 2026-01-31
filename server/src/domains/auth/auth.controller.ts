@@ -98,6 +98,15 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json({ message: '로그아웃되었습니다.' });
 });
 
+// 비밀번호 재설정용 인증 코드 발송
+export const sendPasswordResetCode = asyncHandler(async (req: Request, res: Response) => {
+  const { email } = req.body || {};
+  if (!email) throw new AppError('email이 필요합니다.', 400, 'VALIDATION_ERROR');
+
+  const result = await authService.sendPasswordResetCode(email);
+  res.status(200).json(result);
+});
+
 // 사용자 비밀번호 재설정
 export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
   const { email, code, newPassword } = req.body || {};
