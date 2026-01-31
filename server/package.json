@@ -5,7 +5,7 @@
   "description": "T-LECTURE Backend Server",
   "main": "dist/server.js",
   "engines": {
-    "node": "20.x"
+    "node": "22.x"
   },
   "prisma": {
     "schema": "./prisma",
