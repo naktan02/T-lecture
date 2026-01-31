@@ -12,7 +12,7 @@ if (dsn) {
     environment: process.env.NODE_ENV || 'development',
     tracesSampleRate: isProd ? 0 : 0.5,
     profilesSampleRate: 0,
-    sampleRate: isProd ? 0.5 : 1.0,
+    sampleRate: 1.0, // 에러는 항상 100% 수집
     integrations: isProd ? [] : [Sentry.prismaIntegration()],
   });
   console.log('[Sentry] Instrumented before any imports');
