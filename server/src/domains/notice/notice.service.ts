@@ -122,7 +122,7 @@ class NoticeService {
   // 공지사항 수정
   async update(id: number, data: NoticeCreateData) {
     const existing = await this.getNoticeHelper(id);
-    
+
     // 대상 설정 데이터 구성
     const targetSetting = {
       targetType: data.targetType || 'ALL',

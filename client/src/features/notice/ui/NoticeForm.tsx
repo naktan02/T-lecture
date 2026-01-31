@@ -136,36 +136,36 @@ export const NoticeForm = ({
       {/* 대상 선택 */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">발송 대상</label>
-          <div className="flex gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                value="ALL"
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                {...register('targetType')}
-              />
-              <span className="text-sm text-gray-700">전체</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                value="TEAM"
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                {...register('targetType')}
-              />
-              <span className="text-sm text-gray-700">특정 팀</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                value="INDIVIDUAL"
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                {...register('targetType')}
-              />
-              <span className="text-sm text-gray-700">특정 개인</span>
-            </label>
-          </div>
+        <div className="flex gap-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              value="ALL"
+              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+              {...register('targetType')}
+            />
+            <span className="text-sm text-gray-700">전체</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              value="TEAM"
+              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+              {...register('targetType')}
+            />
+            <span className="text-sm text-gray-700">특정 팀</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              value="INDIVIDUAL"
+              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
+              {...register('targetType')}
+            />
+            <span className="text-sm text-gray-700">특정 개인</span>
+          </label>
         </div>
+      </div>
 
       {/* 팀 선택 (TEAM일 때만) */}
       {targetType === 'TEAM' && (

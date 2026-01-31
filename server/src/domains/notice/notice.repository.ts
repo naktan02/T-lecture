@@ -103,8 +103,6 @@ class NoticeRepository {
     });
   }
 
-
-
   // 공지사항 삭제
   async delete(id: number) {
     return await prisma.notice.delete({
