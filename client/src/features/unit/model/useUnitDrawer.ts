@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState, useCallback, FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { unitApi, UnitData } from '../api/unitApi';
 import { showError, showSuccess, showWarning, showConfirm } from '../../../shared/utils/toast';
-import { generateDateRange } from '../../../shared/utils/dateFormat';
+import { generateDateRange, generateBusinessDateRange } from '../../../shared/utils/dateFormat';
 import {
   Unit,
   TrainingPeriod,
@@ -399,7 +399,7 @@ export const useUnitDrawer = ({
 
       // 시작일과 종료일이 있으면 일정 자동 생성
       if (startDate && endDate) {
-        const dates = generateDateRange(startDate, endDate, excludedDates || []);
+        const dates = generateBusinessDateRange(startDate, endDate, excludedDates || []);
         newPeriod.schedules = dates.map((date) => ({ date }));
       }
 
