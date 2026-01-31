@@ -16,6 +16,7 @@ import {
   UpdateTrainingPeriodScheduleLocationsInput,
   UpdateUnitWithPeriodsInput,
   TrainingLocationUpdateInput,
+  UpdateTrainingPeriodInfoInput,
 } from '../../types/unit.types';
 
 // 서비스 입력 타입들
@@ -540,6 +541,74 @@ class UnitService {
     };
     const updated = await unitRepository.updateTrainingPeriod(targetPeriodId, updateData);
 
+    return updated;
+  }
+
+  /**
+   * 교육기간 기본정보 업데이트
+   * - 근무시간, 점심시간, 담당관, 시설정보, 교육기간명
+   * - 일정/장소는 별도 API로 처리
+   */
+  async updateTrainingPeriodInfo(trainingPeriodId: number, data: UpdateTrainingPeriodInfoInput) {
+    const period = await unitRepository.findTrainingPeriodById(trainingPeriodId);
+    if (!period) {
+      throw new AppError('교육기간을 찾을 수 없습니다.', 404, 'TRAINING_PERIOD_NOT_FOUND');
+    }
+
+    const updateData: Prisma.TrainingPeriodUpdateInput = {};
+
+    // 교육기간명
+    if (data.name !== undefined) {
+      updateData.name = data.name;
+    }
+
+    // 근무시간
+    if (data.workStartTime !== undefined) {
+      updateData.workStartTime = data.workStartTime
+        ? new Date(`2000-01-01T${data.workStartTime}:00.000Z`)
+        : null;
+    }
+    if (data.workEndTime !== undefined) {
+      updateData.workEndTime = data.workEndTime
+        ? new Date(`2000-01-01T${data.workEndTime}:00.000Z`)
+        : null;
+    }
+
+    // 점심시간
+    if (data.lunchStartTime !== undefined) {
+      updateData.lunchStartTime = data.lunchStartTime
+        ? new Date(`2000-01-01T${data.lunchStartTime}:00.000Z`)
+        : null;
+    }
+    if (data.lunchEndTime !== undefined) {
+      updateData.lunchEndTime = data.lunchEndTime
+        ? new Date(`2000-01-01T${data.lunchEndTime}:00.000Z`)
+        : null;
+    }
+
+    // 담당관 정보
+    if (data.officerName !== undefined) {
+      updateData.officerName = data.officerName || null;
+    }
+    if (data.officerPhone !== undefined) {
+      updateData.officerPhone = data.officerPhone ? normalizePhone(data.officerPhone) : null;
+    }
+    if (data.officerEmail !== undefined) {
+      updateData.officerEmail = data.officerEmail || null;
+    }
+
+    // 시설정보
+    if (data.hasCateredMeals !== undefined) {
+      updateData.hasCateredMeals = data.hasCateredMeals;
+    }
+    if (data.hasHallLodging !== undefined) {
+      updateData.hasHallLodging = data.hasHallLodging;
+    }
+    if (data.allowsPhoneBeforeAfter !== undefined) {
+      updateData.allowsPhoneBeforeAfter = data.allowsPhoneBeforeAfter;
+    }
+
+    const updated = await unitRepository.updateTrainingPeriod(trainingPeriodId, updateData);
     return updated;
   }
 

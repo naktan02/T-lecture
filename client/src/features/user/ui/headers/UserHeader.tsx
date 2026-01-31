@@ -9,7 +9,11 @@ interface NavLink {
   path: string;
 }
 
-export const UserHeader: React.FC = () => {
+interface UserHeaderProps {
+  onRefresh?: () => void;
+}
+
+export const UserHeader: React.FC<UserHeaderProps> = ({ onRefresh }) => {
   const userLabel = useCurrentUser();
   const { isInstructor } = useAuth();
 
@@ -34,6 +38,7 @@ export const UserHeader: React.FC = () => {
       userLabel={userLabel}
       links={links}
       logoPath="/user-main/profile"
+      onRefresh={onRefresh}
     />
   );
 };

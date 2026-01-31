@@ -1,10 +1,6 @@
 // server/src/domains/distance/kakaoUsage.repository.ts
 import prisma from '../../libs/prisma';
 
-interface PrismaError extends Error {
-  code?: string;
-}
-
 // 테스트용 일일 한도 (실제 운영 시 증가)
 export const DAILY_GEOCODE_LIMIT = 3000;
 
@@ -15,33 +11,22 @@ class KakaoUsageRepository {
     return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
   }
 
-  // 오늘 사용량 row 없으면 생성, 있으면 그대로 반환
+  // 오늘 사용량 row 없으면 생성, 있으면 그대로 반환 (upsert로 race condition 방지)
   async getOrCreateToday() {
     const today = this._todayDateOnly();
 
-    let usage = await prisma.kakaoApiUsage.findUnique({
+    // upsert로 race condition 방지
+    const usage = await prisma.kakaoApiUsage.upsert({
       where: { date: today },
+      create: {
+        date: today,
+        routeCount: 0,
+        geocodeCount: 0,
+      },
+      update: {}, // 이미 존재하면 변경 없이 그대로 반환
     });
 
-    if (usage) return usage;
-
-    try {
-      usage = await prisma.kakaoApiUsage.create({
-        data: {
-          date: today,
-          routeCount: 0,
-          geocodeCount: 0,
-        },
-      });
-      return usage;
-    } catch (e) {
-      if ((e as PrismaError).code === 'P2002') {
-        return prisma.kakaoApiUsage.findUnique({
-          where: { date: today },
-        });
-      }
-      throw e;
-    }
+    return usage;
   }
 
   // 오늘 geocode 사용량 조회

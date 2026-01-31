@@ -309,3 +309,24 @@ export interface CreateTrainingPeriodInput {
     plannedCount?: number | null;
   }>;
 }
+
+// ===== TrainingPeriod 기본정보 업데이트 =====
+
+/**
+ * 교육기간 기본정보 업데이트 입력
+ * - 근무시간, 점심시간, 담당관, 시설정보, 교육기간명
+ * - 일정/장소는 별도 API로 처리
+ */
+export interface UpdateTrainingPeriodInfoInput {
+  name?: string;
+  workStartTime?: string | null;
+  workEndTime?: string | null;
+  lunchStartTime?: string | null;
+  lunchEndTime?: string | null;
+  officerName?: string | null;
+  officerPhone?: string | null;
+  officerEmail?: string | null;
+  hasCateredMeals?: boolean;
+  hasHallLodging?: boolean;
+  allowsPhoneBeforeAfter?: boolean;
+}

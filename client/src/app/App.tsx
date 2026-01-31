@@ -9,6 +9,7 @@ const queryClient = new QueryClient();
 // Pages
 import LoginPage from '../pages/auth/LoginPage';
 import SignupPage from '../pages/auth/SignupPage';
+import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import InstructorSchedulePage from '../pages/instructor/SchedulePage';
 import InstructorDashboardPage from '../pages/instructor/DashboardPage';
 import DispatchInboxPage from '../pages/instructor/DispatchInboxPage';
@@ -53,6 +54,7 @@ function App(): ReactElement {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
           {/* 일반 유저 및 강사 */}
           <Route path="/instructor/schedule" element={<InstructorSchedulePage />} />
@@ -60,8 +62,9 @@ function App(): ReactElement {
           <Route path="/user-main/dispatches" element={<DispatchInboxPage />} />
           <Route path="/user-main/*" element={<UserMainHome />} />
 
-          {/* 일반 관리자 */}
-          <Route path="/admin" element={<AdminPage />} />
+          {/* 일반 관리자 - 기본 페이지는 강사배정 */}
+          <Route path="/admin" element={<Navigate to="/admin/assignments" replace />} />
+          <Route path="/admin/dashboard" element={<AdminPage />} />
           <Route path="/admin/assignments" element={<AssignmentPage />} />
           <Route path="/admin/assignment-settings" element={<AssignmentSettingsPage />} />
           <Route path="/admin/settings" element={<SettingsPage />} />

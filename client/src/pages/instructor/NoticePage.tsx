@@ -72,7 +72,7 @@ const NoticePage = (): ReactElement => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <UserHeader />
+      <UserHeader onRefresh={fetchNotices} />
       <ContentWrapper>
         <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
           {/* 헤더 + 검색 */}

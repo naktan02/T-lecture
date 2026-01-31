@@ -40,8 +40,18 @@ class InstructorService {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
 
+    // UTC 자정 기준 오늘 (과거 날짜 필터링용)
+    const now = new Date();
+    const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+
+    // 과거 날짜 필터링 (오늘 포함 이전 제외)
+    const futureDates = dates.filter((day) => {
+      const targetDateUTC = new Date(Date.UTC(year, month - 1, day));
+      return targetDateUTC > todayUTC;
+    });
+
     // day 숫자를 날짜 문자열로 변환 (로컬 시간대 유지)
-    const newDatesStr = dates.map((day) => {
+    const newDatesStr = futureDates.map((day) => {
       const year_str = year.toString();
       const month_str = month.toString().padStart(2, '0');
       const day_str = day.toString().padStart(2, '0');

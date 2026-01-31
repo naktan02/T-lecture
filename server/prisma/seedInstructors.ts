@@ -173,13 +173,18 @@ function parseDays(dayString: string | null): number[] {
   return days;
 }
 
-// 주차 날짜 범위 정의 (2026년 1-2월, 엑셀 데이터의 7-8월을 1-2월로 변경)
-const WEEK_RANGES = [
+// 주차 날짜 범위 정의 (2026년 1월 및 2월 각 4주차)
+const JAN_WEEKS = [
   { start: new Date(Date.UTC(2026, 0, 5)), days: 5 }, // 1/5(월)~1/9(금)
   { start: new Date(Date.UTC(2026, 0, 12)), days: 5 }, // 1/12(월)~1/16(금)
   { start: new Date(Date.UTC(2026, 0, 19)), days: 5 }, // 1/19(월)~1/23(금)
   { start: new Date(Date.UTC(2026, 0, 26)), days: 5 }, // 1/26(월)~1/30(금)
+];
+const FEB_WEEKS = [
   { start: new Date(Date.UTC(2026, 1, 2)), days: 5 }, // 2/2(월)~2/6(금)
+  { start: new Date(Date.UTC(2026, 1, 9)), days: 5 }, // 2/9(월)~2/13(금)
+  { start: new Date(Date.UTC(2026, 1, 16)), days: 5 }, // 2/16(월)~2/20(금)
+  { start: new Date(Date.UTC(2026, 1, 23)), days: 5 }, // 2/23(월)~2/27(금)
 ];
 
 // Excel에서 강사 일정 읽기
@@ -187,37 +192,121 @@ async function readInstructorSchedule() {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile('../instruct_schedule.xlsx');
 
-  const sheet = workbook.worksheets[0]; // 7월 시트
-  const instructors: Array<{ name: string; availableDates: Date[] }> = [];
+  const instructors: Record<string, { name: string; availableDates: Date[] }> = {};
 
-  // Row 2부터 강사 데이터 (Row 1은 헤더)
-  for (let rowNum = 2; rowNum <= sheet.rowCount && instructors.length < 50; rowNum++) {
-    const row = sheet.getRow(rowNum);
-    const name = row.getCell(2).value as string; // 성함
-    if (!name) continue;
+  // 디버그 플래그
+  const DEBUG = process.env.DEBUG_EXCEL === 'true';
 
-    const availableDates: Date[] = [];
+  // 헤더 행에서 주차 컬럼 위치를 동적으로 찾기
+  function findWeekColumns(sheet: ExcelJS.Worksheet): number[] {
+    const headerRow = sheet.getRow(1);
+    const weekColumns: number[] = [];
 
-    // 각 주차별 가능한 요일 파싱 (컬럼 3~7: 5개 주차)
-    for (let weekIdx = 0; weekIdx < 5 && weekIdx < WEEK_RANGES.length; weekIdx++) {
-      const cellValue = row.getCell(3 + weekIdx).value;
-      const dayString = cellValue ? String(cellValue) : null;
-      const days = parseDays(dayString);
-
-      // 해당 주의 시작일로부터 가능한 요일에 해당하는 날짜 생성
-      const weekStart = WEEK_RANGES[weekIdx].start;
-      for (const day of days) {
-        // day는 1(월)~5(금), 월요일이 weekStart이므로 day-1을 더함
-        const date = new Date(weekStart);
-        date.setUTCDate(date.getUTCDate() + (day - 1));
-        availableDates.push(date);
+    headerRow.eachCell((cell, colNumber) => {
+      const value = String(cell.value || '').trim();
+      // "1주차", "2주차", "3주차", "4주차" 또는 "1주", "2주" 등의 패턴 매칭
+      if (/^[1-4]주/.test(value) || /주차$/.test(value)) {
+        weekColumns.push(colNumber);
       }
+    });
+
+    // 헤더에서 주차를 못 찾으면 기본값 (C, D, E, F = 3, 4, 5, 6)
+    if (weekColumns.length < 4) {
+      if (DEBUG) console.log('  ⚠️ 헤더에서 주차 컬럼을 찾지 못함, 기본값 사용 (C-F)');
+      return [3, 4, 5, 6];
     }
 
-    instructors.push({ name, availableDates });
+    return weekColumns.slice(0, 4); // 최대 4주차만 사용
   }
 
-  return instructors;
+  // 7월 시트 -> 1월 매핑
+  const sheet7 = workbook.getWorksheet('7월');
+  if (sheet7) {
+    const weekCols = findWeekColumns(sheet7);
+    if (DEBUG) console.log(`  📊 7월 시트: 주차 컬럼 = [${weekCols.join(', ')}]`);
+
+    for (let rowNum = 2; rowNum <= sheet7.rowCount; rowNum++) {
+      const row = sheet7.getRow(rowNum);
+      const name = row.getCell(2).value as string;
+      if (!name) continue;
+
+      if (!instructors[name]) instructors[name] = { name, availableDates: [] };
+
+      for (let weekIdx = 0; weekIdx < Math.min(4, weekCols.length); weekIdx++) {
+        const cellValue = row.getCell(weekCols[weekIdx]).value;
+        const days = parseDays(cellValue ? String(cellValue) : null);
+        const weekStart = JAN_WEEKS[weekIdx].start;
+
+        if (DEBUG && rowNum === 2) {
+          console.log(`    Row ${rowNum}, Week ${weekIdx + 1}: cell=${cellValue}, days=${days.join(',')}`);
+        }
+
+        for (const day of days) {
+          const date = new Date(weekStart);
+          date.setUTCDate(date.getUTCDate() + (day - 1));
+          instructors[name].availableDates.push(date);
+        }
+      }
+    }
+    if (DEBUG) console.log(`  ✅ 7월 시트: ${sheet7.rowCount - 1}행 처리 완료`);
+  } else {
+    console.warn('  ⚠️ 7월 시트를 찾을 수 없습니다');
+  }
+
+  // 8월 시트 -> 2월 매핑
+  const sheet8 = workbook.getWorksheet('8월');
+  if (sheet8) {
+    const weekCols = findWeekColumns(sheet8);
+    if (DEBUG) console.log(`  📊 8월 시트: 주차 컬럼 = [${weekCols.join(', ')}]`);
+
+    for (let rowNum = 2; rowNum <= sheet8.rowCount; rowNum++) {
+      const row = sheet8.getRow(rowNum);
+      const name = row.getCell(2).value as string;
+      if (!name) continue;
+
+      if (!instructors[name]) instructors[name] = { name, availableDates: [] };
+
+      for (let weekIdx = 0; weekIdx < Math.min(4, weekCols.length); weekIdx++) {
+        const cellValue = row.getCell(weekCols[weekIdx]).value;
+        const days = parseDays(cellValue ? String(cellValue) : null);
+        const weekStart = FEB_WEEKS[weekIdx].start;
+
+        if (DEBUG && rowNum === 2) {
+          console.log(`    Row ${rowNum}, Week ${weekIdx + 1}: cell=${cellValue}, days=${days.join(',')}`);
+        }
+
+        for (const day of days) {
+          const date = new Date(weekStart);
+          date.setUTCDate(date.getUTCDate() + (day - 1));
+          instructors[name].availableDates.push(date);
+        }
+      }
+    }
+    if (DEBUG) console.log(`  ✅ 8월 시트: ${sheet8.rowCount - 1}행 처리 완료`);
+  } else {
+    console.warn('  ⚠️ 8월 시트를 찾을 수 없습니다');
+  }
+
+  // 디버그: 결과 요약
+  if (DEBUG) {
+    const allDates = Object.values(instructors).flatMap((i) => i.availableDates);
+    const janDates = allDates.filter((d) => d.getUTCMonth() === 0);
+    const febDates = allDates.filter((d) => d.getUTCMonth() === 1);
+    console.log(`  📈 총 가능일 수: 1월=${janDates.length}, 2월=${febDates.length}`);
+
+    // 2월 날짜 분포 확인
+    const febByWeek = [0, 0, 0, 0];
+    for (const d of febDates) {
+      const day = d.getUTCDate();
+      if (day <= 6) febByWeek[0]++;
+      else if (day <= 13) febByWeek[1]++;
+      else if (day <= 20) febByWeek[2]++;
+      else febByWeek[3]++;
+    }
+    console.log(`  📅 2월 주차별 분포: 1주=${febByWeek[0]}, 2주=${febByWeek[1]}, 3주=${febByWeek[2]}, 4주=${febByWeek[3]}`);
+  }
+
+  return Object.values(instructors);
 }
 
 export async function runSeedInstructors() {
