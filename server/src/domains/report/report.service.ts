@@ -211,7 +211,9 @@ export class ReportService {
     const sunday = this.getSundayOfWeek(targetThursday);
 
     return {
-      startDate: new Date(Date.UTC(monday.getFullYear(), monday.getMonth(), monday.getDate(), 0, 0, 0)),
+      startDate: new Date(
+        Date.UTC(monday.getFullYear(), monday.getMonth(), monday.getDate(), 0, 0, 0),
+      ),
       endDate: new Date(
         Date.UTC(sunday.getFullYear(), sunday.getMonth(), sunday.getDate(), 23, 59, 59, 999),
       ),
@@ -572,8 +574,7 @@ export class ReportService {
 
     // 진행률 계산: 실시횟수 / 계획횟수 * 100
     // 월 진행률: 해당 월의 실시횟수 / 계획횟수
-    const monthProgress =
-      totals.tpDays > 0 ? Math.round((totals.adCum / totals.tpDays) * 100) : 0;
+    const monthProgress = totals.tpDays > 0 ? Math.round((totals.adCum / totals.tpDays) * 100) : 0;
 
     // 연간 누적 계산을 위한 쿼리
     // 총 진행 목표: 해당 연도의 전체 일정(UnitSchedule) 수
@@ -693,7 +694,10 @@ export class ReportService {
         s.scheduleLocations.forEach((sl) => {
           dailyPlanned.set(dateStr, dailyPlanned.get(dateStr)! + (sl.plannedCount || 0));
           // 참여인원: actualCount가 있으면 사용, 없으면 plannedCount 사용 (배정/교육 상황 무관)
-          dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount ?? sl.plannedCount ?? 0));
+          dailyActual.set(
+            dateStr,
+            dailyActual.get(dateStr)! + (sl.actualCount ?? sl.plannedCount ?? 0),
+          );
           const pl = sl.location?.originalPlace || sl.location?.changedPlace;
           if (pl) places.add(pl);
         });
@@ -721,7 +725,8 @@ export class ReportService {
       // 최초계획인원: 일일 계획인원 합계의 최대값 (동적 계산)
       const initialPlannedCount = plannedCount;
       // 최초 횟수: (계획인원 / 강사당교육생수) * 최초기간
-      const initialTimes = Math.ceil(initialPlannedCount / traineesPerInstructor) * initialPeriodDays;
+      const initialTimes =
+        Math.ceil(initialPlannedCount / traineesPerInstructor) * initialPeriodDays;
 
       // 실시 그룹수: 실제 사용된 교육장소 개수
       const actualLocationCount = places.size;
@@ -853,7 +858,10 @@ export class ReportService {
         s.scheduleLocations.forEach((sl) => {
           dailyPlanned.set(dateStr, dailyPlanned.get(dateStr)! + (sl.plannedCount || 0));
           // 참여인원: actualCount가 있으면 사용, 없으면 plannedCount 사용 (배정/교육 상황 무관)
-          dailyActual.set(dateStr, dailyActual.get(dateStr)! + (sl.actualCount ?? sl.plannedCount ?? 0));
+          dailyActual.set(
+            dateStr,
+            dailyActual.get(dateStr)! + (sl.actualCount ?? sl.plannedCount ?? 0),
+          );
         });
 
         // 강사 배정 카운트 (확정 + 날짜 < 오늘인 경우만 실시현황에 포함)
@@ -877,7 +885,8 @@ export class ReportService {
       // 최초계획인원: 일일 계획인원 합계의 최대값 (동적 계산)
       const initialPlannedCount = plannedCount;
       // 계획 횟수: (계획인원 / 강사당교육생수) * 최초기간
-      const totalPlannedDays = Math.ceil(initialPlannedCount / traineesPerInstructor) * initialPeriodDays;
+      const totalPlannedDays =
+        Math.ceil(initialPlannedCount / traineesPerInstructor) * initialPeriodDays;
 
       // 담당관 연락처 포맷
       const officerContact =

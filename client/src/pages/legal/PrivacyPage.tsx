@@ -90,7 +90,9 @@ export default function PrivacyPage(): ReactElement {
                 <tbody>
                   <tr>
                     <td className="border border-gray-300 px-4 py-2">필수</td>
-                    <td className="border border-gray-300 px-4 py-2">이메일, 비밀번호, 이름, 전화번호</td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      이메일, 비밀번호, 이름, 전화번호
+                    </td>
                     <td className="border border-gray-300 px-4 py-2">회원 식별 및 연락</td>
                   </tr>
                   <tr>
@@ -100,7 +102,9 @@ export default function PrivacyPage(): ReactElement {
                   </tr>
                   <tr>
                     <td className="border border-gray-300 px-4 py-2">강사 필수</td>
-                    <td className="border border-gray-300 px-4 py-2">위도, 경도 (주소 기반 자동 변환)</td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      위도, 경도 (주소 기반 자동 변환)
+                    </td>
                     <td className="border border-gray-300 px-4 py-2">정확한 거리/시간 계산</td>
                   </tr>
                   <tr>
@@ -142,7 +146,10 @@ export default function PrivacyPage(): ReactElement {
             </p>
             <ol className="list-decimal list-inside space-y-2 mt-2">
               <li>이용자가 사전에 동의한 경우</li>
-              <li>법령의 규정에 의거하거나, 수사 목적으로 법령에 정해진 절차와 방법에 따라 수사기관의 요구가 있는 경우</li>
+              <li>
+                법령의 규정에 의거하거나, 수사 목적으로 법령에 정해진 절차와 방법에 따라 수사기관의
+                요구가 있는 경우
+              </li>
             </ol>
           </section>
 
@@ -195,12 +202,12 @@ export default function PrivacyPage(): ReactElement {
             </h2>
             <ol className="list-decimal list-inside space-y-2">
               <li>
-                재단은 개인정보 보유기간의 경과, 처리목적 달성 등 개인정보가 불필요하게 되었을 때에는
-                지체 없이 해당 개인정보를 파기합니다.
+                재단은 개인정보 보유기간의 경과, 처리목적 달성 등 개인정보가 불필요하게 되었을
+                때에는 지체 없이 해당 개인정보를 파기합니다.
               </li>
               <li>
-                <strong>파기 방법:</strong> 전자적 파일 형태의 정보는 복구가 불가능한 방법으로
-                영구 삭제하며, 종이에 출력된 개인정보는 분쇄기로 분쇄하거나 소각합니다.
+                <strong>파기 방법:</strong> 전자적 파일 형태의 정보는 복구가 불가능한 방법으로 영구
+                삭제하며, 종이에 출력된 개인정보는 분쇄기로 분쇄하거나 소각합니다.
               </li>
             </ol>
           </section>
@@ -234,12 +241,8 @@ export default function PrivacyPage(): ReactElement {
                 재단은 강사의 거주지 주소를 위도·경도 좌표로 변환하여 부대까지의 거리 및 소요시간
                 계산에 활용합니다.
               </li>
-              <li>
-                위치정보는 배정 최적화 목적으로만 사용되며, 실시간 위치 추적은 하지 않습니다.
-              </li>
-              <li>
-                강사가 주소를 변경하면 기존 좌표 정보는 새로운 정보로 대체됩니다.
-              </li>
+              <li>위치정보는 배정 최적화 목적으로만 사용되며, 실시간 위치 추적은 하지 않습니다.</li>
+              <li>강사가 주소를 변경하면 기존 좌표 정보는 새로운 정보로 대체됩니다.</li>
             </ol>
           </section>
 
@@ -249,8 +252,8 @@ export default function PrivacyPage(): ReactElement {
             </h2>
             <p>
               재단은 개인정보 처리에 관한 업무를 총괄해서 책임지고, 개인정보 처리와 관련한
-              정보주체의 불만처리 및 피해구제 등을 위하여 아래와 같이 개인정보 보호책임자를
-              지정하고 있습니다.
+              정보주체의 불만처리 및 피해구제 등을 위하여 아래와 같이 개인정보 보호책임자를 지정하고
+              있습니다.
             </p>
             <div className="mt-4 bg-gray-50 p-4 rounded-lg">
               <p>
@@ -286,8 +289,8 @@ export default function PrivacyPage(): ReactElement {
             </h2>
             <p>
               이 개인정보 처리방침은 시행일로부터 적용되며, 법령 및 방침에 따른 변경내용의 추가,
-              삭제 및 정정이 있는 경우에는 변경사항의 시행 7일 전부터 공지사항을 통하여
-              고지할 것입니다.
+              삭제 및 정정이 있는 경우에는 변경사항의 시행 7일 전부터 공지사항을 통하여 고지할
+              것입니다.
             </p>
           </section>
 
