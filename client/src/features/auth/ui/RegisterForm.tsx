@@ -2,13 +2,15 @@
 import { useState, ChangeEvent, FormEvent } from 'react';
 import { Button } from '../../../shared/ui';
 import { sendVerificationCode, verifyEmailCode, registerUser } from '../authApi';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import { UserBasicFields } from '../../../entities/user/ui/UserBasicFields';
 import { InstructorFields } from '../../../entities/user/ui/InstructorFields';
 import { useInstructorMeta } from '../../../entities/user/model/useInstructorMeta';
 
 type UserType = 'INSTRUCTOR' | 'USER';
+
+const STORAGE_KEY = 'registerFormData';
 
 interface RegisterFormData {
   name: string;
@@ -25,23 +27,37 @@ interface RegisterFormData {
   category: string;
 }
 
+const defaultFormData: RegisterFormData = {
+  name: '',
+  email: '',
+  password: '',
+  passwordConfirm: '',
+  phoneNumber: '',
+  code: '',
+  address: '',
+  hasCar: false,
+  agreed: false,
+  virtueIds: [],
+  teamId: '',
+  category: '',
+};
+
 export const RegisterForm: React.FC = () => {
   const [userType, setUserType] = useState<UserType>('INSTRUCTOR');
   const navigate = useNavigate();
 
-  const [form, setForm] = useState<RegisterFormData>({
-    name: '',
-    email: '',
-    password: '',
-    passwordConfirm: '',
-    phoneNumber: '',
-    code: '',
-    address: '',
-    hasCar: false,
-    agreed: false,
-    virtueIds: [],
-    teamId: '',
-    category: '',
+  // sessionStorage에서 폼 데이터 복원
+  const [form, setForm] = useState<RegisterFormData>(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        sessionStorage.removeItem(STORAGE_KEY); // 복원 후 삭제
+        return JSON.parse(saved);
+      }
+    } catch {
+      // ignore
+    }
+    return defaultFormData;
   });
 
   const { options, loading: loadingOptions, error: metaError } = useInstructorMeta();
@@ -273,13 +289,27 @@ export const RegisterForm: React.FC = () => {
             />
             <span className="text-sm text-gray-600">
               [필수]{' '}
-              <Link to="/terms" className="text-green-600 hover:underline">
+              <button
+                type="button"
+                onClick={() => {
+                  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+                  navigate('/terms');
+                }}
+                className="text-green-600 hover:underline"
+              >
                 이용약관
-              </Link>{' '}
+              </button>{' '}
               및{' '}
-              <Link to="/privacy" className="text-green-600 hover:underline">
+              <button
+                type="button"
+                onClick={() => {
+                  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+                  navigate('/privacy');
+                }}
+                className="text-green-600 hover:underline"
+              >
                 개인정보 처리방침
-              </Link>
+              </button>
               에 동의합니다.
             </span>
           </div>
