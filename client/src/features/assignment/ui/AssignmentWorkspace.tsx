@@ -199,7 +199,10 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
   };
 
   const handleMouseLeave = (): void => {
-    setCalendarPopup({ visible: false, x: 0, y: 0, dates: [] });
+    // 마우스가 팝업으로 이동할 시간을 주기 위해 딜레이 추가
+    closeTimeoutRef.current = setTimeout(() => {
+      setCalendarPopup({ visible: false, x: 0, y: 0, dates: [] });
+    }, 150);
   };
 
   return (
