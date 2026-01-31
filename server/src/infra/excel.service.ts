@@ -150,13 +150,18 @@ class ExcelService {
         }
       });
 
-      if (hasData) {
+      // 4. 데이터 행 유효성 검사 및 필터링
+      const nameValue = String(rowData.name || '').trim();
+      // 특수 기호(※, ↑)로 시작하면 설명행으로 간주하여 제외
+      const isInstructionRow = nameValue.startsWith('※') || nameValue.startsWith('↑');
+
+      if (hasData && !isInstructionRow) {
         rows.push(rowData);
       }
     });
 
     if (rows.length === 0) {
-      throw new AppError('엑셀 파일에 데이터가 없습니다.', 400, 'EMPTY_EXCEL_FILE');
+      throw new AppError('엑셀 파일에 유효한 데이터가 없습니다.', 400, 'EMPTY_EXCEL_FILE');
     }
 
     return {
@@ -179,9 +184,9 @@ class ExcelService {
     const knownColumns = new Set(Object.keys(COLUMN_MAPPING));
 
     worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-      if (rowNumber > 20) return;
+      if (rowNumber > 50) return; // 더 깊게 탐색 (최대 50행)
 
-      const columnMap = new Map<number, string>();
+      const currentColumnMap = new Map<number, string>();
       let matchCount = 0;
 
       row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
@@ -189,15 +194,16 @@ class ExcelService {
 
         if (knownColumns.has(cellValue)) {
           const internalFieldName = COLUMN_MAPPING[cellValue];
-          columnMap.set(colNumber, internalFieldName);
+          currentColumnMap.set(colNumber, internalFieldName);
           matchCount++;
         }
       });
 
+      // 가장 매칭 항목이 많은 행을 헤더로 선택 (최소 2개 이상)
       if (matchCount > bestMatchCount && matchCount >= 2) {
         bestMatchCount = matchCount;
         bestRowNum = rowNumber;
-        bestColumnMap = columnMap;
+        bestColumnMap = currentColumnMap;
       }
     });
 
