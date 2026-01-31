@@ -211,6 +211,22 @@ export const updateTrainingPeriodScheduleLocations = asyncHandler(
   },
 );
 
+// 교육기간 기본정보 수정 (근무시간, 담당관, 시설정보, 교육기간명)
+export const updateTrainingPeriodInfo = asyncHandler(async (req: Request, res: Response) => {
+  const periodId = Number(req.params.periodId);
+  if (isNaN(periodId)) {
+    throw new AppError('유효하지 않은 교육기간 ID입니다.', 400, 'INVALID_ID');
+  }
+
+  const result = await unitService.updateTrainingPeriodInfo(periodId, req.body);
+
+  res.status(200).json({
+    result: 'Success',
+    message: '교육기간 정보가 업데이트되었습니다.',
+    data: result,
+  });
+});
+
 // 교육기간 삭제
 export const deleteTrainingPeriod = asyncHandler(async (req: Request, res: Response) => {
   const periodId = Number(req.params.periodId);
@@ -270,5 +286,6 @@ module.exports = {
   deleteMultipleUnits,
   updateTrainingPeriodSchedule,
   updateTrainingPeriodScheduleLocations,
+  updateTrainingPeriodInfo,
   checkScheduleAssignments,
 };

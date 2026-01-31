@@ -3,11 +3,15 @@ import React from 'react';
 import { CommonHeader, NavLink } from '../../../../shared/ui';
 import { useCurrentUser } from '../../../auth/model/useCurrentUser';
 
-export const AdminHeader: React.FC = () => {
+interface AdminHeaderProps {
+  onRefresh?: () => void;
+}
+
+export const AdminHeader: React.FC<AdminHeaderProps> = ({ onRefresh }) => {
   const userLabel = useCurrentUser();
 
   const links: NavLink[] = [
-    { label: '대시보드', path: '/admin' },
+    { label: '대시보드', path: '/admin/dashboard' },
     {
       label: '관리',
       children: [
@@ -33,6 +37,12 @@ export const AdminHeader: React.FC = () => {
   ];
 
   return (
-    <CommonHeader title="관리자 페이지" userLabel={userLabel} links={links} logoPath="/admin" />
+    <CommonHeader
+      title="관리자 페이지"
+      userLabel={userLabel}
+      links={links}
+      logoPath="/admin/assignments"
+      onRefresh={onRefresh}
+    />
   );
 };

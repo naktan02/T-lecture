@@ -195,6 +195,30 @@ export const unitApi = {
     return response.json();
   },
 
+  // 교육기간 기본정보 수정 (근무시간, 담당관, 시설정보, 교육기간명)
+  updateTrainingPeriodInfo: async (
+    trainingPeriodId: number,
+    data: {
+      name?: string;
+      workStartTime?: string | null;
+      workEndTime?: string | null;
+      lunchStartTime?: string | null;
+      lunchEndTime?: string | null;
+      officerName?: string | null;
+      officerPhone?: string | null;
+      officerEmail?: string | null;
+      hasCateredMeals?: boolean;
+      hasHallLodging?: boolean;
+      allowsPhoneBeforeAfter?: boolean;
+    },
+  ) => {
+    const response = await apiClient(`/api/v1/units/training-periods/${trainingPeriodId}/info`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  },
+
   // 교육기간 삭제
   deleteTrainingPeriod: async (trainingPeriodId: number) => {
     const response = await apiClient(`/api/v1/units/training-periods/${trainingPeriodId}`, {

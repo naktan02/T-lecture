@@ -60,8 +60,9 @@ function App(): ReactElement {
           <Route path="/user-main/dispatches" element={<DispatchInboxPage />} />
           <Route path="/user-main/*" element={<UserMainHome />} />
 
-          {/* 일반 관리자 */}
-          <Route path="/admin" element={<AdminPage />} />
+          {/* 일반 관리자 - 기본 페이지는 강사배정 */}
+          <Route path="/admin" element={<Navigate to="/admin/assignments" replace />} />
+          <Route path="/admin/dashboard" element={<AdminPage />} />
           <Route path="/admin/assignments" element={<AssignmentPage />} />
           <Route path="/admin/assignment-settings" element={<AssignmentSettingsPage />} />
           <Route path="/admin/settings" element={<SettingsPage />} />
