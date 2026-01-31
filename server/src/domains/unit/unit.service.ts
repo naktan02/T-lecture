@@ -1031,6 +1031,12 @@ class UnitService {
     const datesToDelete = [...existingDates].filter((d) => d && !newDates.has(d));
     const datesToAdd = [...newDates].filter((d) => d && !existingDates.has(d));
 
+    // 3.5 교육불가일자를 TrainingPeriod에 저장
+    await unitRepository.updateTrainingPeriodExcludedDates(
+      trainingPeriodId,
+      normalizedExcludedDates,
+    );
+
     // 4. 삭제 처리 (크레딧 부여 + 자동 재배정)
     let deleteResult = { deleted: 0, creditsGiven: 0, reassigned: 0 };
     if (datesToDelete.length > 0) {

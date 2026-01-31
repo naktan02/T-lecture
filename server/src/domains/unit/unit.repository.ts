@@ -547,7 +547,22 @@ class UnitRepository {
             });
             if (!availability) continue;
 
-            // 자동 재배정
+            // 해당 스케줄에 이미 배정이 있는지 확인
+            const existingAssignment = await tx.instructorUnitAssignment.findUnique({
+              where: {
+                unitScheduleId_userId: {
+                  unitScheduleId: schedule.id,
+                  userId: deleted.userId,
+                },
+              },
+            });
+
+            if (existingAssignment) {
+              // 이미 존재하면 재배정으로 간주하지 않음 (크레딧 부여 대상)
+              continue;
+            }
+
+            // 새로 배정 생성
             await tx.instructorUnitAssignment.create({
               data: {
                 userId: deleted.userId,
@@ -956,6 +971,14 @@ class UnitRepository {
         hasWomenRestroom: data.hasWomenRestroom ?? false,
         note: data.note || null,
       },
+    });
+  }
+
+  // 교육불가일자(excludedDates) 업데이트
+  async updateTrainingPeriodExcludedDates(trainingPeriodId: number, excludedDates: string[]) {
+    return await prisma.trainingPeriod.update({
+      where: { id: trainingPeriodId },
+      data: { excludedDates },
     });
   }
 }

@@ -59,7 +59,9 @@ export const AssignmentUnitEditModal: React.FC<Props> = ({
     const dates = unit.uniqueDates.sort();
     return dates[dates.length - 1] || '';
   });
-  const [editExcludedDates, setEditExcludedDates] = useState<string[]>([]);
+  const [editExcludedDates, setEditExcludedDates] = useState<string[]>(
+    () => unit.detail?.excludedDates || [],
+  );
   const [editExcludedDateInput, setEditExcludedDateInput] = useState('');
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
 

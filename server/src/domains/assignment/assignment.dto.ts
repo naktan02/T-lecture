@@ -140,6 +140,7 @@ class AssignmentDTO {
               hasCateredMeals: period.hasCateredMeals,
               hasHallLodging: period.hasHallLodging,
               allowsPhoneBeforeAfter: period.allowsPhoneBeforeAfter,
+              excludedDates: (period.excludedDates as string[]) || [],
             },
           });
         } else {
@@ -190,6 +191,7 @@ class AssignmentDTO {
                 hasCateredMeals: period.hasCateredMeals,
                 hasHallLodging: period.hasHallLodging,
                 allowsPhoneBeforeAfter: period.allowsPhoneBeforeAfter,
+                excludedDates: (period.excludedDates as string[]) || [],
               },
             });
           });

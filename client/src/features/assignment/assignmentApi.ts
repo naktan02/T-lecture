@@ -28,6 +28,7 @@ export interface UnitScheduleDetail {
   hasCateredMeals: boolean;
   hasHallLodging: boolean;
   allowsPhoneBeforeAfter: boolean;
+  excludedDates?: string[];
 }
 
 export interface UnitSchedule {
