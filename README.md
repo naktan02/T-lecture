@@ -1,100 +1,125 @@
-# T-LECTURE
+# 🎓 T-LECTURE
 
-군 부대 교육 강사 배정 및 일정 관리 시스템
+**군 부대 교육 강사 배정 및 일정 관리 시스템**
 
-## 시스템 개요
+군 장병 대상 인성교육 강사진의 배정, 스케줄링, 발송 업무를 자동화한 풀스택 웹 애플리케이션입니다.
 
-T-LECTURE는 군 부대의 교육 일정과 강사 배정을 효율적으로 관리하기 위한 웹 기반 시스템입니다. 관리자는 부대별 교육 일정을 관리하고, 강사에게 교육을 배정하며, 강사는 배정된 교육을 확인하고 수락/거절할 수 있습니다.
+---
+
+## 📋 프로젝트 개요
+
+| 항목            | 내용                     |
+| --------------- | ------------------------ |
+| **개발 기간**   | 2024.10 ~ 현재 (운영 중) |
+| **개발 인원**   | 1인 (풀스택)             |
+| **주요 사용자** | 관리자, 강사 (50명+)     |
 
 ### 주요 사용자
 
-- **관리자 (Admin)**: 부대 관리, 교육 일정 관리, 강사 배정, 대시보드 통계 확인
-- **강사 (Instructor)**: 배정된 교육 확인 및 응답, 개인 대시보드 확인, 일정 관리
+- **관리자**: 부대 관리, 교육 일정 관리, 강사 배정, 대시보드 통계 확인
+- **강사**: 배정된 교육 확인 및 응답, 개인 일정/대시보드 관리
 
 ---
 
-## 기술 스택
-
-### Backend
-| 기술 | 버전 | 설명 |
-|------|------|------|
-| Node.js | 22.x | 런타임 환경 |
-| Express | 4.x | 웹 프레임워크 |
-| TypeScript | 5.x | 타입 안정성 |
-| Prisma | 7.x | ORM |
-| PostgreSQL | 15 | 데이터베이스 |
-| JWT | - | 인증 |
-| Sentry | - | 에러 모니터링 |
+## 🛠 기술 스택
 
 ### Frontend
-| 기술 | 버전 | 설명 |
-|------|------|------|
-| React | 19.x | UI 라이브러리 |
-| Vite | 7.x | 빌드 도구 |
-| TypeScript | 5.x | 타입 안정성 |
-| TailwindCSS | 4.x | 스타일링 |
-| TanStack Query | 5.x | 서버 상태 관리 |
-| React Router | 7.x | 라우팅 |
-| React Hook Form | 7.x | 폼 관리 |
-| Recharts | 3.x | 차트 시각화 |
 
-### Infrastructure
-| 기술 | 설명 |
-|------|------|
-| Docker Compose | 로컬 개발 환경 DB |
-| GitHub Actions | CI/CD 파이프라인 |
-| Upstash Redis | 캐싱 (선택) |
+![React](https://img.shields.io/badge/React_19-61DAFB?style=flat-square&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat-square&logo=vite&logoColor=white)
+![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS_4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
+![React Query](https://img.shields.io/badge/React_Query-FF4154?style=flat-square&logo=reactquery&logoColor=white)
+![React Router](https://img.shields.io/badge/React_Router-CA4245?style=flat-square&logo=reactrouter&logoColor=white)
+![Recharts](https://img.shields.io/badge/Recharts-22B5BF?style=flat-square&logo=chartdotjs&logoColor=white)
 
----
+### Backend
 
-## 주요 기능
+![Node.js](https://img.shields.io/badge/Node.js_22-339933?style=flat-square&logo=nodedotjs&logoColor=white)
+![Express](https://img.shields.io/badge/Express-000000?style=flat-square&logo=express&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma_7-2D3748?style=flat-square&logo=prisma&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![JWT](https://img.shields.io/badge/JWT-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)
 
-### 1. 부대 관리 (Unit Management)
-- 부대 정보 등록 및 수정 (부대명, 군 구분, 지역, 좌표 등)
-- 교육기간 설정 (정규교육, 추가교육 등)
-- 교육장소 관리 (장소별 시설 정보)
-- 일정별 계획인원/참여인원 관리
+### Infrastructure & Services
 
-### 2. 강사 배정 (Assignment)
-- 교육 일정에 강사 자동/수동 배정
-- 배정 제안 발송 및 응답 관리
-- 강사별 거리 기반 최적 배정
-- 배정 상태 추적 (Pending, Accepted, Rejected, Canceled)
+![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?style=flat-square&logo=supabase&logoColor=white)
+![Render](https://img.shields.io/badge/Render-46E3B7?style=flat-square&logo=render&logoColor=white)
+![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=flat-square&logo=cloudflare&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)
 
-### 3. 대시보드 (Dashboard)
-- 관리자 대시보드
-  - 전체 교육 현황 통계
-  - 강사별/팀별 성과 분석
-  - 상태별 일정 현황 (완료, 진행중, 예정, 미배정)
-- 강사 대시보드
-  - 총 근무 시간/이동 거리
-  - 배정 수락률
-  - 월별 활동 추이
-  - 활동 내역
+### External APIs & Tools
 
-### 4. 일정 관리 (Schedule)
-- 캘린더 기반 일정 조회
-- 일정 상세 정보 확인
-- 교육 진행 상태 관리
-
-### 5. 거리 계산 (Distance)
-- Kakao Maps API를 활용한 강사-부대 간 거리 계산
-- 거리 정보 캐싱 및 관리
-- GitHub Actions를 통한 자동 거리 계산
-
-### 6. 알림 및 커뮤니케이션
-- 공지사항 관리
-- 문의하기 기능
-- 이메일 알림 (Brevo)
-
-### 7. 데이터 관리
-- Excel 파일 가져오기/내보내기
-- 년도별 데이터 백업
-- 리포트 생성
+![Kakao](https://img.shields.io/badge/Kakao_Maps_API-FFCD00?style=flat-square&logo=kakao&logoColor=black)
+![Brevo](https://img.shields.io/badge/Brevo-0B996E?style=flat-square&logo=sendinblue&logoColor=white)
+![Sentry](https://img.shields.io/badge/Sentry-362D59?style=flat-square&logo=sentry&logoColor=white)
 
 ---
 
-## 프로젝트 구조
+## ✨ 주요 기능
+
+### 🔐 관리자 기능
+
+| 기능                   | 설명                                                    |
+| ---------------------- | ------------------------------------------------------- |
+| **자동 배정 알고리즘** | 거리, 공정성, 연속일수, 덕목 적합성 기반 최적 강사 매칭 |
+| **발송 시스템**        | 이메일 템플릿 기반 배정 안내 자동 발송                  |
+| **대시보드**           | 월별 교육 현황, 강사별 통계, 팀 분석                    |
+| **부대/강사 관리**     | Excel 일괄 업로드, 좌표 자동 변환                       |
+
+### 👨‍🏫 강사 기능
+
+| 기능              | 설명                              |
+| ----------------- | --------------------------------- |
+| **배정 응답**     | 수락/거절/대기 상태 관리          |
+| **스케줄 캘린더** | 월별 교육 일정 확인               |
+| **내 대시보드**   | 근무 시간, 이동 거리, 수락률 통계 |
+
+---
+
+## 🧠 핵심 기술적 도전
+
+### 1. 자동 배정 알고리즘
+
+다중 조건을 고려한 최적 강사 매칭 시스템을 직접 설계 및 구현했습니다.
+
+```
+📊 스코어링 기준
+├── 거리 점수 (30%) - 강사 주소 ↔ 교육장소 실제 도로 거리
+├── 공정성 점수 (25%) - 최근 N개월 배정 횟수 균형
+├── 연속일 보너스 (20%) - 동일 부대 연속 교육 시 가산
+├── 덕목 적합성 (15%) - 강사 보유 덕목과 교육 과목 매칭
+└── 우선권 (10%) - 시스템 지정 우선 배정 크레딧
+```
+
+### 2. 거리 기반 필터링
+
+- **Kakao Maps API** 연동으로 주소 → 좌표 변환
+- 강사-교육장소 간 **실제 도로 거리** 계산
+- **GitHub Actions 스케줄러**로 거리 데이터 일괄 갱신 (API 호출 제한 대응)
+
+### 3. 성능 최적화
+
+- **N+1 쿼리 제거** 및 배치 처리로 DB 부하 감소
+- `Promise.all` 병렬화로 API 응답 시간 단축
+- **React Query 캐싱**으로 불필요한 API 호출 최소화
+
+---
+
+## 🖼 스크린샷
+
+
+### 배정 화면
+![Admin Dashboard](docs/images/assignment.png)
+
+### 부대 관리 화면
+![Assignment](docs/images/unit.png)
+
+---
+
+## 📁 프로젝트 구조
 
 ```
 T-lecture/
@@ -147,17 +172,20 @@ T-lecture/
 
 ---
 
-## 개발 환경 설정
+## 🚀 실행 방법
 
-### 필수 요구사항
-- **Node.js** 22.x 이상
-- **npm** (Node.js와 함께 설치)
-- **Docker Desktop** (로컬 DB 실행용)
+<details>
+<summary><b>개발 환경 설정 (클릭하여 펼치기)</b></summary>
 
-### 1. 의존성 설치
+### 사전 요구사항
+
+- Node.js 22.x
+- Docker Desktop (로컬 DB용)
+
+### 설치 및 실행
 
 ```bash
-# 프로젝트 루트에서 실행 (서버/클라이언트 동시 설치)
+# 1. 의존성 설치
 npm install
 ```
 
@@ -225,6 +253,7 @@ npm run dev:client
 GitHub Actions를 통해 자동화된 CI/CD 파이프라인이 구성되어 있습니다.
 
 #### Server CI (`server.yml`)
+
 - 트리거: `main`, `develop` 브랜치 push/PR 시 `server/` 경로 변경
 - 단계:
   1. Prisma 클라이언트 생성 및 검증
@@ -234,6 +263,7 @@ GitHub Actions를 통해 자동화된 CI/CD 파이프라인이 구성되어 있�
   5. 빌드
 
 #### Client CI (`client.yml`)
+
 - 트리거: `main`, `develop` 브랜치 push/PR 시 `client/` 경로 변경
 - 단계:
   1. TypeScript 타입 체크
@@ -243,6 +273,7 @@ GitHub Actions를 통해 자동화된 CI/CD 파이프라인이 구성되어 있�
   5. 빌드 아티팩트 업로드
 
 #### 추가 워크플로우
+
 - `calculate-distance.yml`: 거리 자동 계산
 - `keep-alive.yml`: 서버 상태 유지
 - `ping-server.yml`: 서버 헬스체크
@@ -273,18 +304,6 @@ cd server && npm run lint
 
 # 클라이언트 린트
 cd client && npm run lint
-```
-
-### 커밋 컨벤션
-
-```
-feat: 새로운 기능 추가
-fix: 버그 수정
-docs: 문서 수정
-style: 코드 포맷팅
-refactor: 코드 리팩토링
-test: 테스트 코드
-chore: 빌드 설정 등 기타 변경
 ```
 
 ---
