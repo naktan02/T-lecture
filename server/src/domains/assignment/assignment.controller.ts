@@ -57,12 +57,18 @@ export const getCandidates = asyncHandler(async (req: Request, res: Response) =>
   }
 
   // 캐시 저장 버전 사용 (userId로 캐시 키 구분)
-  const { unitsRaw, instructorsRaw, allInstructorsRaw, actualDateRange } =
-    await assignmentService.getAssignmentCandidatesWithCache(
-      startDate as string,
-      endDate as string,
-      req.user!.id,
-    );
+  const {
+    unitsRaw,
+    instructorsRaw,
+    allInstructorsRaw,
+    actualDateRange,
+    distanceMap,
+    distanceLimits,
+  } = await assignmentService.getAssignmentCandidatesWithCache(
+    startDate as string,
+    endDate as string,
+    req.user!.id,
+  );
 
   // 설정에서 강사당 교육생 수 조회
   const traineesPerInstructor = await assignmentService.getTraineesPerInstructor();
@@ -90,6 +96,8 @@ export const getCandidates = asyncHandler(async (req: Request, res: Response) =>
     pendingAssignments, // 임시 배정 (배정 작업 공간)
     acceptedAssignments, // 확정 배정 (확정 배정 완료)
     actualDateRange, // 부대 전체 일정 범위 (임시 발송 시 사용)
+    distanceMap, // 강사-부대 거리 데이터 (km)
+    distanceLimits, // 거리 제한 설정 (실습/보조 강사)
   });
 });
 

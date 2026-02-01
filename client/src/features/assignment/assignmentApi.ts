@@ -77,6 +77,11 @@ export interface AssignmentCandidatesResponse {
     startDate: string;
     endDate: string;
   };
+  distanceMap?: Record<string, number>; // `${instructorId}-${unitId}` → km
+  distanceLimits?: {
+    internMaxDistanceKm: number; // 실습강사 제한 거리
+    subMaxDistanceKm: number | null; // 보조강사 제한 거리 (null=제한없음)
+  };
 }
 
 export interface AutoAssignmentResult {

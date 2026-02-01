@@ -8,7 +8,7 @@ import {
 } from '../dispatchApi';
 import { useState } from 'react';
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 5;
 
 interface UseDispatchSectionReturn {
   dispatches: Dispatch[];
