@@ -5,9 +5,9 @@ import { PrismaClient } from '../generated/prisma/client.js';
 // Prisma 7 PrismaPg 어댑터 + 연결 풀 옵션
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
-  max: 10, // 최대 연결 수 (pg Pool 기본값)
-  connectionTimeoutMillis: 30000, // 연결 타임아웃 30초
-  idleTimeoutMillis: 30000, // 유휴 연결 30초 후 해제
+  max: 10, // 최대 연결 수
+  connectionTimeoutMillis: 30000, // 연결 획득 대기 타임아웃 30초
+  idleTimeoutMillis: 0, // 유휴 연결 해제 비활성화 (Supavisor가 관리)
 });
 
 // 기본 Prisma Client (extension 적용 전)
