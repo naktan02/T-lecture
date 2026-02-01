@@ -2,8 +2,13 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/client.js';
 
-// Prisma 7 권장 방식: connectionString만 전달
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+// Prisma 7 PrismaPg 어댑터 + 연결 풀 옵션
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL,
+  max: 10, // 최대 연결 수 (pg Pool 기본값)
+  connectionTimeoutMillis: 30000, // 연결 타임아웃 30초
+  idleTimeoutMillis: 30000, // 유휴 연결 30초 후 해제
+});
 
 // 기본 Prisma Client (extension 적용 전)
 const basePrisma = new PrismaClient({
