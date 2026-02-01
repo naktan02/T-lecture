@@ -76,7 +76,9 @@ function calculateWorkHoursWithLunch(trainingPeriod: {
 
   // 총 근무 시간 (분)
   let totalMinutes =
-    workEnd.getHours() * 60 + workEnd.getMinutes() - (workStart.getHours() * 60 + workStart.getMinutes());
+    workEnd.getHours() * 60 +
+    workEnd.getMinutes() -
+    (workStart.getHours() * 60 + workStart.getMinutes());
   if (totalMinutes < 0) totalMinutes += 24 * 60;
 
   // 점심시간 제외
@@ -84,7 +86,9 @@ function calculateWorkHoursWithLunch(trainingPeriod: {
     const lunchStart = new Date(trainingPeriod.lunchStartTime);
     const lunchEnd = new Date(trainingPeriod.lunchEndTime);
     let lunchMinutes =
-      lunchEnd.getHours() * 60 + lunchEnd.getMinutes() - (lunchStart.getHours() * 60 + lunchStart.getMinutes());
+      lunchEnd.getHours() * 60 +
+      lunchEnd.getMinutes() -
+      (lunchStart.getHours() * 60 + lunchStart.getMinutes());
     if (lunchMinutes < 0) lunchMinutes += 24 * 60;
     totalMinutes -= lunchMinutes;
   }
@@ -297,7 +301,7 @@ class DashboardService {
           unitType: group.unitType,
           region: group.region,
           trainingPeriodName: group.trainingPeriodName,
-          distance: Math.round(((dist / 1000) * 2) * 10) / 10, // 왕복, km 단위
+          distance: Math.round((dist / 1000) * 2 * 10) / 10, // 왕복, km 단위
           totalWorkHours: Math.round(group.totalWorkHours * 10) / 10,
           dates: group.dates,
         };
@@ -444,7 +448,7 @@ class DashboardService {
           unitType: group.unitType,
           region: group.region,
           trainingPeriodName: group.trainingPeriodName,
-          distance: Math.round(((dist / 1000) * 2) * 10) / 10, // 왕복, km 단위
+          distance: Math.round((dist / 1000) * 2 * 10) / 10, // 왕복, km 단위
           totalWorkHours: Math.round(group.totalWorkHours * 10) / 10,
           dates: group.dates,
           latestDate: group.latestDate,
@@ -454,7 +458,9 @@ class DashboardService {
 
     const total = allGroups.length;
     const skip = (page - 1) * limit;
-    const paginatedActivities = allGroups.slice(skip, skip + limit).map(({ latestDate, ...rest }) => rest);
+    const paginatedActivities = allGroups
+      .slice(skip, skip + limit)
+      .map(({ latestDate, ...rest }) => rest);
 
     return {
       activities: paginatedActivities,
