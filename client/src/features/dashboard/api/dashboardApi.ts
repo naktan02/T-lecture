@@ -1,13 +1,30 @@
 // client/src/features/dashboard/api/dashboardApi.ts
 import { apiClient } from '@/shared/apiClient';
 
+// 활동 내역 일자 정보
+export interface ActivityDate {
+  date: string;
+  workHours: number;
+}
+
+// 활동 내역 (교육 기간 단위)
+export interface ActivityGroup {
+  trainingPeriodId: number;
+  unitName: string;
+  unitType: string | null;
+  region: string | null;
+  trainingPeriodName: string;
+  distance: number; // km, 왕복
+  totalWorkHours: number;
+  dates: ActivityDate[];
+}
+
 export interface DashboardStats {
   summary: {
     totalWorkHours: number;
     totalDistance: number;
     totalWorkDays: number;
-    yearCount: number;
-    monthCount: number;
+    periodCount: number; // 선택한 기간 내 완료된 교육 건수
   };
   performance: {
     acceptanceRate: number;
@@ -19,21 +36,12 @@ export interface DashboardStats {
     count: number;
     hours: number;
   }>;
-  recentAssignments: Array<{
-    id: number;
-    date: string;
-    unitName: string;
-    unitType: string | null;
-    region: string | null;
-    status: string;
-    distance: number;
-    workHours: number;
-  }>;
+  recentActivities: ActivityGroup[]; // 교육 기간 단위로 그룹화
 }
 
 // 페이지네이션된 활동 내역 응답
 export interface PaginatedActivities {
-  activities: DashboardStats['recentAssignments'];
+  activities: ActivityGroup[];
   pagination: {
     total: number;
     page: number;
