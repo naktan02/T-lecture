@@ -7,10 +7,11 @@ import logger from '../../config/logger';
 
 // 쿠키 옵션
 function getRefreshCookieOptions() {
+  const isProd = process.env.NODE_ENV === 'production';
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict' as const,
+    secure: isProd,
+    sameSite: isProd ? ('none' as const) : ('strict' as const), // Cross-domain 쿠키 허용
     path: '/',
   };
 }
