@@ -65,27 +65,23 @@ class InstructorService {
       endDate,
     );
 
-    // 유효성 검사: 배정된 날짜가 newDatesStr에 모두 포함되어 있는지 확인
+    // 배정된 날짜 Set 생성
     const assignedDatesSet = new Set(
       activeAssignmentDates
         .filter((d): d is Date => d !== null)
         .map((d) => d.toISOString().split('T')[0]),
     );
-    const newDatesSet = new Set(newDatesStr);
 
-    for (const assignedDate of assignedDatesSet) {
-      if (!newDatesSet.has(assignedDate)) {
-        throw new AppError(
-          `이미 배정이 확정된 날짜(${assignedDate})는 근무 가능일에서 제외할 수 없습니다.`,
-          409,
-          'AVAILABILITY_CONFLICT',
-          { assignedDate },
-        );
-      }
-    }
+    // 배정된 날짜를 새 가능일에 자동 추가 (배정 확정된 날짜는 제외 불가)
+    const newDatesWithAssigned = [...new Set([...newDatesStr, ...Array.from(assignedDatesSet)])];
 
     // 업데이트 수행
-    await instructorRepository.replaceAvailabilities(instructorId, startDate, endDate, newDatesStr);
+    await instructorRepository.replaceAvailabilities(
+      instructorId,
+      startDate,
+      endDate,
+      newDatesWithAssigned,
+    );
 
     return { message: '근무 가능일이 저장되었습니다.' };
   }
