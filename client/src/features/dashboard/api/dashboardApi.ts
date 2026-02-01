@@ -27,9 +27,9 @@ export interface DashboardStats {
     periodCount: number; // 선택한 기간 내 완료된 교육 건수
   };
   performance: {
-    acceptanceRate: number;
+    rejectionRate: number;
     totalProposals: number;
-    acceptedCount: number;
+    rejectedCount: number;
   };
   monthlyTrend: Array<{
     month: string;
