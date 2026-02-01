@@ -239,6 +239,12 @@ interface AssignmentGroupDetailModalProps {
     availableDates?: string[];
   }[]; // 전체 강사 목록 (전체 검색용)
   assignedByDate?: Map<string, Set<number>>; // 날짜별 이미 배정된 강사 ID
+  // 거리 필터링용 데이터
+  distanceMap?: Record<string, number>; // `${instructorId}-${unitId}` → km
+  distanceLimits?: {
+    internMaxDistanceKm: number;
+    subMaxDistanceKm: number | null;
+  } | null;
 }
 
 export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProps> = ({
@@ -248,6 +254,8 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
   availableInstructors = [],
   allInstructors = [],
   assignedByDate = new Map(),
+  distanceMap = {},
+  distanceLimits = null,
 }) => {
   const [addPopupTarget, setAddPopupTarget] = useState<AddPopupTarget | null>(null);
   const [removeTarget, setRemoveTarget] = useState<{
@@ -785,7 +793,25 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[10px] text-gray-500">{inst.team}</div>
+                              {/* 팀명 + 거리 */}
+                              {(() => {
+                                const distKey = `${inst.instructorId}-${group.unitId}`;
+                                const distKm = distanceMap[distKey];
+                                const distText =
+                                  distKm !== undefined ? `${distKm.toFixed(1)}km` : '거리없음';
+                                return (
+                                  <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                                    <span>{inst.team}</span>
+                                    <span
+                                      className={
+                                        distKm !== undefined ? 'text-blue-600' : 'text-gray-400'
+                                      }
+                                    >
+                                      📍 {distText}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                             </div>
 
                             {/* 상태 점 표시 */}
@@ -858,7 +884,25 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                                 저장 대기
                               </span>
                             </div>
-                            <div className="text-[10px] text-gray-500">{inst.team}</div>
+                            {/* 팀명 + 거리 */}
+                            {(() => {
+                              const distKey = `${inst.instructorId}-${group.unitId}`;
+                              const distKm = distanceMap[distKey];
+                              const distText =
+                                distKm !== undefined ? `${distKm.toFixed(1)}km` : '거리없음';
+                              return (
+                                <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                                  <span>{inst.team}</span>
+                                  <span
+                                    className={
+                                      distKm !== undefined ? 'text-blue-600' : 'text-gray-400'
+                                    }
+                                  >
+                                    📍 {distText}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                           </div>
                           {/* X 버튼 */}
                           <button
@@ -961,13 +1005,15 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
       {/* 4. 강사 추가 팝업 */}
       {addPopupTarget && (
         <InstructorSelectionPopup
-          target={addPopupTarget}
+          target={{ ...addPopupTarget, unitId: group.unitId }}
           allAvailableInstructors={availableInstructors}
           allInstructors={allInstructors}
           assignedInstructorIds={[
             ...getAssignedInstructorIds(addPopupTarget.unitScheduleId),
             ...(assignedByDate.get(addPopupTarget.date) || []),
           ]}
+          distanceMap={distanceMap}
+          distanceLimits={distanceLimits}
           onClose={() => setAddPopupTarget(null)}
           onAdd={async (inst) => {
             handleAddLocal(

@@ -56,6 +56,12 @@ interface UseAssignmentReturn {
   allInstructors: Instructor[]; // 전체 강사 목록 (전체 검색용)
   assignments: AssignmentData[]; // 임시 배정 (Pending)
   confirmedAssignments: AssignmentData[]; // 확정 배정 (Accepted)
+  // 거리 데이터 (강사 선택 필터링용)
+  distanceMap: Record<string, number>; // `${instructorId}-${unitId}` → km
+  distanceLimits: {
+    internMaxDistanceKm: number;
+    subMaxDistanceKm: number | null;
+  } | null;
   addAssignment: (
     unitScheduleId: number,
     instructorId: number,
@@ -100,6 +106,13 @@ export const useAssignment = (): UseAssignmentReturn => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 거리 데이터 (강사 선택 필터링용)
+  const [distanceMap, setDistanceMap] = useState<Record<string, number>>({});
+  const [distanceLimits, setDistanceLimits] = useState<{
+    internMaxDistanceKm: number;
+    subMaxDistanceKm: number | null;
+  } | null>(null);
+
   // 로컬 날짜를 YYYY-MM-DD 문자열로 변환 (타임존 문제 방지)
   const toLocalDateString = (date: Date): string => {
     const year = date.getFullYear();
@@ -129,6 +142,14 @@ export const useAssignment = (): UseAssignmentReturn => {
       // 서버에서 계산된 실제 날짜 범위 저장
       if (data.actualDateRange) {
         setActualDateRange(data.actualDateRange);
+      }
+
+      // 거리 데이터 저장 (강사 선택 필터링용)
+      if (data.distanceMap) {
+        setDistanceMap(data.distanceMap);
+      }
+      if (data.distanceLimits) {
+        setDistanceLimits(data.distanceLimits);
       }
 
       // 배정 현황 설정 (상태별 분리) - 첫 날짜 기준 정렬
@@ -284,6 +305,8 @@ export const useAssignment = (): UseAssignmentReturn => {
     allInstructors,
     assignments,
     confirmedAssignments,
+    distanceMap,
+    distanceLimits,
     fetchData,
     executeAutoAssign,
     sendTemporaryMessages,

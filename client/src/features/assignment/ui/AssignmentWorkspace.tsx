@@ -46,6 +46,8 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
     allInstructors,
     assignments,
     confirmedAssignments,
+    distanceMap,
+    distanceLimits,
     fetchData,
     executeAutoAssign,
     sendTemporaryMessages,
@@ -670,6 +672,8 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
             availableDates: i.availableDates ?? [],
           }))}
           assignedByDate={assignedByDate}
+          distanceMap={distanceMap}
+          distanceLimits={distanceLimits}
         />
       )}
 

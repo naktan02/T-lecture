@@ -249,15 +249,16 @@ class AssignmentCommandService {
       );
 
     // 6) 거리 데이터 조회 및 변환 (미터 → km)
+    // distance가 null이면 preDistance 사용 (주소 변경 후 재계산 대기 중)
     const unitIds = Array.from(unitMap.keys());
     const distanceData = await distanceRepository.findManyByUnitIds(unitIds);
     const instructorDistances = new Map<string, number>();
     for (const d of distanceData) {
-      // distance는 미터 단위로 저장되어 있음 → km로 변환
-      const distanceKm = d.distance ? Number(d.distance) / 1000 : null;
-      if (distanceKm !== null) {
+      // effectiveDistance: distance ?? preDistance (미터 → km 변환)
+      const effectiveDistanceM = d.distance ?? d.preDistance;
+      if (effectiveDistanceM !== null) {
         const key = `${d.userId}-${d.unitId}`;
-        instructorDistances.set(key, distanceKm);
+        instructorDistances.set(key, Number(effectiveDistanceM) / 1000);
       }
     }
 
@@ -368,14 +369,16 @@ class AssignmentCommandService {
     const subMaxDistanceKm = await this.getSystemConfigNumberOrNull('SUB_MAX_DISTANCE_KM');
 
     // 거리 데이터 조회 및 변환 (미터 → km)
+    // distance가 null이면 preDistance 사용 (주소 변경 후 재계산 대기 중)
     const unitIds = units.map((u) => u.id);
     const distanceData = await distanceRepository.findManyByUnitIds(unitIds);
     const instructorDistances = new Map<string, number>();
     for (const d of distanceData) {
-      const distanceKm = d.distance ? Number(d.distance) / 1000 : null;
-      if (distanceKm !== null) {
+      // effectiveDistance: distance ?? preDistance (미터 → km 변환)
+      const effectiveDistanceM = d.distance ?? d.preDistance;
+      if (effectiveDistanceM !== null) {
         const key = `${d.userId}-${d.unitId}`;
-        instructorDistances.set(key, distanceKm);
+        instructorDistances.set(key, Number(effectiveDistanceM) / 1000);
       }
     }
 
