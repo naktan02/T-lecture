@@ -1,11 +1,27 @@
 // server/src/libs/prisma.ts
+import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/client.js';
 
-// Prisma 7 PrismaPg 어댑터 + 연결 풀 옵션
-const adapter = new PrismaPg({
+// ============================================
+// pg Pool 직접 생성 (연결 풀 옵션 제어)
+// ============================================
+const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  max: 20, // 최대 연결 수
+  min: 5, // 최소 연결 수
+  idleTimeoutMillis: 30000, // 유휴 연결 30초 후 해제
+  connectionTimeoutMillis: 2000, // 연결 획득 대기 2초
 });
+
+// Pool 에러 핸들링 (연결 실패 시 로깅)
+pool.on('error', (err) => {
+  // eslint-disable-next-line no-console
+  console.error('[DB Pool] Unexpected error on idle client:', err.message);
+});
+
+// Prisma 7 PrismaPg 어댑터
+const adapter = new PrismaPg(pool);
 
 // 기본 Prisma Client (extension 적용 전)
 const basePrisma = new PrismaClient({
@@ -34,9 +50,6 @@ function isTransientError(error: unknown): boolean {
 // ============================================
 // 가벼운 재시도 Extension (1회만)
 // ============================================
-// - $disconnect/$connect 호출 안 함 (PrismaPg가 자동 처리)
-// - 짧은 대기 후 재시도 → 사용자는 딜레이로만 느낌
-
 const prismaWithRetry = basePrisma.$extends({
   name: 'lightRetry',
   query: {
@@ -44,7 +57,6 @@ const prismaWithRetry = basePrisma.$extends({
       try {
         return await query(args);
       } catch (error) {
-        // 일시적 에러가 아니면 바로 throw
         if (!isTransientError(error)) {
           throw error;
         }
@@ -66,7 +78,6 @@ const prismaWithRetry = basePrisma.$extends({
         // eslint-disable-next-line no-console
         console.warn(`[DB Retry] ${operation} failed, retrying once...`);
 
-        // 100ms 대기 후 재시도 (PrismaPg가 새 연결 자동 생성)
         await new Promise((r) => setTimeout(r, 100));
         return await query(args);
       }
@@ -75,11 +86,30 @@ const prismaWithRetry = basePrisma.$extends({
 });
 
 // 전역 선언 (개발 환경 커넥션 누수 방지)
-const globalForPrisma = global as unknown as { prisma: typeof prismaWithRetry };
+const globalForPrisma = global as unknown as {
+  prisma: typeof prismaWithRetry;
+  pool: Pool;
+};
 
 export const prisma = globalForPrisma.prisma || prismaWithRetry;
+export { pool };
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
+  globalForPrisma.pool = pool;
+}
+
+// ============================================
+// 연결 상태 모니터링
+// ============================================
+export function logPoolStatus(): void {
+  // eslint-disable-next-line no-console
+  console.log('[DB Pool] Status:', {
+    totalCount: pool.totalCount,
+    idleCount: pool.idleCount,
+    waitingCount: pool.waitingCount,
+  });
+}
 
 // ============================================
 // Supavisor Heartbeat (5분 유휴 타임아웃 방지)
@@ -93,6 +123,12 @@ export function startDatabaseHeartbeat(): void {
   heartbeatInterval = setInterval(async () => {
     try {
       await basePrisma.$queryRaw`SELECT 1`;
+      // eslint-disable-next-line no-console
+      console.log('[DB Heartbeat] OK -', {
+        total: pool.totalCount,
+        idle: pool.idleCount,
+        waiting: pool.waitingCount,
+      });
     } catch {
       // eslint-disable-next-line no-console
       console.warn('[DB Heartbeat] Connection check failed, will auto-recover');
@@ -110,6 +146,17 @@ export function stopDatabaseHeartbeat(): void {
     // eslint-disable-next-line no-console
     console.log('[DB Heartbeat] Stopped');
   }
+}
+
+// ============================================
+// 연결 풀 정리 (앱 종료 시)
+// ============================================
+export async function closePool(): Promise<void> {
+  stopDatabaseHeartbeat();
+  await basePrisma.$disconnect();
+  await pool.end();
+  // eslint-disable-next-line no-console
+  console.log('[DB Pool] Closed');
 }
 
 export default prisma;
