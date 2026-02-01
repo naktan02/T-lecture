@@ -12,6 +12,7 @@ function getRefreshCookieOptions() {
     httpOnly: true,
     secure: isProd,
     sameSite: isProd ? ('none' as const) : ('strict' as const), // Cross-domain 쿠키 허용
+    partitioned: isProd, // Chrome 118+ 제3자 쿠키 차단 대비
     path: '/',
   };
 }
