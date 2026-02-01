@@ -62,11 +62,11 @@ T-LECTURE는 군 부대의 교육 일정과 강사 배정을 효율적으로 관
 - 배정 상태 추적 (Pending, Accepted, Rejected, Canceled)
 
 ### 3. 대시보드 (Dashboard)
-- **관리자 대시보드**
+- 관리자 대시보드
   - 전체 교육 현황 통계
   - 강사별/팀별 성과 분석
   - 상태별 일정 현황 (완료, 진행중, 예정, 미배정)
-- **강사 대시보드**
+- 강사 대시보드
   - 총 근무 시간/이동 거리
   - 배정 수락률
   - 월별 활동 추이
@@ -256,45 +256,6 @@ NODE_ENV=production
 PORT=3000
 DATABASE_URL="postgresql://user:password@host:5432/database?sslmode=require"
 ```
-
----
-
-## 테스트
-
-### 통합 테스트
-
-```bash
-cd server
-
-# 전체 테스트
-npm test
-
-# 개별 모듈 테스트
-npm run test:auth
-npm run test:assignments
-npm run test:units
-npm run test:instructor
-npm run test:distance
-```
-
-### 부하 테스트
-
-```bash
-cd server
-
-# Artillery
-npm run load:quick
-npm run load:test
-npm run load:stress
-
-# k6
-npm run k6:quick
-npm run k6:full
-npm run k6:role
-npm run k6:stress
-```
-
----
 
 ## 코드 품질
 
