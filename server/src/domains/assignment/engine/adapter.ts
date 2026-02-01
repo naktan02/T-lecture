@@ -24,6 +24,8 @@ type ExecuteOptions = {
   internMaxDistanceKm?: number;
   /** 보조강사 최대 배정 거리 (km), null=제한없음 */
   subMaxDistanceKm?: number | null;
+  /** 강사-부대 거리 데이터 (km 단위): `${instructorId}-${unitId}` → km */
+  instructorDistances?: Map<string, number>;
 };
 
 // =========================================
@@ -261,6 +263,7 @@ class AssignmentAlgorithm {
     const result = engine.execute(units, candidates, {
       blockedInstructorIdsBySchedule: options?.blockedInstructorIdsBySchedule,
       debugTopK: options?.debugTopK ?? 0,
+      instructorDistances: options?.instructorDistances,
     });
 
     // 3. 장소 분배 (같은 TrainingPeriod 내 일관성 유지)

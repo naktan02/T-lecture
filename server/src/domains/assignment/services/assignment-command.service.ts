@@ -7,6 +7,7 @@ import {
   assignmentConfigRepository,
 } from '../repositories';
 import instructorRepository from '../../instructor/instructor.repository';
+import distanceRepository from '../../distance/distance.repository';
 import AppError from '../../../common/errors/AppError';
 import assignmentAlgorithm from '../engine/adapter';
 import { DEFAULT_ASSIGNMENT_CONFIG } from '../engine/config-loader';
@@ -247,6 +248,20 @@ class AssignmentCommandService {
         rejectionSince,
       );
 
+    // 6) 거리 데이터 조회 및 변환 (미터 → km)
+    // distance가 null이면 preDistance 사용 (주소 변경 후 재계산 대기 중)
+    const unitIds = Array.from(unitMap.keys());
+    const distanceData = await distanceRepository.findManyByUnitIds(unitIds);
+    const instructorDistances = new Map<string, number>();
+    for (const d of distanceData) {
+      // effectiveDistance: distance ?? preDistance (미터 → km 변환)
+      const effectiveDistanceM = d.distance ?? d.preDistance;
+      if (effectiveDistanceM !== null) {
+        const key = `${d.userId}-${d.unitId}`;
+        instructorDistances.set(key, Number(effectiveDistanceM) / 1000);
+      }
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const matchResult = assignmentAlgorithm.execute(units as any, instructors as any, {
       traineesPerInstructor,
@@ -255,6 +270,7 @@ class AssignmentCommandService {
       recentRejectionCountByInstructorId,
       internMaxDistanceKm,
       subMaxDistanceKm,
+      instructorDistances,
     });
 
     const { assignments: matchResults } = matchResult;
@@ -352,6 +368,20 @@ class AssignmentCommandService {
     const internMaxDistanceKm = await this.getSystemConfigNumber('INTERN_MAX_DISTANCE_KM', 50);
     const subMaxDistanceKm = await this.getSystemConfigNumberOrNull('SUB_MAX_DISTANCE_KM');
 
+    // 거리 데이터 조회 및 변환 (미터 → km)
+    // distance가 null이면 preDistance 사용 (주소 변경 후 재계산 대기 중)
+    const unitIds = units.map((u) => u.id);
+    const distanceData = await distanceRepository.findManyByUnitIds(unitIds);
+    const instructorDistances = new Map<string, number>();
+    for (const d of distanceData) {
+      // effectiveDistance: distance ?? preDistance (미터 → km 변환)
+      const effectiveDistanceM = d.distance ?? d.preDistance;
+      if (effectiveDistanceM !== null) {
+        const key = `${d.userId}-${d.unitId}`;
+        instructorDistances.set(key, Number(effectiveDistanceM) / 1000);
+      }
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const matchResult = assignmentAlgorithm.execute(units as any, instructors as any, {
       traineesPerInstructor,
@@ -361,6 +391,7 @@ class AssignmentCommandService {
       debugTopK,
       internMaxDistanceKm,
       subMaxDistanceKm,
+      instructorDistances,
     });
 
     const { assignments: matchResults, debug } = matchResult;

@@ -3,6 +3,7 @@
 
 import { assignmentQueryRepository, assignmentConfigRepository } from '../repositories';
 import instructorRepository from '../../instructor/instructor.repository';
+import distanceRepository from '../../distance/distance.repository';
 import { DEFAULT_ASSIGNMENT_CONFIG } from '../engine/config-loader';
 import type { UnitRaw, InstructorRaw } from '../../../types/assignment.types';
 
@@ -63,20 +64,54 @@ class AssignmentQueryService {
       endDate: maxScheduleDate.toISOString().split('T')[0],
     };
 
-    // 4) 강사 목록 조회 (기간 내 가능한 강사)
-    const instructorsRaw = await instructorRepository.findAvailableInPeriod(
-      actualDateRangeStr.startDate,
-      actualDateRangeStr.endDate,
-    );
+    // 4) 병렬 조회: 강사 목록, 전체 강사 목록, 거리 데이터, 거리 제한 설정
+    const unitIds = unitsRaw.map((u) => u.id);
 
-    // 5) 전체 승인된 강사 목록 조회 (전체 검색용)
-    const allInstructorsRaw = await instructorRepository.findActiveInstructors();
+    const [
+      instructorsRaw,
+      allInstructorsRaw,
+      distanceData,
+      internMaxDistanceKm,
+      subMaxDistanceKmValue,
+    ] = await Promise.all([
+      instructorRepository.findAvailableInPeriod(
+        actualDateRangeStr.startDate,
+        actualDateRangeStr.endDate,
+      ),
+      instructorRepository.findActiveInstructors(),
+      distanceRepository.findManyByUnitIds(unitIds),
+      this.getSystemConfigNumber('INTERN_MAX_DISTANCE_KM', 50),
+      assignmentConfigRepository.getSystemConfigValue('SUB_MAX_DISTANCE_KM'),
+    ]);
+
+    // 5) 거리 데이터 변환 (미터 → km)
+    // distance가 null이면 preDistance 사용 (주소 변경 후 재계산 대기 중)
+    // 둘 다 null인 강사는 distanceMap에 포함되지 않음 → 프론트에서 필터링 안함
+    const distanceMap: Record<string, number> = {};
+    for (const d of distanceData) {
+      const effectiveDistanceM = d.distance ?? d.preDistance;
+      if (effectiveDistanceM !== null) {
+        const key = `${d.userId}-${d.unitId}`;
+        distanceMap[key] = Number(effectiveDistanceM) / 1000; // km
+      }
+    }
+
+    // SUB_MAX_DISTANCE_KM: 0 또는 빈 값 = 제한 없음 (null)
+    const subMaxDistanceKm =
+      subMaxDistanceKmValue && Number(subMaxDistanceKmValue) > 0
+        ? Number(subMaxDistanceKmValue)
+        : null;
 
     return {
       unitsRaw: unitsRaw as unknown as UnitRaw[],
       instructorsRaw: instructorsRaw as unknown as InstructorRaw[],
       allInstructorsRaw: allInstructorsRaw as unknown as InstructorRaw[],
       actualDateRange: actualDateRangeStr,
+      distanceMap,
+      distanceLimits: {
+        internMaxDistanceKm,
+        subMaxDistanceKm,
+      },
     };
   }
 
