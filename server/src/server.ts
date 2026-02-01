@@ -15,7 +15,7 @@ import { requestLogger, rateLimiter } from './common/middlewares';
 import v1Router from './api/v1';
 import errorHandler from './common/middlewares/errorHandler';
 import logger from './config/logger';
-import prisma from './libs/prisma';
+import prisma, { startDatabaseHeartbeat, stopDatabaseHeartbeat } from './libs/prisma';
 
 const app = express();
 
@@ -117,6 +117,9 @@ server.on('listening', async () => {
     await prisma.$connect();
     logger.info('Database connection established');
 
+    // Supavisor 5분 유휴 타임아웃 방지를 위한 heartbeat 시작
+    startDatabaseHeartbeat();
+
     // 시작 시 메모리 로깅
     logMemoryUsage('startup');
 
@@ -181,6 +184,7 @@ process.on('SIGTERM', () => {
 
   server.close(async () => {
     logger.info('HTTP server closed');
+    stopDatabaseHeartbeat();
     await prisma.$disconnect();
     logger.info('Database connection closed');
     await Sentry.close(2000);
