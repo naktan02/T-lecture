@@ -76,82 +76,83 @@ interface UnitDetail {
     instructors: { id: number; name: string }[];
   }[];
 }
+
 class DashboardAdminService {
   /**
-   * 교육 진행 현황 (도넛 차트) - 기간 필터 적용 및 쿼리 최적화
+   * 교육 진행 현황 (도넛 차트) - Raw SQL 집계 쿼리로 최적화
+   * 기존: 모든 Unit 조회 → JS 메모리에서 상태 판별
+   * 개선: DB에서 직접 집계 → 단일 쿼리로 결과 반환
    */
   async getDashboardStats(start?: Date, end?: Date): Promise<DashboardStats> {
     const today = getTodayUTC();
 
-    // 기간 필터 조건 (없으면 전체)
-    const dateFilter = start && end ? { date: { gte: start, lte: end } } : undefined;
+    // 기간 필터 (없으면 전체 기간)
+    const startDate = start || new Date('2020-01-01');
+    const endDate = end || new Date('2099-12-31');
 
-    // 최적화: 필요한 필드만 select (Unit -> TrainingPeriod -> UnitSchedule)
-    // 교육 기간이 해당 범위에 겹치는 부대만 1차적으로 가져올 수도 있지만,
-    // 정확한 통계를 위해 모든 부대를 가져오되, 내부는 필터링된 스케줄만 가져옴
-    const units = (await prisma.unit.findMany({
-      select: {
-        id: true,
-        trainingPeriods: {
-          select: {
-            schedules: {
-              where: dateFilter, // 필터링된 스케줄만 가져옴
-              select: {
-                date: true,
-                assignments: {
-                  where: { state: 'Accepted', classification: 'Confirmed' },
-                  select: { userId: true }, // 배정 여부 확인용 ID만
-                },
-              },
-            },
-          },
-        },
-      },
-    })) as any;
+    // Raw SQL로 Unit별 상태를 집계
+    // CTE로 Unit별 배정된 스케줄의 첫째/마지막 날짜 계산 후 상태 판별
+    const result = await prisma.$queryRaw<
+      {
+        completed: bigint;
+        in_progress: bigint;
+        scheduled: bigint;
+        unassigned: bigint;
+      }[]
+    >`
+      WITH unit_schedule_summary AS (
+        SELECT 
+          u.id as unit_id,
+          MIN(CASE WHEN a.id IS NOT NULL THEN s.date END) as first_assigned_date,
+          MAX(CASE WHEN a.id IS NOT NULL THEN s.date END) as last_assigned_date,
+          COUNT(CASE WHEN a.id IS NOT NULL THEN 1 END) as assigned_count,
+          COUNT(s.id) as total_schedule_count,
+          BOOL_OR(s.date = ${today}::date AND a.id IS NOT NULL) as has_today_assigned
+        FROM "Unit" u
+        JOIN "TrainingPeriod" tp ON tp."unitId" = u.id
+        JOIN "UnitSchedule" s ON s."trainingPeriodId" = tp.id
+        LEFT JOIN "InstructorUnitAssignment" a 
+          ON a."unitScheduleId" = s.id 
+          AND a.state = 'Accepted' 
+          AND a.classification = 'Confirmed'
+        WHERE s.date >= ${startDate}::date AND s.date <= ${endDate}::date
+        GROUP BY u.id
+        HAVING COUNT(s.id) > 0
+      )
+      SELECT 
+        COALESCE(SUM(CASE 
+          WHEN assigned_count = 0 THEN 1 
+          ELSE 0 
+        END), 0) as unassigned,
+        COALESCE(SUM(CASE 
+          WHEN assigned_count > 0 AND last_assigned_date < ${today}::date THEN 1 
+          ELSE 0 
+        END), 0) as completed,
+        COALESCE(SUM(CASE 
+          WHEN assigned_count > 0 AND first_assigned_date > ${today}::date THEN 1 
+          ELSE 0 
+        END), 0) as scheduled,
+        COALESCE(SUM(CASE 
+          WHEN assigned_count > 0 
+            AND first_assigned_date <= ${today}::date 
+            AND last_assigned_date >= ${today}::date THEN 1 
+          ELSE 0 
+        END), 0) as in_progress
+      FROM unit_schedule_summary
+    `;
 
-    let completed = 0;
-    let inProgress = 0;
-    let scheduled = 0;
-    let unassigned = 0;
+    // BigInt를 Number로 변환
+    const stats = result[0] || {
+      completed: BigInt(0),
+      in_progress: BigInt(0),
+      scheduled: BigInt(0),
+      unassigned: BigInt(0),
+    };
 
-    for (const unit of units) {
-      // 모든 trainingPeriods의 schedules를 평탄화 (필터링된 것만 있음)
-      const allSchedules = unit.trainingPeriods.flatMap((p) => p.schedules);
-
-      // 조회 기간 내에 스케줄이 아예 없으면 -> 이 기간 통계에서 제외? 또는 unassigned?
-      // 요구사항: "기간 내" 통계이므로 기간 내 스케줄이 없으면 집계 제외가 맞음.
-      if (allSchedules.length === 0) continue;
-
-      // 배정이 있는 일정만 필터링
-      const assignedScheduleDates = allSchedules
-        .filter((s) => s.date && s.assignments.length > 0)
-        .map((s) => toUTCMidnight(new Date(s.date!)));
-
-      if (assignedScheduleDates.length === 0) {
-        // 기간 내 일정은 있지만 배정이 없음
-        unassigned++;
-        continue;
-      }
-
-      // 날짜 정렬
-      assignedScheduleDates.sort((a, b) => a.getTime() - b.getTime());
-      const firstDate = assignedScheduleDates[0];
-      const lastDate = assignedScheduleDates[assignedScheduleDates.length - 1];
-
-      // 오늘이 일정에 포함되는지 확인
-      const todayIsScheduled = assignedScheduleDates.some((d) => d.getTime() === today.getTime());
-
-      if (todayIsScheduled) {
-        inProgress++;
-      } else if (lastDate < today) {
-        completed++;
-      } else if (firstDate > today) {
-        scheduled++;
-      } else {
-        // 기간은 걸쳐있으나 오늘은 아님 -> 진행중 간주
-        inProgress++;
-      }
-    }
+    const completed = Number(stats.completed);
+    const inProgress = Number(stats.in_progress);
+    const scheduled = Number(stats.scheduled);
+    const unassigned = Number(stats.unassigned);
 
     return {
       educationStatus: {
