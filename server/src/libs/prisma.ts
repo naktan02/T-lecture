@@ -4,6 +4,7 @@ import { PrismaClient } from '../generated/prisma/client.js';
 
 // Prisma 7 권장 방식: connectionString만 전달
 // Supabase Supavisor 사용 시 connection pooling은 서버 측에서 관리됨
+// 연결이 끊기면 다음 쿼리 시 자동으로 새 연결 생성 (Prisma 7 기본 동작)
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 
 // 전역 선언을 통해 개발 환경에서 재시작 시 커넥션 누수를 방지합니다.
