@@ -33,7 +33,7 @@ interface InstructorAnalysis {
   role: string | null;
   team: string | null;
   completedCount: number;
-  acceptanceRate: number;
+  rejectionRate: number;
   isActive: boolean;
 }
 
@@ -259,6 +259,7 @@ class DashboardAdminService {
     return instructors.map((inst) => {
       const allAssignments = inst.unitAssignments;
       const accepted = allAssignments.filter((a) => a.state === 'Accepted');
+      const rejected = allAssignments.filter((a) => a.state === 'Rejected');
 
       // Completed = Accepted AND schedule date < today
       const completed = accepted.filter((a) => {
@@ -273,9 +274,9 @@ class DashboardAdminService {
         role: inst.instructor?.category || null,
         team: inst.instructor?.team?.name || null,
         completedCount: completed.length,
-        acceptanceRate:
+        rejectionRate:
           allAssignments.length > 0
-            ? Math.round((accepted.length / allAssignments.length) * 100)
+            ? Math.round((rejected.length / allAssignments.length) * 100)
             : 0,
         isActive: completed.length > 0,
       };

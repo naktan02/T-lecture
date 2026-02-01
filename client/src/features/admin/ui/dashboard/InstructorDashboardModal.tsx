@@ -46,9 +46,9 @@ interface DashboardStats {
     periodCount: number;
   };
   performance: {
-    acceptanceRate: number;
+    rejectionRate: number;
     totalProposals: number;
-    acceptedCount: number;
+    rejectedCount: number;
   };
   monthlyTrend: { month: string; count: number; hours: number }[];
   recentActivities: ActivityGroup[];
@@ -341,10 +341,10 @@ export const InstructorDashboardModal: React.FC<Props> = ({
                 <div className={`rounded-xl border p-5 ${colorStyles.purple}`}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium opacity-80">배정 수락률</p>
-                      <p className="mt-1 text-2xl font-bold">{stats.performance.acceptanceRate}%</p>
+                      <p className="text-sm font-medium opacity-80">배정 거절률</p>
+                      <p className="mt-1 text-2xl font-bold">{stats.performance.rejectionRate}%</p>
                       <p className="text-xs opacity-70">
-                        {stats.performance.acceptedCount}/{stats.performance.totalProposals}건
+                        {stats.performance.rejectedCount}/{stats.performance.totalProposals}건
                       </p>
                     </div>
                     <div className="rounded-full bg-white/60 p-3">
