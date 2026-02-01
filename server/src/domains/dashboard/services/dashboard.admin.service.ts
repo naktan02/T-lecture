@@ -92,6 +92,7 @@ class DashboardAdminService {
 
     // Raw SQL로 Unit별 상태를 집계
     // CTE로 Unit별 배정된 스케줄의 첫째/마지막 날짜 계산 후 상태 판별
+    // 테이블/컬럼명은 Prisma @@map에 정의된 한글명 사용
     const result = await prisma.$queryRaw<
       {
         completed: bigint;
@@ -103,19 +104,19 @@ class DashboardAdminService {
       WITH unit_schedule_summary AS (
         SELECT 
           u.id as unit_id,
-          MIN(CASE WHEN a.id IS NOT NULL THEN s.date END) as first_assigned_date,
-          MAX(CASE WHEN a.id IS NOT NULL THEN s.date END) as last_assigned_date,
-          COUNT(CASE WHEN a.id IS NOT NULL THEN 1 END) as assigned_count,
+          MIN(CASE WHEN a."userId" IS NOT NULL THEN s."교육일" END) as first_assigned_date,
+          MAX(CASE WHEN a."userId" IS NOT NULL THEN s."교육일" END) as last_assigned_date,
+          COUNT(CASE WHEN a."userId" IS NOT NULL THEN 1 END) as assigned_count,
           COUNT(s.id) as total_schedule_count,
-          BOOL_OR(s.date = ${today}::date AND a.id IS NOT NULL) as has_today_assigned
-        FROM "Unit" u
-        JOIN "TrainingPeriod" tp ON tp."unitId" = u.id
-        JOIN "UnitSchedule" s ON s."trainingPeriodId" = tp.id
-        LEFT JOIN "InstructorUnitAssignment" a 
+          BOOL_OR(s."교육일" = ${today}::date AND a."userId" IS NOT NULL) as has_today_assigned
+        FROM "부대" u
+        JOIN "교육기간" tp ON tp."부대id" = u.id
+        JOIN "부대일정" s ON s."교육기간id" = tp.id
+        LEFT JOIN "강사_부대_배정" a 
           ON a."unitScheduleId" = s.id 
-          AND a.state = 'Accepted' 
-          AND a.classification = 'Confirmed'
-        WHERE s.date >= ${startDate}::date AND s.date <= ${endDate}::date
+          AND a."배정상태" = 'Accepted' 
+          AND a."배치분류" = 'Confirmed'
+        WHERE s."교육일" >= ${startDate}::date AND s."교육일" <= ${endDate}::date
         GROUP BY u.id
         HAVING COUNT(s.id) > 0
       )
@@ -227,126 +228,115 @@ class DashboardAdminService {
   }
 
   /**
-   * 강사 분석 (기간 필터 지원)
-   */
-  /**
-   * 강사 분석 (기간 필터 지원)
+   * 강사 분석 (기간 필터 지원) - Raw SQL 최적화
    */
   async getInstructorAnalysis(start: Date, end: Date): Promise<InstructorAnalysis[]> {
-    const instructors = await prisma.user.findMany({
-      where: {
-        status: 'APPROVED',
-        instructor: { isNot: null },
-      },
-      include: {
-        instructor: {
-          include: { team: true },
-        },
-        unitAssignments: {
-          where: {
-            UnitSchedule: {
-              date: { gte: start, lte: end },
-            },
-          },
-          include: {
-            UnitSchedule: true,
-          },
-        },
-      },
-    });
-
     const today = getTodayUTC();
 
-    return instructors.map((inst) => {
-      const allAssignments = inst.unitAssignments;
-      const accepted = allAssignments.filter((a) => a.state === 'Accepted');
-      const rejected = allAssignments.filter((a) => a.state === 'Rejected');
+    // Raw SQL로 강사별 통계 집계
+    const results = await prisma.$queryRaw<
+      {
+        id: number;
+        name: string | null;
+        role: string | null;
+        team_name: string | null;
+        total_assignments: bigint;
+        accepted_count: bigint;
+        rejected_count: bigint;
+        completed_count: bigint;
+      }[]
+    >`
+      SELECT 
+        u.id,
+        u.name,
+        i."분류" as role,
+        t."team_name" as team_name,
+        COUNT(a."userId") as total_assignments,
+        COUNT(CASE WHEN a."배정상태" = 'Accepted' THEN 1 END) as accepted_count,
+        COUNT(CASE WHEN a."배정상태" = 'Rejected' THEN 1 END) as rejected_count,
+        COUNT(CASE WHEN a."배정상태" = 'Accepted' AND s."교육일" < ${today}::date THEN 1 END) as completed_count
+      FROM "user" u
+      JOIN "강사" i ON i."user_id" = u.id
+      LEFT JOIN "team" t ON t.id = i."team_id"
+      LEFT JOIN "강사_부대_배정" a ON a."userId" = u.id
+      LEFT JOIN "부대일정" s ON s.id = a."unitScheduleId"
+        AND s."교육일" >= ${start}::date 
+        AND s."교육일" <= ${end}::date
+      WHERE u.status = 'APPROVED'
+      GROUP BY u.id, u.name, i."분류", t."team_name"
+      ORDER BY u.name
+    `;
 
-      // Completed = Accepted AND schedule date < today
-      const completed = accepted.filter((a) => {
-        if (!a.UnitSchedule?.date) return false;
-        const d = toUTCMidnight(new Date(a.UnitSchedule.date));
-        return d < today;
-      });
-
-      return {
-        id: inst.id,
-        name: inst.name || 'Unknown',
-        role: inst.instructor?.category || null,
-        team: inst.instructor?.team?.name || null,
-        completedCount: completed.length,
-        rejectionRate:
-          allAssignments.length > 0
-            ? Math.round((rejected.length / allAssignments.length) * 100)
-            : 0,
-        isActive: completed.length > 0,
-      };
-    });
+    return results.map((r) => ({
+      id: r.id,
+      name: r.name || 'Unknown',
+      role: r.role,
+      team: r.team_name,
+      completedCount: Number(r.completed_count),
+      rejectionRate:
+        Number(r.total_assignments) > 0
+          ? Math.round((Number(r.rejected_count) / Number(r.total_assignments)) * 100)
+          : 0,
+      isActive: Number(r.completed_count) > 0,
+    }));
   }
 
   /**
-   * 팀 분석 (기간 필터 지원)
+   * 팀 분석 (기간 필터 지원) - Raw SQL 최적화
    */
   async getTeamAnalysis(start: Date, end: Date): Promise<TeamAnalysis[]> {
     const today = getTodayUTC();
 
-    const teams = await prisma.team.findMany({
-      where: { deletedAt: null },
-      include: {
-        instructors: {
-          include: {
-            user: {
-              include: {
-                unitAssignments: {
-                  where: {
-                    state: 'Accepted',
-                    classification: 'Confirmed',
-                    UnitSchedule: {
-                      date: { gte: start, lte: end },
-                    },
-                  },
-                  include: { UnitSchedule: true },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
+    // Raw SQL로 팀별 통계 집계
+    const results = await prisma.$queryRaw<
+      {
+        id: number;
+        team_name: string | null;
+        member_count: bigint;
+        total_completed: bigint;
+        active_members: bigint;
+      }[]
+    >`
+      WITH member_stats AS (
+        SELECT 
+          i."team_id" as team_id,
+          i."user_id" as user_id,
+          COUNT(CASE WHEN a."배정상태" = 'Accepted' AND a."배치분류" = 'Confirmed' AND s."교육일" < ${today}::date THEN 1 END) as completed_count
+        FROM "강사" i
+        LEFT JOIN "강사_부대_배정" a ON a."userId" = i."user_id"
+        LEFT JOIN "부대일정" s ON s.id = a."unitScheduleId"
+          AND s."교육일" >= ${start}::date 
+          AND s."교육일" <= ${end}::date
+        WHERE i."team_id" IS NOT NULL
+        GROUP BY i."team_id", i."user_id"
+      )
+      SELECT 
+        t.id,
+        t."team_name" as team_name,
+        COUNT(DISTINCT ms.user_id) as member_count,
+        COALESCE(SUM(ms.completed_count), 0) as total_completed,
+        COUNT(DISTINCT CASE WHEN ms.completed_count > 0 THEN ms.user_id END) as active_members
+      FROM "team" t
+      LEFT JOIN member_stats ms ON ms.team_id = t.id
+      WHERE t."deleted_at" IS NULL
+      GROUP BY t.id, t."team_name"
+      ORDER BY t."team_name"
+    `;
 
-    return teams.map((team) => {
-      const members = team.instructors.map((i) => i.user);
-
-      // 개별 근무 횟수 합산 (중복 제거 없음)
-      let totalCompletedCount = 0;
-      let activeMembers = 0;
-
-      members.forEach((user) => {
-        let memberCompletedCount = 0;
-
-        user.unitAssignments.forEach((a) => {
-          if (!a.UnitSchedule?.date) return;
-          const d = toUTCMidnight(new Date(a.UnitSchedule.date));
-          if (d < today) {
-            memberCompletedCount++;
-          }
-        });
-
-        totalCompletedCount += memberCompletedCount;
-        if (memberCompletedCount > 0) activeMembers++;
-      });
-
-      return {
-        id: team.id,
-        teamName: team.name || 'Unnamed',
-        memberCount: members.length,
-        completedCount: totalCompletedCount,
-        averageCompleted:
-          members.length > 0 ? Math.round((totalCompletedCount / members.length) * 10) / 10 : 0,
-        activeMemberRate:
-          members.length > 0 ? Math.round((activeMembers / members.length) * 100) : 0,
-      };
-    });
+    return results.map((r) => ({
+      id: r.id,
+      teamName: r.team_name || 'Unnamed',
+      memberCount: Number(r.member_count),
+      completedCount: Number(r.total_completed),
+      averageCompleted:
+        Number(r.member_count) > 0
+          ? Math.round((Number(r.total_completed) / Number(r.member_count)) * 10) / 10
+          : 0,
+      activeMemberRate:
+        Number(r.member_count) > 0
+          ? Math.round((Number(r.active_members) / Number(r.member_count)) * 100)
+          : 0,
+    }));
   }
 
   /**
