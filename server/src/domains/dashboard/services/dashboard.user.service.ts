@@ -122,6 +122,7 @@ class DashboardService {
       where: {
         userId,
         state: 'Accepted',
+        classification: 'Confirmed',
         UnitSchedule: { date: { gte: queryStart, lt: today } },
       },
       select: {
@@ -165,6 +166,7 @@ class DashboardService {
       where: {
         userId,
         state: 'Accepted',
+        classification: 'Confirmed',
         UnitSchedule: { date: { gte: queryStart, lte: queryEnd } },
       },
     });
@@ -266,6 +268,7 @@ class DashboardService {
       where: {
         userId,
         state: 'Accepted',
+        classification: 'Confirmed',
         UnitSchedule: {
           date: {
             gte: monthlyQueryStart,
@@ -369,6 +372,7 @@ class DashboardService {
       where: {
         userId,
         state: 'Accepted',
+        classification: 'Confirmed',
         UnitSchedule: {
           date: {
             gte: queryStart,

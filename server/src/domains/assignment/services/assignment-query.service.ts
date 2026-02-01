@@ -122,6 +122,7 @@ class AssignmentQueryService {
     const today = getTodayUTC();
     return await assignmentQueryRepository.findAllByInstructorId(instructorId, {
       state: 'Accepted',
+      classification: 'Confirmed',
       UnitSchedule: { date: { lt: today } },
     });
   }

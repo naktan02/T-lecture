@@ -99,7 +99,7 @@ class DashboardAdminService {
               select: {
                 date: true,
                 assignments: {
-                  where: { state: 'Accepted' },
+                  where: { state: 'Accepted', classification: 'Confirmed' },
                   select: { userId: true }, // 배정 여부 확인용 ID만
                 },
               },
@@ -177,11 +177,11 @@ class DashboardAdminService {
     // 1. Assignment status filter
     if (status === 'unassigned') {
       whereClause = {
-        assignments: { none: { state: 'Accepted' } },
+        assignments: { none: { state: 'Accepted', classification: 'Confirmed' } },
       };
     } else {
       whereClause = {
-        assignments: { some: { state: 'Accepted' } },
+        assignments: { some: { state: 'Accepted', classification: 'Confirmed' } },
       };
     }
 
@@ -209,7 +209,7 @@ class DashboardAdminService {
         // NOTE: unit은 이제 trainingPeriod를 통해 접근
         trainingPeriod: { include: { unit: true } },
         assignments: {
-          where: { state: 'Accepted' },
+          where: { state: 'Accepted', classification: 'Confirmed' },
           include: { User: true },
         },
       },
@@ -298,6 +298,7 @@ class DashboardAdminService {
                 unitAssignments: {
                   where: {
                     state: 'Accepted',
+                    classification: 'Confirmed',
                     UnitSchedule: {
                       date: { gte: start, lte: end },
                     },
@@ -362,6 +363,7 @@ class DashboardAdminService {
                 unitAssignments: {
                   where: {
                     state: 'Accepted',
+                    classification: 'Confirmed',
                     UnitSchedule: {
                       date: { gte: start, lte: end },
                     },
@@ -434,7 +436,7 @@ class DashboardAdminService {
               select: {
                 date: true,
                 assignments: {
-                  where: { state: 'Accepted' },
+                  where: { state: 'Accepted', classification: 'Confirmed' },
                   select: { User: { select: { id: true } } }, // 강사 ID만 (카운트용)
                 },
               },
@@ -530,7 +532,7 @@ class DashboardAdminService {
             schedules: {
               include: {
                 assignments: {
-                  where: { state: 'Accepted' },
+                  where: { state: 'Accepted', classification: 'Confirmed' },
                   include: { User: true },
                 },
               },

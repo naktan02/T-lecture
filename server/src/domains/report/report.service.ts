@@ -642,7 +642,7 @@ export class ReportService {
           include: {
             scheduleLocations: { include: { location: true } },
             assignments: {
-              where: { state: 'Accepted' },
+              where: { state: 'Accepted', classification: 'Confirmed' },
               include: { User: { select: { name: true } } },
             },
           },
@@ -808,7 +808,7 @@ export class ReportService {
           include: {
             scheduleLocations: { include: { location: true } },
             assignments: {
-              where: { state: 'Accepted' },
+              where: { state: 'Accepted', classification: 'Confirmed' },
               include: { User: { select: { name: true } } },
             },
           },
