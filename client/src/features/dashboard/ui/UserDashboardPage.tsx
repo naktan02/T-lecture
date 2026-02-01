@@ -1,6 +1,11 @@
 // client/src/features/dashboard/ui/UserDashboardPage.tsx
 import React, { useEffect, useState } from 'react';
-import { dashboardApi, DashboardStats, PaginatedActivities } from '../api/dashboardApi';
+import {
+  dashboardApi,
+  DashboardStats,
+  PaginatedActivities,
+  ActivityGroup,
+} from '../api/dashboardApi';
 import { getMilitaryTypeLabel } from '@/shared/types/unit.types';
 import {
   ClockIcon,
@@ -11,6 +16,8 @@ import {
   ArrowTrendingUpIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from '@heroicons/react/24/outline';
 import { LoadingSpinner, EmptyState } from '@/shared/ui';
 
@@ -84,9 +91,95 @@ const MonthlyChart: React.FC<MonthlyChartProps> = ({ data }) => {
   );
 };
 
-// 활동 내역 리스트 (기간별 조회 가능, 페이징 포함)
+// 활동 그룹 아이템 (교육 기간 단위)
+interface ActivityGroupItemProps {
+  activity: ActivityGroup;
+  isExpanded: boolean;
+  onToggle: () => void;
+}
+
+const ActivityGroupItem: React.FC<ActivityGroupItemProps> = ({
+  activity,
+  isExpanded,
+  onToggle,
+}) => {
+  const dateRange =
+    activity.dates.length > 1
+      ? `${activity.dates[activity.dates.length - 1].date} ~ ${activity.dates[0].date}`
+      : activity.dates[0]?.date || '';
+
+  return (
+    <div className="rounded-lg border border-gray-200 overflow-hidden transition-all">
+      {/* 그룹 헤더 (클릭 가능) */}
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between p-3 md:p-4 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm md:text-base font-medium text-gray-800 truncate">
+              {activity.unitName}
+            </p>
+            {activity.trainingPeriodName && (
+              <span className="text-[10px] md:text-xs text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded shrink-0">
+                {activity.trainingPeriodName}
+              </span>
+            )}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 md:gap-x-3 gap-y-1 text-[10px] md:text-xs text-gray-500">
+            <span className="flex items-center gap-1">
+              <CalendarDaysIcon className="h-3 w-3" />
+              {dateRange} ({activity.dates.length}일)
+            </span>
+            {activity.region && <span className="hidden sm:inline">• {activity.region}</span>}
+            {activity.unitType && (
+              <span className="rounded bg-gray-200 px-1 py-0.5">
+                {getMilitaryTypeLabel(activity.unitType)}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-3 ml-2 shrink-0">
+          <div className="text-right text-[11px] md:text-sm">
+            <p className="text-gray-600 font-medium">{activity.totalWorkHours}H</p>
+            <p className="text-[10px] md:text-xs text-gray-400">{activity.distance}km</p>
+          </div>
+          {isExpanded ? (
+            <ChevronUpIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-400" />
+          ) : (
+            <ChevronDownIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-400" />
+          )}
+        </div>
+      </button>
+
+      {/* 일자별 상세 (펼쳤을 때만 표시) */}
+      {isExpanded && (
+        <div className="border-t border-gray-200 bg-white">
+          <div className="p-2 md:p-3">
+            <div className="text-[10px] md:text-xs text-gray-500 mb-2 px-2">일자별 근무 내역</div>
+            <div className="space-y-1">
+              {activity.dates.map((dateInfo) => (
+                <div
+                  key={dateInfo.date}
+                  className="flex items-center justify-between px-2 py-1.5 md:py-2 rounded bg-gray-50"
+                >
+                  <span className="text-xs md:text-sm text-gray-700">{dateInfo.date}</span>
+                  <span className="text-xs md:text-sm font-medium text-gray-600">
+                    {dateInfo.workHours}시간
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// 활동 내역 리스트 (교육 기간 단위, 페이징 포함)
 interface ActivityHistoryProps {
-  assignments: DashboardStats['recentAssignments'];
+  activities: ActivityGroup[];
   rangeLabel: string;
   currentPage: number;
   totalPages: number;
@@ -96,7 +189,7 @@ interface ActivityHistoryProps {
 }
 
 const ActivityHistory: React.FC<ActivityHistoryProps> = ({
-  assignments,
+  activities,
   rangeLabel,
   currentPage,
   totalPages,
@@ -104,6 +197,25 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({
   isLoading,
   totalCount,
 }) => {
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+
+  const toggleExpanded = (id: number) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // 페이지 변경 시 펼침 상태 초기화
+  useEffect(() => {
+    setExpandedIds(new Set());
+  }, [currentPage]);
+
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 md:p-5">
       <div className="mb-4 flex items-center justify-between">
@@ -112,7 +224,7 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({
           <h3 className="text-sm md:text-base font-semibold text-gray-800">활동 내역</h3>
         </div>
         <span className="text-[10px] md:text-xs text-gray-400">
-          {rangeLabel} ({totalCount}건)
+          {rangeLabel} ({totalCount}개 교육)
         </span>
       </div>
 
@@ -120,37 +232,18 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({
         <div className="flex h-60 items-center justify-center">
           <LoadingSpinner />
         </div>
-      ) : assignments.length === 0 ? (
+      ) : activities.length === 0 ? (
         <EmptyState title="해당 기간의 활동 내역이 없습니다." />
       ) : (
         <>
           <div className="space-y-2 md:space-y-3">
-            {assignments.map((assignment) => (
-              <div
-                key={assignment.id}
-                className="flex items-center justify-between rounded-lg bg-gray-50 p-2.5 md:p-3 transition-colors hover:bg-gray-100"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs md:text-sm font-medium text-gray-800 truncate">
-                    {assignment.unitName}
-                  </p>
-                  <div className="mt-0.5 md:mt-1 flex flex-wrap items-center gap-x-2 md:gap-x-3 gap-y-1 text-[10px] md:text-xs text-gray-500">
-                    <span>{assignment.date}</span>
-                    {assignment.region && (
-                      <span className="hidden sm:inline">• {assignment.region}</span>
-                    )}
-                    {assignment.unitType && (
-                      <span className="rounded bg-gray-200 px-1 py-0.5">
-                        {getMilitaryTypeLabel(assignment.unitType)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="text-right text-[11px] md:text-sm ml-2 shrink-0">
-                  <p className="text-gray-600 font-medium">{assignment.workHours}H</p>
-                  <p className="text-[10px] md:text-xs text-gray-400">{assignment.distance}km</p>
-                </div>
-              </div>
+            {activities.map((activity) => (
+              <ActivityGroupItem
+                key={activity.trainingPeriodId}
+                activity={activity}
+                isExpanded={expandedIds.has(activity.trainingPeriodId)}
+                onToggle={() => toggleExpanded(activity.trainingPeriodId)}
+              />
             ))}
           </div>
 
@@ -443,28 +536,28 @@ export const UserDashboardPage: React.FC = () => {
             <StatCard
               title="총 근무 시간"
               value={`${stats.summary.totalWorkHours}시간`}
-              subtitle={'선택 기간 내 교육 시간'}
+              subtitle={`${stats.summary.periodCount}건의 교육`}
               icon={<ClockIcon className="h-4 w-4 md:h-6 md:w-6" />}
               color="blue"
             />
             <StatCard
               title="총 이동 거리"
               value={`${stats.summary.totalDistance}km`}
-              subtitle={'선택 기간 내 이동 거리'}
+              subtitle="왕복 기준"
               icon={<MapPinIcon className="h-4 w-4 md:h-6 md:w-6" />}
               color="green"
             />
             <StatCard
               title="배정 수락률"
               value={`${stats.performance.acceptanceRate}%`}
-              subtitle={`${stats.performance.acceptedCount}/${stats.performance.totalProposals} 건`}
+              subtitle={`${stats.performance.acceptedCount}/${stats.performance.totalProposals}건`}
               icon={<ArrowTrendingUpIcon className="h-4 w-4 md:h-6 md:w-6" />}
               color="purple"
             />
             <StatCard
               title="근무 일수"
               value={`${stats.summary.totalWorkDays}일`}
-              subtitle={'선택 기간 내 근무일수'}
+              subtitle="선택 기간 내"
               icon={<CheckCircleIcon className="h-4 w-4 md:h-6 md:w-6" />}
               color="orange"
             />
@@ -474,7 +567,7 @@ export const UserDashboardPage: React.FC = () => {
           <div className="grid gap-6">
             <MonthlyChart data={stats.monthlyTrend} />
             <ActivityHistory
-              assignments={activitiesData?.activities || []}
+              activities={activitiesData?.activities || []}
               rangeLabel={
                 rangeType === 'custom'
                   ? `${startDate} ~ ${endDate}`

@@ -4,8 +4,13 @@ import {
   MapPinIcon,
   CheckCircleIcon,
   ArrowTrendingUpIcon,
+  ChartBarIcon,
+  CalendarDaysIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from '@heroicons/react/24/outline';
 import { apiClient } from '@/shared/apiClient';
+import { getMilitaryTypeLabel } from '@/shared/types/unit.types';
 
 interface Props {
   isOpen: boolean;
@@ -15,13 +20,30 @@ interface Props {
   instructorName: string;
 }
 
+// 활동 내역 일자 정보
+interface ActivityDate {
+  date: string;
+  workHours: number;
+}
+
+// 활동 내역 (교육 기간 단위)
+interface ActivityGroup {
+  trainingPeriodId: number;
+  unitName: string;
+  unitType: string | null;
+  region: string | null;
+  trainingPeriodName: string;
+  distance: number;
+  totalWorkHours: number;
+  dates: ActivityDate[];
+}
+
 interface DashboardStats {
   summary: {
     totalWorkHours: number;
     totalDistance: number;
     totalWorkDays: number;
-    yearCount: number;
-    monthCount: number;
+    periodCount: number;
   };
   performance: {
     acceptanceRate: number;
@@ -29,16 +51,7 @@ interface DashboardStats {
     acceptedCount: number;
   };
   monthlyTrend: { month: string; count: number; hours: number }[];
-  recentAssignments: {
-    id: number;
-    date: string;
-    unitName: string;
-    unitType: string | null;
-    region: string | null;
-    status: string;
-    distance: number;
-    workHours: number;
-  }[];
+  recentActivities: ActivityGroup[];
 }
 
 const colorStyles = {
@@ -46,6 +59,84 @@ const colorStyles = {
   green: 'bg-emerald-50 text-emerald-600 border-emerald-200',
   purple: 'bg-purple-50 text-purple-600 border-purple-200',
   orange: 'bg-orange-50 text-orange-600 border-orange-200',
+};
+
+// 활동 그룹 아이템 컴포넌트
+interface ActivityGroupItemProps {
+  activity: ActivityGroup;
+  isExpanded: boolean;
+  onToggle: () => void;
+}
+
+const ActivityGroupItem: React.FC<ActivityGroupItemProps> = ({
+  activity,
+  isExpanded,
+  onToggle,
+}) => {
+  const dateRange =
+    activity.dates.length > 1
+      ? `${activity.dates[activity.dates.length - 1].date} ~ ${activity.dates[0].date}`
+      : activity.dates[0]?.date || '';
+
+  return (
+    <div className="rounded-lg border border-gray-200 overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-gray-800 truncate">{activity.unitName}</p>
+            {activity.trainingPeriodName && (
+              <span className="text-[10px] text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded shrink-0">
+                {activity.trainingPeriodName}
+              </span>
+            )}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-gray-500">
+            <span className="flex items-center gap-1">
+              <CalendarDaysIcon className="h-3 w-3" />
+              {dateRange} ({activity.dates.length}일)
+            </span>
+            {activity.region && <span>• {activity.region}</span>}
+            {activity.unitType && (
+              <span className="rounded bg-gray-200 px-1 py-0.5">
+                {getMilitaryTypeLabel(activity.unitType)}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-3 ml-2 shrink-0">
+          <div className="text-right text-sm">
+            <p className="text-gray-600 font-medium">{activity.totalWorkHours}H</p>
+            <p className="text-xs text-gray-400">{activity.distance}km</p>
+          </div>
+          {isExpanded ? (
+            <ChevronUpIcon className="h-4 w-4 text-gray-400" />
+          ) : (
+            <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+          )}
+        </div>
+      </button>
+
+      {isExpanded && (
+        <div className="border-t border-gray-200 bg-white p-3">
+          <div className="text-[10px] text-gray-500 mb-2">일자별 근무 내역</div>
+          <div className="space-y-1">
+            {activity.dates.map((dateInfo) => (
+              <div
+                key={dateInfo.date}
+                className="flex items-center justify-between px-2 py-1.5 rounded bg-gray-50"
+              >
+                <span className="text-xs text-gray-700">{dateInfo.date}</span>
+                <span className="text-xs font-medium text-gray-600">{dateInfo.workHours}시간</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export const InstructorDashboardModal: React.FC<Props> = ({
@@ -58,11 +149,24 @@ export const InstructorDashboardModal: React.FC<Props> = ({
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
   // Filter states
-  const [rangeType, setRangeType] = useState<string>('12m'); // Default 12m
+  const [rangeType, setRangeType] = useState<string>('12m');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+
+  const toggleExpanded = (id: number) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   // Date calculation effect
   useEffect(() => {
@@ -90,13 +194,11 @@ export const InstructorDashboardModal: React.FC<Props> = ({
       setStartDate(formatDate(start));
       setEndDate(formatDate(today));
     }
-    // custom: keep existing values
   }, [rangeType]);
 
   useEffect(() => {
     if (!isOpen || !instructorId) return;
 
-    // If custom and dates are missing, don't fetch yet
     if (rangeType === 'custom' && (!startDate || !endDate)) {
       return;
     }
@@ -104,6 +206,8 @@ export const InstructorDashboardModal: React.FC<Props> = ({
     const fetchData = async () => {
       setLoading(true);
       setError(null);
+      setExpandedIds(new Set());
+
       try {
         const query = new URLSearchParams();
         if (rangeType === 'custom') {
@@ -111,7 +215,6 @@ export const InstructorDashboardModal: React.FC<Props> = ({
           query.append('endDate', endDate);
         } else {
           query.append('period', rangeType);
-          // For standard periods, rely on backend calculation to avoid stale state issues
         }
 
         const res = await apiClient(
@@ -130,6 +233,14 @@ export const InstructorDashboardModal: React.FC<Props> = ({
   }, [isOpen, instructorId, rangeType, startDate, endDate]);
 
   if (!isOpen) return null;
+
+  const getRangeLabel = () => {
+    if (rangeType === 'custom') return `${startDate} ~ ${endDate}`;
+    if (rangeType === '1m') return '최근 1개월';
+    if (rangeType === '3m') return '최근 3개월';
+    if (rangeType === '6m') return '최근 6개월';
+    return '최근 12개월';
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -208,6 +319,7 @@ export const InstructorDashboardModal: React.FC<Props> = ({
                     <div>
                       <p className="text-sm font-medium opacity-80">총 근무 시간</p>
                       <p className="mt-1 text-2xl font-bold">{stats.summary.totalWorkHours}시간</p>
+                      <p className="text-xs opacity-70">{stats.summary.periodCount}건의 교육</p>
                     </div>
                     <div className="rounded-full bg-white/60 p-3">
                       <ClockIcon className="h-6 w-6" />
@@ -219,6 +331,7 @@ export const InstructorDashboardModal: React.FC<Props> = ({
                     <div>
                       <p className="text-sm font-medium opacity-80">총 이동 거리</p>
                       <p className="mt-1 text-2xl font-bold">{stats.summary.totalDistance}km</p>
+                      <p className="text-xs opacity-70">왕복 기준</p>
                     </div>
                     <div className="rounded-full bg-white/60 p-3">
                       <MapPinIcon className="h-6 w-6" />
@@ -244,12 +357,7 @@ export const InstructorDashboardModal: React.FC<Props> = ({
                     <div>
                       <p className="text-sm font-medium opacity-80">근무 일수</p>
                       <p className="mt-1 text-2xl font-bold">{stats.summary.totalWorkDays}일</p>
-                      <p className="text-xs opacity-70">
-                        {rangeType === 'custom' || rangeType === '1m'
-                          ? '선택 기간'
-                          : `최근 ${rangeType.replace('m', '')}개월`}{' '}
-                        {stats.summary.yearCount}건
-                      </p>
+                      <p className="text-xs opacity-70">선택 기간 내</p>
                     </div>
                     <div className="rounded-full bg-white/60 p-3">
                       <CheckCircleIcon className="h-6 w-6" />
@@ -260,7 +368,10 @@ export const InstructorDashboardModal: React.FC<Props> = ({
 
               {/* Monthly Trend Chart */}
               <div className="rounded-xl border border-gray-200 bg-white p-5">
-                <h4 className="font-semibold text-gray-800 mb-4">월별 활동 추이</h4>
+                <div className="flex items-center gap-2 mb-4">
+                  <ChartBarIcon className="h-5 w-5 text-gray-600" />
+                  <h4 className="font-semibold text-gray-800">월별 활동 추이</h4>
+                </div>
                 <div className="flex items-end justify-around gap-2 h-32">
                   {stats.monthlyTrend.map((item) => {
                     const maxCount = Math.max(...stats.monthlyTrend.map((d) => d.count), 1);
@@ -284,31 +395,28 @@ export const InstructorDashboardModal: React.FC<Props> = ({
                 </div>
               </div>
 
-              {/* Recent Assignments */}
+              {/* Activity History (Grouped by Training Period) */}
               <div className="rounded-xl border border-gray-200 bg-white p-5">
-                <h4 className="font-semibold text-gray-800 mb-4">
-                  활동 내역 ({stats.recentAssignments.length}건)
-                </h4>
-                <div className="max-h-48 overflow-y-auto space-y-2">
-                  {stats.recentAssignments.length === 0 ? (
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <CalendarDaysIcon className="h-5 w-5 text-gray-600" />
+                    <h4 className="font-semibold text-gray-800">활동 내역</h4>
+                  </div>
+                  <span className="text-xs text-gray-400">
+                    {getRangeLabel()} ({stats.recentActivities.length}개 교육)
+                  </span>
+                </div>
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {stats.recentActivities.length === 0 ? (
                     <p className="text-gray-500 text-center py-4">활동 내역이 없습니다.</p>
                   ) : (
-                    stats.recentAssignments.map((a) => (
-                      <div
-                        key={a.id}
-                        className="flex items-center justify-between rounded-lg bg-gray-50 p-3"
-                      >
-                        <div>
-                          <p className="font-medium text-gray-800">{a.unitName}</p>
-                          <p className="text-xs text-gray-500">
-                            {a.date} {a.region && `• ${a.region}`}
-                          </p>
-                        </div>
-                        <div className="text-right text-sm">
-                          <p className="text-gray-600">{a.workHours}시간</p>
-                          <p className="text-xs text-gray-400">{a.distance}km</p>
-                        </div>
-                      </div>
+                    stats.recentActivities.map((activity) => (
+                      <ActivityGroupItem
+                        key={activity.trainingPeriodId}
+                        activity={activity}
+                        isExpanded={expandedIds.has(activity.trainingPeriodId)}
+                        onToggle={() => toggleExpanded(activity.trainingPeriodId)}
+                      />
                     ))
                   )}
                 </div>
