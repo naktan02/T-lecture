@@ -14,6 +14,7 @@ export const ReportSection = (): ReactElement => {
   const [week, setWeek] = useState(1);
   const [isDownloadingWeekly, setIsDownloadingWeekly] = useState(false);
   const [isDownloadingMonthly, setIsDownloadingMonthly] = useState(false);
+  const [cooldown, setCooldown] = useState(false); // 쿨다운 상태 추가
 
   // 사용 가능한 연도 목록 조회
   useEffect(() => {
@@ -34,6 +35,7 @@ export const ReportSection = (): ReactElement => {
   }, [currentYear]);
 
   const handleDownloadWeekly = async () => {
+    if (cooldown) return; // 쿨다운 중이면 무시
     setIsDownloadingWeekly(true);
     try {
       const response = await apiClient(
@@ -70,12 +72,16 @@ export const ReportSection = (): ReactElement => {
       const message =
         error instanceof Error ? error.message : '주간 보고서 다운로드에 실패했습니다.';
       showError(message);
+      // 에러 시 3초 쿨다운
+      setCooldown(true);
+      setTimeout(() => setCooldown(false), 3000);
     } finally {
       setIsDownloadingWeekly(false);
     }
   };
 
   const handleDownloadMonthly = async () => {
+    if (cooldown) return; // 쿨다운 중이면 무시
     setIsDownloadingMonthly(true);
     try {
       const response = await apiClient(`/api/v1/reports/monthly?year=${year}&month=${month}`);
@@ -109,6 +115,9 @@ export const ReportSection = (): ReactElement => {
       const message =
         error instanceof Error ? error.message : '월간 보고서 다운로드에 실패했습니다.';
       showError(message);
+      // 에러 시 3초 쿨다운
+      setCooldown(true);
+      setTimeout(() => setCooldown(false), 3000);
     } finally {
       setIsDownloadingMonthly(false);
     }
@@ -181,7 +190,7 @@ export const ReportSection = (): ReactElement => {
           <Button
             variant="primary"
             onClick={handleDownloadWeekly}
-            disabled={isDownloadingWeekly}
+            disabled={isDownloadingWeekly || cooldown}
             fullWidth
           >
             {isDownloadingWeekly ? '다운로드 중...' : '📥 주간 보고서'}
@@ -197,7 +206,7 @@ export const ReportSection = (): ReactElement => {
           <Button
             variant="primary"
             onClick={handleDownloadMonthly}
-            disabled={isDownloadingMonthly}
+            disabled={isDownloadingMonthly || cooldown}
             fullWidth
           >
             {isDownloadingMonthly ? '다운로드 중...' : '📥 월간 보고서'}
