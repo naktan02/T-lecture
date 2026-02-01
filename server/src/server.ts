@@ -112,4 +112,14 @@ server.on('listening', async () => {
   }
 });
 
+// 처리되지 않은 Promise 에러 핸들링 (서버 크래시 방지)
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', { promise, reason });
+});
+
+// 처리되지 않은 예외 핸들링
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception:', error);
+});
+
 module.exports = { app, server };
