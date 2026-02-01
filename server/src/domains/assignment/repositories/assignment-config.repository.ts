@@ -17,6 +17,21 @@ class AssignmentConfigRepository {
   }
 
   /**
+   * 여러 시스템 설정 값 한 번에 조회 (배치)
+   */
+  async getSystemConfigValues(keys: string[]): Promise<Map<string, string | null>> {
+    const configs = await prisma.systemConfig.findMany({
+      where: { key: { in: keys } },
+    });
+    const result = new Map<string, string | null>();
+    for (const key of keys) {
+      const cfg = configs.find((c) => c.key === key);
+      result.set(key, cfg?.value ?? null);
+    }
+    return result;
+  }
+
+  /**
    * 우선배정 크레딧 소모 (1 감소, 0이면 삭제)
    */
   async consumePriorityCredit(instructorId: number): Promise<void> {

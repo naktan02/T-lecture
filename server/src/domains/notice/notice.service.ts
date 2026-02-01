@@ -88,18 +88,9 @@ class NoticeService {
       userId: params.userId,
     });
 
-    // 작성자 이름 일괄 조회
-    const authorIds = [...new Set(notices.map((n) => n.authorId).filter(Boolean))] as number[];
-    const authorsMap = new Map<number, string | null>();
-    for (const authorId of authorIds) {
-      const author = await noticeRepository.findAuthorById(authorId);
-      authorsMap.set(authorId, author?.name || null);
-    }
-
+    // Repository에서 이미 author를 include하므로 별도 조회 불필요
     return {
-      notices: notices.map((n) =>
-        this.formatNotice(n, n.authorId ? authorsMap.get(n.authorId) || null : null),
-      ),
+      notices: notices.map((n: any) => this.formatNotice(n, n.author?.name || null)),
       meta: {
         total,
         page,
