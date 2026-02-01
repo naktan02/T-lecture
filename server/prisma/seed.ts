@@ -13,11 +13,6 @@ import bcrypt from 'bcrypt';
 const TEAMS = [
   { id: 1, name: '1팀' },
   { id: 2, name: '2팀' },
-  { id: 3, name: '3팀' },
-  { id: 4, name: '4팀' },
-  { id: 5, name: '5팀' },
-  { id: 6, name: '6팀' },
-  { id: 7, name: '7팀' },
 ];
 
 // 덕목(과목) 데이터 (15개)
@@ -26,17 +21,6 @@ const VIRTUES = [
   { id: 2, name: '효' },
   { id: 3, name: '정직' },
   { id: 4, name: '책임' },
-  { id: 5, name: '존중' },
-  { id: 6, name: '배려' },
-  { id: 7, name: '소통' },
-  { id: 8, name: '협동' },
-  { id: 9, name: '용기' },
-  { id: 10, name: '인내' },
-  { id: 11, name: '절제' },
-  { id: 12, name: '공정' },
-  { id: 13, name: '시민의식' },
-  { id: 14, name: '자기관리' },
-  { id: 15, name: '창의성' },
 ];
 
 // 시스템 설정 기본값
@@ -107,33 +91,6 @@ async function main() {
   } else {
     console.log('  ⚠️ SUPER_ADMIN_EMAIL/PASSWORD가 .env에 설정되지 않았습니다.');
   }
-
-  // 3-2. 일반관리자 생성
-  console.log('👤 일반관리자 생성 중...');
-
-  if (generalEmail && generalPassword) {
-    const hashedPassword = await bcrypt.hash(generalPassword, 10);
-    const existingUser = await prisma.user.findUnique({ where: { userEmail: generalEmail } });
-
-    if (!existingUser) {
-      await prisma.user.create({
-        data: {
-          userEmail: generalEmail,
-          password: hashedPassword,
-          name: '일반관리자',
-          userphoneNumber: '010-0000-0002',
-          status: 'APPROVED',
-          admin: { create: { level: 'GENERAL' } },
-        },
-      });
-      console.log(`  ✅ 일반관리자 생성: ${generalEmail}`);
-    } else {
-      console.log(`  ⚠️ 일반관리자 이미 존재: ${generalEmail}`);
-    }
-  } else {
-    console.log('  ⚠️ GENERAL_ADMIN_EMAIL/PASSWORD가 .env에 설정되지 않았습니다.');
-  }
-
   // 4. 시스템 설정 생성
   console.log('⚙️ 시스템 설정 생성 중...');
   for (const config of SYSTEM_CONFIGS) {

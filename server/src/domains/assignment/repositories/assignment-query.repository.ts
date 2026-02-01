@@ -371,6 +371,26 @@ class AssignmentQueryRepository {
   }
 
   /**
+   * 여러 스케줄 ID로 부대 ID 목록 한 번에 조회 (배치)
+   */
+  async getUnitIdsByScheduleIds(scheduleIds: number[]): Promise<Set<number>> {
+    if (!scheduleIds || scheduleIds.length === 0) return new Set();
+
+    const schedules = await prisma.unitSchedule.findMany({
+      where: { id: { in: scheduleIds } },
+      select: { trainingPeriod: { select: { unitId: true } } },
+    });
+
+    const unitIds = new Set<number>();
+    for (const s of schedules) {
+      if (s.trainingPeriod?.unitId) {
+        unitIds.add(s.trainingPeriod.unitId);
+      }
+    }
+    return unitIds;
+  }
+
+  /**
    * 부대의 모든 스케줄과 배정 정보 조회 (장소별 필요 인원 포함)
    */
   async getUnitWithAssignments(unitId: number) {

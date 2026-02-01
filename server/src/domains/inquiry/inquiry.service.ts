@@ -51,31 +51,10 @@ class InquiryService {
       orderBy,
     });
 
-    // 작성자 이름 일괄 조회
-    const authorIds = [...new Set(inquiries.map((i) => i.authorId).filter(Boolean))] as number[];
-    const authorsMap = new Map<number, string | null>();
-    for (const id of authorIds) {
-      const author = await inquiryRepository.findUserById(id);
-      authorsMap.set(id, author?.name || null);
-    }
-
-    // 답변자 이름 일괄 조회
-    const answererIds = [
-      ...new Set(inquiries.map((i) => i.answeredBy).filter(Boolean)),
-    ] as number[];
-    const answerersMap = new Map<number, string | null>();
-    for (const id of answererIds) {
-      const answerer = await inquiryRepository.findUserById(id);
-      answerersMap.set(id, answerer?.name || null);
-    }
-
+    // Repository에서 이미 author, answeredByUser를 include하므로 별도 조회 불필요
     return {
-      inquiries: inquiries.map((i) =>
-        this.formatInquiry(
-          i,
-          i.authorId ? authorsMap.get(i.authorId) || null : null,
-          i.answeredBy ? answerersMap.get(i.answeredBy) || null : null,
-        ),
+      inquiries: inquiries.map((i: any) =>
+        this.formatInquiry(i, i.author?.name || null, i.answeredByUser?.name || null),
       ),
       meta: {
         total,

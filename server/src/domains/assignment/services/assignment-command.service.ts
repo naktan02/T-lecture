@@ -222,21 +222,43 @@ class AssignmentCommandService {
     }
     const units = Array.from(unitMap.values());
 
-    // 5) 통계 조회 및 알고리즘 실행
-    const blockedInstructorIdsBySchedule =
-      await assignmentQueryRepository.findCanceledInstructorIdsByScheduleIds(scheduleIds);
+    // 5) 통계 조회 및 알고리즘 설정 병렬 조회
+    const [blockedInstructorIdsBySchedule, configValues] = await Promise.all([
+      assignmentQueryRepository.findCanceledInstructorIdsByScheduleIds(scheduleIds),
+      assignmentConfigRepository.getSystemConfigValues([
+        'TRAINEES_PER_INSTRUCTOR',
+        'FAIRNESS_LOOKBACK_MONTHS',
+        'REJECTION_PENALTY_MONTHS',
+        'INTERN_MAX_DISTANCE_KM',
+        'SUB_MAX_DISTANCE_KM',
+      ]),
+    ]);
 
-    const traineesPerInstructor = await this.getSystemConfigNumber('TRAINEES_PER_INSTRUCTOR', 36);
-    const fairnessLookbackMonths = await this.getSystemConfigNumber(
+    // 설정값 파싱
+    const parseConfig = (key: string, defaultVal: number) => {
+      const val = configValues.get(key);
+      if (!val) return defaultVal;
+      const parsed = Number(val);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultVal;
+    };
+    const parseConfigOrNull = (key: string) => {
+      const val = configValues.get(key);
+      if (!val || val === '0' || val.toLowerCase() === 'null') return null;
+      const parsed = Number(val);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    };
+
+    const traineesPerInstructor = parseConfig('TRAINEES_PER_INSTRUCTOR', 36);
+    const fairnessLookbackMonths = parseConfig(
       'FAIRNESS_LOOKBACK_MONTHS',
       DEFAULT_ASSIGNMENT_CONFIG.fairnessLookbackMonths,
     );
-    const rejectionPenaltyMonths = await this.getSystemConfigNumber(
+    const rejectionPenaltyMonths = parseConfig(
       'REJECTION_PENALTY_MONTHS',
       DEFAULT_ASSIGNMENT_CONFIG.rejectionPenaltyMonths,
     );
-    const internMaxDistanceKm = await this.getSystemConfigNumber('INTERN_MAX_DISTANCE_KM', 50);
-    const subMaxDistanceKm = await this.getSystemConfigNumberOrNull('SUB_MAX_DISTANCE_KM');
+    const internMaxDistanceKm = parseConfig('INTERN_MAX_DISTANCE_KM', 50);
+    const subMaxDistanceKm = parseConfigOrNull('SUB_MAX_DISTANCE_KM');
 
     const assignmentSince = this.subtractMonths(minDate, fairnessLookbackMonths);
     const rejectionSince = this.subtractMonths(minDate, rejectionPenaltyMonths);
@@ -281,15 +303,14 @@ class AssignmentCommandService {
     // 6) 저장 및 후처리
     const summary = await assignmentCommandRepository.createAssignmentsBulk(matchResults);
 
-    const assignedInstructorIds = new Set(matchResults.map((m) => m.instructorId));
-    for (const instructorId of assignedInstructorIds) {
-      await this.consumePriorityCredit(instructorId);
-    }
+    // 후처리: 병렬 실행으로 최적화
+    const assignedInstructorIds = Array.from(new Set(matchResults.map((m) => m.instructorId)));
+    const affectedUnitIds = Array.from(new Set(units.map((u) => u.id)));
 
-    const affectedUnitIds = new Set(units.map((u) => u.id));
-    for (const unitId of affectedUnitIds) {
-      await assignmentCommandRepository.recalculateRolesForUnit(unitId);
-    }
+    await Promise.all([
+      ...assignedInstructorIds.map((id) => this.consumePriorityCredit(id)),
+      ...affectedUnitIds.map((id) => assignmentCommandRepository.recalculateRolesForUnit(id)),
+    ]);
 
     return { summary };
   }
@@ -453,15 +474,13 @@ class AssignmentCommandService {
       ];
 
       if (scheduleIds.length > 0) {
-        const unitIds = new Set<number>();
-        for (const scheduleId of scheduleIds) {
-          const unitId = await assignmentQueryRepository.getUnitIdByScheduleId(scheduleId);
-          if (unitId) unitIds.add(unitId);
-        }
+        // 배치 쿼리로 한 번에 조회 (N+1 방지)
+        const unitIds = await assignmentQueryRepository.getUnitIdsByScheduleIds(scheduleIds);
 
-        for (const unitId of unitIds) {
-          await assignmentCommandRepository.recalculateRolesForUnit(unitId);
-        }
+        // 병렬 실행으로 최적화
+        await Promise.all(
+          Array.from(unitIds).map((id) => assignmentCommandRepository.recalculateRolesForUnit(id)),
+        );
       }
     }
 
@@ -471,9 +490,10 @@ class AssignmentCommandService {
         .filter((sc) => sc.state === 'Accepted')
         .map((sc) => sc.unitScheduleId);
 
-      for (const scheduleId of acceptedScheduleIds) {
-        await assignmentResponseService.checkAndAutoConfirm(scheduleId);
-      }
+      // 병렬 실행으로 최적화
+      await Promise.all(
+        acceptedScheduleIds.map((id) => assignmentResponseService.checkAndAutoConfirm(id)),
+      );
     }
 
     return result;

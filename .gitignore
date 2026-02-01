@@ -53,6 +53,6 @@ coverage/
 # Turborepo (if used)
 .turbo
 
-./claude/
+.claude
 
 dump.sql
