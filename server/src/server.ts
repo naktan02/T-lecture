@@ -3,7 +3,7 @@
 import 'dotenv/config';
 
 // Sentry: setupSentryErrorHandler is still needed for Express error handling
-import { setupSentryErrorHandler } from './config/sentry';
+import { setupSentryErrorHandler, Sentry } from './config/sentry';
 
 import express, { Request, Response } from 'express';
 import compression from 'compression';
@@ -102,11 +102,39 @@ const server = app.listen(config.port, () => {
   logger.info(`Server listening at http://localhost:${config.port}`);
 });
 
+// 메모리 사용량 로깅 헬퍼
+function logMemoryUsage(label: string): void {
+  const used = process.memoryUsage();
+  const formatMB = (bytes: number) => (bytes / 1024 / 1024).toFixed(2) + 'MB';
+  logger.info(
+    `[Memory ${label}] RSS: ${formatMB(used.rss)}, Heap: ${formatMB(used.heapUsed)}/${formatMB(used.heapTotal)}`,
+  );
+}
+
 // DB 연결 미리 생성 (첫 요청 지연 방지)
 server.on('listening', async () => {
   try {
     await prisma.$connect();
     logger.info('Database connection established');
+
+    // 시작 시 메모리 로깅
+    logMemoryUsage('startup');
+
+    // 5분마다 메모리 사용량 체크 (무료 티어: 512MB 제한)
+    setInterval(
+      () => {
+        logMemoryUsage('periodic');
+        const used = process.memoryUsage();
+        const heapUsedMB = used.heapUsed / 1024 / 1024;
+        if (heapUsedMB > 400) {
+          logger.warn(
+            `[Memory Warning] Heap usage high: ${heapUsedMB.toFixed(2)}MB (limit ~512MB)`,
+          );
+          Sentry.captureMessage(`High memory usage: ${heapUsedMB.toFixed(2)}MB`, 'warning');
+        }
+      },
+      5 * 60 * 1000,
+    ); // 5분
   } catch (error) {
     logger.error('Failed to connect to database:', error);
   }
@@ -115,11 +143,55 @@ server.on('listening', async () => {
 // 처리되지 않은 Promise 에러 핸들링 (서버 크래시 방지)
 process.on('unhandledRejection', (reason, promise) => {
   logger.error('Unhandled Rejection at:', { promise, reason });
+
+  // Sentry에 전송
+  Sentry.withScope((scope) => {
+    scope.setTag('type', 'unhandledRejection');
+    scope.setExtra('promise', String(promise));
+    if (reason instanceof Error) {
+      Sentry.captureException(reason);
+    } else {
+      Sentry.captureMessage(`Unhandled Rejection: ${String(reason)}`, 'error');
+    }
+  });
 });
 
 // 처리되지 않은 예외 핸들링
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught Exception:', error);
+
+  // Sentry에 전송 후 graceful shutdown
+  Sentry.withScope((scope) => {
+    scope.setTag('type', 'uncaughtException');
+    scope.setLevel('fatal');
+    Sentry.captureException(error);
+  });
+
+  // Sentry 전송 완료 대기 후 종료 (최대 2초)
+  Sentry.close(2000).finally(() => {
+    process.exit(1);
+  });
+});
+
+// SIGTERM 핸들링 (Render가 종료 시그널 보낼 때)
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received. Graceful shutdown...');
+
+  Sentry.captureMessage('Server received SIGTERM - shutting down', 'info');
+
+  server.close(async () => {
+    logger.info('HTTP server closed');
+    await prisma.$disconnect();
+    logger.info('Database connection closed');
+    await Sentry.close(2000);
+    process.exit(0);
+  });
+
+  // 10초 내 종료 안 되면 강제 종료
+  setTimeout(() => {
+    logger.error('Graceful shutdown timeout. Force exit.');
+    process.exit(1);
+  }, 10000);
 });
 
 module.exports = { app, server };
