@@ -165,7 +165,7 @@ export const distanceScorer: AssignmentScorer = {
   id: 'DISTANCE',
   name: '거리 점수',
   description: '가까울수록 높은 점수',
-  defaultWeight: 5,
+  defaultWeight: 15,
   calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
     const key = `${candidate.userId}-${context.currentUnitId}`;
     const distance = context.instructorDistances.get(key) ?? 100;
