@@ -99,6 +99,7 @@ function calculateWorkHoursWithLunch(trainingPeriod: {
 class DashboardService {
   /**
    * 유저(강사) 대시보드 통계 조회 (항상 실시간 계산)
+   * 최적화: 중복 쿼리 제거 + Promise.all로 병렬 실행
    */
   async getUserDashboardStats(
     userId: number,
@@ -110,74 +111,84 @@ class DashboardService {
     const today = getTodayUTC();
 
     // 조회 기간 설정
-    let queryStart: Date;
-    if (isCustomRange) {
-      queryStart = new Date(`${startDate}T00:00:00.000Z`);
-    } else {
-      queryStart = new Date('2020-01-01T00:00:00.000Z'); // 서비스 시작일
-    }
+    const queryStart = isCustomRange
+      ? new Date(`${startDate}T00:00:00.000Z`)
+      : new Date('2020-01-01T00:00:00.000Z');
 
-    // 1. 수락된 배정 조회 (완료된 교육만) - trainingPeriodId 포함
-    const assignments = await prisma.instructorUnitAssignment.findMany({
-      where: {
-        userId,
-        state: 'Accepted',
-        classification: 'Confirmed',
-        UnitSchedule: { date: { gte: queryStart, lt: today } },
-      },
-      select: {
-        UnitSchedule: {
-          select: {
-            id: true,
-            date: true,
-            trainingPeriodId: true,
-            trainingPeriod: {
-              select: {
-                id: true,
-                name: true,
-                workStartTime: true,
-                workEndTime: true,
-                lunchStartTime: true,
-                lunchEndTime: true,
-                unit: {
-                  select: { id: true, name: true, unitType: true, region: true },
+    const queryEnd = isCustomRange
+      ? new Date(`${endDate}T23:59:59.999Z`)
+      : new Date('2099-12-31T23:59:59.999Z');
+
+    // 월별 쿼리 시작 시점
+    const monthlyQueryStart = isCustomRange
+      ? new Date(`${startDate}T00:00:00.000Z`)
+      : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1, 0, 0, 0, 0));
+
+    // ============================================
+    // 최적화: 병렬 쿼리 실행
+    // ============================================
+    const [assignments, totalProposals, rejectedCount, distanceMap] = await Promise.all([
+      // 1. 수락된 배정 조회 (완료된 교육 + 월별 데이터 통합)
+      // 기존: 2개 쿼리 → 1개로 통합
+      prisma.instructorUnitAssignment.findMany({
+        where: {
+          userId,
+          state: 'Accepted',
+          classification: 'Confirmed',
+          UnitSchedule: { date: { gte: monthlyQueryStart, lt: today } },
+        },
+        select: {
+          UnitSchedule: {
+            select: {
+              id: true,
+              date: true,
+              trainingPeriodId: true,
+              trainingPeriod: {
+                select: {
+                  id: true,
+                  name: true,
+                  workStartTime: true,
+                  workEndTime: true,
+                  lunchStartTime: true,
+                  lunchEndTime: true,
+                  unit: {
+                    select: { id: true, name: true, unitType: true, region: true },
+                  },
                 },
               },
             },
           },
         },
-      },
-    });
+      }),
 
-    // 2. 전체 제안 건수 (선택한 기간 내 전체 - 미래 포함)
-    const queryEnd = isCustomRange
-      ? new Date(`${endDate}T23:59:59.999Z`)
-      : new Date('2099-12-31T23:59:59.999Z'); // 미래까지 포함
+      // 2. 전체 제안 건수
+      prisma.instructorUnitAssignment.count({
+        where: {
+          userId,
+          UnitSchedule: { date: { gte: queryStart, lte: queryEnd } },
+        },
+      }),
 
-    const totalProposals = await prisma.instructorUnitAssignment.count({
-      where: {
-        userId,
-        UnitSchedule: { date: { gte: queryStart, lte: queryEnd } },
-      },
-    });
+      // 3. 거절된 배정 수
+      prisma.instructorUnitAssignment.count({
+        where: {
+          userId,
+          state: 'Rejected',
+          UnitSchedule: { date: { gte: queryStart, lte: queryEnd } },
+        },
+      }),
 
-    // 거절률 계산을 위한 거절된 배정 수 (선택한 기간 내 전체)
-    const rejectedCount = await prisma.instructorUnitAssignment.count({
-      where: {
-        userId,
-        state: 'Rejected',
-        UnitSchedule: { date: { gte: queryStart, lte: queryEnd } },
-      },
-    });
+      // 4. 거리 맵 로드
+      getDistanceMap(userId),
+    ]);
 
-    // 3. 거리 맵 로드
-    const distanceMap = await getDistanceMap(userId);
-
-    // 4. 통계 계산
+    // ============================================
+    // 통계 계산 (queryStart 기준으로 필터링)
+    // ============================================
     let totalWorkHours = 0;
     let totalDistance = 0;
     const workedDates = new Set<string>();
-    const countedTrainingPeriodsForDistance = new Set<number>(); // 교육 기간별 거리 계산
+    const countedTrainingPeriodsForDistance = new Set<number>();
 
     // 교육 기간별 그룹화를 위한 맵
     const trainingPeriodMap = new Map<
@@ -193,67 +204,19 @@ class DashboardService {
       }
     >();
 
-    for (const assignment of assignments) {
-      const trainingPeriod = assignment.UnitSchedule?.trainingPeriod;
-      if (!trainingPeriod?.unit || !assignment.UnitSchedule?.date) continue;
-
-      const unit = trainingPeriod.unit;
-      const trainingPeriodId = trainingPeriod.id;
-      const dateStr = new Date(assignment.UnitSchedule.date).toISOString().split('T')[0];
-
-      // 근무 시간 (점심시간 제외)
-      const workHours = calculateWorkHoursWithLunch(trainingPeriod);
-      totalWorkHours += workHours;
-
-      // 거리 (교육 기간별 한 번만, m → km 변환)
-      if (!countedTrainingPeriodsForDistance.has(trainingPeriodId)) {
-        const dist = distanceMap.get(unit.id) || 0;
-        totalDistance += (dist / 1000) * 2; // 왕복, km 단위
-        countedTrainingPeriodsForDistance.add(trainingPeriodId);
-      }
-
-      workedDates.add(new Date(assignment.UnitSchedule.date).toDateString());
-
-      // 교육 기간별 그룹화
-      if (!trainingPeriodMap.has(trainingPeriodId)) {
-        trainingPeriodMap.set(trainingPeriodId, {
-          unitName: unit.name || '',
-          unitType: unit.unitType,
-          region: unit.region,
-          trainingPeriodName: trainingPeriod.name || '',
-          unitId: unit.id,
-          dates: [],
-          totalWorkHours: 0,
-        });
-      }
-      const group = trainingPeriodMap.get(trainingPeriodId)!;
-      group.dates.push({ date: dateStr, workHours: Math.round(workHours * 10) / 10 });
-      group.totalWorkHours += workHours;
-    }
-
-    // 5. 선택한 기간 내 완료된 교육 건수 (일 수 기준)
-    const periodCount = assignments.length;
-
-    // 6. 월별 추이 계산
+    // 월별 추이 맵 초기화
     const monthlyMap = new Map<string, { count: number; hours: number }>();
-
-    // 월별 버킷 초기화
-    let monthlyQueryStart: Date;
     if (isCustomRange) {
-      monthlyQueryStart = new Date(`${startDate}T00:00:00.000Z`);
-      const rangeEnd = new Date(`${endDate}T23:59:59.999Z`);
       const current = new Date(
         Date.UTC(monthlyQueryStart.getUTCFullYear(), monthlyQueryStart.getUTCMonth(), 1),
       );
+      const rangeEnd = new Date(`${endDate}T23:59:59.999Z`);
       while (current <= rangeEnd) {
         const key = `${current.getUTCFullYear()}-${String(current.getUTCMonth() + 1).padStart(2, '0')}`;
         monthlyMap.set(key, { count: 0, hours: 0 });
         current.setUTCMonth(current.getUTCMonth() + 1);
       }
     } else {
-      monthlyQueryStart = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1, 0, 0, 0, 0),
-      );
       const ptr = new Date(monthlyQueryStart);
       for (let i = 0; i < 12; i++) {
         const key = `${ptr.getUTCFullYear()}-${String(ptr.getUTCMonth() + 1).padStart(2, '0')}`;
@@ -262,36 +225,61 @@ class DashboardService {
       }
     }
 
-    // 월별 데이터 조회 (완료된 교육만)
-    const recentActivity = await prisma.instructorUnitAssignment.findMany({
-      where: {
-        userId,
-        state: 'Accepted',
-        classification: 'Confirmed',
-        UnitSchedule: {
-          date: {
-            gte: monthlyQueryStart,
-            lt: today, // 완료된 교육만 (오늘 이전)
-          },
-        },
-      },
-      include: { UnitSchedule: { include: { trainingPeriod: { include: { unit: true } } } } },
-    });
+    // queryStart 이후 데이터만 summary에 반영
+    let periodCount = 0;
 
-    for (const act of recentActivity) {
-      if (!act.UnitSchedule?.date) continue;
-      const d = new Date(act.UnitSchedule.date);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    for (const assignment of assignments) {
+      const trainingPeriod = assignment.UnitSchedule?.trainingPeriod;
+      if (!trainingPeriod?.unit || !assignment.UnitSchedule?.date) continue;
 
-      if (monthlyMap.has(key)) {
-        const current = monthlyMap.get(key)!;
-        const tp = act.UnitSchedule.trainingPeriod;
-        const hours = tp ? calculateWorkHoursWithLunch(tp) : 0;
-        monthlyMap.set(key, { count: current.count + 1, hours: current.hours + hours });
+      const unit = trainingPeriod.unit;
+      const trainingPeriodId = trainingPeriod.id;
+      const scheduleDate = new Date(assignment.UnitSchedule.date);
+      const dateStr = scheduleDate.toISOString().split('T')[0];
+
+      // 근무 시간 (점심시간 제외)
+      const workHours = calculateWorkHoursWithLunch(trainingPeriod);
+
+      // 월별 추이 업데이트 (모든 데이터)
+      const monthKey = `${scheduleDate.getFullYear()}-${String(scheduleDate.getMonth() + 1).padStart(2, '0')}`;
+      if (monthlyMap.has(monthKey)) {
+        const current = monthlyMap.get(monthKey)!;
+        monthlyMap.set(monthKey, { count: current.count + 1, hours: current.hours + workHours });
+      }
+
+      // queryStart 이후 데이터만 summary 통계에 반영
+      if (scheduleDate >= queryStart) {
+        totalWorkHours += workHours;
+        periodCount++;
+
+        // 거리 (교육 기간별 한 번만, m → km 변환)
+        if (!countedTrainingPeriodsForDistance.has(trainingPeriodId)) {
+          const dist = distanceMap.get(unit.id) || 0;
+          totalDistance += (dist / 1000) * 2; // 왕복, km 단위
+          countedTrainingPeriodsForDistance.add(trainingPeriodId);
+        }
+
+        workedDates.add(scheduleDate.toDateString());
+
+        // 교육 기간별 그룹화
+        if (!trainingPeriodMap.has(trainingPeriodId)) {
+          trainingPeriodMap.set(trainingPeriodId, {
+            unitName: unit.name || '',
+            unitType: unit.unitType,
+            region: unit.region,
+            trainingPeriodName: trainingPeriod.name || '',
+            unitId: unit.id,
+            dates: [],
+            totalWorkHours: 0,
+          });
+        }
+        const group = trainingPeriodMap.get(trainingPeriodId)!;
+        group.dates.push({ date: dateStr, workHours: Math.round(workHours * 10) / 10 });
+        group.totalWorkHours += workHours;
       }
     }
 
-    // 7. 최근 활동 리스트 (교육 기간 단위, 5개)
+    // 5. 최근 활동 리스트 (교육 기간 단위, 5개)
     const recentActivities: ActivityGroup[] = Array.from(trainingPeriodMap.entries())
       .map(([trainingPeriodId, group]) => {
         const dist = distanceMap.get(group.unitId) || 0;
