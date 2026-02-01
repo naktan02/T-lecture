@@ -19,7 +19,7 @@ export interface InstructorAnalysis {
   role: string | null;
   team: string | null;
   completedCount: number;
-  acceptanceRate: number;
+  rejectionRate: number;
   isActive: boolean;
 }
 

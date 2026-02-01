@@ -548,9 +548,9 @@ export const UserDashboardPage: React.FC = () => {
               color="green"
             />
             <StatCard
-              title="배정 수락률"
-              value={`${stats.performance.acceptanceRate}%`}
-              subtitle={`${stats.performance.acceptedCount}/${stats.performance.totalProposals}건`}
+              title="배정 거절률"
+              value={`${stats.performance.rejectionRate}%`}
+              subtitle={`${stats.performance.rejectedCount}/${stats.performance.totalProposals}건`}
               icon={<ArrowTrendingUpIcon className="h-4 w-4 md:h-6 md:w-6" />}
               color="purple"
             />

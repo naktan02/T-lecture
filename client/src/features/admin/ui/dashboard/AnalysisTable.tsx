@@ -56,8 +56,8 @@ export const AnalysisTable: React.FC<Props> = ({
         diff = (a.team || '').localeCompare(b.team || '');
       } else if (sortField === 'completedCount') {
         diff = a.completedCount - b.completedCount;
-      } else if (sortField === 'acceptanceRate') {
-        diff = a.acceptanceRate - b.acceptanceRate;
+      } else if (sortField === 'rejectionRate') {
+        diff = a.rejectionRate - b.rejectionRate;
       } else if (sortField === 'isActive') {
         diff = Number(a.isActive) - Number(b.isActive);
       }
@@ -160,9 +160,9 @@ export const AnalysisTable: React.FC<Props> = ({
                 </th>
                 <th
                   className="px-3 py-3 md:px-6 md:py-3 text-right text-[10px] md:text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 whitespace-nowrap"
-                  onClick={() => handleSort('acceptanceRate')}
+                  onClick={() => handleSort('rejectionRate')}
                 >
-                  수락률 {getSortIcon('acceptanceRate')}
+                  거절률 {getSortIcon('rejectionRate')}
                 </th>
                 <th
                   className="px-3 py-3 md:px-6 md:py-3 text-center text-[10px] md:text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 whitespace-nowrap"
@@ -228,7 +228,7 @@ export const AnalysisTable: React.FC<Props> = ({
                       {inst.completedCount}
                     </td>
                     <td className="px-3 py-3 md:px-6 md:py-4 whitespace-nowrap text-[11px] md:text-sm text-right text-gray-500">
-                      {inst.acceptanceRate}%
+                      {inst.rejectionRate}%
                     </td>
                     <td className="px-3 py-3 md:px-6 md:py-4 whitespace-nowrap text-center">
                       <span

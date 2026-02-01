@@ -39,9 +39,9 @@ interface DashboardStats {
     periodCount: number; // 선택한 기간 내 완료된 교육 건수
   };
   performance: {
-    acceptanceRate: number;
+    rejectionRate: number;
     totalProposals: number;
-    acceptedCount: number;
+    rejectedCount: number;
   };
   monthlyTrend: MonthlyActivity[];
   recentActivities: ActivityGroup[]; // 교육 기간 단위로 그룹화
@@ -161,12 +161,11 @@ class DashboardService {
       },
     });
 
-    // 수락률 계산을 위한 수락된 배정 수 (선택한 기간 내 전체)
-    const acceptedCount = await prisma.instructorUnitAssignment.count({
+    // 거절률 계산을 위한 거절된 배정 수 (선택한 기간 내 전체)
+    const rejectedCount = await prisma.instructorUnitAssignment.count({
       where: {
         userId,
-        state: 'Accepted',
-        classification: 'Confirmed',
+        state: 'Rejected',
         UnitSchedule: { date: { gte: queryStart, lte: queryEnd } },
       },
     });
@@ -317,8 +316,8 @@ class DashboardService {
       })
       .slice(0, 5);
 
-    // 8. 수락률 계산 (선택한 기간 내 전체 배정 기준)
-    const acceptanceRate = totalProposals > 0 ? (acceptedCount / totalProposals) * 100 : 0;
+    // 8. 거절률 계산 (선택한 기간 내 전체 배정 기준)
+    const rejectionRate = totalProposals > 0 ? (rejectedCount / totalProposals) * 100 : 0;
 
     const monthlyTrend = Array.from(monthlyMap.entries()).map(([month, data]) => ({
       month,
@@ -334,9 +333,9 @@ class DashboardService {
         periodCount, // 선택한 기간 내 완료된 교육 건수
       },
       performance: {
-        acceptanceRate: Math.round(acceptanceRate * 10) / 10,
+        rejectionRate: Math.round(rejectionRate * 10) / 10,
         totalProposals,
-        acceptedCount,
+        rejectedCount,
       },
       monthlyTrend,
       recentActivities,
