@@ -1,5 +1,6 @@
 // server/src/common/middlewares/errorHandler.ts
 import { Request, Response, NextFunction } from 'express';
+import * as Sentry from '@sentry/node';
 import logger from '../../config/logger';
 import { mapPrismaError } from '../errors/prismaErrorMapper';
 import AppError from '../errors/AppError';
@@ -76,8 +77,29 @@ export const errorHandler = (err: unknown, req: Request, res: Response, _next: N
     ...(normalized.statusCode >= 500 ? { stack: normalized.stack } : {}),
   };
 
-  if (normalized.statusCode >= 500) logger.error('[API ERROR]', logPayload);
-  else logger.warn('[API ERROR]', logPayload);
+  if (normalized.statusCode >= 500) {
+    logger.error('[API ERROR]', logPayload);
+
+    // Sentry에 500 에러 전송 (컨텍스트 포함)
+    Sentry.withScope((scope) => {
+      scope.setUser({ id: req.user?.id?.toString() });
+      scope.setTag('statusCode', normalized.statusCode.toString());
+      scope.setTag('errorCode', normalized.code);
+      scope.setContext('request', {
+        method: req.method,
+        url: req.originalUrl || req.url,
+        userId: req.user?.id ?? null,
+      });
+      scope.setContext('error', {
+        code: normalized.code,
+        message: normalized.message,
+        meta: normalized.meta,
+      });
+      Sentry.captureException(err);
+    });
+  } else {
+    logger.warn('[API ERROR]', logPayload);
+  }
 
   res.status(normalized.statusCode).json({
     error: safeMessage,

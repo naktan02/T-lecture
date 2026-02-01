@@ -85,8 +85,8 @@ export function initSentry(): boolean {
     tracesSampleRate: isProd ? 0 : 0.5,
     // 성능 프로파일링 (Pro 플랜 이상 필요, 무료는 꺼둠)
     profilesSampleRate: 0,
-    // 에러 샘플링 (50%만 전송하여 한도 절약)
-    sampleRate: isProd ? 0.5 : 1.0,
+    // 에러 샘플링 (100% 전송)
+    sampleRate: 1.0,
     // Prisma 쿼리 성능 추적 (개발 환경에서만 유용)
     integrations: isProd ? [] : [Sentry.prismaIntegration()],
     // 일일 한도 체크
