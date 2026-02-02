@@ -15,13 +15,18 @@ import { Sentry } from '../../config/sentry';
  */
 export const poolMonitor = (req: Request, res: Response, next: NextFunction): void => {
     const { totalCount, idleCount, waitingCount } = pool;
+    const max = pool.options.max ?? 10;
+    const warnThreshold = Math.max(1, Math.ceil(max * 0.5));
+    const errorThreshold = Math.max(2, Math.ceil(max * 0.8));
 
     // 대기 중인 요청이 7개 이상이면 경고 (pool의 35% 초과)
-    if (waitingCount >= 7) {
+    if (waitingCount >= warnThreshold) {
         logger.warn('[Pool Warning] High waiting count', {
             total: totalCount,
             idle: idleCount,
             waiting: waitingCount,
+            max,
+            warnThreshold,
             path: req.path,
             method: req.method,
         });
@@ -31,11 +36,13 @@ export const poolMonitor = (req: Request, res: Response, next: NextFunction): vo
     }
 
     // 연결 풀 심각하게 고갈 시 503 반환 (pool의 60% 초과)
-    if (waitingCount >= 12) {
+    if (waitingCount >= errorThreshold) {
         logger.error('[Pool Exhausted] Rejecting request', {
             total: totalCount,
             idle: idleCount,
             waiting: waitingCount,
+            max,
+            errorThreshold,
             path: req.path,
             method: req.method,
         });
