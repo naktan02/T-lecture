@@ -20,20 +20,10 @@ console.log('[DB Pool] Connection setup:', {
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  
-  // 1. [핵심] 4000ms는 깁니다. 0으로 설정해서 "사용 안 하면 즉시 폐기" 하세요.
-  // 이렇게 해야 '죽은 연결'을 만날 확률이 0%가 됩니다.
-  idleTimeoutMillis: 0, 
-  
-  // 2. [핵심] 4개는 너무 적습니다. 15개로 늘리세요.
-  // 15개 연결 객체는 메모리 몇 MB도 안 씁니다. Render 무료도 충분합니다.
-  max: 15, 
-  
-  min: 0,
-  connectionTimeoutMillis: 5000, // 대기 5초
-  keepAlive: false, 
-  query_timeout: 10000, 
-  allowExitOnIdle: true,
+  max: 20,                    // 최대 연결 수
+  min: 2,                     // 최소 연결 수
+  idleTimeoutMillis: 30000,   // 유휴 연결 타임아웃
+  connectionTimeoutMillis: 2000, // 연결 타임아웃
 });
 
 // Pool 에러 핸들링

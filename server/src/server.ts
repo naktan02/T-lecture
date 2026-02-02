@@ -1,4 +1,11 @@
 // src/server.ts
+import dns from 'node:dns';
+
+// Force IPv4 first to avoid IPv6-only DNS results causing timeouts.
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
+
 // dotenv must be loaded first to read environment variables
 import 'dotenv/config';
 
