@@ -9,9 +9,14 @@ import { PrismaClient } from '../generated/prisma/client.js';
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 20, // 최대 연결 수
-  min: 0, // 최소 연결 수
-  idleTimeoutMillis: 30000, // 유휴 연결 30초 후 해제
-  connectionTimeoutMillis: 10000, // 연결 획득 대기 2초
+  min: 1, // 최소 1개 유지 (첫 요청 즉시 응답)
+  connectionTimeoutMillis: 30000, // 연결 획득 대기 30초 (부하 대응)
+  idleTimeoutMillis: 30000, // 유휴 연결 30초 후 해제 (리소스 효율)
+
+  // PostgreSQL 세션 타임아웃 설정
+  // - statement_timeout: 개별 쿼리 30초 제한 (느린 쿼리 방지)
+  // - idle_in_transaction_session_timeout: 트랜잭션 내 유휴 55초 제한 (Supabase pooler 60초 회피)
+  options: '-c statement_timeout=30000 -c idle_in_transaction_session_timeout=55000',
 });
 
 // Pool 에러 핸들링 (연결 실패 시 로깅)
@@ -112,47 +117,16 @@ export function logPoolStatus(): void {
 }
 
 // ============================================
-// Supavisor Heartbeat (5분 유휴 타임아웃 방지)
+// Heartbeat 제거됨
 // ============================================
-const HEARTBEAT_INTERVAL_MS = 4 * 60 * 1000; // 4분
-let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
-
-export function startDatabaseHeartbeat(): void {
-  if (heartbeatInterval) return;
-
-  heartbeatInterval = setInterval(async () => {
-    try {
-      await basePrisma.$queryRaw`SELECT 1`;
-      // eslint-disable-next-line no-console
-      console.log('[DB Heartbeat] OK -', {
-        total: pool.totalCount,
-        idle: pool.idleCount,
-        waiting: pool.waitingCount,
-      });
-    } catch {
-      // eslint-disable-next-line no-console
-      console.warn('[DB Heartbeat] Connection check failed, will auto-recover');
-    }
-  }, HEARTBEAT_INTERVAL_MS);
-
-  // eslint-disable-next-line no-console
-  console.log('[DB Heartbeat] Started (interval: 4 minutes)');
-}
-
-export function stopDatabaseHeartbeat(): void {
-  if (heartbeatInterval) {
-    clearInterval(heartbeatInterval);
-    heartbeatInterval = null;
-    // eslint-disable-next-line no-console
-    console.log('[DB Heartbeat] Stopped');
-  }
-}
+// min: 1 설정으로 항상 1개 연결 유지 (첫 요청 즉시 응답)
+// Heartbeat는 1개 연결만 보호하므로 비효율적 (하루 360번 불필요한 쿼리)
+// idleTimeoutMillis: 30초로 자동 정리하여 리소스 효율 확보
 
 // ============================================
 // 연결 풀 정리 (앱 종료 시)
 // ============================================
 export async function closePool(): Promise<void> {
-  stopDatabaseHeartbeat();
   await basePrisma.$disconnect();
   await pool.end();
   // eslint-disable-next-line no-console
