@@ -20,16 +20,68 @@ console.log('[DB Pool] Connection setup:', {
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 20,                    // 최대 연결 수
-  min: 2,                     // 최소 연결 수
-  idleTimeoutMillis: 30000,   // 유휴 연결 타임아웃
-  connectionTimeoutMillis: 2000, // 연결 타임아웃
+  max: 20,                       // 최대 연결 수
+  min: 0,                        // 최소 연결 수 (lazy connection - 필요시에만 연결)
+  idleTimeoutMillis: 30000,      // 유휴 연결 30초 후 해제
+  connectionTimeoutMillis: 10000, // 연결 타임아웃 10초 (Render↔Supabase 네트워크 지연 대응)
 });
 
-// Pool 에러 핸들링
+// ============================================
+// Pool 이벤트 로깅 (연결 상태 추적)
+// ============================================
+
+// 새 연결 생성 시
+pool.on('connect', () => {
+  // eslint-disable-next-line no-console
+  console.log('[DB Pool] New connection established', {
+    timestamp: new Date().toISOString(),
+    total: pool.totalCount,
+    idle: pool.idleCount,
+  });
+});
+
+// 연결이 풀에서 제거될 때
+pool.on('remove', () => {
+  // eslint-disable-next-line no-console
+  console.log('[DB Pool] Connection removed', {
+    timestamp: new Date().toISOString(),
+    total: pool.totalCount,
+    idle: pool.idleCount,
+  });
+});
+
+// 연결 획득 시 (풀에서 클라이언트 가져올 때)
+pool.on('acquire', () => {
+  // eslint-disable-next-line no-console
+  console.debug('[DB Pool] Connection acquired', {
+    timestamp: new Date().toISOString(),
+    waiting: pool.waitingCount,
+  });
+});
+
+// 연결 반환 시 (클라이언트가 풀로 돌아올 때)
+pool.on('release', () => {
+  // eslint-disable-next-line no-console
+  console.debug('[DB Pool] Connection released', {
+    timestamp: new Date().toISOString(),
+    idle: pool.idleCount,
+  });
+});
+
+// Pool 에러 핸들링 (상세 정보 포함)
 pool.on('error', (err) => {
   // eslint-disable-next-line no-console
-  console.error('[DB Pool] Unexpected error on idle client:', err.message);
+  console.error('[DB Pool] Unexpected error on idle client:', {
+    message: err.message,
+    code: (err as NodeJS.ErrnoException).code,
+    timestamp: new Date().toISOString(),
+    stack: err.stack,
+    poolStatus: {
+      total: pool.totalCount,
+      idle: pool.idleCount,
+      waiting: pool.waitingCount,
+    },
+  });
 });
 
 const adapter = new PrismaPg(pool);
@@ -86,20 +138,32 @@ const prismaWithRetry = basePrisma.$extends({
           throw error;
         }
 
-        // eslint-disable-next-line no-console
-        console.warn(`[DB Retry] 🔄 ${modelName}.${operation} - Retrying once...`);
+        // 재시도 로직 (최대 2회, exponential backoff)
+        const retryDelays = [500, 1500]; // 500ms, 1500ms 대기
 
-        // 재시도 대기 시간을 조금 더 짧게 (300ms -> 100ms) 줄여서 반응성을 높임
-        await new Promise((r) => setTimeout(r, 100));
-
-        try {
-          return await query(args);
-        } catch (retryError) {
-          const retryMsg = retryError instanceof Error ? retryError.message : String(retryError);
+        for (let attempt = 0; attempt < retryDelays.length; attempt++) {
           // eslint-disable-next-line no-console
-          console.error(`[DB Retry] ❌ ${modelName}.${operation} - Retry failed:`, retryMsg);
-          throw retryError;
+          console.warn(`[DB Retry] 🔄 ${modelName}.${operation} - Retry ${attempt + 1}/${retryDelays.length}...`);
+
+          await new Promise((r) => setTimeout(r, retryDelays[attempt]));
+
+          try {
+            const result = await query(args);
+            // eslint-disable-next-line no-console
+            console.log(`[DB Retry] ✅ ${modelName}.${operation} - Retry ${attempt + 1} succeeded`);
+            return result;
+          } catch (retryError) {
+            const retryMsg = retryError instanceof Error ? retryError.message : String(retryError);
+            // eslint-disable-next-line no-console
+            console.error(`[DB Retry] ❌ ${modelName}.${operation} - Retry ${attempt + 1} failed:`, retryMsg);
+
+            if (attempt === retryDelays.length - 1) {
+              throw retryError;
+            }
+          }
         }
+
+        throw error; // fallback (도달하지 않음)
       }
     },
   },
