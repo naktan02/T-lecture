@@ -11,7 +11,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import config from './config';
-import { requestLogger, rateLimiter } from './common/middlewares';
+import { requestLogger, rateLimiter, poolMonitor } from './common/middlewares';
 import v1Router from './api/v1';
 import errorHandler from './common/middlewares/errorHandler';
 import logger from './config/logger';
@@ -83,6 +83,9 @@ app.use(cookieParser());
 
 // 전역 Rate Limit 적용 (15분당 IP당 100회)
 app.use('/api', rateLimiter.apiLimiter);
+
+// DB 연결 풀 모니터링 (대기 중인 요청이 많으면 503 반환)
+app.use('/api', poolMonitor);
 
 // 모든 v1 API는 /api/v1 아래로
 app.use('/api/v1', v1Router);

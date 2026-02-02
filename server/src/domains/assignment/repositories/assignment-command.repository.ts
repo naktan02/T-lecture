@@ -44,6 +44,9 @@ class AssignmentCommandRepository {
         skipDuplicates: true,
       });
       return res.count;
+    }, {
+      maxWait: 10000,  // 연결 획득 최대 10초 대기
+      timeout: 20000,  // 트랜잭션 실행 최대 20초
     });
 
     const dedupedRequested = uniqueMatches.length;
@@ -170,20 +173,45 @@ class AssignmentCommandRepository {
 
       // 1. 배정 추가 (Pending 상태로 저장)
       if (changes.add.length > 0) {
+        // ✅ N+1 문제 해결: 모든 배정과 패널티를 한 번에 조회
+        const existingAssignments = await tx.instructorUnitAssignment.findMany({
+          where: {
+            OR: changes.add.map((a) => ({
+              unitScheduleId: a.unitScheduleId,
+              userId: a.instructorId,
+            })),
+          },
+          include: {
+            UnitSchedule: {
+              include: { trainingPeriod: { include: { unit: { select: { name: true } } } } },
+            },
+          },
+        });
+
+        const instructorIds = Array.from(new Set(changes.add.map((a) => a.instructorId)));
+        const penalties = await tx.instructorPenalty.findMany({
+          where: { userId: { in: instructorIds } },
+        });
+
+        // Map으로 변환 (빠른 조회)
+        const assignmentMap = new Map(
+          existingAssignments.map((a) => [`${a.unitScheduleId}-${a.userId}`, a]),
+        );
+        const penaltyMap = new Map(penalties.map((p) => [p.userId, p]));
+
+        // 패널티 업데이트 준비
+        const penaltiesToDelete: number[] = [];
+        const penaltiesToUpdate: Array<{
+          userId: number;
+          count: number;
+          expiresAt: Date;
+          reasons: PenaltyReason[];
+        }> = [];
+
+        // 메모리에서 처리 (DB 쿼리 없음)
         for (const a of changes.add) {
-          const existingAssignment = await tx.instructorUnitAssignment.findUnique({
-            where: {
-              assignment_instructor_schedule_unique: {
-                unitScheduleId: a.unitScheduleId,
-                userId: a.instructorId,
-              },
-            },
-            include: {
-              UnitSchedule: {
-                include: { trainingPeriod: { include: { unit: { select: { name: true } } } } },
-              },
-            },
-          });
+          const key = `${a.unitScheduleId}-${a.instructorId}`;
+          const existingAssignment = assignmentMap.get(key);
 
           // 기존 배정이 Rejected였다면 패널티 사유 제거
           if (existingAssignment?.state === 'Rejected') {
@@ -193,9 +221,7 @@ class AssignmentCommandRepository {
               ? new Date(existingAssignment.UnitSchedule.date).toISOString().split('T')[0]
               : 'unknown';
 
-            const penalty = await tx.instructorPenalty.findUnique({
-              where: { userId: a.instructorId },
-            });
+            const penalty = penaltyMap.get(a.instructorId);
 
             if (penalty) {
               const penaltyWithReasons = penalty as unknown as PenaltyWithReasons;
@@ -205,9 +231,7 @@ class AssignmentCommandRepository {
               );
 
               if (penalty.count <= 1) {
-                await tx.instructorPenalty.delete({
-                  where: { userId: a.instructorId },
-                });
+                penaltiesToDelete.push(a.instructorId);
               } else {
                 const penaltyDaysPerReject = 15;
                 const newCount = penalty.count - 1;
@@ -216,20 +240,40 @@ class AssignmentCommandRepository {
                   now.getTime() + newCount * penaltyDaysPerReject * 24 * 60 * 60 * 1000,
                 );
 
-                await tx.instructorPenalty.update({
-                  where: { userId: a.instructorId },
-                  data: {
-                    count: { decrement: 1 },
-                    expiresAt: newExpiresAt,
-                    reasons: filteredReasons as unknown as Parameters<
-                      typeof tx.instructorPenalty.update
-                    >[0]['data']['reasons'],
-                  },
+                penaltiesToUpdate.push({
+                  userId: a.instructorId,
+                  count: newCount,
+                  expiresAt: newExpiresAt,
+                  reasons: filteredReasons,
                 });
               }
             }
           }
+        }
 
+        // ✅ 배치 처리: 패널티 삭제 (한 번에)
+        if (penaltiesToDelete.length > 0) {
+          await tx.instructorPenalty.deleteMany({
+            where: { userId: { in: penaltiesToDelete } },
+          });
+        }
+
+        // ✅ 배치 처리: 패널티 업데이트 (개별 - Prisma 제약)
+        for (const p of penaltiesToUpdate) {
+          await tx.instructorPenalty.update({
+            where: { userId: p.userId },
+            data: {
+              count: p.count,
+              expiresAt: p.expiresAt,
+              reasons: p.reasons as unknown as Parameters<
+                typeof tx.instructorPenalty.update
+              >[0]['data']['reasons'],
+            },
+          });
+        }
+
+        // ✅ 배치 처리: 배정 upsert (개별 - upsert는 배치 불가)
+        for (const a of changes.add) {
           await tx.instructorUnitAssignment.upsert({
             where: {
               assignment_instructor_schedule_unique: {
@@ -328,6 +372,9 @@ class AssignmentCommandRepository {
       }
 
       return results;
+    }, {
+      maxWait: 10000,  // 연결 획득 최대 10초 대기
+      timeout: 20000,  // 트랜잭션 실행 최대 20초
     });
   }
 

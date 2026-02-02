@@ -258,13 +258,13 @@ class AdminRepository {
         .deleteMany({
           where: { userId: { in: userIds } },
         })
-        .catch(() => {});
+        .catch(() => { });
 
       await tx.instructorStats
         .deleteMany({
           where: { instructorId: { in: userIds } },
         })
-        .catch(() => {});
+        .catch(() => { });
 
       await tx.instructor.deleteMany({
         where: { userId: { in: userIds } },
@@ -274,6 +274,9 @@ class AdminRepository {
       });
 
       return result;
+    }, {
+      maxWait: 10000,  // 연결 획득 최대 10초 대기
+      timeout: 20000,  // 트랜잭션 실행 최대 20초
     });
   }
 
@@ -317,6 +320,9 @@ class AdminRepository {
         where: { instructorId },
         orderBy: { availableOn: 'asc' },
       });
+    }, {
+      maxWait: 5000,   // 연결 획득 최대 5초 대기
+      timeout: 10000,  // 트랜잭션 실행 최대 10초 (간단한 작업)
     });
   }
 
@@ -337,11 +343,14 @@ class AdminRepository {
       // 강사 관련 데이터 삭제
       await tx.instructorVirtue.deleteMany({ where: { instructorId: id } });
       await tx.instructorAvailability.deleteMany({ where: { instructorId: id } });
-      await tx.instructorUnitDistance.deleteMany({ where: { userId: id } }).catch(() => {});
-      await tx.instructorStats.deleteMany({ where: { instructorId: id } }).catch(() => {});
-      await tx.instructorPriorityCredit.deleteMany({ where: { instructorId: id } }).catch(() => {});
+      await tx.instructorUnitDistance.deleteMany({ where: { userId: id } }).catch(() => { });
+      await tx.instructorStats.deleteMany({ where: { instructorId: id } }).catch(() => { });
+      await tx.instructorPriorityCredit.deleteMany({ where: { instructorId: id } }).catch(() => { });
       // Instructor 레코드 삭제
       return await tx.instructor.delete({ where: { userId: id } });
+    }, {
+      maxWait: 10000,  // 연결 획득 최대 10초 대기
+      timeout: 20000,  // 트랜잭션 실행 최대 20초
     });
   }
 
