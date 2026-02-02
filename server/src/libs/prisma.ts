@@ -26,7 +26,7 @@ const pool = new Pool({
   
   // 1. 연결 유지 시간 최소화 (가장 중요)
   // 연결을 1초 이상 사용하지 않으면 즉시 버려서 '좀비 연결'이 되는 것을 막습니다.
-  idleTimeoutMillis: 1000, // (기존 10000 -> 1000)
+  idleTimeoutMillis: 2000, // (기존 10000 -> 1000)
   
   // 2. Keep-Alive 비활성화
   // Transaction Mode에서는 어차피 연결이 자주 바뀌므로 불필요한 패킷을 줄입니다.
@@ -34,12 +34,13 @@ const pool = new Pool({
   
   // 3. 연결 타임아웃 단축
   // 연결이 안 잡히면 빨리 실패하고 재시도(Retry) 로직을 타는 게 낫습니다.
-  connectionTimeoutMillis: 5000, // (30초 -> 5초)
+  connectionTimeoutMillis: 15000, // (30초 -> 5초)
   
   // 4. 최대 연결 수 조정
   // Render 서버가 하나라면 10~15 정도가 적당합니다. 
   // Transaction Mode는 회전율이 빨라서 숫자가 작아도 처리량이 높습니다.
   max: 2, 
+  min: 0,
   
   // 5. 쿼리 타임아웃
   // 쿼리가 너무 오래 걸리면(10초) 그냥 끊어버립니다. (무한 대기 방지)
