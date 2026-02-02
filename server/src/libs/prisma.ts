@@ -4,13 +4,13 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/client.js';
 
 // ============================================
-// pg Pool 吏곸젒 ?앹꽦 (?곌껐 ? ?듭뀡 ?쒖뼱)
+// pg Pool 직접 생성 (연결 풀 옵션 제어)
 // ============================================
 
-// ?뵇 DEBUG: DATABASE_URL ?뺤씤 (?ы듃? pgbouncer ?뚮씪誘명꽣 泥댄겕)
 const dbUrl = process.env.DATABASE_URL || '';
 const urlPort = dbUrl.match(/:(\d+)\//)?.[1];
 const hasPgBouncer = dbUrl.includes('pgbouncer=true');
+
 // eslint-disable-next-line no-console
 console.log('[DB Pool] Connection setup:', {
   port: urlPort,
@@ -21,51 +21,45 @@ console.log('[DB Pool] Connection setup:', {
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   // ============================================
-  // Supavisor(6543) Transaction Mode 理쒖쟻??
+  // Supavisor(6543) Transaction Mode 최적화 설정
   // ============================================
   
-  // 1. ?곌껐 ?좎? ?쒓컙 理쒖냼??(媛??以묒슂)
-  // ?곌껐??1珥??댁긽 ?ъ슜?섏? ?딆쑝硫?利됱떆 踰꾨젮??'醫鍮??곌껐'???섎뒗 寃껋쓣 留됱뒿?덈떎.
-  idleTimeoutMillis: 4000, // (湲곗〈 10000 -> 1000)
+  // 1. [핵심] 연결 유지 시간: 0.1초 (극단적으로 짧게)
+  // 4000(4초)도 깁니다. 100ms(0.1초)만 지나면 바로 버리게 해서 
+  // '죽은 연결'을 아예 안 들고 있게 만듭니다.
+  idleTimeoutMillis: 100, 
   
-  // 2. Keep-Alive 鍮꾪솢?깊솕
-  // Transaction Mode?먯꽌???댁감???곌껐???먯＜ 諛붾뚮?濡?遺덊븘?뷀븳 ?⑦궥??以꾩엯?덈떎.
-  keepAlive: false, 
-  
-  // 3. ?곌껐 ??꾩븘???⑥텞
-  // ?곌껐?????≫엳硫?鍮⑤━ ?ㅽ뙣?섍퀬 ?ъ떆??Retry) 濡쒖쭅?????寃??レ뒿?덈떎.
-  connectionTimeoutMillis: 15000, // (30珥?-> 5珥?
-  
-  // 4. 理쒕? ?곌껐 ??議곗젙
-  // Render ?쒕쾭媛 ?섎굹?쇰㈃ 10~15 ?뺣룄媛 ?곷떦?⑸땲?? 
-  // Transaction Mode???뚯쟾?⑥씠 鍮⑤씪???レ옄媛 ?묒븘??泥섎━?됱씠 ?믪뒿?덈떎.
-  max: 4, 
+  // 2. [핵심] 최대 연결 수: 20개 (과감하게 늘리기)
+  // Supabase 6543 포트는 수천 개의 연결도 받아줍니다. 
+  // 4개는 너무 적어서 병목이 오니 20개로 넉넉히 뚫어주세요.
+  max: 20, 
   min: 0,
   
-  // 5. 荑쇰━ ??꾩븘??
-  // 荑쇰━媛 ?덈Т ?ㅻ옒 嫄몃━硫?10珥? 洹몃깷 ?딆뼱踰꾨┰?덈떎. (臾댄븳 ?湲?諛⑹?)
-  query_timeout: 15000, 
+  // 3. 연결 대기 타임아웃
+  // 풀이 꽉 찼을 때 5초만 기다리고 빨리 에러를 뱉어서 재시도를 유도합니다.
+  connectionTimeoutMillis: 5000, 
   
+  // 4. 기타 필수 설정
+  keepAlive: false, // Transaction Mode 필수
+  query_timeout: 10000, // 10초 이상 걸리는 쿼리는 강제 종료
   allowExitOnIdle: true,
 });
 
-// Pool ?먮윭 ?몃뱾留?(?곌껐 ?ㅽ뙣 ??濡쒓퉭)
+// Pool 에러 핸들링
 pool.on('error', (err) => {
   // eslint-disable-next-line no-console
   console.error('[DB Pool] Unexpected error on idle client:', err.message);
 });
 
-// Prisma 7 PrismaPg ?대뙌??
 const adapter = new PrismaPg(pool);
 
-// 湲곕낯 Prisma Client (extension ?곸슜 ??
 const basePrisma = new PrismaClient({
   adapter,
   log: ['error', 'warn'],
 });
 
 // ============================================
-// ?쇱떆???먮윭 ?먮퀎 (?ъ떆?????
+// 재시도 로직 (그대로 유지)
 // ============================================
 const TRANSIENT_ERROR_PATTERNS = [
   'ETIMEDOUT',
@@ -74,7 +68,8 @@ const TRANSIENT_ERROR_PATTERNS = [
   'Connection terminated',
   "Can't reach database server",
   'connection is closed',
-  'Query read timeout', // ?몚 異붽?
+  'Query read timeout',
+  'timeout exceeded when trying to connect', // 👈 이것도 재시도 대상에 추가하면 좋습니다
 ] as const;
 
 function isTransientError(error: unknown): boolean {
@@ -83,9 +78,6 @@ function isTransientError(error: unknown): boolean {
   return TRANSIENT_ERROR_PATTERNS.some((p) => message.includes(p));
 }
 
-// ============================================
-// 媛踰쇱슫 ?ъ떆??Extension (1?뚮쭔)
-// ============================================
 const prismaWithRetry = basePrisma.$extends({
   name: 'lightRetry',
   query: {
@@ -93,7 +85,6 @@ const prismaWithRetry = basePrisma.$extends({
       try {
         return await query(args);
       } catch (error) {
-        // ?먮윭 ?뺣낫 ?곸꽭 濡쒓퉭
         const errorMessage = error instanceof Error ? error.message : String(error);
         const modelName = model || 'unknown';
 
@@ -102,47 +93,30 @@ const prismaWithRetry = basePrisma.$extends({
           model: modelName,
           operation,
           error: errorMessage,
-          args: JSON.stringify(args).slice(0, 200), // 泥섏쓬 200?먮쭔 (?덈Т 湲몄? ?딄쾶)
+          // args는 로그 너무 길어질 수 있으니 필요 시 주석 처리
         });
 
         if (!isTransientError(error)) {
           throw error;
         }
 
-        // Write ?묒뾽? ?ъ떆??????(以묐났 諛⑹?)
-        const WRITE_OPS = [
-          'create',
-          'createMany',
-          'update',
-          'updateMany',
-          'delete',
-          'deleteMany',
-          'upsert',
-        ];
+        const WRITE_OPS = ['create', 'createMany', 'update', 'updateMany', 'delete', 'deleteMany', 'upsert'];
         if (WRITE_OPS.includes(operation)) {
-          // eslint-disable-next-line no-console
-          console.warn(`[DB Retry] ??${modelName}.${operation} - Write operation, not retrying`);
           throw error;
         }
 
         // eslint-disable-next-line no-console
-        console.warn(`[DB Retry] ?봽 ${modelName}.${operation} - Retrying once...`);
+        console.warn(`[DB Retry] 🔄 ${modelName}.${operation} - Retrying once...`);
 
-        await new Promise((r) => setTimeout(r, 300));
+        // 재시도 대기 시간을 조금 더 짧게 (300ms -> 100ms) 줄여서 반응성을 높임
+        await new Promise((r) => setTimeout(r, 100));
 
         try {
-          const result = await query(args);
-          // eslint-disable-next-line no-console
-          console.log(`[DB Retry] ??${modelName}.${operation} - Retry succeeded`);
-          return result;
+          return await query(args);
         } catch (retryError) {
-          const retryErrorMessage =
-            retryError instanceof Error ? retryError.message : String(retryError);
+          const retryMsg = retryError instanceof Error ? retryError.message : String(retryError);
           // eslint-disable-next-line no-console
-          console.error(
-            `[DB Retry] ??${modelName}.${operation} - Retry also failed:`,
-            retryErrorMessage,
-          );
+          console.error(`[DB Retry] ❌ ${modelName}.${operation} - Retry failed:`, retryMsg);
           throw retryError;
         }
       }
@@ -150,40 +124,26 @@ const prismaWithRetry = basePrisma.$extends({
   },
 });
 
-// ?꾩뿭 ?좎뼵 (媛쒕컻 ?섍꼍 而ㅻ꽖???꾩닔 諛⑹?)
-const globalForPrisma = global as unknown as {
-  prisma: typeof prismaWithRetry;
-  pool: Pool;
-};
-
+const globalForPrisma = global as unknown as { prisma: typeof prismaWithRetry; pool: Pool };
 export const prisma = globalForPrisma.prisma || prismaWithRetry;
 export { pool };
-
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
   globalForPrisma.pool = pool;
 }
 
-// ============================================
-// ?곌껐 ?곹깭 紐⑤땲?곕쭅
-// ============================================
 export function logPoolStatus(): void {
   // eslint-disable-next-line no-console
   console.log('[DB Pool] Status:', {
-    totalCount: pool.totalCount,
-    idleCount: pool.idleCount,
-    waitingCount: pool.waitingCount,
+    total: pool.totalCount,
+    idle: pool.idleCount,
+    waiting: pool.waitingCount,
   });
 }
 
-// ============================================
-// ?곌껐 ? ?뺣━ (??醫낅즺 ??
-// ============================================
 export async function closePool(): Promise<void> {
   await basePrisma.$disconnect();
   await pool.end();
-  // eslint-disable-next-line no-console
-  console.log('[DB Pool] Closed');
 }
 
 export default prisma;
