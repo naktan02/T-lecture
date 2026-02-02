@@ -41,9 +41,6 @@ class InstructorRepository {
           })),
         });
       }
-    }, {
-      maxWait: 5000,   // 연결 획듍 최대 5초 대기
-      timeout: 10000,  // 트랜잭션 실행 최대 10초
     });
   }
 
@@ -213,9 +210,6 @@ class InstructorRepository {
           data: virtueIds.map((vId) => ({ instructorId: id, virtueId: vId })),
         });
       }
-    }, {
-      maxWait: 5000,   // 연결 획듍 최대 5초 대기
-      timeout: 10000,  // 트랜잭션 실행 최대 10초
     });
   }
 }

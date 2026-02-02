@@ -39,33 +39,6 @@ function normalizeError(err: unknown): {
     };
   }
 
-  // Prisma 트랜잭션 타임아웃 에러 처리
-  if (err instanceof Error) {
-    // 트랜잭션 타임아웃
-    if (err.message.includes('Transaction already closed') ||
-      err.message.includes('Transaction is no longer valid') ||
-      err.message.includes('Expired')) {
-      return {
-        statusCode: 408,
-        code: 'TRANSACTION_TIMEOUT',
-        message: '요청 처리 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.',
-        stack: err.stack,
-        isAppError: false,
-      };
-    }
-
-    // 연결 획득 타임아웃
-    if (err.message.includes('Timed out fetching a new connection')) {
-      return {
-        statusCode: 503,
-        code: 'CONNECTION_TIMEOUT',
-        message: '서버가 일시적으로 과부하 상태입니다. 잠시 후 다시 시도해주세요.',
-        stack: err.stack,
-        isAppError: false,
-      };
-    }
-  }
-
   // 누군가 `throw "boom"` 같은 걸 해도 안전하게
   if (err instanceof Error) {
     return {

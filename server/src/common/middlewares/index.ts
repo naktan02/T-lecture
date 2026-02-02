@@ -6,7 +6,6 @@ import auth from './auth';
 import * as adminMiddleware from './admin.middleware';
 import requireRole from './requireRole';
 import * as rateLimiter from './rateLimiter';
-import poolMonitor from './poolMonitor';
 
 export {
   requestLogger,
@@ -16,5 +15,4 @@ export {
   adminMiddleware,
   requireRole,
   rateLimiter,
-  poolMonitor,
 };
