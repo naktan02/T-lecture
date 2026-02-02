@@ -9,7 +9,8 @@ import { PrismaClient } from '../generated/prisma/client.js';
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 10, // 최대 연결 수
-  min: 0,
+  min: 1,
+  keepAlive: true,
   connectionTimeoutMillis: 30000, // 연결 획득 대기 30초 (부하 대응)
   idleTimeoutMillis: 30000, // 유휴 연결 30초 후 해제 (리소스 효율)
 });
