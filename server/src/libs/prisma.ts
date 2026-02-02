@@ -6,12 +6,28 @@ import { PrismaClient } from '../generated/prisma/client.js';
 // ============================================
 // pg Pool 직접 생성 (연결 풀 옵션 제어)
 // ============================================
+
+// 🔍 DEBUG: DATABASE_URL 확인 (포트와 pgbouncer 파라미터 체크)
+const dbUrl = process.env.DATABASE_URL || '';
+const urlPort = dbUrl.match(/:(\d+)\//)?.[1];
+const hasPgBouncer = dbUrl.includes('pgbouncer=true');
+// eslint-disable-next-line no-console
+console.log('[DB Pool] Connection setup:', {
+  port: urlPort,
+  usesTransactionPooler: urlPort === '6543' && hasPgBouncer,
+  hasPgBouncerParam: hasPgBouncer,
+});
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 5, // 최대 연결 수
+  max: 10, // 최대 연결 수
   min: 0, // 최소 연결 수
   idleTimeoutMillis: 60000, // 유휴 연결 60초 후 해제 (pool 재시작 방지)
-  connectionTimeoutMillis: 2000, // 연결 획득 대기 2초 (빠른 실패)
+  connectionTimeoutMillis: 5000, // 연결 획득 대기 5초 (네트워크 지연 고려)
+  
+  // 쿼리 타임아웃 설정 (Supabase pooler 타임아웃 대응)
+  query_timeout: 30000, // 개별 쿼리 최대 30초
+  statement_timeout: 30000, // SQL statement 최대 30초
 });
 
 // Pool 에러 핸들링 (연결 실패 시 로깅)
@@ -53,10 +69,22 @@ function isTransientError(error: unknown): boolean {
 const prismaWithRetry = basePrisma.$extends({
   name: 'lightRetry',
   query: {
-    $allOperations: async ({ operation, args, query }) => {
+    $allOperations: async ({ operation, args, query, model }) => {
       try {
         return await query(args);
       } catch (error) {
+        // 에러 정보 상세 로깅
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const modelName = model || 'unknown';
+        
+        // eslint-disable-next-line no-console
+        console.error(`[DB ERROR] ${modelName}.${operation} failed:`, {
+          model: modelName,
+          operation,
+          error: errorMessage,
+          args: JSON.stringify(args).slice(0, 200), // 처음 200자만 (너무 길지 않게)
+        });
+
         if (!isTransientError(error)) {
           throw error;
         }
@@ -72,14 +100,27 @@ const prismaWithRetry = basePrisma.$extends({
           'upsert',
         ];
         if (WRITE_OPS.includes(operation)) {
+          // eslint-disable-next-line no-console
+          console.warn(`[DB Retry] ❌ ${modelName}.${operation} - Write operation, not retrying`);
           throw error;
         }
 
         // eslint-disable-next-line no-console
-        console.warn(`[DB Retry] ${operation} failed, retrying once...`);
+        console.warn(`[DB Retry] 🔄 ${modelName}.${operation} - Retrying once...`);
 
         await new Promise((r) => setTimeout(r, 100));
-        return await query(args);
+        
+        try {
+          const result = await query(args);
+          // eslint-disable-next-line no-console
+          console.log(`[DB Retry] ✅ ${modelName}.${operation} - Retry succeeded`);
+          return result;
+        } catch (retryError) {
+          const retryErrorMessage = retryError instanceof Error ? retryError.message : String(retryError);
+          // eslint-disable-next-line no-console
+          console.error(`[DB Retry] ❌ ${modelName}.${operation} - Retry also failed:`, retryErrorMessage);
+          throw retryError;
+        }
       }
     },
   },
@@ -112,47 +153,9 @@ export function logPoolStatus(): void {
 }
 
 // ============================================
-// Supavisor Heartbeat (5분 유휴 타임아웃 방지)
-// ============================================
-const HEARTBEAT_INTERVAL_MS = 4 * 60 * 1000; // 4분
-let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
-
-export function startDatabaseHeartbeat(): void {
-  if (heartbeatInterval) return;
-
-  heartbeatInterval = setInterval(async () => {
-    try {
-      await basePrisma.$queryRaw`SELECT 1`;
-      // eslint-disable-next-line no-console
-      console.log('[DB Heartbeat] OK -', {
-        total: pool.totalCount,
-        idle: pool.idleCount,
-        waiting: pool.waitingCount,
-      });
-    } catch {
-      // eslint-disable-next-line no-console
-      console.warn('[DB Heartbeat] Connection check failed, will auto-recover');
-    }
-  }, HEARTBEAT_INTERVAL_MS);
-
-  // eslint-disable-next-line no-console
-  console.log('[DB Heartbeat] Started (interval: 4 minutes)');
-}
-
-export function stopDatabaseHeartbeat(): void {
-  if (heartbeatInterval) {
-    clearInterval(heartbeatInterval);
-    heartbeatInterval = null;
-    // eslint-disable-next-line no-console
-    console.log('[DB Heartbeat] Stopped');
-  }
-}
-
-// ============================================
 // 연결 풀 정리 (앱 종료 시)
 // ============================================
 export async function closePool(): Promise<void> {
-  stopDatabaseHeartbeat();
   await basePrisma.$disconnect();
   await pool.end();
   // eslint-disable-next-line no-console
