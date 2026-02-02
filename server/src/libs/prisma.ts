@@ -20,14 +20,21 @@ console.log('[DB Pool] Connection setup:', {
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 10, // 최대 연결 수
-  min: 0, // 최소 연결 수
-  idleTimeoutMillis: 60000, // 유휴 연결 60초 후 해제 (pool 재시작 방지)
-  connectionTimeoutMillis: 5000, // 연결 획득 대기 5초 (네트워크 지연 고려)
-  
-  // 쿼리 타임아웃 설정 (Supabase pooler 타임아웃 대응)
+  // ============================================
+  // Supavisor 최적화 설정
+  // ============================================
+  max: 5, // 최대 연결 수 (Supavisor 제한 고려)
+  min: 0, // 유휴 연결 없음
+  idleTimeoutMillis: 10000, // 유휴 연결 10초 후 해제
+  connectionTimeoutMillis: 30000, // 연결 획득 대기 30초 (여유 확보)
+  // TCP keepalive 활성화
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000, // 10초 후 keepalive 시작
+  // 쿼리 타임아웃 설정
   query_timeout: 30000, // 개별 쿼리 최대 30초
   statement_timeout: 30000, // SQL statement 최대 30초
+  // 유휴 시 앱 종료 허용
+  allowExitOnIdle: true,
 });
 
 // Pool 에러 핸들링 (연결 실패 시 로깅)
@@ -55,6 +62,7 @@ const TRANSIENT_ERROR_PATTERNS = [
   'Connection terminated',
   "Can't reach database server",
   'connection is closed',
+  'Query read timeout', // 👈 추가
 ] as const;
 
 function isTransientError(error: unknown): boolean {
@@ -76,7 +84,7 @@ const prismaWithRetry = basePrisma.$extends({
         // 에러 정보 상세 로깅
         const errorMessage = error instanceof Error ? error.message : String(error);
         const modelName = model || 'unknown';
-        
+
         // eslint-disable-next-line no-console
         console.error(`[DB ERROR] ${modelName}.${operation} failed:`, {
           model: modelName,
@@ -109,16 +117,20 @@ const prismaWithRetry = basePrisma.$extends({
         console.warn(`[DB Retry] 🔄 ${modelName}.${operation} - Retrying once...`);
 
         await new Promise((r) => setTimeout(r, 100));
-        
+
         try {
           const result = await query(args);
           // eslint-disable-next-line no-console
           console.log(`[DB Retry] ✅ ${modelName}.${operation} - Retry succeeded`);
           return result;
         } catch (retryError) {
-          const retryErrorMessage = retryError instanceof Error ? retryError.message : String(retryError);
+          const retryErrorMessage =
+            retryError instanceof Error ? retryError.message : String(retryError);
           // eslint-disable-next-line no-console
-          console.error(`[DB Retry] ❌ ${modelName}.${operation} - Retry also failed:`, retryErrorMessage);
+          console.error(
+            `[DB Retry] ❌ ${modelName}.${operation} - Retry also failed:`,
+            retryErrorMessage,
+          );
           throw retryError;
         }
       }
