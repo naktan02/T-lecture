@@ -21,19 +21,30 @@ console.log('[DB Pool] Connection setup:', {
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   // ============================================
-  // Supavisor 최적화 설정
+  // Supavisor(6543) Transaction Mode 최적화
   // ============================================
-  max: 5, // 최대 연결 수 (Supavisor 제한 고려)
-  min: 0, // 유휴 연결 없음
-  idleTimeoutMillis: 10000, // 유휴 연결 10초 후 해제
-  connectionTimeoutMillis: 30000, // 연결 획득 대기 30초 (여유 확보)
-  // TCP keepalive 활성화
-  keepAlive: true,
-  keepAliveInitialDelayMillis: 10000, // 10초 후 keepalive 시작
-  // 쿼리 타임아웃 설정
-  query_timeout: 30000, // 개별 쿼리 최대 30초
-  statement_timeout: 30000, // SQL statement 최대 30초
-  // 유휴 시 앱 종료 허용
+  
+  // 1. 연결 유지 시간 최소화 (가장 중요)
+  // 연결을 1초 이상 사용하지 않으면 즉시 버려서 '좀비 연결'이 되는 것을 막습니다.
+  idleTimeoutMillis: 1000, // (기존 10000 -> 1000)
+  
+  // 2. Keep-Alive 비활성화
+  // Transaction Mode에서는 어차피 연결이 자주 바뀌므로 불필요한 패킷을 줄입니다.
+  keepAlive: false, 
+  
+  // 3. 연결 타임아웃 단축
+  // 연결이 안 잡히면 빨리 실패하고 재시도(Retry) 로직을 타는 게 낫습니다.
+  connectionTimeoutMillis: 5000, // (30초 -> 5초)
+  
+  // 4. 최대 연결 수 조정
+  // Render 서버가 하나라면 10~15 정도가 적당합니다. 
+  // Transaction Mode는 회전율이 빨라서 숫자가 작아도 처리량이 높습니다.
+  max: 2, 
+  
+  // 5. 쿼리 타임아웃
+  // 쿼리가 너무 오래 걸리면(10초) 그냥 끊어버립니다. (무한 대기 방지)
+  query_timeout: 10000, 
+  
   allowExitOnIdle: true,
 });
 

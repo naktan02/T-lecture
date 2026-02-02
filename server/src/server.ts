@@ -12,6 +12,7 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import config from './config';
 import { requestLogger, rateLimiter } from './common/middlewares';
+import poolMonitor from './common/middlewares/poolMonitor';
 import v1Router from './api/v1';
 import errorHandler from './common/middlewares/errorHandler';
 import logger from './config/logger';
@@ -80,6 +81,7 @@ app.options('*', (_req: Request, res: Response) => {
 app.use(express.json());
 app.use(requestLogger);
 app.use(cookieParser());
+app.use(poolMonitor);
 
 // 전역 Rate Limit 적용 (15분당 IP당 100회)
 app.use('/api', rateLimiter.apiLimiter);
