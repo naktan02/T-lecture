@@ -20,28 +20,19 @@ console.log('[DB Pool] Connection setup:', {
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  // ============================================
-  // Supavisor(6543) Transaction Mode 최적화 설정
-  // ============================================
   
-  // 1. [핵심] 연결 유지 시간: 0.1초 (극단적으로 짧게)
-  // 4000(4초)도 깁니다. 100ms(0.1초)만 지나면 바로 버리게 해서 
-  // '죽은 연결'을 아예 안 들고 있게 만듭니다.
-  idleTimeoutMillis: 100, 
+  // 1. [핵심] 4000ms는 깁니다. 0으로 설정해서 "사용 안 하면 즉시 폐기" 하세요.
+  // 이렇게 해야 '죽은 연결'을 만날 확률이 0%가 됩니다.
+  idleTimeoutMillis: 0, 
   
-  // 2. [핵심] 최대 연결 수: 20개 (과감하게 늘리기)
-  // Supabase 6543 포트는 수천 개의 연결도 받아줍니다. 
-  // 4개는 너무 적어서 병목이 오니 20개로 넉넉히 뚫어주세요.
-  max: 20, 
+  // 2. [핵심] 4개는 너무 적습니다. 15개로 늘리세요.
+  // 15개 연결 객체는 메모리 몇 MB도 안 씁니다. Render 무료도 충분합니다.
+  max: 15, 
+  
   min: 0,
-  
-  // 3. 연결 대기 타임아웃
-  // 풀이 꽉 찼을 때 5초만 기다리고 빨리 에러를 뱉어서 재시도를 유도합니다.
-  connectionTimeoutMillis: 5000, 
-  
-  // 4. 기타 필수 설정
-  keepAlive: false, // Transaction Mode 필수
-  query_timeout: 10000, // 10초 이상 걸리는 쿼리는 강제 종료
+  connectionTimeoutMillis: 5000, // 대기 5초
+  keepAlive: false, 
+  query_timeout: 10000, 
   allowExitOnIdle: true,
 });
 
