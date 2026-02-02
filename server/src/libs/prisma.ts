@@ -9,14 +9,9 @@ import { PrismaClient } from '../generated/prisma/client.js';
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 20, // 최대 연결 수
-  min: 1, // 최소 1개 유지 (첫 요청 즉시 응답)
+  min: 0,
   connectionTimeoutMillis: 30000, // 연결 획득 대기 30초 (부하 대응)
   idleTimeoutMillis: 30000, // 유휴 연결 30초 후 해제 (리소스 효율)
-
-  // PostgreSQL 세션 타임아웃 설정
-  // - statement_timeout: 개별 쿼리 30초 제한 (느린 쿼리 방지)
-  // - idle_in_transaction_session_timeout: 트랜잭션 내 유휴 55초 제한 (Supabase pooler 60초 회피)
-  options: '-c statement_timeout=30000 -c idle_in_transaction_session_timeout=55000',
 });
 
 // Pool 에러 핸들링 (연결 실패 시 로깅)
