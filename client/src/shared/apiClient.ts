@@ -57,15 +57,25 @@ export const apiClient = async (url: string, options: ApiClientOptions = {}): Pr
 
     if (response.status === 401 && !options.skipInterceptor) {
       if (isRefreshing) {
+        // 이미 refresh 진행 중이면 타임아웃과 함께 큐에 추가
         return new Promise<Response>((resolve, reject) => {
+          // 10초 타임아웃 - 무한 대기 방지
+          const timeoutId = setTimeout(() => {
+            reject(new Error('Token refresh timeout'));
+          }, 10000);
+
           failedQueue.push({
             resolve: (newToken: string) => {
+              clearTimeout(timeoutId);
               headers['Authorization'] = `Bearer ${newToken}`;
               fetch(`${API_BASE_URL}${url}`, { ...config, headers })
                 .then(resolve)
                 .catch(reject);
             },
-            reject,
+            reject: (error: Error) => {
+              clearTimeout(timeoutId);
+              reject(error);
+            },
           });
         });
       }
@@ -96,11 +106,17 @@ export const apiClient = async (url: string, options: ApiClientOptions = {}): Pr
         return retryRes;
       } catch (err) {
         processQueue(err as Error, null);
+        // 로컬스토리지 전체 정리
         localStorage.removeItem('accessToken');
         localStorage.removeItem('userRole');
         localStorage.removeItem('isInstructor');
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('instructorProfileCompleted');
         showError('세션이 만료되었습니다. 다시 로그인해주세요.');
-        window.location.href = '/login';
+        // 약간의 지연 후 리다이렉트 (에러 메시지 표시 시간 확보)
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 100);
         return Promise.reject(err);
       } finally {
         isRefreshing = false;

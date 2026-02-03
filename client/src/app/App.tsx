@@ -3,6 +3,7 @@ import { useEffect, type ReactElement } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { useVisibilityChange } from '../shared/hooks/useVisibilityChange';
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,12 @@ import InstructorInquiryPage from '../pages/instructor/InquiryPage';
 import TermsPage from '../pages/legal/TermsPage';
 import PrivacyPage from '../pages/legal/PrivacyPage';
 
+// 모바일 백그라운드 복귀 시 토큰 체크 컴포넌트
+function AuthVisibilityGuard() {
+  useVisibilityChange();
+  return null;
+}
+
 function App(): ReactElement {
   // 전역 백스페이스 이전 페이지 이동 방지
   useEffect(() => {
@@ -51,6 +58,8 @@ function App(): ReactElement {
       <Toaster />
 
       <BrowserRouter>
+        {/* 모바일 백그라운드 복귀 시 토큰 유효성 체크 */}
+        <AuthVisibilityGuard />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
