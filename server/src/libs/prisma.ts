@@ -10,8 +10,8 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 20, // 최대 연결 수
   min: 0, // 최소 연결 수
-  idleTimeoutMillis: 30000, // 유휴 연결 60초 후 해제 (pool 재시작 방지)
-  connectionTimeoutMillis: 10000, // 연결 획득 대기 2초 (빠른 실패)
+  idleTimeoutMillis: 60000, // 유휴 연결 60초 후 해제
+  connectionTimeoutMillis: 30000, // 연결 획득 대기 30초 (무료 티어 지연 대응)
 });
 
 // Pool 에러 핸들링 (연결 실패 시 로깅)
@@ -48,39 +48,57 @@ function isTransientError(error: unknown): boolean {
 }
 
 // ============================================
-// 가벼운 재시도 Extension (1회만)
+// 재시도 Extension (무료 티어 대응: 3회 + 지수 백오프)
 // ============================================
+const MAX_RETRIES = 3;
+const RETRY_DELAYS = [500, 1000, 2000]; // 500ms, 1s, 2s
+
 const prismaWithRetry = basePrisma.$extends({
-  name: 'lightRetry',
+  name: 'robustRetry',
   query: {
     $allOperations: async ({ operation, args, query }) => {
-      try {
-        return await query(args);
-      } catch (error) {
-        if (!isTransientError(error)) {
-          throw error;
+      // Write 작업은 재시도 안 함 (중복 방지)
+      const WRITE_OPS = [
+        'create',
+        'createMany',
+        'update',
+        'updateMany',
+        'delete',
+        'deleteMany',
+        'upsert',
+      ];
+      const isWriteOp = WRITE_OPS.includes(operation);
+
+      let lastError: unknown;
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          return await query(args);
+        } catch (error) {
+          lastError = error;
+
+          // Write 작업이거나 일시적 에러가 아니면 즉시 throw
+          if (isWriteOp || !isTransientError(error)) {
+            throw error;
+          }
+
+          // 마지막 시도였으면 throw
+          if (attempt >= MAX_RETRIES) {
+            // eslint-disable-next-line no-console
+            console.error(`[DB Retry] ${operation} failed after ${MAX_RETRIES} retries`);
+            throw error;
+          }
+
+          // 지수 백오프로 재시도
+          const delay = RETRY_DELAYS[attempt] || 2000;
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[DB Retry] ${operation} failed, retry ${attempt + 1}/${MAX_RETRIES} in ${delay}ms...`,
+          );
+          await new Promise((r) => setTimeout(r, delay));
         }
-
-        // Write 작업은 재시도 안 함 (중복 방지)
-        const WRITE_OPS = [
-          'create',
-          'createMany',
-          'update',
-          'updateMany',
-          'delete',
-          'deleteMany',
-          'upsert',
-        ];
-        if (WRITE_OPS.includes(operation)) {
-          throw error;
-        }
-
-        // eslint-disable-next-line no-console
-        console.warn(`[DB Retry] ${operation} failed, retrying once...`);
-
-        await new Promise((r) => setTimeout(r, 100));
-        return await query(args);
       }
+
+      throw lastError;
     },
   },
 });
@@ -114,7 +132,7 @@ export function logPoolStatus(): void {
 // ============================================
 // Supavisor Heartbeat (5분 유휴 타임아웃 방지)
 // ============================================
-const HEARTBEAT_INTERVAL_MS = 4 * 60 * 1000; // 4분
+const HEARTBEAT_INTERVAL_MS = 2 * 60 * 1000; // 2분 (무료 티어 안정성 강화)
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
 export function startDatabaseHeartbeat(): void {
@@ -136,7 +154,7 @@ export function startDatabaseHeartbeat(): void {
   }, HEARTBEAT_INTERVAL_MS);
 
   // eslint-disable-next-line no-console
-  console.log('[DB Heartbeat] Started (interval: 4 minutes)');
+  console.log('[DB Heartbeat] Started (interval: 2 minutes)');
 }
 
 export function stopDatabaseHeartbeat(): void {
