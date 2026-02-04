@@ -7,6 +7,7 @@ import instructorRepository from '../instructor/instructor.repository';
 import unitRepository from '../unit/unit.repository';
 
 import AppError from '../../common/errors/AppError';
+import logger from '../../config/logger';
 import { ProcessResult, InstructorWithCoords, UnitWithCoords } from '../../types/distance.types';
 
 const MAX_ROUTE_PER_DAY = 9000;
@@ -219,6 +220,27 @@ class DistanceService {
 
     // 최종 할당량 확인
     const finalUsage = await kakaoUsageRepository.getOrCreateToday();
+
+    // 배치 완료 후 에러 종합 로깅 (한 번만)
+    if (totalErrors > 0) {
+      const errorResults = allResults.filter((r) => r.status === 'error');
+      // 에러 코드별로 그룹화
+      const errorsByCode: Record<string, { count: number; samples: string[] }> = {};
+      for (const err of errorResults) {
+        const code = err.code || 'UNKNOWN';
+        if (!errorsByCode[code]) {
+          errorsByCode[code] = { count: 0, samples: [] };
+        }
+        errorsByCode[code].count++;
+        // 샘플은 최대 3개만 저장
+        if (errorsByCode[code].samples.length < 3) {
+          errorsByCode[code].samples.push(
+            `instructor=${err.instructorId}, unit=${err.unitId}: ${err.error}`,
+          );
+        }
+      }
+      logger.error(`[DistanceBatch] Completed with ${totalErrors} errors`, { errorsByCode });
+    }
 
     return {
       processed: totalProcessed,

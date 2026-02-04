@@ -35,6 +35,15 @@ class KakaoService {
     destLat: number,
     destLng: number,
   ): Promise<RouteResult> {
+    // 좌표 유효성 검사 (0 또는 null 체크)
+    if (!originLat || !originLng || !destLat || !destLng) {
+      throw new AppError(
+        `Invalid coordinates: origin(${originLat},${originLng}) dest(${destLat},${destLng})`,
+        400,
+        'KAKAO_INVALID_COORDINATES',
+      );
+    }
+
     try {
       const response = await axios.get(`${this.baseUrl}/directions`, {
         params: {
@@ -48,6 +57,17 @@ class KakaoService {
         },
       });
 
+      // Kakao API result_code 확인
+      const resultCode = response.data?.routes?.[0]?.result_code;
+      if (resultCode !== 0) {
+        const resultMsg = response.data?.routes?.[0]?.result_msg || 'Unknown';
+        throw new AppError(
+          `Route error (${resultCode}): ${resultMsg} - origin(${originLat},${originLng}) dest(${destLat},${destLng})`,
+          400,
+          'KAKAO_ROUTE_ERROR',
+        );
+      }
+
       const route = response.data?.routes?.[0];
       if (!route) {
         throw new AppError('No route found', 404, 'KAKAO_ROUTE_NOT_FOUND');
@@ -55,8 +75,11 @@ class KakaoService {
 
       const summary = route.summary;
       if (!summary || typeof summary.distance !== 'number') {
-        logger.error(`Kakao API: Invalid route summary`, { route });
-        throw new AppError('Invalid route summary from Kakao API', 500, 'KAKAO_INVALID_RESPONSE');
+        throw new AppError(
+          `Invalid route summary - origin(${originLat},${originLng}) dest(${destLat},${destLng})`,
+          500,
+          'KAKAO_INVALID_RESPONSE',
+        );
       }
 
       return {
