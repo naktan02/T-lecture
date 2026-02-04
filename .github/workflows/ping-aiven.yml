@@ -1,0 +1,27 @@
+name: Ping Aiven
+
+on:
+  schedule:
+    # 5일마다 KST 03:00 (UTC 18:00) - Aiven 깨우기
+    - cron: '0 18 */5 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping Aiven PostgreSQL
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Aiven to keep awake
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          echo "Pinging Aiven PostgreSQL..."
+
+          # pg_isready로 연결 체크
+          if command -v pg_isready &> /dev/null; then
+            pg_isready -d "$DATABASE_URL" --timeout=15 && echo "Aiven is ready!" || echo "Aiven ping completed"
+          else
+            # pg_isready 없으면 psql로 간단한 쿼리
+            PGCONNECT_TIMEOUT=15 psql "$DATABASE_URL" -c "SELECT 1;" && echo "Aiven is ready!" || echo "Aiven ping completed"
+          fi
