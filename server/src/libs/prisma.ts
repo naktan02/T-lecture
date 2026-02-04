@@ -10,7 +10,7 @@ import path from 'path';
 // ============================================
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 20,
+  max: 18, // Aiven 25개 제한 - 사용자 50~150명 대응, 로컬은 가끔 사용(여유 7개)
   min: 0,
   idleTimeoutMillis: 60000,
   connectionTimeoutMillis: 30000,
