@@ -440,12 +440,24 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
                             className={`text-[10px] px-1.5 py-0.5 rounded border ${
                               inst.category === 'Main'
                                 ? 'bg-green-50 text-green-700 border-green-200'
-                                : inst.category === 'Assistant'
-                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                  : 'bg-gray-100 text-gray-600'
+                                : inst.category === 'Co'
+                                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                  : inst.category === 'Assistant'
+                                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                    : inst.category === 'Practicum'
+                                      ? 'bg-gray-100 text-gray-600 border-gray-200'
+                                      : 'bg-gray-100 text-gray-600'
                             }`}
                           >
-                            {inst.category || 'N/A'}
+                            {inst.category === 'Main'
+                              ? '주'
+                              : inst.category === 'Co'
+                                ? '부'
+                                : inst.category === 'Assistant'
+                                  ? '보조'
+                                  : inst.category === 'Practicum'
+                                    ? '실습'
+                                    : inst.category || 'N/A'}
                           </span>
                         </div>
 

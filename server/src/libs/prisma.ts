@@ -17,9 +17,9 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: true,
     // 파일 경로로부터 인증서 내용을 읽어옵니다.
-    ca: process.env.AIVEN_CA_CERT 
-        ? fs.readFileSync(path.resolve(process.cwd(), process.env.AIVEN_CA_CERT)).toString() 
-        : undefined,
+    ca: process.env.AIVEN_CA_CERT
+      ? fs.readFileSync(path.resolve(process.cwd(), process.env.AIVEN_CA_CERT)).toString()
+      : undefined,
   },
 });
 
