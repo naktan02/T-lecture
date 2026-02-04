@@ -99,7 +99,18 @@ const formatTime = (dateStr: unknown): string => {
 // --- 1. 강사 필드 설정 ---
 const INSTRUCTOR_FIELD_CONFIG: FieldConfig[] = [
   { key: 'teamName', label: '소속 팀' },
-  { key: 'category', label: '분류(직책)' },
+  {
+    key: 'category',
+    label: '분류(직책)',
+    format: (v) => {
+      const cat = v as string | undefined;
+      if (cat === 'Main') return '주강사';
+      if (cat === 'Co') return '부강사';
+      if (cat === 'Assistant') return '보조강사';
+      if (cat === 'Practicum') return '실습강사';
+      return cat || '-';
+    },
+  },
   { key: 'phoneNumber', label: '연락처', format: (v) => (v as string) || '-' },
   { key: 'email', label: '이메일' },
   { key: 'address', label: '주소', isLong: true },
@@ -182,8 +193,18 @@ export const AssignmentDetailModal: React.FC<AssignmentDetailModalProps> = ({
     const isInstructor = item.type === 'INSTRUCTOR';
 
     const title = isInstructor ? `${item.name} 강사` : item.unitName || '';
+    const categoryLabel =
+      item.category === 'Main'
+        ? '주'
+        : item.category === 'Co'
+          ? '부'
+          : item.category === 'Assistant'
+            ? '보조'
+            : item.category === 'Practicum'
+              ? '실습'
+              : item.category || item.role || '직책 미정';
     const subtitle = isInstructor
-      ? `${item.teamName || '소속 미정'} | ${item.category || item.role || '직책 미정'}`
+      ? `${item.teamName || '소속 미정'} | ${categoryLabel}`
       : `${item.originalPlace || '교육장소 미정'} | ${item.date || ''}`;
 
     const config = isInstructor ? INSTRUCTOR_FIELD_CONFIG : UNIT_FIELD_CONFIG;
