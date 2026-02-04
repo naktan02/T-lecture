@@ -13,6 +13,11 @@ import bcrypt from 'bcrypt';
 const TEAMS = [
   { id: 1, name: '1팀' },
   { id: 2, name: '2팀' },
+  { id: 3, name: '2팀' },
+  { id: 4, name: '2팀' },
+  { id: 5, name: '2팀' },
+  { id: 6, name: '2팀' },
+  { id: 7, name: '2팀' },
 ];
 
 // 덕목(과목) 데이터 (15개)
@@ -21,6 +26,17 @@ const VIRTUES = [
   { id: 2, name: '효' },
   { id: 3, name: '정직' },
   { id: 4, name: '책임' },
+  { id: 5, name: '1' },
+  { id: 6, name: '책임' },
+  { id: 7, name: '책임' },
+  { id: 8, name: '책임' },
+  { id: 9, name: '책임' },
+  { id: 10, name: '책임' },
+  { id: 11, name: '책임' },
+  { id: 12, name: '책임' },
+  { id: 13, name: '책임' },
+  { id: 14, name: '책임' },
+  { id: 15, name: '책임' },
 ];
 
 // 시스템 설정 기본값

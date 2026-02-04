@@ -54,6 +54,10 @@ class KakaoService {
       }
 
       const summary = route.summary;
+      if (!summary || typeof summary.distance !== 'number') {
+        logger.error(`Kakao API: Invalid route summary`, { route });
+        throw new AppError('Invalid route summary from Kakao API', 500, 'KAKAO_INVALID_RESPONSE');
+      }
 
       return {
         distance: summary.distance,
@@ -63,8 +67,12 @@ class KakaoService {
     } catch (err) {
       if (err instanceof AppError) throw err;
       const axiosError = err as AxiosError;
-      logger.error(`Kakao API Error: ${axiosError.response?.data || axiosError.message}`);
-      throw new AppError('카카오 경로 API 호출에 실패했습니다.', 500, 'KAKAO_API_ERROR');
+      // 상위 레벨에서 일괄 로깅하도록 에러만 throw (개별 로깅 제거)
+      throw new AppError(
+        `카카오 경로 API 호출 실패: ${axiosError.response?.data || axiosError.message}`,
+        500,
+        'KAKAO_API_ERROR',
+      );
     }
   }
 
