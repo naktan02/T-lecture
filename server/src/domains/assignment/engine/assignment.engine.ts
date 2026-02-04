@@ -216,12 +216,24 @@ export class AssignmentEngine {
     }
 
     // Slack이 낮은 번들의 스케줄 먼저, 같은 번들 내에서는 날짜순
-    // 핵심: 같은 trainingPeriodId는 연속으로 처리 (연속일 보너스 적용을 위해)
-    allSchedules.sort((a, b) => {
-      // 1. 먼저 bundleRisk로 정렬 (위험한 번들 먼저)
-      if (a.bundleRisk !== b.bundleRisk) return a.bundleRisk - b.bundleRisk;
+    // 핵심: 같은 trainingPeriodId는 반드시 연속으로 처리 (연속일 보너스 적용 + 강사 연속성 보장)
+    // 변경: 교육기간 단위로 완전히 처리 후 다음 교육기간으로 이동
 
-      // 2. 같은 bundleRisk면 trainingPeriodId로 그룹화 (같은 교육기간 연속 처리)
+    // Step 1: 각 trainingPeriodId별 bundleRisk (대표값) 맵 생성
+    const periodRiskMap = new Map<number, number>();
+    for (const s of allSchedules) {
+      if (!periodRiskMap.has(s.trainingPeriodId)) {
+        periodRiskMap.set(s.trainingPeriodId, s.bundleRisk);
+      }
+    }
+
+    allSchedules.sort((a, b) => {
+      // 1. trainingPeriodId의 대표 bundleRisk로 교육기간 순서 결정 (위험한 교육기간 먼저)
+      const aRisk = periodRiskMap.get(a.trainingPeriodId) ?? 0;
+      const bRisk = periodRiskMap.get(b.trainingPeriodId) ?? 0;
+      if (aRisk !== bRisk) return aRisk - bRisk;
+
+      // 2. 같은 위험도면 trainingPeriodId로 그룹화 (같은 교육기간 연속 처리)
       if (a.trainingPeriodId !== b.trainingPeriodId) return a.trainingPeriodId - b.trainingPeriodId;
 
       // 3. 같은 교육기간 내에서는 날짜순
