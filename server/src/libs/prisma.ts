@@ -10,15 +10,16 @@ import path from 'path';
 // ============================================
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 20, // 최대 연결 수 (Aiven 무료 20개 제한)
+  max: 20,
   min: 0,
   idleTimeoutMillis: 60000,
   connectionTimeoutMillis: 30000,
   ssl: {
     rejectUnauthorized: true,
-    ca: process.env.AIVEN_CA_CERT
-      ? fs.readFileSync(path.resolve(process.cwd(), process.env.AIVEN_CA_CERT), 'utf-8')
-      : undefined,
+    // 파일 경로로부터 인증서 내용을 읽어옵니다.
+    ca: process.env.AIVEN_CA_CERT 
+        ? fs.readFileSync(path.resolve(process.cwd(), process.env.AIVEN_CA_CERT)).toString() 
+        : undefined,
   },
 });
 
