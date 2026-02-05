@@ -15,15 +15,6 @@ jobs:
     name: Calculate Distance
     runs-on: ubuntu-latest
     steps:
-      - name: Wake up server (Cold Start 방지)
-        shell: bash
-        run: |
-          echo "🔄 Waking up server..."
-          # 서버가 Sleep 상태일 수 있으므로 먼저 깨움
-          curl -sS --max-time 120 "$SERVER_URL/api/health" || echo "⚠️ Health check failed, but continuing..."
-          echo "⏳ Waiting for server to fully wake up..."
-          sleep 15
-
       - name: Trigger distance calculation
         shell: bash
         run: |
