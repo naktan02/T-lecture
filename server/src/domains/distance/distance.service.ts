@@ -197,13 +197,23 @@ class DistanceService {
               };
             } catch (error: unknown) {
               const err = error as { message?: string; code?: string; statusCode?: number };
+              const errorCode = err.code || 'DISTANCE_CALC_FAILED';
+
+              // 재시도 가능한 에러 (네트워크/서버 일시 장애)
+              const RETRYABLE_ERRORS = ['KAKAO_API_ERROR'];
+
+              // 영구 실패 에러만 needsRecalc=false 처리
+              if (!RETRYABLE_ERRORS.includes(errorCode)) {
+                await distanceRepository.markAsProcessed(instructorId, unitId);
+              }
+
               return {
                 instructorId,
                 unitId,
                 scheduleDate: earliestSchedule,
                 status: 'error',
                 error: err.message || 'Unknown error',
-                code: err.code || 'DISTANCE_CALC_FAILED',
+                code: errorCode,
                 statusCode: err.statusCode || 500,
               };
             }
