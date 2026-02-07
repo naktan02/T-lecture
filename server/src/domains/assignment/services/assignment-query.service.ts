@@ -4,7 +4,6 @@
 import { assignmentQueryRepository, assignmentConfigRepository } from '../repositories';
 import instructorRepository from '../../instructor/instructor.repository';
 import distanceRepository from '../../distance/distance.repository';
-import { DEFAULT_ASSIGNMENT_CONFIG } from '../engine/config-loader';
 import type { UnitRaw, InstructorRaw } from '../../../types/assignment.types';
 
 // Helper: 오늘 UTC 자정 생성
@@ -28,10 +27,7 @@ class AssignmentQueryService {
    * 강사당 교육생 수 조회 (공개 메서드)
    */
   async getTraineesPerInstructor(): Promise<number> {
-    return this.getSystemConfigNumber(
-      'TRAINEES_PER_INSTRUCTOR',
-      DEFAULT_ASSIGNMENT_CONFIG.traineesPerInstructor,
-    );
+    return this.getSystemConfigNumber('TRAINEES_PER_INSTRUCTOR', 36);
   }
 
   /**

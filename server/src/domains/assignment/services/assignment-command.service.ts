@@ -10,7 +10,6 @@ import instructorRepository from '../../instructor/instructor.repository';
 import distanceRepository from '../../distance/distance.repository';
 import AppError from '../../../common/errors/AppError';
 import assignmentAlgorithm from '../engine/adapter';
-import { DEFAULT_ASSIGNMENT_CONFIG } from '../engine/config-loader';
 import { assignmentResponseService } from './assignment-response.service';
 import type { TrainingLocationRaw, ScheduleLocationRaw } from '../../../types/assignment.types';
 
@@ -249,14 +248,8 @@ class AssignmentCommandService {
     };
 
     const traineesPerInstructor = parseConfig('TRAINEES_PER_INSTRUCTOR', 36);
-    const fairnessLookbackMonths = parseConfig(
-      'FAIRNESS_LOOKBACK_MONTHS',
-      DEFAULT_ASSIGNMENT_CONFIG.fairnessLookbackMonths,
-    );
-    const rejectionPenaltyMonths = parseConfig(
-      'REJECTION_PENALTY_MONTHS',
-      DEFAULT_ASSIGNMENT_CONFIG.rejectionPenaltyMonths,
-    );
+    const fairnessLookbackMonths = parseConfig('FAIRNESS_LOOKBACK_MONTHS', 3);
+    const rejectionPenaltyMonths = parseConfig('REJECTION_PENALTY_MONTHS', 2);
     const internMaxDistanceKm = parseConfig('INTERN_MAX_DISTANCE_KM', 50);
     const subMaxDistanceKm = parseConfigOrNull('SUB_MAX_DISTANCE_KM');
 
@@ -367,14 +360,8 @@ class AssignmentCommandService {
     const blockedInstructorIdsBySchedule =
       await assignmentQueryRepository.findCanceledInstructorIdsByScheduleIds(scheduleIds);
 
-    const fairnessLookbackMonths = await this.getSystemConfigNumber(
-      'FAIRNESS_LOOKBACK_MONTHS',
-      DEFAULT_ASSIGNMENT_CONFIG.fairnessLookbackMonths,
-    );
-    const rejectionPenaltyMonths = await this.getSystemConfigNumber(
-      'REJECTION_PENALTY_MONTHS',
-      DEFAULT_ASSIGNMENT_CONFIG.rejectionPenaltyMonths,
-    );
+    const fairnessLookbackMonths = await this.getSystemConfigNumber('FAIRNESS_LOOKBACK_MONTHS', 3);
+    const rejectionPenaltyMonths = await this.getSystemConfigNumber('REJECTION_PENALTY_MONTHS', 2);
     const instructorIds = Array.from(new Set(instructors.map((i: { userId: number }) => i.userId)));
     const assignmentSince = this.subtractMonths(start, fairnessLookbackMonths);
     const rejectionSince = this.subtractMonths(start, rejectionPenaltyMonths);

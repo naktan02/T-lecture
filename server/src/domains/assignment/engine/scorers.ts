@@ -308,6 +308,66 @@ export const fullPeriodCoverageScorer: AssignmentScorer = {
 };
 
 /**
+ * 주간 팀 균형 스코어러
+ * - 같은 주에 한 팀이 여러 교육기간(부대 번들)에 배정되면 감점
+ * - 교육기간 단위로 팀 분포 계산 (날짜가 아닌 교육기간 개수)
+ * - 팀 간 공정한 배정 기회 분배
+ */
+export const weeklyTeamBalanceScorer: AssignmentScorer = {
+  id: 'WEEKLY_TEAM_BALANCE',
+  name: '주간 팀 균형',
+  description: '같은 주에 한 팀이 여러 교육기간에 배정되면 감점 (팀 독점 방지)',
+  defaultWeight: SCORER_WEIGHTS.WEEKLY_TEAM_BALANCE,
+  calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
+    if (!candidate.teamId) return 0;
+
+    const currentDate = new Date(context.currentScheduleDate);
+
+    // 현재 날짜가 속한 주의 시작일(월요일)과 종료일(일요일) 계산
+    const dayOfWeek = currentDate.getDay(); // 0=일, 1=월, ...
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const weekStart = new Date(currentDate);
+    weekStart.setDate(currentDate.getDate() + mondayOffset);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+
+    const weekStartStr = weekStart.toISOString().split('T')[0];
+    const weekEndStr = weekEnd.toISOString().split('T')[0];
+
+    // 같은 주에 속한 배정들 필터링
+    const weekAssignments = context.currentAssignments.filter(
+      (a) => a.date >= weekStartStr && a.date <= weekEndStr,
+    );
+
+    if (weekAssignments.length === 0) return 0;
+
+    // 이 팀이 배정된 고유 교육기간 ID 수
+    const teamPeriodIds = new Set(
+      weekAssignments.filter((a) => a.teamId === candidate.teamId).map((a) => a.trainingPeriodId),
+    );
+
+    // 전체 고유 교육기간 ID 수
+    const allPeriodIds = new Set(weekAssignments.map((a) => a.trainingPeriodId));
+
+    if (allPeriodIds.size < 3) return 0; // 교육기간이 3개 미만이면 적용 안 함
+
+    // 7개 팀 기준 평균 비율 (약 14.3%)
+    const avgRatio = 1 / 7;
+    const ratio = teamPeriodIds.size / allPeriodIds.size;
+
+    // 평균 대비 교육기간 점유 비율에 따라 감점
+    if (ratio > avgRatio * 3) {
+      return 5; // 평균 3배 이상 → 최대 감점
+    } else if (ratio > avgRatio * 2) {
+      return 3; // 평균 2배 이상 → 중간 감점
+    } else if (ratio > avgRatio * 1.5) {
+      return 1.5; // 평균 1.5배 이상 → 작은 감점
+    }
+    return 0;
+  },
+};
+
+/**
  * 모든 스코어러 목록
  */
 export const allScorers: AssignmentScorer[] = [
@@ -316,7 +376,8 @@ export const allScorers: AssignmentScorer[] = [
   fullPeriodCoverageScorer, // 전일 커버 보너스 (첫날부터 적용)
   consecutiveDaysScorer,
   teamMatchingScorer,
-  teamDiversityScorer, // 팀 다양성 추가
+  weeklyTeamBalanceScorer, // 주간 팀 균형 (한 팀 독점 방지)
+  teamDiversityScorer, // 교육기간 간 팀 다양성
   distanceScorer,
   priorityScorer,
   penaltyScorer,
