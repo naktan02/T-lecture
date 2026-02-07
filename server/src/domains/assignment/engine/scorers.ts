@@ -2,12 +2,7 @@
 // 배정 알고리즘 Soft 스코어러 모음
 
 import { AssignmentScorer, InstructorCandidate, AssignmentContext } from './assignment.types';
-import {
-  SCORER_WEIGHTS,
-  CONSECUTIVE_SCORING,
-  FAIRNESS_SCORING,
-  OPPORTUNITY_COST_CONFIG,
-} from './config-loader';
+import { SCORER_WEIGHTS } from './config-loader';
 
 /**
  * 월별 가능일 수 계산
@@ -28,7 +23,7 @@ export const applicationCountScorer: AssignmentScorer = {
   id: 'APPLICATION',
   name: '신청 횟수 점수',
   description: '해당 월 가능일 등록 수가 많을수록 높은 점수',
-  defaultWeight: 10,
+  defaultWeight: SCORER_WEIGHTS.APPLICATION,
   calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
     const count = getMonthlyAvailCount(candidate, context);
     const max = context.maxMonthlyAvailCount || 1;
@@ -45,7 +40,7 @@ export const fairnessScorer: AssignmentScorer = {
   id: 'FAIRNESS',
   name: '형평성 점수',
   description: '배정이 적을수록 높은 점수',
-  defaultWeight: 20, // 가중치 증가
+  defaultWeight: SCORER_WEIGHTS.FAIRNESS,
   calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
     // 1. 이번 실행 중 배정된 횟수 (현재 context에서)
     const runtimeAssignments = context.currentAssignments.filter(
@@ -75,7 +70,7 @@ export const consecutiveDaysScorer: AssignmentScorer = {
   id: 'CONSECUTIVE',
   name: '연속 배정 보너스',
   description: '같은 교육기간에 배정되면 보너스 (2박3일 우선)',
-  defaultWeight: 100, // 가중치 대폭 증가 (연속 배정 최우선)
+  defaultWeight: SCORER_WEIGHTS.CONSECUTIVE,
   calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
     const { currentAssignments, currentTrainingPeriodId } = context;
 
@@ -146,7 +141,7 @@ export const teamMatchingScorer: AssignmentScorer = {
   id: 'TEAM',
   name: '팀 매칭 보너스',
   description: '같은 팀원과 함께 배정 시 보너스',
-  defaultWeight: 8,
+  defaultWeight: SCORER_WEIGHTS.TEAM,
   calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
     if (!candidate.teamId) return 0;
 
@@ -165,7 +160,7 @@ export const distanceScorer: AssignmentScorer = {
   id: 'DISTANCE',
   name: '거리 점수',
   description: '가까울수록 높은 점수',
-  defaultWeight: 15,
+  defaultWeight: SCORER_WEIGHTS.DISTANCE,
   calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
     const key = `${candidate.userId}-${context.currentUnitId}`;
     const distance = context.instructorDistances.get(key) ?? 100;
@@ -182,8 +177,8 @@ export const priorityScorer: AssignmentScorer = {
   id: 'PRIORITY',
   name: '우선배정 크레딧',
   description: '우선배정 크레딧이 있으면 높은 점수',
-  defaultWeight: 25,
-  calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
+  defaultWeight: SCORER_WEIGHTS.PRIORITY,
+  calculate(candidate: InstructorCandidate, _context: AssignmentContext): number {
     return Math.min(candidate.priorityCredits, 3) * 1.5; // 최대 4.5점
   },
 };
@@ -196,8 +191,8 @@ export const penaltyScorer: AssignmentScorer = {
   id: 'PENALTY',
   name: '거절 패널티',
   description: '최근 거절 횟수만큼 감점',
-  defaultWeight: -10,
-  calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
+  defaultWeight: SCORER_WEIGHTS.PENALTY,
+  calculate(candidate: InstructorCandidate, _context: AssignmentContext): number {
     return candidate.recentRejectionCount; // 거절 횟수만큼 감점 (weight가 음수이므로)
   },
 };
@@ -211,7 +206,7 @@ export const opportunityCostScorer: AssignmentScorer = {
   id: 'OPPORTUNITY_COST',
   name: '기회비용 점수',
   description: '희소 슬롯 많이 커버하는 강사 감점 (범용 자원 아끼기)',
-  defaultWeight: -5, // 음수: 희소 자원 아끼기
+  defaultWeight: SCORER_WEIGHTS.OPPORTUNITY_COST,
   calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
     const remainingSlots = context.remainingSlotsByInstructor?.get(candidate.userId) ?? 0;
     const totalRemaining = context.totalRemainingSlots ?? 1;
@@ -240,7 +235,7 @@ export const teamDiversityScorer: AssignmentScorer = {
   id: 'TEAM_DIVERSITY',
   name: '팀 다양성 점수',
   description: '다른 교육기간에 한 팀이 집중되면 감점 (팀 골고루 배분)',
-  defaultWeight: -15, // 음수: 많이 배정된 팀은 감점
+  defaultWeight: SCORER_WEIGHTS.TEAM_DIVERSITY,
   calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
     if (!candidate.teamId) return 0;
 
@@ -277,11 +272,48 @@ export const teamDiversityScorer: AssignmentScorer = {
 };
 
 /**
+ * 전일 커버 보너스 스코어러
+ * - 교육기간의 모든 날짜에 가용 가능한 강사에게 보너스
+ * - 첫날 배정 시 3일 전부 가능한 강사가 우선 선택되어 연속성 보장
+ * - 가중치를 높게 설정 (연속일 보너스보다 먼저 적용)
+ */
+export const fullPeriodCoverageScorer: AssignmentScorer = {
+  id: 'FULL_PERIOD',
+  name: '전일 커버 보너스',
+  description: '교육기간 전체에 가용 가능하면 보너스 (연속 배정 보장)',
+  defaultWeight: SCORER_WEIGHTS.FULL_PERIOD,
+  calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
+    const { currentTrainingPeriodDates } = context;
+    if (!currentTrainingPeriodDates || currentTrainingPeriodDates.length === 0) return 0;
+
+    const availableSet = new Set(candidate.availableDates);
+    const totalDays = currentTrainingPeriodDates.length;
+
+    // 가용 가능한 날짜 수 계산
+    let coveredDays = 0;
+    for (const date of currentTrainingPeriodDates) {
+      if (availableSet.has(date)) coveredDays++;
+    }
+
+    // 전일 커버 시 최대 점수, 부분 커버 시 비율 점수
+    if (coveredDays === totalDays) {
+      return 10; // 전일 커버 → 최대 점수
+    } else if (coveredDays >= totalDays * 0.8) {
+      return 7; // 80% 이상 커버
+    } else if (coveredDays >= totalDays * 0.5) {
+      return 4; // 50% 이상 커버
+    }
+    return 0; // 절반 미만 → 보너스 없음
+  },
+};
+
+/**
  * 모든 스코어러 목록
  */
 export const allScorers: AssignmentScorer[] = [
   applicationCountScorer,
   fairnessScorer,
+  fullPeriodCoverageScorer, // 전일 커버 보너스 (첫날부터 적용)
   consecutiveDaysScorer,
   teamMatchingScorer,
   teamDiversityScorer, // 팀 다양성 추가

@@ -18,11 +18,7 @@ import {
 import { allFilters } from './filters';
 import { allScorers } from './scorers';
 import { allPostProcessors } from './post-processors';
-import {
-  createBundles,
-  calculateAndSortBundlesByRisk,
-  getFullBundleCandidateIds,
-} from './bundle-utils';
+import { createBundles, calculateAndSortBundlesByRisk } from './bundle-utils';
 import logger from '../../../config/logger';
 import DEBUG from '../../../config/debug';
 
@@ -198,6 +194,7 @@ export class AssignmentEngine {
       schedule: { id: number; date: Date; requiredCount: number; isBlocked?: boolean };
       bundleRisk: number;
       trainingPeriodId: number; // TrainingPeriod ID 추가
+      trainingPeriodDates: string[]; // 교육기간 전체 날짜 목록
     }
     const allSchedules: ScheduleWithUnit[] = [];
 
@@ -211,6 +208,7 @@ export class AssignmentEngine {
           schedule,
           bundleRisk: info.riskScore,
           trainingPeriodId: info.bundle.trainingPeriodId, // TrainingPeriod ID 저장
+          trainingPeriodDates: info.bundle.dates, // 교육기간 전체 날짜 목록
         });
       }
     }
@@ -241,7 +239,7 @@ export class AssignmentEngine {
     });
 
     // 스케줄별 배정 진행 (Slack 우선순위로)
-    for (const { unit, schedule, trainingPeriodId } of allSchedules) {
+    for (const { unit, schedule, trainingPeriodId, trainingPeriodDates } of allSchedules) {
       // isBlocked=true인 스케줄은 배정 생략
       if (schedule.isBlocked) {
         continue;
@@ -265,6 +263,7 @@ export class AssignmentEngine {
         currentScheduleDate: scheduleDate,
         currentUnitId: unit.id,
         currentTrainingPeriodId: trainingPeriodId, // TrainingPeriod ID 추가
+        currentTrainingPeriodDates: trainingPeriodDates, // 교육기간 전체 날짜 목록
         currentUnitRegion: unit.region,
         currentAssignments: [...currentAssignments],
         instructorDistances,
@@ -413,6 +412,7 @@ export class AssignmentEngine {
         currentScheduleDate: '',
         currentUnitId: 0,
         currentTrainingPeriodId: 0, // TrainingPeriod ID 추가
+        currentTrainingPeriodDates: [], // 빈 배열 (후처리에서는 사용 안 함)
         currentUnitRegion: '',
         currentAssignments: [],
         instructorDistances,

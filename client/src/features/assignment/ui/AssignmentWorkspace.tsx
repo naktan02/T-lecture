@@ -48,6 +48,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
     confirmedAssignments,
     distanceMap,
     distanceLimits,
+    actualDateRange, // 전체 부대 스케줄 범위
     fetchData,
     executeAutoAssign,
     sendTemporaryMessages,
@@ -684,8 +685,19 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
             availableDates: i.availableDates ?? [],
           }))}
           assignedByDate={assignedByDate}
+          allAssignments={assignments}
+          allConfirmedAssignments={confirmedAssignments}
           distanceMap={distanceMap}
           distanceLimits={distanceLimits}
+          actualDateRange={actualDateRange}
+          queryDateRange={
+            dateRange.startDate && dateRange.endDate
+              ? {
+                  startDate: new Date(dateRange.startDate),
+                  endDate: new Date(dateRange.endDate),
+                }
+              : undefined
+          }
         />
       )}
 

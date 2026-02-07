@@ -13,6 +13,7 @@ export interface AssignmentContext {
   currentScheduleDate: string; // 'YYYY-MM-DD'
   currentUnitId: number;
   currentTrainingPeriodId: number; // TrainingPeriod ID (연속 판단용)
+  currentTrainingPeriodDates: string[]; // 해당 교육기간의 모든 날짜 목록 (전일 커버 판단용)
   currentUnitRegion: string;
   currentAssignments: AssignmentData[]; // 현재까지의 배정
   instructorDistances: Map<string, number>; // `${instructorId}-${unitId}` → km
