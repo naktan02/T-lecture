@@ -1,4 +1,5 @@
 // server/src/domains/distance/distance.service.ts
+import * as Sentry from '@sentry/node';
 import kakaoService from '../../infra/kakao.service';
 import kakaoUsageRepository from './kakaoUsage.repository';
 
@@ -240,6 +241,12 @@ class DistanceService {
         }
       }
       logger.error(`[DistanceBatch] Completed with ${totalErrors} errors`, { errorsByCode });
+
+      // Sentry에 에러 요약 전송
+      Sentry.captureMessage(`[DistanceBatch] ${totalErrors} errors occurred`, {
+        level: 'error',
+        extra: { errorsByCode, totalProcessed, iterations },
+      });
     }
 
     return {
