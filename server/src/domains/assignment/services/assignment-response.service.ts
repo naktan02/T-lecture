@@ -7,7 +7,6 @@ import {
   assignmentConfigRepository,
 } from '../repositories';
 import AppError from '../../../common/errors/AppError';
-import { DEFAULT_ASSIGNMENT_CONFIG } from '../engine/config-loader';
 
 class AssignmentResponseService {
   /**
@@ -24,10 +23,7 @@ class AssignmentResponseService {
    * 강사당 교육생 수 조회
    */
   async getTraineesPerInstructor(): Promise<number> {
-    return this.getSystemConfigNumber(
-      'TRAINEES_PER_INSTRUCTOR',
-      DEFAULT_ASSIGNMENT_CONFIG.traineesPerInstructor,
-    );
+    return this.getSystemConfigNumber('TRAINEES_PER_INSTRUCTOR', 36);
   }
 
   /**

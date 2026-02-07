@@ -44,7 +44,7 @@ class InstructorRepository {
     });
   }
 
-  // 승인된 강사 조회
+  // 승인된 강사 조회 (전체 검색용 - team 포함)
   async findActiveInstructors() {
     return prisma.instructor.findMany({
       where: {
@@ -54,6 +54,7 @@ class InstructorRepository {
       },
       include: {
         user: true,
+        team: true,
       },
     });
   }

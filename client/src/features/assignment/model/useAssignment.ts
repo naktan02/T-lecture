@@ -62,6 +62,8 @@ interface UseAssignmentReturn {
     internMaxDistanceKm: number;
     subMaxDistanceKm: number | null;
   } | null;
+  // 전체 부대 스케줄 범위
+  actualDateRange: { startDate: string; endDate: string } | null;
   addAssignment: (
     unitScheduleId: number,
     instructorId: number,
@@ -307,6 +309,7 @@ export const useAssignment = (): UseAssignmentReturn => {
     confirmedAssignments,
     distanceMap,
     distanceLimits,
+    actualDateRange, // 전체 부대 스케줄 범위
     fetchData,
     executeAutoAssign,
     sendTemporaryMessages,
