@@ -207,6 +207,14 @@ class DistanceRepository {
     });
   }
 
+  // 재계산 시도 완료 처리 (성공/실패 상관없이 needsRecalc=false)
+  async markAsProcessed(userId: number, unitId: number) {
+    return prisma.instructorUnitDistance.update({
+      where: { userId_unitId: { userId, unitId } },
+      data: { needsRecalc: false },
+    });
+  }
+
   // 유효 거리(distance ?? preDistance ?? 30km) 기반으로 강사 조회
   async findInstructorsByEffectiveDistance(
     unitId: number,
