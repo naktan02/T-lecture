@@ -2,7 +2,7 @@
 
 import { useState, useRef, ChangeEvent, MouseEvent, useEffect, useMemo } from 'react';
 import { useAssignment } from '../model/useAssignment';
-import { Button, MiniCalendar, ConfirmModal } from '../../../shared/ui';
+import { Button, MiniCalendar } from '../../../shared/ui';
 import { AssignmentDetailModal, AssignmentGroupDetailModal } from './AssignmentDetailModal';
 import { UnassignedUnitDetailModal } from './UnassignedUnitDetailModal';
 
@@ -50,14 +50,12 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
     distanceLimits,
     actualDateRange, // 전체 부대 스케줄 범위
     fetchData,
-    executeAutoAssign,
     sendTemporaryMessages,
     sendConfirmedMessages,
   } = useAssignment();
 
   // ID 기반 선택 (스냅샷 대신 ID만 저장)
   const [selectionKey, setSelectionKey] = useState<SelectionKey>(null);
-  const [showAutoAssignConfirm, setShowAutoAssignConfirm] = useState(false);
 
   // 검색 상태
   const [unitSearch, setUnitSearch] = useState('');
@@ -65,6 +63,10 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
 
   type ModalKey = { unitId: number; bucket: 'PENDING' | 'ACCEPTED' } | null;
   const [detailModalKey, setDetailModalKey] = useState<ModalKey>(null);
+
+  // 배정 작업 공간 필터
+  type AssignmentFilterType = 'ALL' | 'UNASSIGNED' | 'COMPLETED';
+  const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilterType>('ALL');
 
   // 실시간 데이터 조회 (ID로 최신 데이터 찾기)
   const selectedUnit =
@@ -171,15 +173,6 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
 
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleAutoAssignClick = () => {
-    setShowAutoAssignConfirm(true);
-  };
-
-  const confirmAutoAssign = async () => {
-    setShowAutoAssignConfirm(false);
-    await executeAutoAssign();
-  };
-
   const handleDateChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
     if (!value) return;
@@ -241,6 +234,17 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
     }, 150);
   };
 
+  const filteredAssignments = useMemo(() => {
+    return assignments.filter((g) => {
+      if (assignmentFilter === 'UNASSIGNED') return g.totalAssigned === 0;
+      if (assignmentFilter === 'COMPLETED') return g.totalAssigned >= g.totalRequired && g.totalRequired > 0;
+      return true;
+    });
+  }, [assignments, assignmentFilter]);
+
+  const unassignedCount = assignments.filter((g) => g.totalAssigned === 0).length;
+  const completedCount = assignments.filter((g) => g.totalAssigned >= g.totalRequired && g.totalRequired > 0).length;
+
   return (
     <div className="flex flex-col h-full relative">
       {/* 1. Control Bar */}
@@ -269,36 +273,6 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
           <Button onClick={fetchData} disabled={loading} size="small">
             {loading ? '조회중' : '조회'}
           </Button>
-          <button
-            onClick={handleAutoAssignClick}
-            disabled={loading || groupedUnassignedUnits.length === 0}
-            className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 
-                           disabled:bg-gray-300 disabled:cursor-not-allowed
-                           shadow-sm transition-all text-xs font-bold flex items-center gap-1"
-          >
-            {loading ? (
-              <>
-                <svg className="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                배정중
-              </>
-            ) : (
-              <>⚡ 자동배정</>
-            )}
-          </button>
         </div>
       </div>
 
@@ -483,28 +457,47 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
         {/* Right Column */}
         <div className="flex flex-col gap-4 h-fit md:h-auto md:overflow-hidden">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden h-fit max-h-[40vh] md:flex-1 md:h-auto md:max-h-none">
-            <div className="p-3 bg-orange-50 border-b border-orange-100 border-l-4 border-l-orange-500 font-bold text-gray-700 flex justify-between items-center">
-              <span>⚖️ 배정 작업 공간 (부대별)</span>
-              <div className="flex gap-2">
-                <Button size="xsmall" variant="ghost" onClick={handleAutoAssignClick}>
-                  자동 배정
-                </Button>
-                {assignments.length > 0 && (
-                  <Button size="xsmall" onClick={sendTemporaryMessages}>
-                    📩 일괄 임시 메시지 전송
-                  </Button>
-                )}
+            <div className="p-3 bg-orange-50 border-b border-orange-100 border-l-4 border-l-orange-500 flex flex-col gap-2">
+              <div className="flex justify-between items-center font-bold text-gray-700">
+                <span>⚖️ 배정 작업 공간 (부대별)</span>
+                <div className="flex gap-2">
+                  {assignments.length > 0 && (
+                    <Button size="xsmall" onClick={sendTemporaryMessages}>
+                      📩 일괄 임시 메시지 전송
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-2 text-xs">
+                <button
+                  className={`px-2 py-1 rounded-md transition-colors ${assignmentFilter === 'ALL' ? 'bg-orange-600 text-white font-bold' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                  onClick={() => setAssignmentFilter('ALL')}
+                >
+                  전체 ({assignments.length})
+                </button>
+                <button
+                  className={`px-2 py-1 rounded-md transition-colors ${assignmentFilter === 'UNASSIGNED' ? 'bg-orange-600 text-white font-bold' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                  onClick={() => setAssignmentFilter('UNASSIGNED')}
+                >
+                  미응답/미배정 ({unassignedCount})
+                </button>
+                <button
+                  className={`px-2 py-1 rounded-md transition-colors ${assignmentFilter === 'COMPLETED' ? 'bg-orange-600 text-white font-bold' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                  onClick={() => setAssignmentFilter('COMPLETED')}
+                >
+                  배정 완료 ({completedCount})
+                </button>
               </div>
             </div>
 
             <div className="flex-1 p-4 overflow-y-auto bg-gray-50/50">
-              {assignments.length === 0 ? (
+              {filteredAssignments.length === 0 ? (
                 <div className="flex items-center justify-center h-full border-2 border-dashed border-gray-300 m-4 rounded-xl">
-                  <div className="text-center text-gray-400">임시 배정이 없습니다.</div>
+                  <div className="text-center text-gray-400">조건에 맞는 배정이 없습니다.</div>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {assignments.map((group) => (
+                  {filteredAssignments.map((group) => (
                     <div
                       key={group.unitId}
                       onClick={() => setDetailModalKey({ unitId: group.unitId, bucket: 'PENDING' })}
@@ -646,7 +639,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
       {/* 미배정 부대 상세 모달 */}
       {selectedUnit && (
         <UnassignedUnitDetailModal
-          unit={selectedUnit}
+          unit={selectedUnit as any}
           onClose={() => setSelectionKey(null)}
           onSave={fetchData}
           assignedDates={selectedUnitAssignedDates}
@@ -701,23 +694,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
         />
       )}
 
-      {/* 자동 배정 확인 모달 */}
-      <ConfirmModal
-        isOpen={showAutoAssignConfirm}
-        title="자동 배정 실행"
-        message={
-          <div>
-            <p>현재 조건으로 자동 배정을 실행하시겠습니까?</p>
-            <p className="text-sm text-gray-500 mt-2">
-              * 기존 배정 이력은 초기화되지 않으며, 미배정된 건에 대해서만 수행됩니다.
-            </p>
-          </div>
-        }
-        confirmText="실행"
-        cancelText="취소"
-        onConfirm={confirmAutoAssign}
-        onCancel={() => setShowAutoAssignConfirm(false)}
-      />
+      {/* 자동 배정 모달 삭제됨 */}
     </div>
   );
 };
