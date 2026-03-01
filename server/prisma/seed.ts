@@ -13,11 +13,11 @@ import bcrypt from 'bcrypt';
 const TEAMS = [
   { id: 1, name: '1팀' },
   { id: 2, name: '2팀' },
-  { id: 3, name: '2팀' },
-  { id: 4, name: '2팀' },
-  { id: 5, name: '2팀' },
-  { id: 6, name: '2팀' },
-  { id: 7, name: '2팀' },
+  { id: 3, name: '3팀' },
+  { id: 4, name: '4팀' },
+  { id: 5, name: '5팀' },
+  { id: 6, name: '6팀' },
+  { id: 7, name: '7팀' },
 ];
 
 // 덕목(과목) 데이터 (14개)

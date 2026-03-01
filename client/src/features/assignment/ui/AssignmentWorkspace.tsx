@@ -50,6 +50,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
     distanceLimits,
     actualDateRange, // 전체 부대 스케줄 범위
     fetchData,
+    executeAutoAssign,
     sendTemporaryMessages,
     sendConfirmedMessages,
   } = useAssignment();
@@ -64,9 +65,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
   type ModalKey = { unitId: number; bucket: 'PENDING' | 'ACCEPTED' } | null;
   const [detailModalKey, setDetailModalKey] = useState<ModalKey>(null);
 
-  // 배정 작업 공간 필터
-  type AssignmentFilterType = 'ALL' | 'UNASSIGNED' | 'COMPLETED';
-  const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilterType>('ALL');
+
 
   // 실시간 데이터 조회 (ID로 최신 데이터 찾기)
   const selectedUnit =
@@ -234,16 +233,43 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
     }, 150);
   };
 
+  // 배정 작업 공간 필터 (다중 선택 지원)
+  type AssignmentFilterType = 'UNASSIGNED' | 'UNRESPONDED' | 'ACCEPTED';
+  const [assignmentFilters, setAssignmentFilters] = useState<AssignmentFilterType[]>([]);
+
+  const toggleFilter = (filter: AssignmentFilterType) => {
+    setAssignmentFilters(prev => 
+      prev.includes(filter) ? prev.filter(f => f !== filter) : [...prev, filter]
+    );
+  };
+
   const filteredAssignments = useMemo(() => {
+    if (assignmentFilters.length === 0) return assignments; // 전체 보기
+
     return assignments.filter((g) => {
-      if (assignmentFilter === 'UNASSIGNED') return g.totalAssigned === 0;
-      if (assignmentFilter === 'COMPLETED') return g.totalAssigned >= g.totalRequired && g.totalRequired > 0;
-      return true;
+      // 그룹의 총 필요 인원 대비 응답/미응답 상태 계산
+      const hasUnassigned = g.totalAssigned === 0;
+      // 강사가 1명이라도 배정되었지만 확정/거절 응답을 안 한 상태(Pending)가 있는 경우
+      const hasUnresponded = g.totalAssigned > 0 && g.trainingLocations.some((loc: any) => 
+        loc.dates?.some((d: any) => d.instructors?.some((i: any) => i.state === 'Pending'))
+      );
+      // 강사가 배정되었고 1명 이상 수락(Accepted)한 상태인 경우 (임시 배정에서 응답 완료)
+      const hasAccepted = g.totalAssigned > 0 && g.trainingLocations.some((loc: any) => 
+        loc.dates?.some((d: any) => d.instructors?.some((i: any) => i.state === 'Accepted'))
+      );
+
+      // 다중 선택된 필터 중 하나라도 만족하면 목록에 포함 (OR 조건)
+      if (assignmentFilters.includes('UNASSIGNED') && hasUnassigned) return true;
+      if (assignmentFilters.includes('UNRESPONDED') && hasUnresponded) return true;
+      if (assignmentFilters.includes('ACCEPTED') && hasAccepted) return true;
+      
+      return false;
     });
-  }, [assignments, assignmentFilter]);
+  }, [assignments, assignmentFilters]);
 
   const unassignedCount = assignments.filter((g) => g.totalAssigned === 0).length;
-  const completedCount = assignments.filter((g) => g.totalAssigned >= g.totalRequired && g.totalRequired > 0).length;
+  const unrespondedCount = assignments.filter((g) => g.totalAssigned > 0 && g.trainingLocations.some((loc: any) => loc.dates?.some((d: any) => d.instructors?.some((i: any) => i.state === 'Pending')))).length;
+  const acceptedCount = assignments.filter((g) => g.totalAssigned > 0 && g.trainingLocations.some((loc: any) => loc.dates?.some((d: any) => d.instructors?.some((i: any) => i.state === 'Accepted')))).length;
 
   return (
     <div className="flex flex-col h-full relative">
@@ -272,6 +298,9 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
         <div className="flex flex-wrap gap-1">
           <Button onClick={fetchData} disabled={loading} size="small">
             {loading ? '조회중' : '조회'}
+          </Button>
+          <Button variant="outline" size="small" onClick={executeAutoAssign} disabled={loading}>
+            🤖 자동 배정
           </Button>
         </div>
       </div>
@@ -457,36 +486,34 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
         {/* Right Column */}
         <div className="flex flex-col gap-4 h-fit md:h-auto md:overflow-hidden">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden h-fit max-h-[40vh] md:flex-1 md:h-auto md:max-h-none">
-            <div className="p-3 bg-orange-50 border-b border-orange-100 border-l-4 border-l-orange-500 flex flex-col gap-2">
-              <div className="flex justify-between items-center font-bold text-gray-700">
-                <span>⚖️ 배정 작업 공간 (부대별)</span>
-                <div className="flex gap-2">
-                  {assignments.length > 0 && (
-                    <Button size="xsmall" onClick={sendTemporaryMessages}>
-                      📩 일괄 임시 메시지 전송
-                    </Button>
-                  )}
+            <div className="p-3 bg-orange-50 border-b border-orange-100 border-l-4 border-l-orange-500 flex justify-between items-start">
+              <span className="font-bold text-gray-700 mt-1">⚖️ 배정 작업 공간 (부대별)</span>
+              <div className="flex flex-col items-end gap-2">
+                {assignments.length > 0 && (
+                  <Button size="xsmall" onClick={sendTemporaryMessages}>
+                    📩 일괄 임시 메시지 전송
+                  </Button>
+                )}
+                <div className="flex gap-1.5 text-xs">
+                  <button
+                    className={`px-2 py-1 rounded-md transition-colors ${assignmentFilters.includes('UNASSIGNED') ? 'bg-orange-600 text-white font-bold' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                    onClick={() => toggleFilter('UNASSIGNED')}
+                  >
+                    미배정 ({unassignedCount})
+                  </button>
+                  <button
+                    className={`px-2 py-1 rounded-md transition-colors ${assignmentFilters.includes('UNRESPONDED') ? 'bg-orange-600 text-white font-bold' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                    onClick={() => toggleFilter('UNRESPONDED')}
+                  >
+                    미응답 ({unrespondedCount})
+                  </button>
+                  <button
+                    className={`px-2 py-1 rounded-md transition-colors ${assignmentFilters.includes('ACCEPTED') ? 'bg-orange-600 text-white font-bold' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                    onClick={() => toggleFilter('ACCEPTED')}
+                  >
+                    응답 완료 ({acceptedCount})
+                  </button>
                 </div>
-              </div>
-              <div className="flex gap-2 text-xs">
-                <button
-                  className={`px-2 py-1 rounded-md transition-colors ${assignmentFilter === 'ALL' ? 'bg-orange-600 text-white font-bold' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                  onClick={() => setAssignmentFilter('ALL')}
-                >
-                  전체 ({assignments.length})
-                </button>
-                <button
-                  className={`px-2 py-1 rounded-md transition-colors ${assignmentFilter === 'UNASSIGNED' ? 'bg-orange-600 text-white font-bold' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                  onClick={() => setAssignmentFilter('UNASSIGNED')}
-                >
-                  미응답/미배정 ({unassignedCount})
-                </button>
-                <button
-                  className={`px-2 py-1 rounded-md transition-colors ${assignmentFilter === 'COMPLETED' ? 'bg-orange-600 text-white font-bold' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                  onClick={() => setAssignmentFilter('COMPLETED')}
-                >
-                  배정 완료 ({completedCount})
-                </button>
               </div>
             </div>
 
