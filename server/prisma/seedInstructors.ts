@@ -402,6 +402,7 @@ export async function runSeedInstructors() {
                 teamId: teamId,
                 isTeamLeader: isTeamLeader,
                 location: location.address,
+                locationDetail: `10${randomInt(1, 9)}동 ${randomInt(1, 20)}0${randomInt(1, 9)}호`,
                 lat: location.lat,
                 lng: location.lng,
                 generation: randomInt(1, 25),
@@ -418,7 +419,7 @@ export async function runSeedInstructors() {
         // 덕목 할당
         let virtueCount: number;
         if (type === 'Main') {
-          virtueCount = virtues.length; // 주강사: 모든 덕목 (15개)
+          virtueCount = virtues.length; // 주강사: 모든 덕목 (14개)
         } else if (type === 'Co') {
           virtueCount = 10; // 부강사: 10개
         } else if (type === 'Assistant') {

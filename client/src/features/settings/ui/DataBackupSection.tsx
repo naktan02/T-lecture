@@ -265,7 +265,11 @@ export const DataBackupSection = (): ReactElement => {
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium text-gray-700">데이터베이스 용량</span>
               <span className="text-sm text-gray-600">
-                {dbSize.usedMB.toFixed(1)} MB / {dbSize.limitMB} MB ({dbSize.percentage}%)
+                {dbSize.usedMB.toFixed(1)} MB /{' '}
+                {dbSize.limitMB >= 1024
+                  ? `${(dbSize.limitMB / 1024).toFixed(0)} GB`
+                  : `${dbSize.limitMB} MB`}{' '}
+                ({dbSize.percentage}%)
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3">
@@ -274,7 +278,6 @@ export const DataBackupSection = (): ReactElement => {
                 style={{ width: `${Math.min(dbSize.percentage, 100)}%` }}
               />
             </div>
-            <p className="text-xs text-gray-500 mt-2">Supabase 무료 티어 제한: 500MB</p>
           </div>
         )}
 

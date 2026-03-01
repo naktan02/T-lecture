@@ -429,7 +429,7 @@ export class DataBackupService {
 
     const usedBytes = Number(result[0]?.size || 0);
     const usedMB = Math.round((usedBytes / (1024 * 1024)) * 100) / 100;
-    const limitMB = 500;
+    const limitMB = 1024; // 1GB (Aiven)
     const percentage = Math.round((usedMB / limitMB) * 100 * 10) / 10;
 
     return { usedBytes, usedMB, limitMB, percentage };

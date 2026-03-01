@@ -518,17 +518,80 @@ class DispatchService {
           unitScheduleId: da.assignment.unitScheduleId,
           state: da.assignment.state,
         })) || [],
+      // 내부 사용: 부대 ID (그룹핑용, 프론트에 전달하지 않아도 됨)
+      _unitId: this.extractUnitIdFromDispatch(d),
     }));
 
+    // 임시 배정(Temporary) 메시지를 부대(unitId)별로 최신 1건만 유지
+    const deduped = this.deduplicateTemporaryDispatches(dispatches);
+
+    // _unitId 필드 제거 후 반환
+    const result = deduped.map(({ _unitId, ...rest }) => rest);
+
     return {
-      dispatches,
+      dispatches: result,
       meta: {
-        total,
+        total: result.length, // 그룹핑 후 실제 건수 반영
         page,
         limit,
-        lastPage: Math.ceil(total / limit),
+        lastPage: Math.ceil(result.length / limit),
       },
     };
+  }
+
+  /**
+   * Dispatch에서 unitId를 추출 (assignments → UnitSchedule → trainingPeriod → unitId)
+   */
+  private extractUnitIdFromDispatch(dispatch: any): number | null {
+    const firstAssignment = dispatch.assignments?.[0];
+    if (!firstAssignment) return null;
+    return firstAssignment.assignment?.UnitSchedule?.trainingPeriod?.unitId ?? null;
+  }
+
+  /**
+   * Temporary 메시지를 unitId별로 최신 1건만 유지
+   * - Confirmed 메시지는 그대로 유지 (중복 문제 없음)
+   * - unitId가 없는 메시지도 그대로 유지
+   */
+  private deduplicateTemporaryDispatches<
+    T extends { type: string | null; receivedAt: Date | null; _unitId: number | null },
+  >(dispatches: T[]): T[] {
+    // unitId별 최신 Temporary dispatch만 유지하는 Map
+    const latestByUnit = new Map<number, T>();
+    const result: T[] = [];
+
+    for (const d of dispatches) {
+      // Confirmed 또는 unitId가 없는 경우: 그대로 유지
+      if (d.type !== 'Temporary' || d._unitId === null) {
+        result.push(d);
+        continue;
+      }
+
+      // Temporary: unitId별로 최신 것만 유지
+      const existing = latestByUnit.get(d._unitId);
+      if (!existing) {
+        latestByUnit.set(d._unitId, d);
+      } else {
+        // 더 최근(receivedAt이 큰) 것을 유지
+        const existingTime = existing.receivedAt ? new Date(existing.receivedAt).getTime() : 0;
+        const currentTime = d.receivedAt ? new Date(d.receivedAt).getTime() : 0;
+        if (currentTime > existingTime) {
+          latestByUnit.set(d._unitId, d);
+        }
+      }
+    }
+
+    // Confirmed + 그룹핑된 Temporary를 합침
+    result.push(...latestByUnit.values());
+
+    // 날짜 내림차순 정렬 유지
+    result.sort((a, b) => {
+      const timeA = a.receivedAt ? new Date(a.receivedAt).getTime() : 0;
+      const timeB = b.receivedAt ? new Date(b.receivedAt).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    return result;
   }
 
   // 발송 읽음 처리

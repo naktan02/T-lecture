@@ -91,15 +91,16 @@ export const updateUser = asyncHandler(async (req: Request, res: Response) => {
 // ✅ 사용자 주소 전용 수정 (좌표 재계산 포함)
 export const updateUserAddress = asyncHandler(async (req: Request, res: Response) => {
   const userId = parseUserIdParam(req);
-  const { address } = req.body;
+  const { address, locationDetail } = req.body;
 
   // 주소만 업데이트 (service에서 좌표 재계산 처리)
-  const updatedUser = await adminService.updateUser(userId, { address });
+  const updatedUser = await adminService.updateUser(userId, { address, locationDetail });
 
   logger.info('[admin.updateUserAddress]', {
     actorId: req.user?.id,
     targetUserId: userId,
     address,
+    locationDetail,
   });
 
   res.json(updatedUser);

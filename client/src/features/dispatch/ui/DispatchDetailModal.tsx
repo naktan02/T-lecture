@@ -38,6 +38,17 @@ export const DispatchDetailModal = ({ dispatch, onClose }: DispatchDetailModalPr
     }
   };
 
+  // 취소된 배정인지 확인 (모두 취소되거나 배정이 삭제된 경우)
+  const isCanceled =
+    !dispatch.assignments ||
+    dispatch.assignments.length === 0 ||
+    dispatch.assignments.every((a) => ['Canceled', 'Rejected'].includes(a.state));
+
+  // 부분 취소 확인 (일부만 취소된 경우)
+  const isPartiallyCanceled =
+    !isCanceled &&
+    (dispatch.assignments?.some((a) => ['Canceled', 'Rejected'].includes(a.state)) ?? false);
+
   // Pending 상태의 배정이 있는지 확인
   const hasPendingAssignments = dispatch.assignments?.some((a) => a.state === 'Pending');
 
@@ -89,10 +100,10 @@ export const DispatchDetailModal = ({ dispatch, onClose }: DispatchDetailModalPr
         </div>
 
         {/* 푸터 - 상태별 UI */}
-        {isTemporary && (
+        {(isTemporary || isCanceled || isPartiallyCanceled) && (
           <div className="px-3 py-2 bg-gray-50 border-t">
-            {/* 취소된 배정 */}
-            {dispatch.assignments?.every((a) => ['Canceled', 'Rejected'].includes(a.state)) && (
+            {/* 취소된 배정 (공통) */}
+            {isCanceled && (
               <div className="text-center py-2">
                 <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-200 text-gray-600 text-sm font-medium rounded-full">
                   🚫 취소된 배정
@@ -102,36 +113,53 @@ export const DispatchDetailModal = ({ dispatch, onClose }: DispatchDetailModalPr
                 </p>
               </div>
             )}
-            {/* 이미 응답한 배정 */}
-            {dispatch.assignments?.every((a) => a.state === 'Accepted') && (
+            {/* 부분 취소된 배정 (공통) */}
+            {isPartiallyCanceled && (
               <div className="text-center py-2">
-                <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 text-sm font-medium rounded-full">
-                  ✅ 수락 완료
+                <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-100 text-orange-700 text-sm font-medium rounded-full">
+                  ⚠️ 부분 취소됨
                 </span>
+                <p className="text-xs text-gray-400 mt-2">
+                  배정된 일부 일정이 관리자에 의해 취소되었습니다.
+                </p>
               </div>
             )}
-            {/* Pending 상태의 배정이 있는 경우에만 버튼 표시 */}
-            {hasPendingAssignments && (
+
+            {/* 임시 배정에만 해당하는 UI */}
+            {isTemporary && !isCanceled && (
               <>
-                <p className="text-xs text-gray-500 text-center mb-2">이 배정에 응답해주세요</p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleRespond('REJECT')}
-                    disabled={isProcessing}
-                    className="flex-1 py-2 px-3 border border-red-400 text-red-500 text-sm font-medium rounded-md
-                             hover:bg-red-50 disabled:opacity-50 transition-colors"
-                  >
-                    거절하기
-                  </button>
-                  <button
-                    onClick={() => handleRespond('ACCEPT')}
-                    disabled={isProcessing}
-                    className="flex-1 py-2 px-3 bg-green-500 text-white text-sm font-medium rounded-md
-                             hover:bg-green-600 disabled:opacity-50 transition-colors"
-                  >
-                    수락하기
-                  </button>
-                </div>
+                {/* 이미 응답한 배정 */}
+                {dispatch.assignments?.every((a) => a.state === 'Accepted') && (
+                  <div className="text-center py-2">
+                    <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 text-sm font-medium rounded-full">
+                      ✅ 수락 완료
+                    </span>
+                  </div>
+                )}
+                {/* Pending 상태의 배정이 있는 경우에만 버튼 표시 */}
+                {hasPendingAssignments && (
+                  <>
+                    <p className="text-xs text-gray-500 text-center mb-2">이 배정에 응답해주세요</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleRespond('REJECT')}
+                        disabled={isProcessing}
+                        className="flex-1 py-2 px-3 border border-red-400 text-red-500 text-sm font-medium rounded-md
+                                 hover:bg-red-50 disabled:opacity-50 transition-colors"
+                      >
+                        거절하기
+                      </button>
+                      <button
+                        onClick={() => handleRespond('ACCEPT')}
+                        disabled={isProcessing}
+                        className="flex-1 py-2 px-3 bg-green-500 text-white text-sm font-medium rounded-md
+                                 hover:bg-green-600 disabled:opacity-50 transition-colors"
+                      >
+                        수락하기
+                      </button>
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>

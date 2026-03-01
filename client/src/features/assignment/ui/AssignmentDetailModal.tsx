@@ -1081,6 +1081,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
             confirmedAssignments={allConfirmedAssignments}
             assignedByDate={assignedByDate}
             distanceMap={distanceMap}
+            locallyAddedIds={getAssignedInstructorIds(addPopupTarget.unitScheduleId)}
             onClose={() => setAddPopupTarget(null)}
             onAddMultiple={(instructors) => {
               instructors.forEach((inst) => {

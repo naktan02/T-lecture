@@ -39,6 +39,7 @@ interface FormData {
   status: string;
   // 강사 기본 정보
   address: string;
+  locationDetail: string;
   lat: string;
   lng: string;
   // 강사 관리 필드
@@ -58,6 +59,7 @@ const INITIAL_FORM: FormData = {
   phoneNumber: '',
   status: 'APPROVED',
   address: '',
+  locationDetail: '',
   lat: '',
   lng: '',
   category: '',
@@ -168,11 +170,13 @@ export const UserDetailDrawer = ({
     const target = boundUser ?? initialUser;
 
     const addressValue = target.instructor?.location || '';
+    const detailAddressValue = target.instructor?.locationDetail || '';
     setFormData({
       name: target.name || '',
       phoneNumber: target.userphoneNumber || '',
       status: target.status || 'APPROVED',
       address: addressValue,
+      locationDetail: detailAddressValue,
       lat: target.instructor?.lat?.toString() || '',
       lng: target.instructor?.lng?.toString() || '',
       category: target.instructor?.category || '',
@@ -240,7 +244,13 @@ export const UserDetailDrawer = ({
     }
 
     // 강사 정보 (주소는 별도 저장이므로 제외)
+    // 단, 상세 주소는 별도 저장이 가능하도록 폼 데이터에 추가할 수 있습니다.
+    // 기존 updateUser API가 locationDetail을 받는지 확인이 필요하지만,
+    // userManagementApi.updateUser() DTO에 locationDetail이 있다고 가정합니다.
     if (boundUser?.instructor) {
+      if (formData.locationDetail !== (boundUser.instructor.locationDetail || '')) {
+        updateData.locationDetail = formData.locationDetail;
+      }
       if (formData.category !== (boundUser.instructor.category || '')) {
         updateData.category = formData.category as UpdateUserDto['category'];
       }
@@ -579,6 +589,21 @@ export const UserDetailDrawer = ({
                           ⚠️ 주소가 변경되었습니다. [저장]을 눌러 저장하세요.
                         </p>
                       )}
+                    </div>
+                    {/* 상세 주소 입력 필드 추가 */}
+                    <div className="mt-2 text-sm">
+                      <label className="text-sm font-medium">상세 주소</label>
+                      <input
+                        type="text"
+                        name="locationDetail"
+                        value={formData.locationDetail}
+                        onChange={handleChange}
+                        className="w-full mt-1 p-2 border rounded-lg"
+                        placeholder="아파트, 동/호수 등 상세 주소 입력"
+                      />
+                      <p className="text-[10px] text-gray-500 mt-1">
+                        * 상세 주소를 수정한 후 하단의 [저장] 버튼을 눌러야 반영됩니다.
+                      </p>
                     </div>
                   </div>
                 </section>

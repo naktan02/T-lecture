@@ -275,6 +275,13 @@ class DispatchRepository {
                 select: {
                   unitScheduleId: true,
                   state: true,
+                  UnitSchedule: {
+                    select: {
+                      trainingPeriod: {
+                        select: { unitId: true },
+                      },
+                    },
+                  },
                 },
               },
             },
@@ -342,7 +349,7 @@ class DispatchRepository {
             unitId: { in: unitIds },
           },
         },
-        state: 'Pending',
+        state: { in: ['Pending', 'Accepted'] },
       },
       include: {
         UnitSchedule: {

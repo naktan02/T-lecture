@@ -309,7 +309,8 @@ async function convertAddressesToCoordinates() {
     if (coords) {
       locations.push({ ...addr, ...coords });
     } else {
-      console.warn(`  ⚠️ ${addr.address} - 좌표 변환 실패, 건너뜀`);
+      console.warn(`  ⚠️ ${addr.address} - 좌표 변환 실패, 기본값 사용`);
+      locations.push({ ...addr, lat: 37.5665, lng: 126.978 }); // 기본 좌표 추가
     }
     // API 호출 제한을 피하기 위한 딜레이
     await new Promise((resolve) => setTimeout(resolve, 100));

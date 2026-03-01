@@ -1,10 +1,13 @@
 // src/features/assignment/ui/AssignmentWorkspace.tsx
 
-import { useState, useRef, ChangeEvent, MouseEvent, useEffect, useMemo } from 'react';
+import { useState, useRef, ChangeEvent, MouseEvent, useEffect, useMemo, useCallback } from 'react';
 import { useAssignment } from '../model/useAssignment';
-import { Button, MiniCalendar, ConfirmModal } from '../../../shared/ui';
+import { Button, MiniCalendar } from '../../../shared/ui';
 import { AssignmentDetailModal, AssignmentGroupDetailModal } from './AssignmentDetailModal';
 import { UnassignedUnitDetailModal } from './UnassignedUnitDetailModal';
+import { batchUpdateAssignmentsApi } from '../assignmentApi';
+import { showSuccess, showError, showConfirm } from '../../../shared/utils/toast';
+import type { AssignmentData } from '../model/useAssignment';
 
 // ID 기반 선택 키
 type SelectionKey =
@@ -57,7 +60,6 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
 
   // ID 기반 선택 (스냅샷 대신 ID만 저장)
   const [selectionKey, setSelectionKey] = useState<SelectionKey>(null);
-  const [showAutoAssignConfirm, setShowAutoAssignConfirm] = useState(false);
 
   // 검색 상태
   const [unitSearch, setUnitSearch] = useState('');
@@ -65,6 +67,70 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
 
   type ModalKey = { unitId: number; bucket: 'PENDING' | 'ACCEPTED' } | null;
   const [detailModalKey, setDetailModalKey] = useState<ModalKey>(null);
+
+  // 표 모달 상태: 'PENDING' = 배정 작업 공간, 'ACCEPTED' = 확정 배정
+  const [tableModal, setTableModal] = useState<'PENDING' | 'ACCEPTED' | null>(null);
+  // 표에서 행 진입 시 사용하는 상세 모달 키 (표 모달 위에 표시)
+  const [tableDetailKey, setTableDetailKey] = useState<ModalKey>(null);
+
+  // 표에서 선택된 그룹 (상세 모달용)
+  const tableDetailGroup =
+    tableDetailKey?.bucket === 'PENDING'
+      ? assignments.find((g) => g.unitId === tableDetailKey.unitId)
+      : tableDetailKey?.bucket === 'ACCEPTED'
+        ? confirmedAssignments.find((g) => g.unitId === tableDetailKey.unitId)
+        : null;
+
+  // 그룹에서 유니크 강사 이름 추출 헬퍼
+  const getUniqueInstructorNames = useCallback((group: AssignmentData): string => {
+    const names = new Set<string>();
+    for (const loc of group.trainingLocations as any[]) {
+      for (const d of loc.dates || []) {
+        for (const inst of d.instructors || []) {
+          if (inst.name && (inst.state === 'Pending' || inst.state === 'Accepted')) {
+            names.add(inst.name);
+          }
+        }
+      }
+    }
+    return names.size > 0 ? Array.from(names).join(', ') : '-';
+  }, []);
+
+  // 그룹의 최대 참여인원 계산 헬퍼 (가장 많은 날의 actualCount)
+  const getMaxActualCount = useCallback((group: AssignmentData): number => {
+    let max = 0;
+    for (const loc of group.trainingLocations as any[]) {
+      for (const d of loc.dates || []) {
+        const count = d.actualCount ?? 0;
+        if (count > max) max = count;
+      }
+    }
+    return max;
+  }, []);
+
+  // 그룹 상태 라벨 계산 헬퍼
+  const getStatusLabel = useCallback(
+    (group: AssignmentData): { text: string; className: string } => {
+      // messageSent 기반으로 상태 판별 (필터 로직과 일관)
+      const allInstructors: { state: string; messageSent: boolean }[] = [];
+      for (const loc of group.trainingLocations as any[]) {
+        for (const d of loc.dates || []) {
+          for (const i of d.instructors || []) {
+            if (i.state === 'Pending' || i.state === 'Accepted') {
+              allInstructors.push({ state: i.state, messageSent: !!i.messageSent });
+            }
+          }
+        }
+      }
+      const anyMessageSent = allInstructors.some((i) => i.messageSent);
+      const hasPending = allInstructors.some((i) => i.state === 'Pending');
+
+      if (!anyMessageSent) return { text: '미배정', className: 'bg-gray-200 text-gray-700' };
+      if (hasPending) return { text: '미응답', className: 'bg-yellow-100 text-yellow-700' };
+      return { text: '응답 완료', className: 'bg-green-100 text-green-700' };
+    },
+    [],
+  );
 
   // 실시간 데이터 조회 (ID로 최신 데이터 찾기)
   const selectedUnit =
@@ -171,15 +237,6 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
 
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleAutoAssignClick = () => {
-    setShowAutoAssignConfirm(true);
-  };
-
-  const confirmAutoAssign = async () => {
-    setShowAutoAssignConfirm(false);
-    await executeAutoAssign();
-  };
-
   const handleDateChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
     if (!value) return;
@@ -241,6 +298,82 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
     }, 150);
   };
 
+  // 배정 작업 공간 필터 (다중 선택 지원)
+  type AssignmentFilterType = 'UNASSIGNED' | 'UNRESPONDED' | 'ACCEPTED';
+  const [assignmentFilters, setAssignmentFilters] = useState<AssignmentFilterType[]>([]);
+
+  const toggleFilter = (filter: AssignmentFilterType) => {
+    setAssignmentFilters((prev) =>
+      prev.includes(filter) ? prev.filter((f) => f !== filter) : [...prev, filter],
+    );
+  };
+
+  const filteredAssignments = useMemo(() => {
+    if (assignmentFilters.length === 0) return assignments; // 전체 보기
+
+    return assignments.filter((g) => {
+      // 그룹 내 모든 강사의 상태를 평면화하여 추출
+      const allInstructors: { state: string; messageSent: boolean }[] = [];
+      (g.trainingLocations as any[]).forEach((loc: any) => {
+        loc.dates?.forEach((d: any) => {
+          d.instructors?.forEach((i: any) => {
+            if (i.state === 'Pending' || i.state === 'Accepted') {
+              allInstructors.push({ state: i.state, messageSent: !!i.messageSent });
+            }
+          });
+        });
+      });
+
+      // 메시지를 보낸 강사가 있는지
+      const anyMessageSent = allInstructors.some((i) => i.messageSent);
+      // Pending 상태인 강사가 있는지
+      const hasPending = allInstructors.some((i) => i.state === 'Pending');
+
+      // 미배정: 메시지가 한 번도 발송되지 않은 상태 (강사가 0이거나, 배정은 했지만 발송 안 한 경우)
+      const isUnassigned = !anyMessageSent;
+      // 미응답: 메시지를 보냈으나 아직 Pending(응답 대기)인 강사가 남아있는 상태
+      const isUnresponded = anyMessageSent && hasPending;
+      // 응답 완료: 메시지를 보냈고 Pending인 강사가 없는 상태 (모두 응답함)
+      const isAccepted = anyMessageSent && !hasPending;
+
+      // 다중 선택된 필터 중 하나라도 만족하면 목록에 포함 (OR 조건)
+      if (assignmentFilters.includes('UNASSIGNED') && isUnassigned) return true;
+      if (assignmentFilters.includes('UNRESPONDED') && isUnresponded) return true;
+      if (assignmentFilters.includes('ACCEPTED') && isAccepted) return true;
+
+      return false;
+    });
+  }, [assignments, assignmentFilters]);
+
+  // 각 필터별 카운트 계산 (같은 로직 사용)
+  const filterCounts = useMemo(() => {
+    let unassigned = 0,
+      unresponded = 0,
+      accepted = 0;
+
+    for (const g of assignments) {
+      const allInstructors: { state: string; messageSent: boolean }[] = [];
+      (g.trainingLocations as any[]).forEach((loc: any) => {
+        loc.dates?.forEach((d: any) => {
+          d.instructors?.forEach((i: any) => {
+            if (i.state === 'Pending' || i.state === 'Accepted') {
+              allInstructors.push({ state: i.state, messageSent: !!i.messageSent });
+            }
+          });
+        });
+      });
+
+      const anyMessageSent = allInstructors.some((i) => i.messageSent);
+      const hasPending = allInstructors.some((i) => i.state === 'Pending');
+
+      if (!anyMessageSent) unassigned++;
+      else if (hasPending) unresponded++;
+      else accepted++;
+    }
+
+    return { unassigned, unresponded, accepted };
+  }, [assignments]);
+
   return (
     <div className="flex flex-col h-full relative">
       {/* 1. Control Bar */}
@@ -269,36 +402,9 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
           <Button onClick={fetchData} disabled={loading} size="small">
             {loading ? '조회중' : '조회'}
           </Button>
-          <button
-            onClick={handleAutoAssignClick}
-            disabled={loading || groupedUnassignedUnits.length === 0}
-            className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 
-                           disabled:bg-gray-300 disabled:cursor-not-allowed
-                           shadow-sm transition-all text-xs font-bold flex items-center gap-1"
-          >
-            {loading ? (
-              <>
-                <svg className="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                배정중
-              </>
-            ) : (
-              <>⚡ 자동배정</>
-            )}
-          </button>
+          <Button variant="outline" size="small" onClick={executeAutoAssign} disabled={loading}>
+            🤖 자동 배정
+          </Button>
         </div>
       </div>
 
@@ -483,28 +589,55 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
         {/* Right Column */}
         <div className="flex flex-col gap-4 h-fit md:h-auto md:overflow-hidden">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden h-fit max-h-[40vh] md:flex-1 md:h-auto md:max-h-none">
-            <div className="p-3 bg-orange-50 border-b border-orange-100 border-l-4 border-l-orange-500 font-bold text-gray-700 flex justify-between items-center">
-              <span>⚖️ 배정 작업 공간 (부대별)</span>
-              <div className="flex gap-2">
-                <Button size="xsmall" variant="ghost" onClick={handleAutoAssignClick}>
-                  자동 배정
-                </Button>
-                {assignments.length > 0 && (
-                  <Button size="xsmall" onClick={sendTemporaryMessages}>
-                    📩 일괄 임시 메시지 전송
-                  </Button>
-                )}
+            <div className="p-3 bg-orange-50 border-b border-orange-100 border-l-4 border-l-orange-500 flex justify-between items-start">
+              <span className="font-bold text-gray-700 mt-1">⚖️ 배정 작업 공간 (부대별)</span>
+              <div className="flex flex-col items-end gap-2">
+                <div className="flex items-center gap-1.5">
+                  {assignments.length > 0 && (
+                    <button
+                      onClick={() => setTableModal('PENDING')}
+                      className="px-2.5 py-1.5 bg-white border border-orange-300 text-orange-700 rounded-lg hover:bg-orange-50 shadow-sm transition-all text-xs font-bold flex items-center gap-1"
+                    >
+                      📊 펼치기
+                    </button>
+                  )}
+                  {assignments.length > 0 && (
+                    <Button size="xsmall" onClick={sendTemporaryMessages}>
+                      📩 일괄 임시 메시지 전송
+                    </Button>
+                  )}
+                </div>
+                <div className="flex gap-1.5 text-xs">
+                  <button
+                    className={`px-2 py-1 rounded-md transition-colors ${assignmentFilters.includes('UNASSIGNED') ? 'bg-orange-600 text-white font-bold' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                    onClick={() => toggleFilter('UNASSIGNED')}
+                  >
+                    미배정 ({filterCounts.unassigned})
+                  </button>
+                  <button
+                    className={`px-2 py-1 rounded-md transition-colors ${assignmentFilters.includes('UNRESPONDED') ? 'bg-orange-600 text-white font-bold' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                    onClick={() => toggleFilter('UNRESPONDED')}
+                  >
+                    미응답 ({filterCounts.unresponded})
+                  </button>
+                  <button
+                    className={`px-2 py-1 rounded-md transition-colors ${assignmentFilters.includes('ACCEPTED') ? 'bg-orange-600 text-white font-bold' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                    onClick={() => toggleFilter('ACCEPTED')}
+                  >
+                    응답 완료 ({filterCounts.accepted})
+                  </button>
+                </div>
               </div>
             </div>
 
             <div className="flex-1 p-4 overflow-y-auto bg-gray-50/50">
-              {assignments.length === 0 ? (
+              {filteredAssignments.length === 0 ? (
                 <div className="flex items-center justify-center h-full border-2 border-dashed border-gray-300 m-4 rounded-xl">
-                  <div className="text-center text-gray-400">임시 배정이 없습니다.</div>
+                  <div className="text-center text-gray-400">조건에 맞는 배정이 없습니다.</div>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {assignments.map((group) => (
+                  {filteredAssignments.map((group) => (
                     <div
                       key={group.unitId}
                       onClick={() => setDetailModalKey({ unitId: group.unitId, bucket: 'PENDING' })}
@@ -541,15 +674,64 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
                             : `📨 ${group.totalAssigned}명 배정`}
                         </span>
                         {group.totalAssigned > 0 && (
-                          <span
-                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                              (group as any).unsentCount > 0
-                                ? 'text-blue-600 bg-blue-100'
-                                : 'text-gray-500 bg-gray-100'
-                            }`}
-                          >
-                            🔵 미발송 {(group as any).unsentCount ?? 0}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {/* 미발송 강사 취소 버튼 */}
+                            {(group as any).unsentCount > 0 && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const confirmed = await showConfirm(
+                                    `${group.unitName}의 미발송 강사 ${(group as any).unsentCount}명을 일괄 취소하시겠습니까?`,
+                                  );
+                                  if (!confirmed) return;
+                                  try {
+                                    // messageSent===false인 강사들의 unitScheduleId + instructorId 수집
+                                    const removeList: {
+                                      unitScheduleId: number;
+                                      instructorId: number;
+                                    }[] = [];
+                                    for (const loc of group.trainingLocations as any[]) {
+                                      for (const d of loc.dates || []) {
+                                        for (const inst of d.instructors || []) {
+                                          if (!inst.messageSent) {
+                                            removeList.push({
+                                              unitScheduleId: d.unitScheduleId,
+                                              instructorId: inst.instructorId,
+                                            });
+                                          }
+                                        }
+                                      }
+                                    }
+                                    if (removeList.length === 0) return;
+                                    await batchUpdateAssignmentsApi({
+                                      add: [],
+                                      remove: removeList,
+                                      roleChanges: [],
+                                      staffLockChanges: [],
+                                      stateChanges: [],
+                                    });
+                                    showSuccess(`${removeList.length}건 배정 취소 완료`);
+                                    await fetchData();
+                                  } catch (err) {
+                                    showError((err as Error).message);
+                                  }
+                                }}
+                                className="text-[10px] px-1.5 py-0.5 text-red-600 bg-red-50 border border-red-200 rounded hover:bg-red-100 transition-colors font-medium"
+                                title="미발송 강사 일괄 취소"
+                              >
+                                🚫 강사취소
+                              </button>
+                            )}
+                            <span
+                              className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                                (group as any).unsentCount > 0
+                                  ? 'text-blue-600 bg-blue-100'
+                                  : 'text-gray-500 bg-gray-100'
+                              }`}
+                            >
+                              🔵 미발송 {(group as any).unsentCount ?? 0}
+                            </span>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -563,15 +745,25 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
           <div className="md:flex-1 max-h-[40vh] md:max-h-none bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
             <div className="p-3 bg-blue-50 border-b border-blue-100 border-l-4 border-l-blue-500 font-bold text-gray-700 flex justify-between items-center">
               <span>✅ 확정 배정 완료</span>
-              <button
-                onClick={sendConfirmedMessages}
-                disabled={confirmedAssignments.length === 0}
-                className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
-                           disabled:bg-gray-300 disabled:cursor-not-allowed
-                           shadow-sm transition-all text-xs font-bold flex items-center gap-1"
-              >
-                📩 일괄 확정 메시지 전송
-              </button>
+              <div className="flex items-center gap-1.5">
+                {confirmedAssignments.length > 0 && (
+                  <button
+                    onClick={() => setTableModal('ACCEPTED')}
+                    className="px-2.5 py-1.5 bg-white border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 shadow-sm transition-all text-xs font-bold flex items-center gap-1"
+                  >
+                    📊 펼치기
+                  </button>
+                )}
+                <button
+                  onClick={sendConfirmedMessages}
+                  disabled={confirmedAssignments.length === 0}
+                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
+                             disabled:bg-gray-300 disabled:cursor-not-allowed
+                             shadow-sm transition-all text-xs font-bold flex items-center gap-1"
+                >
+                  📩 일괄 확정 메시지 전송
+                </button>
+              </div>
             </div>
             <div className="flex-1 p-4 overflow-y-auto bg-gray-50/50">
               {confirmedAssignments.length === 0 ? (
@@ -646,7 +838,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
       {/* 미배정 부대 상세 모달 */}
       {selectedUnit && (
         <UnassignedUnitDetailModal
-          unit={selectedUnit}
+          unit={selectedUnit as any}
           onClose={() => setSelectionKey(null)}
           onSave={fetchData}
           assignedDates={selectedUnitAssignedDates}
@@ -701,23 +893,151 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
         />
       )}
 
-      {/* 자동 배정 확인 모달 */}
-      <ConfirmModal
-        isOpen={showAutoAssignConfirm}
-        title="자동 배정 실행"
-        message={
-          <div>
-            <p>현재 조건으로 자동 배정을 실행하시겠습니까?</p>
-            <p className="text-sm text-gray-500 mt-2">
-              * 기존 배정 이력은 초기화되지 않으며, 미배정된 건에 대해서만 수행됩니다.
-            </p>
+      {/* 자동 배정 모달 삭제됨 */}
+
+      {/* 표 모달 (펼치기) */}
+      {tableModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-4xl h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden animate-fadeInScale">
+            {/* 표 모달 헤더 */}
+            <div className="bg-white px-6 py-5 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-800">
+                {tableModal === 'PENDING' ? '⚖️ 배정 작업 공간' : '✅ 확정 배정 완료'}
+                <span className="text-sm font-normal text-gray-500 ml-2">
+                  ({(tableModal === 'PENDING' ? filteredAssignments : confirmedAssignments).length}
+                  건)
+                </span>
+              </h2>
+              <button
+                onClick={() => setTableModal(null)}
+                className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 표 본문 */}
+            <div className="flex-1 overflow-auto bg-gray-50 p-4">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="bg-gray-100 sticky top-0 z-10">
+                    <th className="px-2 py-2.5 border border-gray-200 text-center w-10">#</th>
+                    <th className="px-3 py-2.5 border border-gray-200 text-left">부대명</th>
+                    <th className="px-3 py-2.5 border border-gray-200 text-left">지역</th>
+                    <th className="px-3 py-2.5 border border-gray-200 text-left">일정</th>
+                    <th className="px-2 py-2.5 border border-gray-200 text-center w-16">인원수</th>
+                    <th className="px-2 py-2.5 border border-gray-200 text-center w-16">교육장</th>
+                    <th className="px-3 py-2.5 border border-gray-200 text-left min-w-[120px]">
+                      배정 강사
+                    </th>
+                    <th className="px-2 py-2.5 border border-gray-200 text-center w-20">상태</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(tableModal === 'PENDING' ? filteredAssignments : confirmedAssignments).map(
+                    (group, idx) => {
+                      const status = getStatusLabel(group);
+                      return (
+                        <tr
+                          key={group.unitId}
+                          className="hover:bg-blue-50/50 transition-colors cursor-pointer"
+                          onClick={() =>
+                            setTableDetailKey({
+                              unitId: group.unitId,
+                              bucket: tableModal === 'PENDING' ? 'PENDING' : 'ACCEPTED',
+                            })
+                          }
+                        >
+                          <td className="px-2 py-2 border border-gray-200 text-center text-gray-500">
+                            {idx + 1}
+                          </td>
+                          <td className="px-3 py-2 border border-gray-200 font-medium text-gray-800">
+                            {group.unitName}
+                          </td>
+                          <td className="px-3 py-2 border border-gray-200 text-gray-600">
+                            {group.region}
+                          </td>
+                          <td className="px-3 py-2 border border-gray-200 text-gray-600 whitespace-nowrap">
+                            {group.period}
+                          </td>
+                          <td className="px-2 py-2 border border-gray-200 text-center text-gray-600">
+                            {getMaxActualCount(group) || '-'}
+                          </td>
+                          <td className="px-2 py-2 border border-gray-200 text-center text-gray-600">
+                            {(group.trainingLocations as any[]).length}개
+                          </td>
+                          <td className="px-3 py-2 border border-gray-200 text-gray-700 break-words">
+                            {getUniqueInstructorNames(group)}
+                          </td>
+                          <td className="px-2 py-2 border border-gray-200 text-center">
+                            <span
+                              className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${status.className}`}
+                            >
+                              {status.text}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    },
+                  )}
+                  {(tableModal === 'PENDING' ? filteredAssignments : confirmedAssignments)
+                    .length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={8}
+                        className="px-4 py-12 text-center text-gray-400 border border-gray-200"
+                      >
+                        데이터가 없습니다.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        }
-        confirmText="실행"
-        cancelText="취소"
-        onConfirm={confirmAutoAssign}
-        onCancel={() => setShowAutoAssignConfirm(false)}
-      />
+        </div>
+      )}
+
+      {/* 표 모달 위에 띄우는 상세 모달 */}
+      {tableDetailKey && tableDetailGroup && (
+        <AssignmentGroupDetailModal
+          group={tableDetailGroup as any}
+          onClose={() => setTableDetailKey(null)}
+          onSaveComplete={async () => {
+            await fetchData();
+          }}
+          availableInstructors={availableInstructors.map((i) => ({
+            id: i.id,
+            name: i.name,
+            team: i.teamName,
+            teamName: i.teamName,
+            category: i.category ?? undefined,
+            availableDates: i.availableDates ?? [],
+          }))}
+          allInstructors={allInstructors.map((i) => ({
+            id: i.id,
+            name: i.name,
+            team: i.teamName,
+            teamName: i.teamName,
+            category: i.category ?? undefined,
+            availableDates: i.availableDates ?? [],
+          }))}
+          assignedByDate={assignedByDate}
+          allAssignments={assignments}
+          allConfirmedAssignments={confirmedAssignments}
+          distanceMap={distanceMap}
+          distanceLimits={distanceLimits}
+          actualDateRange={actualDateRange}
+          queryDateRange={
+            dateRange.startDate && dateRange.endDate
+              ? {
+                  startDate: new Date(dateRange.startDate),
+                  endDate: new Date(dateRange.endDate),
+                }
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 };

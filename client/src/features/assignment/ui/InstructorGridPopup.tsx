@@ -55,6 +55,7 @@ interface InstructorGridPopupProps {
   assignedByDate?: Map<string, Set<number>>; // 날짜별 다른 부대에 배정된 강사 ID
   // 거리 정보
   distanceMap?: Record<string, number>; // `${instructorId}-${unitId}` → km
+  locallyAddedIds?: number[]; // 로컬에서 이미 추가된 강사 ID (저장 전)
   onClose: () => void;
   onAddMultiple: (instructors: Instructor[]) => void; // 다중 선택 추가
   onInstructorClick?: (instructorId: number) => void;
@@ -122,6 +123,7 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
   confirmedAssignments = [],
   assignedByDate = new Map(),
   distanceMap = {},
+  locallyAddedIds = [],
   onClose,
   onAddMultiple,
   onInstructorClick,
@@ -248,6 +250,11 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
         return false; // 이미 배정됨 - 목록에서 제외
       }
 
+      // 로컬에서 이미 추가된 강사도 제외
+      if (locallyAddedIds.includes(inst.id)) {
+        return false;
+      }
+
       return true;
     });
 
@@ -262,7 +269,15 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
       if (distB === undefined) return -1;
       return distA - distB;
     });
-  }, [instructorList, search, distanceMap, target.unitId, target.date, getAssignmentState]);
+  }, [
+    instructorList,
+    search,
+    distanceMap,
+    target.unitId,
+    target.date,
+    getAssignmentState,
+    locallyAddedIds,
+  ]);
 
   const handleSearchChange = (e: ChangeEvent<HTMLInputElement>): void => {
     setSearch(e.target.value);
@@ -431,15 +446,18 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
                   const isInEducationPeriod = educationDateRange
                     ? isDateInRange(date, educationDateRange)
                     : false;
+                  const isTargetDate = date === target.date;
                   return (
                     <th
                       key={date}
                       className={`border border-gray-300 px-1 py-1 text-center w-12 ${
-                        isInEducationPeriod
-                          ? 'bg-indigo-500 text-white'
-                          : weekend
-                            ? 'bg-red-50 text-red-600'
-                            : 'bg-gray-100 text-gray-600'
+                        isTargetDate
+                          ? 'bg-rose-500 text-white ring-2 ring-rose-400 ring-inset'
+                          : isInEducationPeriod
+                            ? 'bg-indigo-500 text-white'
+                            : weekend
+                              ? 'bg-red-50 text-red-600'
+                              : 'bg-gray-100 text-gray-600'
                       }`}
                     >
                       <div className="text-[10px] font-bold leading-tight whitespace-nowrap">
@@ -538,11 +556,12 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
                         const isAvailable = availableDatesSet.has(date);
                         const assignmentState = getAssignmentState(date, inst.id);
                         const cellStyle = getCellStyle(isAvailable, assignmentState);
+                        const isTargetDate = date === target.date;
 
                         return (
                           <td
                             key={date}
-                            className={`border border-gray-200 text-center h-7 w-12 ${cellStyle}`}
+                            className={`border text-center h-7 w-12 ${cellStyle} ${isTargetDate ? 'border-rose-400 border-2' : 'border-gray-200'}`}
                             title={
                               assignmentState === 'Accepted'
                                 ? '확정 배정'

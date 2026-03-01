@@ -37,12 +37,13 @@ export const withdraw = asyncHandler(async (req: Request, res: Response) => {
 
 // ✅ 내 주소 전용 수정 (좌표 재계산 포함)
 export const updateMyAddress = asyncHandler(async (req: Request, res: Response) => {
-  const { address } = req.body;
-  const updatedProfile = await userMeService.updateMyAddress(req.user!.id, address);
+  const { address, locationDetail } = req.body;
+  const updatedProfile = await userMeService.updateMyAddress(req.user!.id, address, locationDetail);
 
   logger.info('[user.updateMyAddress]', {
     userId: req.user!.id,
     address,
+    locationDetail,
   });
 
   res.json(updatedProfile);

@@ -13,6 +13,7 @@ interface UpdateProfileDto {
   restrictedArea?: string; // 강사 제한 지역
   hasCar?: boolean; // 강사 자차 여부
   virtueIds?: number[]; // 강사 가능 덕목 ID 목록
+  locationDetail?: string; // 강사 상세 주소
   // 주소(address)는 updateMyAddress API로만 변경 가능 (보안을 위해 분리)
 }
 
@@ -39,7 +40,16 @@ class UserMeService {
       throw new AppError('요청 바디 형식이 올바르지 않습니다.', 400, 'INVALID_BODY');
     }
 
-    const { name, phoneNumber, email, password, restrictedArea, hasCar, virtueIds } = dto;
+    const {
+      name,
+      phoneNumber,
+      email,
+      password,
+      restrictedArea,
+      hasCar,
+      virtueIds,
+      locationDetail,
+    } = dto;
 
     if (name !== undefined && name !== null && typeof name !== 'string') {
       throw new AppError('name은 문자열이어야 합니다.', 400, 'INVALID_NAME');
@@ -64,7 +74,8 @@ class UserMeService {
       password !== undefined ||
       restrictedArea !== undefined ||
       hasCar !== undefined ||
-      virtueIds !== undefined;
+      virtueIds !== undefined ||
+      locationDetail !== undefined;
 
     if (!hasAnyField) {
       throw new AppError('수정할 값이 없습니다.', 400, 'NO_UPDATE_FIELDS');
@@ -104,6 +115,9 @@ class UserMeService {
       if (hasCar !== undefined) {
         instructorData.hasCar = hasCar;
       }
+      if (locationDetail !== undefined) {
+        instructorData.locationDetail = locationDetail === '' ? null : locationDetail;
+      }
       if (virtueIds !== undefined && Array.isArray(virtueIds)) {
         // 기존 덕목 관계 삭제 후 새로 연결
         // Prisma transaction은 repository 레벨에서 처리하는 것이 좋으나
@@ -117,17 +131,11 @@ class UserMeService {
       }
 
       // 프로필 완료 여부 자동 계산
-      // 필수 필드: 주소, 분류, 기수
+      // 필수 필드: 주소, 분류
       const finalLocation = user.instructor!.location;
       const finalCategory = user.instructor!.category;
-      const finalGeneration = user.instructor!.generation;
 
-      instructorData.profileCompleted = !!(
-        finalLocation &&
-        finalCategory &&
-        finalGeneration !== null &&
-        finalGeneration !== undefined
-      );
+      instructorData.profileCompleted = !!(finalLocation && finalCategory);
     }
 
     const updatedUser = await userRepository.update(userId, userData, instructorData);
@@ -156,7 +164,7 @@ class UserMeService {
   }
 
   // 내 주소 전용 수정 (좌표 재계산 포함)
-  async updateMyAddress(userId: number | string, address: string) {
+  async updateMyAddress(userId: number | string, address: string, locationDetail?: string) {
     if (address === undefined || address === null || typeof address !== 'string') {
       throw new AppError('address는 문자열이어야 합니다.', 400, 'INVALID_ADDRESS');
     }
@@ -172,6 +180,7 @@ class UserMeService {
 
     const instructorData: Prisma.InstructorUpdateInput = {
       location: address === '' ? null : address,
+      locationDetail: locationDetail === '' ? null : locationDetail,
     };
 
     // 주소가 있으면 좌표 재계산
@@ -190,17 +199,11 @@ class UserMeService {
     }
 
     // 프로필 완료 여부 자동 계산
-    // 필수 필드: 주소, 분류, 기수
+    // 필수 필드: 주소, 분류
     const finalLocation = address;
     const finalCategory = user.instructor.category;
-    const finalGeneration = user.instructor.generation;
 
-    instructorData.profileCompleted = !!(
-      finalLocation &&
-      finalCategory &&
-      finalGeneration !== null &&
-      finalGeneration !== undefined
-    );
+    instructorData.profileCompleted = !!(finalLocation && finalCategory);
 
     const updatedUser = await userRepository.update(userId, {}, instructorData);
 

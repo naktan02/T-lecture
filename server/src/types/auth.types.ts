@@ -9,6 +9,7 @@ export interface RegisterDto {
   name: string;
   phoneNumber: string;
   address?: string;
+  addressDetail?: string;
   type?: string;
   virtueIds?: number[];
   teamId?: number;
