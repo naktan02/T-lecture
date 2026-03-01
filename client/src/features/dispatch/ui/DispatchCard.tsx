@@ -10,8 +10,17 @@ export const DispatchCard = ({ dispatch, onClick }: DispatchCardProps) => {
   const isTemporary = dispatch.type === 'Temporary';
   const isConfirmed = dispatch.type === 'Confirmed';
 
-  // 임시 배정/확정 배정의 상태 확인
-  const isCanceled = (dispatch.assignments?.length ?? 0) > 0 && dispatch.assignments?.every((a) => ['Canceled', 'Rejected'].includes(a.state));
+  // 취소된 배정인지 확인 (모두 Canceled/Rejected 이거나, 배정 정보가 아예 삭제된 경우)
+  const isCanceled =
+    !dispatch.assignments ||
+    dispatch.assignments.length === 0 ||
+    dispatch.assignments.every((a) => ['Canceled', 'Rejected'].includes(a.state));
+
+  // 부분 취소 확인 (일부만 취소된 경우)
+  const isPartiallyCanceled =
+    !isCanceled &&
+    (dispatch.assignments?.some((a) => ['Canceled', 'Rejected'].includes(a.state)) ?? false);
+
   const isAccepted = isTemporary && dispatch.assignments?.every((a) => a.state === 'Accepted');
   const isPending = isTemporary && dispatch.assignments?.some((a) => a.state === 'Pending');
 
@@ -46,12 +55,17 @@ export const DispatchCard = ({ dispatch, onClick }: DispatchCardProps) => {
               취소됨
             </span>
           )}
-          {isAccepted && (
+          {isPartiallyCanceled && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">
+              부분 취소됨
+            </span>
+          )}
+          {isAccepted && !isCanceled && !isPartiallyCanceled && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">
               수락완료
             </span>
           )}
-          {isPending && (
+          {isPending && !isCanceled && !isPartiallyCanceled && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">
               응답대기
             </span>
