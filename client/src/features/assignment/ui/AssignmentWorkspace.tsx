@@ -247,29 +247,65 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
     if (assignmentFilters.length === 0) return assignments; // 전체 보기
 
     return assignments.filter((g) => {
-      // 그룹의 총 필요 인원 대비 응답/미응답 상태 계산
-      const hasUnassigned = g.totalAssigned === 0;
-      // 강사가 1명이라도 배정되었지만 확정/거절 응답을 안 한 상태(Pending)가 있는 경우
-      const hasUnresponded = g.totalAssigned > 0 && g.trainingLocations.some((loc: any) => 
-        loc.dates?.some((d: any) => d.instructors?.some((i: any) => i.state === 'Pending'))
-      );
-      // 강사가 배정되었고 1명 이상 수락(Accepted)한 상태인 경우 (임시 배정에서 응답 완료)
-      const hasAccepted = g.totalAssigned > 0 && g.trainingLocations.some((loc: any) => 
-        loc.dates?.some((d: any) => d.instructors?.some((i: any) => i.state === 'Accepted'))
-      );
+      // 그룹 내 모든 강사의 상태를 평면화하여 추출
+      const allInstructors: { state: string; messageSent: boolean }[] = [];
+      (g.trainingLocations as any[]).forEach((loc: any) => {
+        loc.dates?.forEach((d: any) => {
+          d.instructors?.forEach((i: any) => {
+            if (i.state === 'Pending' || i.state === 'Accepted') {
+              allInstructors.push({ state: i.state, messageSent: !!i.messageSent });
+            }
+          });
+        });
+      });
+
+      // 메시지를 보낸 강사가 있는지
+      const anyMessageSent = allInstructors.some(i => i.messageSent);
+      // Pending 상태인 강사가 있는지
+      const hasPending = allInstructors.some(i => i.state === 'Pending');
+
+      // 미배정: 메시지가 한 번도 발송되지 않은 상태 (강사가 0이거나, 배정은 했지만 발송 안 한 경우)
+      const isUnassigned = !anyMessageSent;
+      // 미응답: 메시지를 보냈으나 아직 Pending(응답 대기)인 강사가 남아있는 상태
+      const isUnresponded = anyMessageSent && hasPending;
+      // 응답 완료: 메시지를 보냈고 Pending인 강사가 없는 상태 (모두 응답함)
+      const isAccepted = anyMessageSent && !hasPending;
 
       // 다중 선택된 필터 중 하나라도 만족하면 목록에 포함 (OR 조건)
-      if (assignmentFilters.includes('UNASSIGNED') && hasUnassigned) return true;
-      if (assignmentFilters.includes('UNRESPONDED') && hasUnresponded) return true;
-      if (assignmentFilters.includes('ACCEPTED') && hasAccepted) return true;
+      if (assignmentFilters.includes('UNASSIGNED') && isUnassigned) return true;
+      if (assignmentFilters.includes('UNRESPONDED') && isUnresponded) return true;
+      if (assignmentFilters.includes('ACCEPTED') && isAccepted) return true;
       
       return false;
     });
   }, [assignments, assignmentFilters]);
 
-  const unassignedCount = assignments.filter((g) => g.totalAssigned === 0).length;
-  const unrespondedCount = assignments.filter((g) => g.totalAssigned > 0 && g.trainingLocations.some((loc: any) => loc.dates?.some((d: any) => d.instructors?.some((i: any) => i.state === 'Pending')))).length;
-  const acceptedCount = assignments.filter((g) => g.totalAssigned > 0 && g.trainingLocations.some((loc: any) => loc.dates?.some((d: any) => d.instructors?.some((i: any) => i.state === 'Accepted')))).length;
+  // 각 필터별 카운트 계산 (같은 로직 사용)
+  const filterCounts = useMemo(() => {
+    let unassigned = 0, unresponded = 0, accepted = 0;
+    
+    for (const g of assignments) {
+      const allInstructors: { state: string; messageSent: boolean }[] = [];
+      (g.trainingLocations as any[]).forEach((loc: any) => {
+        loc.dates?.forEach((d: any) => {
+          d.instructors?.forEach((i: any) => {
+            if (i.state === 'Pending' || i.state === 'Accepted') {
+              allInstructors.push({ state: i.state, messageSent: !!i.messageSent });
+            }
+          });
+        });
+      });
+
+      const anyMessageSent = allInstructors.some(i => i.messageSent);
+      const hasPending = allInstructors.some(i => i.state === 'Pending');
+
+      if (!anyMessageSent) unassigned++;
+      else if (hasPending) unresponded++;
+      else accepted++;
+    }
+    
+    return { unassigned, unresponded, accepted };
+  }, [assignments]);
 
   return (
     <div className="flex flex-col h-full relative">
@@ -499,19 +535,19 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
                     className={`px-2 py-1 rounded-md transition-colors ${assignmentFilters.includes('UNASSIGNED') ? 'bg-orange-600 text-white font-bold' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
                     onClick={() => toggleFilter('UNASSIGNED')}
                   >
-                    미배정 ({unassignedCount})
+                    미배정 ({filterCounts.unassigned})
                   </button>
                   <button
                     className={`px-2 py-1 rounded-md transition-colors ${assignmentFilters.includes('UNRESPONDED') ? 'bg-orange-600 text-white font-bold' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
                     onClick={() => toggleFilter('UNRESPONDED')}
                   >
-                    미응답 ({unrespondedCount})
+                    미응답 ({filterCounts.unresponded})
                   </button>
                   <button
                     className={`px-2 py-1 rounded-md transition-colors ${assignmentFilters.includes('ACCEPTED') ? 'bg-orange-600 text-white font-bold' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
                     onClick={() => toggleFilter('ACCEPTED')}
                   >
-                    응답 완료 ({acceptedCount})
+                    응답 완료 ({filterCounts.accepted})
                   </button>
                 </div>
               </div>
