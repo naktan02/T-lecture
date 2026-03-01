@@ -62,9 +62,11 @@ export const errorHandler = (err: unknown, req: Request, res: Response, _next: N
   const mapped = mapPrismaError(err);
   const normalized = normalizeError(mapped ?? err);
 
-  const isProd = process.env.NODE_ENV === 'production';
+  // 500 이상의 서버 오류이거나, 의도된 AppError가 아닌 경우 보안을 위해 메시지 숨김
   const safeMessage =
-    isProd && !normalized.isAppError ? 'Internal Server Error' : normalized.message;
+    normalized.statusCode >= 500 || !normalized.isAppError
+      ? '서버 내부 오류가 발생했습니다.'
+      : normalized.message;
 
   const logPayload = {
     code: normalized.code,

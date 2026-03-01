@@ -103,8 +103,10 @@ export const useAuthGuard = (requiredRole: RequiredRole): AuthGuardResult => {
 
     // ----------------------------------------------------
     // 4. Instructor Profile Completion Check
-    // (INSTRUCTOR 가드 뿐 아니라, 강사인 경우 USER 가드에서도 체크)
+    // 강사 프로필 완료 여부(기수 포함)는 관리자가 부여하므로, 유저를 강제로 마이페이지에 가두면 안 됨.
+    // 사용자의 불만 접수로 해당 로직을 비활성화.
     // ----------------------------------------------------
+    /*
     if (isInstructor && (requiredRole === 'INSTRUCTOR' || requiredRole === 'USER')) {
       const profileCompleted = localStorage.getItem('instructorProfileCompleted') === 'true';
       // 프로필 페이지 자체에서는 리다이렉트하지 않음 (무한 루프 방지)
@@ -116,6 +118,7 @@ export const useAuthGuard = (requiredRole: RequiredRole): AuthGuardResult => {
         return;
       }
     }
+    */
   }, [navigate, requiredRole]);
 
   // ----------------------------------------------------
