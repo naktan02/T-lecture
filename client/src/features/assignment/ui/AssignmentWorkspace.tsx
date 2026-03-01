@@ -1,10 +1,11 @@
 // src/features/assignment/ui/AssignmentWorkspace.tsx
 
-import { useState, useRef, ChangeEvent, MouseEvent, useEffect, useMemo } from 'react';
+import { useState, useRef, ChangeEvent, MouseEvent, useEffect, useMemo, useCallback } from 'react';
 import { useAssignment } from '../model/useAssignment';
 import { Button, MiniCalendar } from '../../../shared/ui';
 import { AssignmentDetailModal, AssignmentGroupDetailModal } from './AssignmentDetailModal';
 import { UnassignedUnitDetailModal } from './UnassignedUnitDetailModal';
+import type { AssignmentData } from '../model/useAssignment';
 
 // ID 기반 선택 키
 type SelectionKey =
@@ -65,7 +66,64 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
   type ModalKey = { unitId: number; bucket: 'PENDING' | 'ACCEPTED' } | null;
   const [detailModalKey, setDetailModalKey] = useState<ModalKey>(null);
 
+  // 표 모달 상태: 'PENDING' = 배정 작업 공간, 'ACCEPTED' = 확정 배정
+  const [tableModal, setTableModal] = useState<'PENDING' | 'ACCEPTED' | null>(null);
+  // 표에서 행 진입 시 사용하는 상세 모달 키 (표 모달 위에 표시)
+  const [tableDetailKey, setTableDetailKey] = useState<ModalKey>(null);
 
+  // 표에서 선택된 그룹 (상세 모달용)
+  const tableDetailGroup =
+    tableDetailKey?.bucket === 'PENDING'
+      ? assignments.find((g) => g.unitId === tableDetailKey.unitId)
+      : tableDetailKey?.bucket === 'ACCEPTED'
+        ? confirmedAssignments.find((g) => g.unitId === tableDetailKey.unitId)
+        : null;
+
+  // 그룹에서 유니크 강사 이름 추출 헬퍼
+  const getUniqueInstructorNames = useCallback((group: AssignmentData): string => {
+    const names = new Set<string>();
+    for (const loc of group.trainingLocations as any[]) {
+      for (const d of loc.dates || []) {
+        for (const inst of d.instructors || []) {
+          if (inst.name && (inst.state === 'Pending' || inst.state === 'Accepted')) {
+            names.add(inst.name);
+          }
+        }
+      }
+    }
+    return names.size > 0 ? Array.from(names).join(', ') : '-';
+  }, []);
+
+  // 그룹의 최대 참여인원 계산 헬퍼 (가장 많은 날의 actualCount)
+  const getMaxActualCount = useCallback((group: AssignmentData): number => {
+    let max = 0;
+    for (const loc of group.trainingLocations as any[]) {
+      for (const d of loc.dates || []) {
+        const count = d.actualCount ?? 0;
+        if (count > max) max = count;
+      }
+    }
+    return max;
+  }, []);
+
+  // 그룹 상태 라벨 계산 헬퍼
+  const getStatusLabel = useCallback(
+    (group: AssignmentData): { text: string; className: string } => {
+      if (group.totalAssigned === 0)
+        return { text: '미배정', className: 'bg-gray-200 text-gray-700' };
+      const hasPending = (group.trainingLocations as any[]).some((loc: any) =>
+        loc.dates?.some((d: any) => d.instructors?.some((i: any) => i.state === 'Pending')),
+      );
+      const hasAccepted = (group.trainingLocations as any[]).some((loc: any) =>
+        loc.dates?.some((d: any) => d.instructors?.some((i: any) => i.state === 'Accepted')),
+      );
+      if (hasAccepted && !hasPending)
+        return { text: '응답 완료', className: 'bg-green-100 text-green-700' };
+      if (hasPending) return { text: '미응답', className: 'bg-yellow-100 text-yellow-700' };
+      return { text: '배정됨', className: 'bg-blue-100 text-blue-700' };
+    },
+    [],
+  );
 
   // 실시간 데이터 조회 (ID로 최신 데이터 찾기)
   const selectedUnit =
@@ -238,8 +296,8 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
   const [assignmentFilters, setAssignmentFilters] = useState<AssignmentFilterType[]>([]);
 
   const toggleFilter = (filter: AssignmentFilterType) => {
-    setAssignmentFilters(prev => 
-      prev.includes(filter) ? prev.filter(f => f !== filter) : [...prev, filter]
+    setAssignmentFilters((prev) =>
+      prev.includes(filter) ? prev.filter((f) => f !== filter) : [...prev, filter],
     );
   };
 
@@ -250,26 +308,42 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
       // 그룹의 총 필요 인원 대비 응답/미응답 상태 계산
       const hasUnassigned = g.totalAssigned === 0;
       // 강사가 1명이라도 배정되었지만 확정/거절 응답을 안 한 상태(Pending)가 있는 경우
-      const hasUnresponded = g.totalAssigned > 0 && g.trainingLocations.some((loc: any) => 
-        loc.dates?.some((d: any) => d.instructors?.some((i: any) => i.state === 'Pending'))
-      );
+      const hasUnresponded =
+        g.totalAssigned > 0 &&
+        g.trainingLocations.some((loc: any) =>
+          loc.dates?.some((d: any) => d.instructors?.some((i: any) => i.state === 'Pending')),
+        );
       // 강사가 배정되었고 1명 이상 수락(Accepted)한 상태인 경우 (임시 배정에서 응답 완료)
-      const hasAccepted = g.totalAssigned > 0 && g.trainingLocations.some((loc: any) => 
-        loc.dates?.some((d: any) => d.instructors?.some((i: any) => i.state === 'Accepted'))
-      );
+      const hasAccepted =
+        g.totalAssigned > 0 &&
+        g.trainingLocations.some((loc: any) =>
+          loc.dates?.some((d: any) => d.instructors?.some((i: any) => i.state === 'Accepted')),
+        );
 
       // 다중 선택된 필터 중 하나라도 만족하면 목록에 포함 (OR 조건)
       if (assignmentFilters.includes('UNASSIGNED') && hasUnassigned) return true;
       if (assignmentFilters.includes('UNRESPONDED') && hasUnresponded) return true;
       if (assignmentFilters.includes('ACCEPTED') && hasAccepted) return true;
-      
+
       return false;
     });
   }, [assignments, assignmentFilters]);
 
   const unassignedCount = assignments.filter((g) => g.totalAssigned === 0).length;
-  const unrespondedCount = assignments.filter((g) => g.totalAssigned > 0 && g.trainingLocations.some((loc: any) => loc.dates?.some((d: any) => d.instructors?.some((i: any) => i.state === 'Pending')))).length;
-  const acceptedCount = assignments.filter((g) => g.totalAssigned > 0 && g.trainingLocations.some((loc: any) => loc.dates?.some((d: any) => d.instructors?.some((i: any) => i.state === 'Accepted')))).length;
+  const unrespondedCount = assignments.filter(
+    (g) =>
+      g.totalAssigned > 0 &&
+      g.trainingLocations.some((loc: any) =>
+        loc.dates?.some((d: any) => d.instructors?.some((i: any) => i.state === 'Pending')),
+      ),
+  ).length;
+  const acceptedCount = assignments.filter(
+    (g) =>
+      g.totalAssigned > 0 &&
+      g.trainingLocations.some((loc: any) =>
+        loc.dates?.some((d: any) => d.instructors?.some((i: any) => i.state === 'Accepted')),
+      ),
+  ).length;
 
   return (
     <div className="flex flex-col h-full relative">
@@ -489,11 +563,21 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
             <div className="p-3 bg-orange-50 border-b border-orange-100 border-l-4 border-l-orange-500 flex justify-between items-start">
               <span className="font-bold text-gray-700 mt-1">⚖️ 배정 작업 공간 (부대별)</span>
               <div className="flex flex-col items-end gap-2">
-                {assignments.length > 0 && (
-                  <Button size="xsmall" onClick={sendTemporaryMessages}>
-                    📩 일괄 임시 메시지 전송
-                  </Button>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {assignments.length > 0 && (
+                    <button
+                      onClick={() => setTableModal('PENDING')}
+                      className="px-2.5 py-1.5 bg-white border border-orange-300 text-orange-700 rounded-lg hover:bg-orange-50 shadow-sm transition-all text-xs font-bold flex items-center gap-1"
+                    >
+                      📊 펼치기
+                    </button>
+                  )}
+                  {assignments.length > 0 && (
+                    <Button size="xsmall" onClick={sendTemporaryMessages}>
+                      📩 일괄 임시 메시지 전송
+                    </Button>
+                  )}
+                </div>
                 <div className="flex gap-1.5 text-xs">
                   <button
                     className={`px-2 py-1 rounded-md transition-colors ${assignmentFilters.includes('UNASSIGNED') ? 'bg-orange-600 text-white font-bold' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
@@ -583,15 +667,25 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
           <div className="md:flex-1 max-h-[40vh] md:max-h-none bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
             <div className="p-3 bg-blue-50 border-b border-blue-100 border-l-4 border-l-blue-500 font-bold text-gray-700 flex justify-between items-center">
               <span>✅ 확정 배정 완료</span>
-              <button
-                onClick={sendConfirmedMessages}
-                disabled={confirmedAssignments.length === 0}
-                className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
-                           disabled:bg-gray-300 disabled:cursor-not-allowed
-                           shadow-sm transition-all text-xs font-bold flex items-center gap-1"
-              >
-                📩 일괄 확정 메시지 전송
-              </button>
+              <div className="flex items-center gap-1.5">
+                {confirmedAssignments.length > 0 && (
+                  <button
+                    onClick={() => setTableModal('ACCEPTED')}
+                    className="px-2.5 py-1.5 bg-white border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 shadow-sm transition-all text-xs font-bold flex items-center gap-1"
+                  >
+                    📊 펼치기
+                  </button>
+                )}
+                <button
+                  onClick={sendConfirmedMessages}
+                  disabled={confirmedAssignments.length === 0}
+                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
+                             disabled:bg-gray-300 disabled:cursor-not-allowed
+                             shadow-sm transition-all text-xs font-bold flex items-center gap-1"
+                >
+                  📩 일괄 확정 메시지 전송
+                </button>
+              </div>
             </div>
             <div className="flex-1 p-4 overflow-y-auto bg-gray-50/50">
               {confirmedAssignments.length === 0 ? (
@@ -722,6 +816,150 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
       )}
 
       {/* 자동 배정 모달 삭제됨 */}
+
+      {/* 표 모달 (펼치기) */}
+      {tableModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-4xl h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden animate-fadeInScale">
+            {/* 표 모달 헤더 */}
+            <div className="bg-white px-6 py-5 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-800">
+                {tableModal === 'PENDING' ? '⚖️ 배정 작업 공간' : '✅ 확정 배정 완료'}
+                <span className="text-sm font-normal text-gray-500 ml-2">
+                  ({(tableModal === 'PENDING' ? filteredAssignments : confirmedAssignments).length}
+                  건)
+                </span>
+              </h2>
+              <button
+                onClick={() => setTableModal(null)}
+                className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 표 본문 */}
+            <div className="flex-1 overflow-auto bg-gray-50 p-4">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="bg-gray-100 sticky top-0 z-10">
+                    <th className="px-2 py-2.5 border border-gray-200 text-center w-10">#</th>
+                    <th className="px-3 py-2.5 border border-gray-200 text-left">부대명</th>
+                    <th className="px-3 py-2.5 border border-gray-200 text-left">지역</th>
+                    <th className="px-3 py-2.5 border border-gray-200 text-left">일정</th>
+                    <th className="px-2 py-2.5 border border-gray-200 text-center w-16">인원수</th>
+                    <th className="px-2 py-2.5 border border-gray-200 text-center w-16">교육장</th>
+                    <th className="px-3 py-2.5 border border-gray-200 text-left min-w-[120px]">
+                      배정 강사
+                    </th>
+                    <th className="px-2 py-2.5 border border-gray-200 text-center w-20">상태</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(tableModal === 'PENDING' ? filteredAssignments : confirmedAssignments).map(
+                    (group, idx) => {
+                      const status = getStatusLabel(group);
+                      return (
+                        <tr
+                          key={group.unitId}
+                          className="hover:bg-blue-50/50 transition-colors cursor-pointer"
+                          onClick={() =>
+                            setTableDetailKey({
+                              unitId: group.unitId,
+                              bucket: tableModal === 'PENDING' ? 'PENDING' : 'ACCEPTED',
+                            })
+                          }
+                        >
+                          <td className="px-2 py-2 border border-gray-200 text-center text-gray-500">
+                            {idx + 1}
+                          </td>
+                          <td className="px-3 py-2 border border-gray-200 font-medium text-gray-800">
+                            {group.unitName}
+                          </td>
+                          <td className="px-3 py-2 border border-gray-200 text-gray-600">
+                            {group.region}
+                          </td>
+                          <td className="px-3 py-2 border border-gray-200 text-gray-600 whitespace-nowrap">
+                            {group.period}
+                          </td>
+                          <td className="px-2 py-2 border border-gray-200 text-center text-gray-600">
+                            {getMaxActualCount(group) || '-'}
+                          </td>
+                          <td className="px-2 py-2 border border-gray-200 text-center text-gray-600">
+                            {(group.trainingLocations as any[]).length}개
+                          </td>
+                          <td className="px-3 py-2 border border-gray-200 text-gray-700 break-words">
+                            {getUniqueInstructorNames(group)}
+                          </td>
+                          <td className="px-2 py-2 border border-gray-200 text-center">
+                            <span
+                              className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${status.className}`}
+                            >
+                              {status.text}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    },
+                  )}
+                  {(tableModal === 'PENDING' ? filteredAssignments : confirmedAssignments)
+                    .length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={8}
+                        className="px-4 py-12 text-center text-gray-400 border border-gray-200"
+                      >
+                        데이터가 없습니다.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 표 모달 위에 띄우는 상세 모달 */}
+      {tableDetailKey && tableDetailGroup && (
+        <AssignmentGroupDetailModal
+          group={tableDetailGroup as any}
+          onClose={() => setTableDetailKey(null)}
+          onSaveComplete={async () => {
+            await fetchData();
+          }}
+          availableInstructors={availableInstructors.map((i) => ({
+            id: i.id,
+            name: i.name,
+            team: i.teamName,
+            teamName: i.teamName,
+            category: i.category ?? undefined,
+            availableDates: i.availableDates ?? [],
+          }))}
+          allInstructors={allInstructors.map((i) => ({
+            id: i.id,
+            name: i.name,
+            team: i.teamName,
+            teamName: i.teamName,
+            category: i.category ?? undefined,
+            availableDates: i.availableDates ?? [],
+          }))}
+          assignedByDate={assignedByDate}
+          allAssignments={assignments}
+          allConfirmedAssignments={confirmedAssignments}
+          distanceMap={distanceMap}
+          distanceLimits={distanceLimits}
+          actualDateRange={actualDateRange}
+          queryDateRange={
+            dateRange.startDate && dateRange.endDate
+              ? {
+                  startDate: new Date(dateRange.startDate),
+                  endDate: new Date(dateRange.endDate),
+                }
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 };
