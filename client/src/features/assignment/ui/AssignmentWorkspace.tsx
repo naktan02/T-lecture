@@ -5,6 +5,8 @@ import { useAssignment } from '../model/useAssignment';
 import { Button, MiniCalendar } from '../../../shared/ui';
 import { AssignmentDetailModal, AssignmentGroupDetailModal } from './AssignmentDetailModal';
 import { UnassignedUnitDetailModal } from './UnassignedUnitDetailModal';
+import { batchUpdateAssignmentsApi } from '../assignmentApi';
+import { showSuccess, showError, showConfirm } from '../../../shared/utils/toast';
 import type { AssignmentData } from '../model/useAssignment';
 
 // ID 기반 선택 키
@@ -645,15 +647,64 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
                             : `📨 ${group.totalAssigned}명 배정`}
                         </span>
                         {group.totalAssigned > 0 && (
-                          <span
-                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                              (group as any).unsentCount > 0
-                                ? 'text-blue-600 bg-blue-100'
-                                : 'text-gray-500 bg-gray-100'
-                            }`}
-                          >
-                            🔵 미발송 {(group as any).unsentCount ?? 0}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {/* 미발송 강사 취소 버튼 */}
+                            {(group as any).unsentCount > 0 && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const confirmed = await showConfirm(
+                                    `${group.unitName}의 미발송 강사 ${(group as any).unsentCount}명을 일괄 취소하시겠습니까?`,
+                                  );
+                                  if (!confirmed) return;
+                                  try {
+                                    // messageSent===false인 강사들의 unitScheduleId + instructorId 수집
+                                    const removeList: {
+                                      unitScheduleId: number;
+                                      instructorId: number;
+                                    }[] = [];
+                                    for (const loc of group.trainingLocations as any[]) {
+                                      for (const d of loc.dates || []) {
+                                        for (const inst of d.instructors || []) {
+                                          if (!inst.messageSent) {
+                                            removeList.push({
+                                              unitScheduleId: d.unitScheduleId,
+                                              instructorId: inst.instructorId,
+                                            });
+                                          }
+                                        }
+                                      }
+                                    }
+                                    if (removeList.length === 0) return;
+                                    await batchUpdateAssignmentsApi({
+                                      add: [],
+                                      remove: removeList,
+                                      roleChanges: [],
+                                      staffLockChanges: [],
+                                      stateChanges: [],
+                                    });
+                                    showSuccess(`${removeList.length}건 배정 취소 완료`);
+                                    await fetchData();
+                                  } catch (err) {
+                                    showError((err as Error).message);
+                                  }
+                                }}
+                                className="text-[10px] px-1.5 py-0.5 text-red-600 bg-red-50 border border-red-200 rounded hover:bg-red-100 transition-colors font-medium"
+                                title="미발송 강사 일괄 취소"
+                              >
+                                🚫 강사취소
+                              </button>
+                            )}
+                            <span
+                              className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                                (group as any).unsentCount > 0
+                                  ? 'text-blue-600 bg-blue-100'
+                                  : 'text-gray-500 bg-gray-100'
+                              }`}
+                            >
+                              🔵 미발송 {(group as any).unsentCount ?? 0}
+                            </span>
+                          </div>
                         )}
                       </div>
                     </div>

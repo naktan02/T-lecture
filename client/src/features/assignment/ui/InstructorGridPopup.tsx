@@ -446,15 +446,18 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
                   const isInEducationPeriod = educationDateRange
                     ? isDateInRange(date, educationDateRange)
                     : false;
+                  const isTargetDate = date === target.date;
                   return (
                     <th
                       key={date}
                       className={`border border-gray-300 px-1 py-1 text-center w-12 ${
-                        isInEducationPeriod
-                          ? 'bg-indigo-500 text-white'
-                          : weekend
-                            ? 'bg-red-50 text-red-600'
-                            : 'bg-gray-100 text-gray-600'
+                        isTargetDate
+                          ? 'bg-rose-500 text-white ring-2 ring-rose-400 ring-inset'
+                          : isInEducationPeriod
+                            ? 'bg-indigo-500 text-white'
+                            : weekend
+                              ? 'bg-red-50 text-red-600'
+                              : 'bg-gray-100 text-gray-600'
                       }`}
                     >
                       <div className="text-[10px] font-bold leading-tight whitespace-nowrap">
@@ -553,11 +556,12 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
                         const isAvailable = availableDatesSet.has(date);
                         const assignmentState = getAssignmentState(date, inst.id);
                         const cellStyle = getCellStyle(isAvailable, assignmentState);
+                        const isTargetDate = date === target.date;
 
                         return (
                           <td
                             key={date}
-                            className={`border border-gray-200 text-center h-7 w-12 ${cellStyle}`}
+                            className={`border text-center h-7 w-12 ${cellStyle} ${isTargetDate ? 'border-rose-400 border-2' : 'border-gray-200'}`}
                             title={
                               assignmentState === 'Accepted'
                                 ? '확정 배정'
