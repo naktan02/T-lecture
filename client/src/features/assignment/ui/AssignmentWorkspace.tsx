@@ -122,13 +122,11 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
           }
         }
       }
-      const anyMessageSent = allInstructors.some(i => i.messageSent);
-      const hasPending = allInstructors.some(i => i.state === 'Pending');
+      const anyMessageSent = allInstructors.some((i) => i.messageSent);
+      const hasPending = allInstructors.some((i) => i.state === 'Pending');
 
-      if (!anyMessageSent)
-        return { text: '미배정', className: 'bg-gray-200 text-gray-700' };
-      if (hasPending)
-        return { text: '미응답', className: 'bg-yellow-100 text-yellow-700' };
+      if (!anyMessageSent) return { text: '미배정', className: 'bg-gray-200 text-gray-700' };
+      if (hasPending) return { text: '미응답', className: 'bg-yellow-100 text-yellow-700' };
       return { text: '응답 완료', className: 'bg-green-100 text-green-700' };
     },
     [],
@@ -327,9 +325,9 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
       });
 
       // 메시지를 보낸 강사가 있는지
-      const anyMessageSent = allInstructors.some(i => i.messageSent);
+      const anyMessageSent = allInstructors.some((i) => i.messageSent);
       // Pending 상태인 강사가 있는지
-      const hasPending = allInstructors.some(i => i.state === 'Pending');
+      const hasPending = allInstructors.some((i) => i.state === 'Pending');
 
       // 미배정: 메시지가 한 번도 발송되지 않은 상태 (강사가 0이거나, 배정은 했지만 발송 안 한 경우)
       const isUnassigned = !anyMessageSent;
@@ -342,15 +340,17 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
       if (assignmentFilters.includes('UNASSIGNED') && isUnassigned) return true;
       if (assignmentFilters.includes('UNRESPONDED') && isUnresponded) return true;
       if (assignmentFilters.includes('ACCEPTED') && isAccepted) return true;
-      
+
       return false;
     });
   }, [assignments, assignmentFilters]);
 
   // 각 필터별 카운트 계산 (같은 로직 사용)
   const filterCounts = useMemo(() => {
-    let unassigned = 0, unresponded = 0, accepted = 0;
-    
+    let unassigned = 0,
+      unresponded = 0,
+      accepted = 0;
+
     for (const g of assignments) {
       const allInstructors: { state: string; messageSent: boolean }[] = [];
       (g.trainingLocations as any[]).forEach((loc: any) => {
@@ -363,14 +363,14 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
         });
       });
 
-      const anyMessageSent = allInstructors.some(i => i.messageSent);
-      const hasPending = allInstructors.some(i => i.state === 'Pending');
+      const anyMessageSent = allInstructors.some((i) => i.messageSent);
+      const hasPending = allInstructors.some((i) => i.state === 'Pending');
 
       if (!anyMessageSent) unassigned++;
       else if (hasPending) unresponded++;
       else accepted++;
     }
-    
+
     return { unassigned, unresponded, accepted };
   }, [assignments]);
 

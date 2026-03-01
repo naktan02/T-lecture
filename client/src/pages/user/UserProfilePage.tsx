@@ -255,7 +255,10 @@ const UserProfilePage: React.FC = () => {
       showWarning('주소를 입력해주세요.');
       return;
     }
-    if (formData.address === originalAddress && formData.locationDetail === originalLocationDetail) {
+    if (
+      formData.address === originalAddress &&
+      formData.locationDetail === originalLocationDetail
+    ) {
       showWarning('주소가 변경되지 않았습니다.');
       return;
     }
@@ -645,7 +648,10 @@ const UserProfilePage: React.FC = () => {
                         </>
                       ) : (
                         <div className="mt-1 text-sm text-gray-900">
-                          {user.instructor?.location || '-'} {user.instructor?.locationDetail ? ` ${user.instructor.locationDetail}` : ''}
+                          {user.instructor?.location || '-'}{' '}
+                          {user.instructor?.locationDetail
+                            ? ` ${user.instructor.locationDetail}`
+                            : ''}
                         </div>
                       )}
                     </div>

@@ -124,7 +124,7 @@ export const DispatchDetailModal = ({ dispatch, onClose }: DispatchDetailModalPr
                 </p>
               </div>
             )}
-            
+
             {/* 임시 배정에만 해당하는 UI */}
             {isTemporary && !isCanceled && (
               <>

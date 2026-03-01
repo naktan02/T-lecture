@@ -12,7 +12,7 @@ function generatePhonePatterns(str: string): string[] {
   if (!digits) return [];
   const len = digits.length;
   const patterns: string[] = [];
-  
+
   if (len === 11) {
     patterns.push(`${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`);
   } else if (len === 10) {
@@ -64,8 +64,8 @@ export function buildUnitWhere(query: UnitQuery = {}): Prisma.UnitWhereInput {
   // 통합 검색 (이름, 지역, 상세주소)
   if (keyword && String(keyword).trim() !== '') {
     const k = String(keyword).trim();
-    const kWithoutHyphen = k.replace(/-/g, ''); // 하이픈 제거된 검색어 
-    
+    const kWithoutHyphen = k.replace(/-/g, ''); // 하이픈 제거된 검색어
+
     // 일반 검색어와 하이픈이 제거된 번호, 그리고 하이픈이 추가된 발생 가능한 모든 전화번호 패턴
     const phonePatterns = [k, kWithoutHyphen, ...generatePhonePatterns(kWithoutHyphen)];
     const uniquePhonePatterns = Array.from(new Set(phonePatterns));
@@ -82,20 +82,20 @@ export function buildUnitWhere(query: UnitQuery = {}): Prisma.UnitWhereInput {
             schedules: {
               some: {
                 assignments: {
-                  some: { User: { name: { contains: k } } }
-                }
-              }
-            }
-          }
-        }
-      }
+                  some: { User: { name: { contains: k } } },
+                },
+              },
+            },
+          },
+        },
+      },
     ];
 
     // 생성된 전화번호 패턴 문자열들을 각 연락처 검색 조건에 동적으로 추가
     uniquePhonePatterns.forEach((pattern) => {
       // 1. 부대 담당관 전화번호 검색
       orConditions.push({
-        trainingPeriods: { some: { officerPhone: { contains: pattern } } }
+        trainingPeriods: { some: { officerPhone: { contains: pattern } } },
       });
       // 2. 강사 전화번호 검색
       orConditions.push({
@@ -104,12 +104,12 @@ export function buildUnitWhere(query: UnitQuery = {}): Prisma.UnitWhereInput {
             schedules: {
               some: {
                 assignments: {
-                  some: { User: { userphoneNumber: { contains: pattern } } }
-                }
-              }
-            }
-          }
-        }
+                  some: { User: { userphoneNumber: { contains: pattern } } },
+                },
+              },
+            },
+          },
+        },
       });
     });
 

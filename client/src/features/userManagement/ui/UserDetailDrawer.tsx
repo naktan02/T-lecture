@@ -245,7 +245,7 @@ export const UserDetailDrawer = ({
 
     // 강사 정보 (주소는 별도 저장이므로 제외)
     // 단, 상세 주소는 별도 저장이 가능하도록 폼 데이터에 추가할 수 있습니다.
-    // 기존 updateUser API가 locationDetail을 받는지 확인이 필요하지만, 
+    // 기존 updateUser API가 locationDetail을 받는지 확인이 필요하지만,
     // userManagementApi.updateUser() DTO에 locationDetail이 있다고 가정합니다.
     if (boundUser?.instructor) {
       if (formData.locationDetail !== (boundUser.instructor.locationDetail || '')) {

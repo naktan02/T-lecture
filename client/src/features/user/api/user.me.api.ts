@@ -87,7 +87,10 @@ export async function updateMyProfile(payload: UpdateProfilePayload): Promise<Us
 }
 
 // 내 주소 전용 수정 (좌표 재계산 포함)
-export async function updateMyAddress(address: string, locationDetail?: string): Promise<UserProfile> {
+export async function updateMyAddress(
+  address: string,
+  locationDetail?: string,
+): Promise<UserProfile> {
   const response = await apiClient('/api/v1/users/me/address', {
     method: 'PATCH',
     body: JSON.stringify({ address, locationDetail }),

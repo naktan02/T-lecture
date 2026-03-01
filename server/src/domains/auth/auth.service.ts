@@ -62,7 +62,18 @@ class AuthService {
 
   // 회원가입
   async register(dto: RegisterDto) {
-    const { email, password, name, phoneNumber, address, addressDetail, type, virtueIds, teamId, category } = dto;
+    const {
+      email,
+      password,
+      name,
+      phoneNumber,
+      address,
+      addressDetail,
+      type,
+      virtueIds,
+      teamId,
+      category,
+    } = dto;
 
     if (!email || !password || !name || !phoneNumber) {
       throw new AppError('필수 정보가 누락되었습니다.', 400, 'VALIDATION_ERROR');

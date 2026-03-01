@@ -40,7 +40,16 @@ class UserMeService {
       throw new AppError('요청 바디 형식이 올바르지 않습니다.', 400, 'INVALID_BODY');
     }
 
-    const { name, phoneNumber, email, password, restrictedArea, hasCar, virtueIds, locationDetail } = dto;
+    const {
+      name,
+      phoneNumber,
+      email,
+      password,
+      restrictedArea,
+      hasCar,
+      virtueIds,
+      locationDetail,
+    } = dto;
 
     if (name !== undefined && name !== null && typeof name !== 'string') {
       throw new AppError('name은 문자열이어야 합니다.', 400, 'INVALID_NAME');

@@ -23,7 +23,9 @@ class KakaoService {
   constructor() {
     this.kakaoApiKey = process.env.KAKAO_REST_API_KEY || '';
     if (!this.kakaoApiKey) {
-      logger.warn('[KakaoService] KAKAO_REST_API_KEY is not set. Kakao API features will not work.');
+      logger.warn(
+        '[KakaoService] KAKAO_REST_API_KEY is not set. Kakao API features will not work.',
+      );
     }
     this.baseUrl = 'https://apis-navi.kakaomobility.com/v1';
   }
@@ -36,7 +38,11 @@ class KakaoService {
     destLng: number,
   ): Promise<RouteResult> {
     if (!this.kakaoApiKey) {
-      throw new AppError('KAKAO_REST_API_KEY is not set. Cannot use Kakao API.', 500, 'KAKAO_API_KEY_MISSING');
+      throw new AppError(
+        'KAKAO_REST_API_KEY is not set. Cannot use Kakao API.',
+        500,
+        'KAKAO_API_KEY_MISSING',
+      );
     }
 
     // 좌표 유효성 검사 (0 또는 null 체크)
@@ -106,7 +112,11 @@ class KakaoService {
   // 주소를 좌표로 변환 (예외 발생)
   async addressToCoordinates(address: string): Promise<CoordinatesResult> {
     if (!this.kakaoApiKey) {
-      throw new AppError('KAKAO_REST_API_KEY is not set. Cannot use Kakao API.', 500, 'KAKAO_API_KEY_MISSING');
+      throw new AppError(
+        'KAKAO_REST_API_KEY is not set. Cannot use Kakao API.',
+        500,
+        'KAKAO_API_KEY_MISSING',
+      );
     }
 
     try {

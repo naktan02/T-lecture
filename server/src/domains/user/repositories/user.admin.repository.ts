@@ -103,10 +103,7 @@ class AdminRepository {
 
     // 정보 입력 미완료 강사 필터 (기본정보 누락 또는 기수 미배정)
     if (profileIncomplete) {
-      instructorConditions.OR = [
-        { profileCompleted: false },
-        { generation: null }
-      ];
+      instructorConditions.OR = [{ profileCompleted: false }, { generation: null }];
       hasInstructorFilter = true;
     }
 
