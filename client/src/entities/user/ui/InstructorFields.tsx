@@ -15,6 +15,7 @@ type InstructorOptions = InstructorMetaResponse;
 
 interface InstructorForm {
   address: string;
+  addressDetail: string;
   teamId: string;
   category: string;
   virtueIds: number[];
@@ -81,26 +82,36 @@ export const InstructorFields: React.FC<InstructorFieldsProps> = ({
           {/* 거주지 주소 */}
 
           {/* 거주지 주소 */}
+          {/* 거주지 주소 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               거주지 주소 <span className="text-red-500">*</span>
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  placeholder="주소 검색을 클릭하여 주소를 입력하세요"
+                  value={form.address}
+                  onClick={handleAddressSearch}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none cursor-pointer"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddressSearch}
+                  className="px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-700 whitespace-nowrap"
+                >
+                  주소 검색
+                </button>
+              </div>
               <input
                 type="text"
-                readOnly
-                placeholder="주소 검색을 클릭하여 주소를 입력하세요"
-                value={form.address}
-                onClick={handleAddressSearch}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none cursor-pointer"
+                placeholder="상세주소 (예: 101동 101호)"
+                value={form.addressDetail}
+                onChange={onChange('addressDetail') as (e: ChangeEvent<HTMLInputElement>) => void}
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500"
               />
-              <button
-                type="button"
-                onClick={handleAddressSearch}
-                className="px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-700 whitespace-nowrap"
-              >
-                주소 검색
-              </button>
             </div>
           </div>
 

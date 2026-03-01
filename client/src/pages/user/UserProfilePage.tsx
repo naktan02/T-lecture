@@ -44,6 +44,7 @@ const UserProfilePage: React.FC = () => {
 
   // 주소 분리 저장 관련 상태
   const [originalAddress, setOriginalAddress] = useState('');
+  const [originalLocationDetail, setOriginalLocationDetail] = useState('');
   const [isSavingAddress, setIsSavingAddress] = useState(false);
 
   // 메타데이터 상태 (덕목 목록)
@@ -90,6 +91,7 @@ const UserProfilePage: React.FC = () => {
           name: user.name,
           phoneNumber: user.userphoneNumber || '',
           address: user.instructor?.location || '',
+          locationDetail: user.instructor?.locationDetail || '',
           email: user.userEmail,
           password: '',
           restrictedArea: user.instructor?.restrictedArea || '',
@@ -97,6 +99,7 @@ const UserProfilePage: React.FC = () => {
           virtueIds: user.instructor?.virtues?.map((v) => v.virtue.id) || [],
         });
         setOriginalAddress(user.instructor?.location || '');
+        setOriginalLocationDetail(user.instructor?.locationDetail || '');
         setIsEditing(true);
       }
     } else {
@@ -145,6 +148,7 @@ const UserProfilePage: React.FC = () => {
         name: user.name,
         phoneNumber: user.userphoneNumber || '',
         address: user.instructor?.location || '',
+        locationDetail: user.instructor?.locationDetail || '',
         email: user.userEmail,
         password: '',
         restrictedArea: user.instructor?.restrictedArea || '',
@@ -152,6 +156,7 @@ const UserProfilePage: React.FC = () => {
         virtueIds: user.instructor?.virtues?.map((v) => v.virtue.id) || [],
       });
       setOriginalAddress(user.instructor?.location || ''); // 원본 주소 저장
+      setOriginalLocationDetail(user.instructor?.locationDetail || '');
       setIsEditing(true);
       // 초기화
       setPasswordConfirm('');
@@ -250,14 +255,15 @@ const UserProfilePage: React.FC = () => {
       showWarning('주소를 입력해주세요.');
       return;
     }
-    if (formData.address === originalAddress) {
+    if (formData.address === originalAddress && formData.locationDetail === originalLocationDetail) {
       showWarning('주소가 변경되지 않았습니다.');
       return;
     }
     try {
       setIsSavingAddress(true);
-      await updateMyAddress(formData.address);
+      await updateMyAddress(formData.address, formData.locationDetail);
       setOriginalAddress(formData.address);
+      setOriginalLocationDetail(formData.locationDetail || '');
       queryClient.invalidateQueries({ queryKey: ['myProfile'] });
       showSuccess('주소가 저장되었습니다. 좌표가 자동 계산됩니다.');
     } catch (err: any) {
@@ -267,7 +273,8 @@ const UserProfilePage: React.FC = () => {
     }
   };
 
-  const isAddressChanged = formData.address !== originalAddress;
+  const isAddressChanged =
+    formData.address !== originalAddress || formData.locationDetail !== originalLocationDetail;
 
   // 이메일 인증 발송
   const handleSendCode = async () => {
@@ -586,46 +593,59 @@ const UserProfilePage: React.FC = () => {
                     <div className="sm:col-span-full">
                       <label className="block text-sm font-medium text-gray-700">주소</label>
                       {isEditing ? (
-                        <div className="space-y-2">
-                          <div className="flex gap-2">
+                        <>
+                          <div className="space-y-2">
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                name="address"
+                                readOnly
+                                value={formData.address || ''}
+                                onChange={handleInputChange}
+                                className="mt-1 flex-1 min-w-0 rounded-md border-gray-300 shadow-sm bg-gray-50 sm:text-sm p-2 border cursor-pointer"
+                                onClick={handleAddressSearch}
+                              />
+                              <button
+                                type="button"
+                                onClick={handleAddressSearch}
+                                className="mt-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-2 py-2 rounded-md text-xs font-medium whitespace-nowrap"
+                              >
+                                검색
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleSaveAddress}
+                                disabled={!isAddressChanged || isSavingAddress}
+                                className={`mt-1 px-2 py-2 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
+                                  isAddressChanged
+                                    ? 'bg-green-600 text-white hover:bg-green-700'
+                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                }`}
+                              >
+                                {isSavingAddress ? '...' : '저장'}
+                              </button>
+                            </div>
+                            {isAddressChanged && (
+                              <p className="text-xs text-amber-600">
+                                ⚠️ 주소가 변경되었습니다. [주소 저장]을 눌러 저장하세요.
+                              </p>
+                            )}
+                          </div>
+                          <div className="mt-2 text-sm">
+                            <label className="text-sm font-medium">상세 주소</label>
                             <input
                               type="text"
-                              name="address"
-                              readOnly
-                              value={formData.address || ''}
+                              name="locationDetail"
+                              value={formData.locationDetail || ''}
                               onChange={handleInputChange}
-                              className="mt-1 flex-1 min-w-0 rounded-md border-gray-300 shadow-sm bg-gray-50 sm:text-sm p-2 border cursor-pointer"
-                              onClick={handleAddressSearch}
+                              placeholder="아파트, 동/호수 등 상세 주소 입력"
+                              className="w-full mt-1 p-2 border rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                             />
-                            <button
-                              type="button"
-                              onClick={handleAddressSearch}
-                              className="mt-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-2 py-2 rounded-md text-xs font-medium whitespace-nowrap"
-                            >
-                              검색
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleSaveAddress}
-                              disabled={!isAddressChanged || isSavingAddress}
-                              className={`mt-1 px-2 py-2 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
-                                isAddressChanged
-                                  ? 'bg-green-600 text-white hover:bg-green-700'
-                                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                              }`}
-                            >
-                              {isSavingAddress ? '...' : '저장'}
-                            </button>
                           </div>
-                          {isAddressChanged && (
-                            <p className="text-xs text-amber-600">
-                              ⚠️ 주소가 변경되었습니다. [주소 저장]을 눌러 저장하세요.
-                            </p>
-                          )}
-                        </div>
+                        </>
                       ) : (
                         <div className="mt-1 text-sm text-gray-900">
-                          {user.instructor?.location || '-'}
+                          {user.instructor?.location || '-'} {user.instructor?.locationDetail ? ` ${user.instructor.locationDetail}` : ''}
                         </div>
                       )}
                     </div>

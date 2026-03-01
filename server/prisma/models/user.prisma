@@ -58,6 +58,7 @@ model Instructor {
   teamId           Int?          @map("team_id")
   isTeamLeader     Boolean       @default(false) @map("팀장여부")
   location         String?       @db.Text
+  locationDetail   String?       @map("상세주소") @db.Text
   generation       Int?          @map("기수") @db.SmallInt
   restrictedArea   String?       @map("제한지역") @db.Text
   lat              Float?        @map("위도")

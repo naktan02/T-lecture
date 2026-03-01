@@ -37,6 +37,7 @@ export interface InstructorProfile {
   team?: Team;
   isTeamLeader: boolean;
   location: string | null;
+  locationDetail: string | null;
   generation: number | null;
   restrictedArea: string | null;
   lat: number | null;
@@ -62,6 +63,7 @@ export interface UpdateProfilePayload {
   name?: string;
   phoneNumber?: string;
   address?: string; // 강사 활동 지역
+  locationDetail?: string; // 강사 상세 주소
   email?: string;
   password?: string;
   restrictedArea?: string; // 강사 제한 지역
@@ -85,10 +87,10 @@ export async function updateMyProfile(payload: UpdateProfilePayload): Promise<Us
 }
 
 // 내 주소 전용 수정 (좌표 재계산 포함)
-export async function updateMyAddress(address: string): Promise<UserProfile> {
+export async function updateMyAddress(address: string, locationDetail?: string): Promise<UserProfile> {
   const response = await apiClient('/api/v1/users/me/address', {
     method: 'PATCH',
-    body: JSON.stringify({ address }),
+    body: JSON.stringify({ address, locationDetail }),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));

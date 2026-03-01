@@ -157,6 +157,7 @@ interface UpdateUserDto {
   phoneNumber?: string;
   status?: string;
   address?: string;
+  locationDetail?: string;
   isTeamLeader?: boolean;
   // 관리자 직접 관리 필드 (강사용)
   category?: 'Main' | 'Co' | 'Assistant' | 'Practicum';
@@ -214,6 +215,7 @@ class AdminService {
       phoneNumber,
       status,
       address,
+      locationDetail,
       isTeamLeader,
       category,
       teamId,
@@ -225,6 +227,7 @@ class AdminService {
     assertStringOrUndefined(name, 'name');
     assertStringOrUndefined(phoneNumber, 'phoneNumber');
     assertStringOrUndefined(address, 'address');
+    assertStringOrUndefined(locationDetail, 'locationDetail');
     assertValidStatusOrUndefined(status);
     if (
       restrictedArea !== undefined &&
@@ -271,6 +274,7 @@ class AdminService {
       phoneNumber !== undefined ||
       status !== undefined ||
       address !== undefined ||
+      locationDetail !== undefined ||
       isTeamLeader !== undefined ||
       category !== undefined ||
       teamId !== undefined ||
@@ -318,6 +322,9 @@ class AdminService {
       if (typeof isTeamLeader === 'boolean') {
         instructorData.isTeamLeader = isTeamLeader;
       }
+      if (locationDetail !== undefined) {
+        instructorData.locationDetail = locationDetail === '' ? null : locationDetail;
+      }
       // 관리자 직접 관리 필드
       if (category !== undefined) {
         instructorData.category = category as any;
@@ -337,17 +344,11 @@ class AdminService {
       }
 
       // 프로필 완료 여부 자동 계산
-      // 필수 필드: 주소, 분류, 기수 (팀 소속은 무소속 가능하므로 제외)
+      // 필수 필드: 주소, 분류 (팀 소속은 무소속 가능하므로 제외)
       const finalLocation = address !== undefined ? address : user.instructor!.location;
       const finalCategory = category !== undefined ? category : user.instructor!.category;
-      const finalGeneration = generation !== undefined ? generation : user.instructor!.generation;
 
-      const isProfileComplete = !!(
-        finalLocation &&
-        finalCategory &&
-        finalGeneration !== null &&
-        finalGeneration !== undefined
-      );
+      const isProfileComplete = !!(finalLocation && finalCategory);
 
       instructorData.profileCompleted = isProfileComplete;
 

@@ -20,6 +20,7 @@ interface RegisterFormData {
   phoneNumber: string;
   code: string;
   address: string;
+  addressDetail: string;
   hasCar: boolean;
   agreed: boolean;
   virtueIds: number[];
@@ -35,6 +36,7 @@ const defaultFormData: RegisterFormData = {
   phoneNumber: '',
   code: '',
   address: '',
+  addressDetail: '',
   hasCar: false,
   agreed: false,
   virtueIds: [],
@@ -171,6 +173,7 @@ export const RegisterForm: React.FC = () => {
         name: form.name,
         phoneNumber: form.phoneNumber,
         address: userType === 'INSTRUCTOR' ? form.address : undefined,
+        addressDetail: userType === 'INSTRUCTOR' ? form.addressDetail : undefined,
         type: userType,
         virtueIds: userType === 'INSTRUCTOR' ? form.virtueIds : undefined,
         teamId: userType === 'INSTRUCTOR' && form.teamId ? Number(form.teamId) : undefined,

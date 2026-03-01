@@ -42,6 +42,7 @@ export interface InstructorInfo {
   teamId?: number | null;
   isTeamLeader?: boolean;
   location?: string | null;
+  locationDetail?: string | null;
   generation?: number | null;
   restrictedArea?: string | null;
   lat?: number | null;
@@ -98,6 +99,7 @@ export interface UpdateUserDto {
   restrictedArea?: string | null;
   availabilities?: string[];
   profileCompleted?: boolean;
+  locationDetail?: string; // 상세주소 업데이트 필드 추가
 }
 
 export interface UserActionResponse {

@@ -62,7 +62,7 @@ class AuthService {
 
   // 회원가입
   async register(dto: RegisterDto) {
-    const { email, password, name, phoneNumber, address, type, virtueIds, teamId, category } = dto;
+    const { email, password, name, phoneNumber, address, addressDetail, type, virtueIds, teamId, category } = dto;
 
     if (!email || !password || !name || !phoneNumber) {
       throw new AppError('필수 정보가 누락되었습니다.', 400, 'VALIDATION_ERROR');
@@ -101,12 +101,13 @@ class AuthService {
         );
       }
 
-      // 프로필 완성 조건: 주소, 분류, 기수가 모두 있어야 함 (팀은 선택)
-      // 현재 가입 시에는 기수(generation)를 받지 않으므로 초기 상태는 미완료(false)가 됨
-      const isProfileComplete = false;
+      // 프로필 완성 조건: 주소, 분류가 모두 있어야 함 (팀은 선택)
+      // 회원가입 시 필수값이 모두 기입되므로 초기 상태는 완료(true)가 됨
+      const isProfileComplete = !!(address && category);
 
       newUser = await userRepository.createInstructor(commonData, {
         location: address,
+        locationDetail: addressDetail || null,
         ...(teamId ? { team: { connect: { id: teamId } } } : {}),
         category: category || null,
         lat: null, // 승인 시점에 변환

@@ -25,7 +25,12 @@ export interface InstructorInfo {
   category?: string | null;
   teamName?: string | null;
   isTeamLeader?: boolean;
+  teamId?: number | null;
+  team?: { id: number; name: string } | null;
   location?: string | null;
+  locationDetail?: string | null;
+  lat?: number | null;
+  lng?: number | null;
   generation?: number | null;
   restrictedArea?: string | null;
 }

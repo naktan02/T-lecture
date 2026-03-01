@@ -2745,6 +2745,7 @@ export const InstructorScalarFieldEnum = {
   teamId: 'teamId',
   isTeamLeader: 'isTeamLeader',
   location: 'location',
+  locationDetail: 'locationDetail',
   generation: 'generation',
   restrictedArea: 'restrictedArea',
   lat: 'lat',

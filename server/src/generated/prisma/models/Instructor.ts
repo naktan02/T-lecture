@@ -48,6 +48,7 @@ export type InstructorMinAggregateOutputType = {
   teamId: number | null
   isTeamLeader: boolean | null
   location: string | null
+  locationDetail: string | null
   generation: number | null
   restrictedArea: string | null
   lat: number | null
@@ -62,6 +63,7 @@ export type InstructorMaxAggregateOutputType = {
   teamId: number | null
   isTeamLeader: boolean | null
   location: string | null
+  locationDetail: string | null
   generation: number | null
   restrictedArea: string | null
   lat: number | null
@@ -76,6 +78,7 @@ export type InstructorCountAggregateOutputType = {
   teamId: number
   isTeamLeader: number
   location: number
+  locationDetail: number
   generation: number
   restrictedArea: number
   lat: number
@@ -108,6 +111,7 @@ export type InstructorMinAggregateInputType = {
   teamId?: true
   isTeamLeader?: true
   location?: true
+  locationDetail?: true
   generation?: true
   restrictedArea?: true
   lat?: true
@@ -122,6 +126,7 @@ export type InstructorMaxAggregateInputType = {
   teamId?: true
   isTeamLeader?: true
   location?: true
+  locationDetail?: true
   generation?: true
   restrictedArea?: true
   lat?: true
@@ -136,6 +141,7 @@ export type InstructorCountAggregateInputType = {
   teamId?: true
   isTeamLeader?: true
   location?: true
+  locationDetail?: true
   generation?: true
   restrictedArea?: true
   lat?: true
@@ -237,6 +243,7 @@ export type InstructorGroupByOutputType = {
   teamId: number | null
   isTeamLeader: boolean
   location: string | null
+  locationDetail: string | null
   generation: number | null
   restrictedArea: string | null
   lat: number | null
@@ -274,6 +281,7 @@ export type InstructorWhereInput = {
   teamId?: Prisma.IntNullableFilter<"Instructor"> | number | null
   isTeamLeader?: Prisma.BoolFilter<"Instructor"> | boolean
   location?: Prisma.StringNullableFilter<"Instructor"> | string | null
+  locationDetail?: Prisma.StringNullableFilter<"Instructor"> | string | null
   generation?: Prisma.IntNullableFilter<"Instructor"> | number | null
   restrictedArea?: Prisma.StringNullableFilter<"Instructor"> | string | null
   lat?: Prisma.FloatNullableFilter<"Instructor"> | number | null
@@ -295,6 +303,7 @@ export type InstructorOrderByWithRelationInput = {
   teamId?: Prisma.SortOrderInput | Prisma.SortOrder
   isTeamLeader?: Prisma.SortOrder
   location?: Prisma.SortOrderInput | Prisma.SortOrder
+  locationDetail?: Prisma.SortOrderInput | Prisma.SortOrder
   generation?: Prisma.SortOrderInput | Prisma.SortOrder
   restrictedArea?: Prisma.SortOrderInput | Prisma.SortOrder
   lat?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -319,6 +328,7 @@ export type InstructorWhereUniqueInput = Prisma.AtLeast<{
   teamId?: Prisma.IntNullableFilter<"Instructor"> | number | null
   isTeamLeader?: Prisma.BoolFilter<"Instructor"> | boolean
   location?: Prisma.StringNullableFilter<"Instructor"> | string | null
+  locationDetail?: Prisma.StringNullableFilter<"Instructor"> | string | null
   generation?: Prisma.IntNullableFilter<"Instructor"> | number | null
   restrictedArea?: Prisma.StringNullableFilter<"Instructor"> | string | null
   lat?: Prisma.FloatNullableFilter<"Instructor"> | number | null
@@ -340,6 +350,7 @@ export type InstructorOrderByWithAggregationInput = {
   teamId?: Prisma.SortOrderInput | Prisma.SortOrder
   isTeamLeader?: Prisma.SortOrder
   location?: Prisma.SortOrderInput | Prisma.SortOrder
+  locationDetail?: Prisma.SortOrderInput | Prisma.SortOrder
   generation?: Prisma.SortOrderInput | Prisma.SortOrder
   restrictedArea?: Prisma.SortOrderInput | Prisma.SortOrder
   lat?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -362,6 +373,7 @@ export type InstructorScalarWhereWithAggregatesInput = {
   teamId?: Prisma.IntNullableWithAggregatesFilter<"Instructor"> | number | null
   isTeamLeader?: Prisma.BoolWithAggregatesFilter<"Instructor"> | boolean
   location?: Prisma.StringNullableWithAggregatesFilter<"Instructor"> | string | null
+  locationDetail?: Prisma.StringNullableWithAggregatesFilter<"Instructor"> | string | null
   generation?: Prisma.IntNullableWithAggregatesFilter<"Instructor"> | number | null
   restrictedArea?: Prisma.StringNullableWithAggregatesFilter<"Instructor"> | string | null
   lat?: Prisma.FloatNullableWithAggregatesFilter<"Instructor"> | number | null
@@ -374,6 +386,7 @@ export type InstructorCreateInput = {
   category?: $Enums.UserCategory | null
   isTeamLeader?: boolean
   location?: string | null
+  locationDetail?: string | null
   generation?: number | null
   restrictedArea?: string | null
   lat?: number | null
@@ -395,6 +408,7 @@ export type InstructorUncheckedCreateInput = {
   teamId?: number | null
   isTeamLeader?: boolean
   location?: string | null
+  locationDetail?: string | null
   generation?: number | null
   restrictedArea?: string | null
   lat?: number | null
@@ -412,6 +426,7 @@ export type InstructorUpdateInput = {
   category?: Prisma.NullableEnumUserCategoryFieldUpdateOperationsInput | $Enums.UserCategory | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -433,6 +448,7 @@ export type InstructorUncheckedUpdateInput = {
   teamId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -452,6 +468,7 @@ export type InstructorCreateManyInput = {
   teamId?: number | null
   isTeamLeader?: boolean
   location?: string | null
+  locationDetail?: string | null
   generation?: number | null
   restrictedArea?: string | null
   lat?: number | null
@@ -464,6 +481,7 @@ export type InstructorUpdateManyMutationInput = {
   category?: Prisma.NullableEnumUserCategoryFieldUpdateOperationsInput | $Enums.UserCategory | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -478,6 +496,7 @@ export type InstructorUncheckedUpdateManyInput = {
   teamId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -502,6 +521,7 @@ export type InstructorCountOrderByAggregateInput = {
   teamId?: Prisma.SortOrder
   isTeamLeader?: Prisma.SortOrder
   location?: Prisma.SortOrder
+  locationDetail?: Prisma.SortOrder
   generation?: Prisma.SortOrder
   restrictedArea?: Prisma.SortOrder
   lat?: Prisma.SortOrder
@@ -524,6 +544,7 @@ export type InstructorMaxOrderByAggregateInput = {
   teamId?: Prisma.SortOrder
   isTeamLeader?: Prisma.SortOrder
   location?: Prisma.SortOrder
+  locationDetail?: Prisma.SortOrder
   generation?: Prisma.SortOrder
   restrictedArea?: Prisma.SortOrder
   lat?: Prisma.SortOrder
@@ -538,6 +559,7 @@ export type InstructorMinOrderByAggregateInput = {
   teamId?: Prisma.SortOrder
   isTeamLeader?: Prisma.SortOrder
   location?: Prisma.SortOrder
+  locationDetail?: Prisma.SortOrder
   generation?: Prisma.SortOrder
   restrictedArea?: Prisma.SortOrder
   lat?: Prisma.SortOrder
@@ -716,6 +738,7 @@ export type InstructorCreateWithoutAvailabilitiesInput = {
   category?: $Enums.UserCategory | null
   isTeamLeader?: boolean
   location?: string | null
+  locationDetail?: string | null
   generation?: number | null
   restrictedArea?: string | null
   lat?: number | null
@@ -736,6 +759,7 @@ export type InstructorUncheckedCreateWithoutAvailabilitiesInput = {
   teamId?: number | null
   isTeamLeader?: boolean
   location?: string | null
+  locationDetail?: string | null
   generation?: number | null
   restrictedArea?: string | null
   lat?: number | null
@@ -768,6 +792,7 @@ export type InstructorUpdateWithoutAvailabilitiesInput = {
   category?: Prisma.NullableEnumUserCategoryFieldUpdateOperationsInput | $Enums.UserCategory | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -788,6 +813,7 @@ export type InstructorUncheckedUpdateWithoutAvailabilitiesInput = {
   teamId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -804,6 +830,7 @@ export type InstructorCreateWithoutDistancesInput = {
   category?: $Enums.UserCategory | null
   isTeamLeader?: boolean
   location?: string | null
+  locationDetail?: string | null
   generation?: number | null
   restrictedArea?: string | null
   lat?: number | null
@@ -824,6 +851,7 @@ export type InstructorUncheckedCreateWithoutDistancesInput = {
   teamId?: number | null
   isTeamLeader?: boolean
   location?: string | null
+  locationDetail?: string | null
   generation?: number | null
   restrictedArea?: string | null
   lat?: number | null
@@ -856,6 +884,7 @@ export type InstructorUpdateWithoutDistancesInput = {
   category?: Prisma.NullableEnumUserCategoryFieldUpdateOperationsInput | $Enums.UserCategory | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -876,6 +905,7 @@ export type InstructorUncheckedUpdateWithoutDistancesInput = {
   teamId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -892,6 +922,7 @@ export type InstructorCreateWithoutPriorityCreditInput = {
   category?: $Enums.UserCategory | null
   isTeamLeader?: boolean
   location?: string | null
+  locationDetail?: string | null
   generation?: number | null
   restrictedArea?: string | null
   lat?: number | null
@@ -912,6 +943,7 @@ export type InstructorUncheckedCreateWithoutPriorityCreditInput = {
   teamId?: number | null
   isTeamLeader?: boolean
   location?: string | null
+  locationDetail?: string | null
   generation?: number | null
   restrictedArea?: string | null
   lat?: number | null
@@ -944,6 +976,7 @@ export type InstructorUpdateWithoutPriorityCreditInput = {
   category?: Prisma.NullableEnumUserCategoryFieldUpdateOperationsInput | $Enums.UserCategory | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -964,6 +997,7 @@ export type InstructorUncheckedUpdateWithoutPriorityCreditInput = {
   teamId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -980,6 +1014,7 @@ export type InstructorCreateWithoutUserInput = {
   category?: $Enums.UserCategory | null
   isTeamLeader?: boolean
   location?: string | null
+  locationDetail?: string | null
   generation?: number | null
   restrictedArea?: string | null
   lat?: number | null
@@ -999,6 +1034,7 @@ export type InstructorUncheckedCreateWithoutUserInput = {
   teamId?: number | null
   isTeamLeader?: boolean
   location?: string | null
+  locationDetail?: string | null
   generation?: number | null
   restrictedArea?: string | null
   lat?: number | null
@@ -1032,6 +1068,7 @@ export type InstructorUpdateWithoutUserInput = {
   category?: Prisma.NullableEnumUserCategoryFieldUpdateOperationsInput | $Enums.UserCategory | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -1051,6 +1088,7 @@ export type InstructorUncheckedUpdateWithoutUserInput = {
   teamId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -1068,6 +1106,7 @@ export type InstructorCreateWithoutTeamInput = {
   category?: $Enums.UserCategory | null
   isTeamLeader?: boolean
   location?: string | null
+  locationDetail?: string | null
   generation?: number | null
   restrictedArea?: string | null
   lat?: number | null
@@ -1087,6 +1126,7 @@ export type InstructorUncheckedCreateWithoutTeamInput = {
   category?: $Enums.UserCategory | null
   isTeamLeader?: boolean
   location?: string | null
+  locationDetail?: string | null
   generation?: number | null
   restrictedArea?: string | null
   lat?: number | null
@@ -1135,6 +1175,7 @@ export type InstructorScalarWhereInput = {
   teamId?: Prisma.IntNullableFilter<"Instructor"> | number | null
   isTeamLeader?: Prisma.BoolFilter<"Instructor"> | boolean
   location?: Prisma.StringNullableFilter<"Instructor"> | string | null
+  locationDetail?: Prisma.StringNullableFilter<"Instructor"> | string | null
   generation?: Prisma.IntNullableFilter<"Instructor"> | number | null
   restrictedArea?: Prisma.StringNullableFilter<"Instructor"> | string | null
   lat?: Prisma.FloatNullableFilter<"Instructor"> | number | null
@@ -1147,6 +1188,7 @@ export type InstructorCreateWithoutVirtuesInput = {
   category?: $Enums.UserCategory | null
   isTeamLeader?: boolean
   location?: string | null
+  locationDetail?: string | null
   generation?: number | null
   restrictedArea?: string | null
   lat?: number | null
@@ -1167,6 +1209,7 @@ export type InstructorUncheckedCreateWithoutVirtuesInput = {
   teamId?: number | null
   isTeamLeader?: boolean
   location?: string | null
+  locationDetail?: string | null
   generation?: number | null
   restrictedArea?: string | null
   lat?: number | null
@@ -1199,6 +1242,7 @@ export type InstructorUpdateWithoutVirtuesInput = {
   category?: Prisma.NullableEnumUserCategoryFieldUpdateOperationsInput | $Enums.UserCategory | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -1219,6 +1263,7 @@ export type InstructorUncheckedUpdateWithoutVirtuesInput = {
   teamId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -1235,6 +1280,7 @@ export type InstructorCreateWithoutInstructorStatsInput = {
   category?: $Enums.UserCategory | null
   isTeamLeader?: boolean
   location?: string | null
+  locationDetail?: string | null
   generation?: number | null
   restrictedArea?: string | null
   lat?: number | null
@@ -1255,6 +1301,7 @@ export type InstructorUncheckedCreateWithoutInstructorStatsInput = {
   teamId?: number | null
   isTeamLeader?: boolean
   location?: string | null
+  locationDetail?: string | null
   generation?: number | null
   restrictedArea?: string | null
   lat?: number | null
@@ -1287,6 +1334,7 @@ export type InstructorUpdateWithoutInstructorStatsInput = {
   category?: Prisma.NullableEnumUserCategoryFieldUpdateOperationsInput | $Enums.UserCategory | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -1307,6 +1355,7 @@ export type InstructorUncheckedUpdateWithoutInstructorStatsInput = {
   teamId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -1324,6 +1373,7 @@ export type InstructorCreateManyTeamInput = {
   category?: $Enums.UserCategory | null
   isTeamLeader?: boolean
   location?: string | null
+  locationDetail?: string | null
   generation?: number | null
   restrictedArea?: string | null
   lat?: number | null
@@ -1336,6 +1386,7 @@ export type InstructorUpdateWithoutTeamInput = {
   category?: Prisma.NullableEnumUserCategoryFieldUpdateOperationsInput | $Enums.UserCategory | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -1355,6 +1406,7 @@ export type InstructorUncheckedUpdateWithoutTeamInput = {
   category?: Prisma.NullableEnumUserCategoryFieldUpdateOperationsInput | $Enums.UserCategory | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -1373,6 +1425,7 @@ export type InstructorUncheckedUpdateManyWithoutTeamInput = {
   category?: Prisma.NullableEnumUserCategoryFieldUpdateOperationsInput | $Enums.UserCategory | null
   isTeamLeader?: Prisma.BoolFieldUpdateOperationsInput | boolean
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  locationDetail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   generation?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   restrictedArea?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -1445,6 +1498,7 @@ export type InstructorSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   teamId?: boolean
   isTeamLeader?: boolean
   location?: boolean
+  locationDetail?: boolean
   generation?: boolean
   restrictedArea?: boolean
   lat?: boolean
@@ -1467,6 +1521,7 @@ export type InstructorSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   teamId?: boolean
   isTeamLeader?: boolean
   location?: boolean
+  locationDetail?: boolean
   generation?: boolean
   restrictedArea?: boolean
   lat?: boolean
@@ -1483,6 +1538,7 @@ export type InstructorSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   teamId?: boolean
   isTeamLeader?: boolean
   location?: boolean
+  locationDetail?: boolean
   generation?: boolean
   restrictedArea?: boolean
   lat?: boolean
@@ -1499,6 +1555,7 @@ export type InstructorSelectScalar = {
   teamId?: boolean
   isTeamLeader?: boolean
   location?: boolean
+  locationDetail?: boolean
   generation?: boolean
   restrictedArea?: boolean
   lat?: boolean
@@ -1507,7 +1564,7 @@ export type InstructorSelectScalar = {
   profileCompleted?: boolean
 }
 
-export type InstructorOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"userId" | "category" | "teamId" | "isTeamLeader" | "location" | "generation" | "restrictedArea" | "lat" | "lng" | "hasCar" | "profileCompleted", ExtArgs["result"]["instructor"]>
+export type InstructorOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"userId" | "category" | "teamId" | "isTeamLeader" | "location" | "locationDetail" | "generation" | "restrictedArea" | "lat" | "lng" | "hasCar" | "profileCompleted", ExtArgs["result"]["instructor"]>
 export type InstructorInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   team?: boolean | Prisma.Instructor$teamArgs<ExtArgs>
@@ -1544,6 +1601,7 @@ export type $InstructorPayload<ExtArgs extends runtime.Types.Extensions.Internal
     teamId: number | null
     isTeamLeader: boolean
     location: string | null
+    locationDetail: string | null
     generation: number | null
     restrictedArea: string | null
     lat: number | null
@@ -1985,6 +2043,7 @@ export interface InstructorFieldRefs {
   readonly teamId: Prisma.FieldRef<"Instructor", 'Int'>
   readonly isTeamLeader: Prisma.FieldRef<"Instructor", 'Boolean'>
   readonly location: Prisma.FieldRef<"Instructor", 'String'>
+  readonly locationDetail: Prisma.FieldRef<"Instructor", 'String'>
   readonly generation: Prisma.FieldRef<"Instructor", 'Int'>
   readonly restrictedArea: Prisma.FieldRef<"Instructor", 'String'>
   readonly lat: Prisma.FieldRef<"Instructor", 'Float'>
