@@ -20,23 +20,22 @@ const TEAMS = [
   { id: 7, name: '2팀' },
 ];
 
-// 덕목(과목) 데이터 (15개)
+// 덕목(과목) 데이터 (14개)
 const VIRTUES = [
-  { id: 1, name: '예' },
-  { id: 2, name: '효' },
-  { id: 3, name: '정직' },
+  { id: 1, name: '오리엔테이션' },
+  { id: 2, name: '팀빌딩프로그램' },
+  { id: 3, name: '창의' },
   { id: 4, name: '책임' },
-  { id: 5, name: '1' },
-  { id: 6, name: '책임' },
-  { id: 7, name: '책임' },
-  { id: 8, name: '책임' },
-  { id: 9, name: '책임' },
-  { id: 10, name: '책임' },
-  { id: 11, name: '책임' },
-  { id: 12, name: '책임' },
-  { id: 13, name: '책임' },
-  { id: 14, name: '책임' },
-  { id: 15, name: '책임' },
+  { id: 5, name: '용기' },
+  { id: 6, name: '존중' },
+  { id: 7, name: '협력' },
+  { id: 8, name: '정의' },
+  { id: 9, name: '충성' },
+  { id: 10, name: '군복입은 민주시민' },
+  { id: 11, name: '인생 프로필을 설정하세요' },
+  { id: 12, name: '마이성장로드맵' },
+  { id: 13, name: '인성슬로건' },
+  { id: 14, name: '유종의미' },
 ];
 
 // 시스템 설정 기본값
@@ -74,6 +73,7 @@ async function main() {
       create: { id: virtue.id, name: virtue.name },
     });
   }
+  await prisma.virtue.deleteMany({ where: { id: { gt: 14 } } });
   console.log(`  ✅ 덕목 ${VIRTUES.length}개 생성 완료`);
 
   // 3. 슈퍼관리자 생성
@@ -348,7 +348,7 @@ async function main() {
   console.log('╠════════════════════════════════════════════════════════════╣');
   console.log('║  생성된 데이터:                                            ║');
   console.log('║  - 팀 7개                                                  ║');
-  console.log('║  - 덕목(과목) 15개                                         ║');
+  console.log('║  - 덕목(과목) 14개                                         ║');
   console.log('║  - 관리자 계정 (from .env)                                 ║');
   console.log('║  - 시스템 설정 6개                                         ║');
   console.log('║  - 메시지 템플릿 3개                                       ║');

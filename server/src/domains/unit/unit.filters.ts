@@ -39,6 +39,8 @@ export function buildUnitWhere(query: UnitQuery = {}): Prisma.UnitWhereInput {
         { name: { contains: k } },
         { region: { contains: k } },
         { addressDetail: { contains: k } },
+        { trainingPeriods: { some: { officerName: { contains: k } } } },
+        { trainingPeriods: { some: { officerPhone: { contains: k } } } },
       ],
     });
   }

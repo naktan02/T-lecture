@@ -23,7 +23,7 @@ class KakaoService {
   constructor() {
     this.kakaoApiKey = process.env.KAKAO_REST_API_KEY || '';
     if (!this.kakaoApiKey) {
-      throw new AppError('KAKAO_REST_API_KEY is not set', 500, 'KAKAO_API_KEY_MISSING');
+      logger.warn('[KakaoService] KAKAO_REST_API_KEY is not set. Kakao API features will not work.');
     }
     this.baseUrl = 'https://apis-navi.kakaomobility.com/v1';
   }
@@ -35,6 +35,10 @@ class KakaoService {
     destLat: number,
     destLng: number,
   ): Promise<RouteResult> {
+    if (!this.kakaoApiKey) {
+      throw new AppError('KAKAO_REST_API_KEY is not set. Cannot use Kakao API.', 500, 'KAKAO_API_KEY_MISSING');
+    }
+
     // 좌표 유효성 검사 (0 또는 null 체크)
     if (!originLat || !originLng || !destLat || !destLng) {
       throw new AppError(
@@ -101,6 +105,10 @@ class KakaoService {
 
   // 주소를 좌표로 변환 (예외 발생)
   async addressToCoordinates(address: string): Promise<CoordinatesResult> {
+    if (!this.kakaoApiKey) {
+      throw new AppError('KAKAO_REST_API_KEY is not set. Cannot use Kakao API.', 500, 'KAKAO_API_KEY_MISSING');
+    }
+
     try {
       const response = await axios.get('https://dapi.kakao.com/v2/local/search/address.json', {
         params: { query: address },

@@ -14,13 +14,15 @@ const pool = new Pool({
   min: 0,
   idleTimeoutMillis: 60000,
   connectionTimeoutMillis: 30000,
-  ssl: {
-    rejectUnauthorized: true,
-    // 파일 경로로부터 인증서 내용을 읽어옵니다.
-    ca: process.env.AIVEN_CA_CERT
-      ? fs.readFileSync(path.resolve(process.cwd(), process.env.AIVEN_CA_CERT)).toString()
-      : undefined,
-  },
+  ssl: process.env.DATABASE_URL?.includes('localhost')
+    ? false
+    : {
+        rejectUnauthorized: true,
+        // 파일 경로로부터 인증서 내용을 읽어옵니다.
+        ca: process.env.AIVEN_CA_CERT
+          ? fs.readFileSync(path.resolve(process.cwd(), process.env.AIVEN_CA_CERT)).toString()
+          : undefined,
+      },
 });
 
 // Pool 에러 핸들링 (연결 실패 시 로깅)
