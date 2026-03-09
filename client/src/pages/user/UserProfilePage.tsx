@@ -76,13 +76,11 @@ const UserProfilePage: React.FC = () => {
   // 프로필 미완성 감지 및 자동 편집 모드 활성화 (최초 1회만)
   const autoEditTriggered = React.useRef(false);
   useEffect(() => {
-    // 강사인데 주소, 분류, 기수가 없으면 프로필 미완성
+    // 강사인데 주소, 분류가 없으면 프로필 미완성
     const hasLocation = !!user?.instructor?.location;
     const hasCategory = !!user?.instructor?.category;
-    const hasGeneration =
-      user?.instructor?.generation !== null && user?.instructor?.generation !== undefined;
 
-    if (user?.instructor && (!hasLocation || !hasCategory || !hasGeneration)) {
+    if (user?.instructor && (!hasLocation || !hasCategory)) {
       setIsProfileIncomplete(true);
       // 자동으로 편집 모드 활성화 (최초 1회만)
       if (!autoEditTriggered.current) {
@@ -351,7 +349,6 @@ const UserProfilePage: React.FC = () => {
                 <ul className="mt-2 text-xs text-amber-600 list-disc list-inside">
                   <li>주소 (활동 지역) - 필수</li>
                   <li>분류 (직책) - 필수</li>
-                  <li>기수 - 필수</li>
                 </ul>
               </div>
             </div>
