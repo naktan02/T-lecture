@@ -89,12 +89,20 @@ class MetadataRepository {
     });
   }
 
-  // 팀 Soft Delete
+  // 팀 Soft Delete (소속 강사의 teamId도 해제)
   async softDeleteTeam(id: number) {
-    return prisma.team.update({
-      where: { id },
-      data: { deletedAt: new Date() },
-    });
+    return prisma.$transaction([
+      // 해당 팀 소속 강사들의 teamId를 null로 해제
+      prisma.instructor.updateMany({
+        where: { teamId: id },
+        data: { teamId: null },
+      }),
+      // 팀 소프트 삭제
+      prisma.team.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      }),
+    ]);
   }
 
   // 덕목 생성
