@@ -56,9 +56,31 @@ class MetadataRepository {
 
   // 팀 생성
   async createTeam(name: string) {
-    return prisma.team.create({
-      data: { name },
-    });
+    try {
+      return await prisma.team.create({
+        data: { name },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        const maxTeam = await prisma.team.aggregate({ _max: { id: true } });
+        const seqTeam: any = await prisma.$queryRawUnsafe(
+          `SELECT pg_get_serial_sequence('"team"', 'id') AS seq`,
+        );
+
+        if (seqTeam[0]?.seq) {
+          await prisma.$executeRawUnsafe(
+            `SELECT setval('${seqTeam[0].seq}', coalesce($1, 0) + 1, false)`,
+            maxTeam._max.id || 0,
+          );
+        }
+
+        // Retry
+        return prisma.team.create({
+          data: { name },
+        });
+      }
+      throw error;
+    }
   }
 
   // 팀 수정
@@ -69,19 +91,49 @@ class MetadataRepository {
     });
   }
 
-  // 팀 Soft Delete
+  // 팀 Soft Delete (소속 강사의 teamId도 해제)
   async softDeleteTeam(id: number) {
-    return prisma.team.update({
-      where: { id },
-      data: { deletedAt: new Date() },
-    });
+    return prisma.$transaction([
+      // 해당 팀 소속 강사들의 teamId를 null로 해제
+      prisma.instructor.updateMany({
+        where: { teamId: id },
+        data: { teamId: null },
+      }),
+      // 팀 소프트 삭제
+      prisma.team.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      }),
+    ]);
   }
 
   // 덕목 생성
   async createVirtue(name: string) {
-    return prisma.virtue.create({
-      data: { name },
-    });
+    try {
+      return await prisma.virtue.create({
+        data: { name },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        const maxVirtue = await prisma.virtue.aggregate({ _max: { id: true } });
+        const seqVirtue: any = await prisma.$queryRawUnsafe(
+          `SELECT pg_get_serial_sequence('"덕목"', 'id') AS seq`,
+        );
+
+        if (seqVirtue[0]?.seq) {
+          await prisma.$executeRawUnsafe(
+            `SELECT setval('${seqVirtue[0].seq}', coalesce($1, 0) + 1, false)`,
+            maxVirtue._max.id || 0,
+          );
+        }
+
+        // Retry
+        return prisma.virtue.create({
+          data: { name },
+        });
+      }
+      throw error;
+    }
   }
 
   // 덕목 수정

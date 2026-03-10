@@ -342,6 +342,27 @@ async function main() {
 
   console.log('  ✅ 메시지 템플릿 3개 생성 완료');
 
+  // 6. PostgreSQL 시퀀스 동기화 (팀/덕목)
+  console.log('🔄 팀/덕목 시퀀스 초기화 중...');
+  try {
+    const maxTeam = await prisma.team.aggregate({ _max: { id: true } });
+    const maxVirtue = await prisma.virtue.aggregate({ _max: { id: true } });
+    
+    const seqTeam: any = await prisma.$queryRawUnsafe(`SELECT pg_get_serial_sequence('"team"', 'id') AS seq`);
+    const seqVirtue: any = await prisma.$queryRawUnsafe(`SELECT pg_get_serial_sequence('"덕목"', 'id') AS seq`);
+    
+    if (seqTeam[0]?.seq) {
+      await prisma.$executeRawUnsafe(`SELECT setval('${seqTeam[0].seq}', coalesce($1, 0) + 1, false)`, maxTeam._max.id || 0);
+      console.log('  ✅ 팀 시퀀스 동기화 완료');
+    }
+    if (seqVirtue[0]?.seq) {
+      await prisma.$executeRawUnsafe(`SELECT setval('${seqVirtue[0].seq}', coalesce($1, 0) + 1, false)`, maxVirtue._max.id || 0);
+      console.log('  ✅ 덕목 시퀀스 동기화 완료');
+    }
+  } catch (e) {
+    console.error('  ⚠️ 시퀀스 초기화 중 오류 발생 (PostgreSQL 환경이 아닐 경우 무시 가능):', e);
+  }
+
   console.log('');
   console.log('╔════════════════════════════════════════════════════════════╗');
   console.log('║                  ✅ 시드 완료!                             ║');
