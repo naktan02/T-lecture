@@ -63,15 +63,17 @@ class MetadataRepository {
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         const maxTeam = await prisma.team.aggregate({ _max: { id: true } });
-        const seqTeam: any = await prisma.$queryRawUnsafe(`SELECT pg_get_serial_sequence('"team"', 'id') AS seq`);
-        
+        const seqTeam: any = await prisma.$queryRawUnsafe(
+          `SELECT pg_get_serial_sequence('"team"', 'id') AS seq`,
+        );
+
         if (seqTeam[0]?.seq) {
           await prisma.$executeRawUnsafe(
             `SELECT setval('${seqTeam[0].seq}', coalesce($1, 0) + 1, false)`,
-            maxTeam._max.id || 0
+            maxTeam._max.id || 0,
           );
         }
-        
+
         // Retry
         return prisma.team.create({
           data: { name },
@@ -114,12 +116,14 @@ class MetadataRepository {
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         const maxVirtue = await prisma.virtue.aggregate({ _max: { id: true } });
-        const seqVirtue: any = await prisma.$queryRawUnsafe(`SELECT pg_get_serial_sequence('"덕목"', 'id') AS seq`);
+        const seqVirtue: any = await prisma.$queryRawUnsafe(
+          `SELECT pg_get_serial_sequence('"덕목"', 'id') AS seq`,
+        );
 
         if (seqVirtue[0]?.seq) {
           await prisma.$executeRawUnsafe(
             `SELECT setval('${seqVirtue[0].seq}', coalesce($1, 0) + 1, false)`,
-            maxVirtue._max.id || 0
+            maxVirtue._max.id || 0,
           );
         }
 
