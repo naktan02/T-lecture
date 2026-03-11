@@ -102,7 +102,14 @@ const InquiryPage = (): ReactElement => {
           {/* 개발팀 연락처 안내 배너 */}
           <div className="bg-blue-50 px-4 py-3 text-center border-b border-blue-100">
             <p className="text-sm text-blue-800">
-              시스템 이용 중 오류가 발생했거나 불편한 점이 있으시다면 언제든 개발팀(<a href="mailto:tlecture82@gmail.com" className="font-semibold underline hover:text-blue-900">tlecture82@gmail.com</a>)으로 문의해 주세요.
+              시스템 이용 중 오류가 발생했거나 불편한 점이 있으시다면 언제든 개발팀(
+              <a
+                href="mailto:tlecture82@gmail.com"
+                className="font-semibold underline hover:text-blue-900"
+              >
+                tlecture82@gmail.com
+              </a>
+              )으로 문의해 주세요.
             </p>
           </div>
           {/* 헤더 */}
