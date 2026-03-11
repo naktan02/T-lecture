@@ -22,6 +22,20 @@ export interface ApiClientOptions extends RequestInit {
 }
 
 const readErrorMessage = async (response: Response): Promise<string> => {
+  // 429 rate limit 초과 시 남은 시간 안내
+  if (response.status === 429) {
+    const resetHeader = response.headers.get('RateLimit-Reset');
+    if (resetHeader) {
+      const resetTime = Number(resetHeader) * 1000; // 초 → 밀리초
+      const remainMs = resetTime - Date.now();
+      if (remainMs > 0) {
+        const remainMin = Math.ceil(remainMs / 60000);
+        return `요청이 너무 많습니다. ${remainMin}분 후 다시 시도해주세요.`;
+      }
+    }
+    return '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.';
+  }
+
   const ct = response.headers.get('content-type') || '';
   if (ct.includes('application/json')) {
     const errorData = await response.json().catch(() => ({}) as any);
