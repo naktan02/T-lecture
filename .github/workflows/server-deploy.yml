@@ -6,6 +6,7 @@ on:
     paths:
       - 'server/**'
       - '.github/workflows/server-deploy.yml'
+  workflow_dispatch: # GitHub UI에서 수동 실행 가능
 
 jobs:
   # ── 1단계: 기존 CI 검사 ───────────────────────────────────────
