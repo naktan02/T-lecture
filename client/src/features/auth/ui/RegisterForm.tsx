@@ -102,7 +102,7 @@ export const RegisterForm: React.FC = () => {
       }
       setSendingCode(true);
       await sendVerificationCode(form.email);
-      setInfo('인증번호가 발송되었습니다. 이메일을 확인해주세요.');
+      setInfo('인증번호가 발송되었습니다.\n이메일이 오지 않는다면 스팸메일함을 확인해주세요.');
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -233,7 +233,7 @@ export const RegisterForm: React.FC = () => {
           </div>
         )}
         {info && !displayError && (
-          <div className="mb-6 md:mb-4 bg-green-50 border border-green-200 text-green-700 text-base md:text-sm px-4 md:px-3 py-3 md:py-2 rounded">
+          <div className="mb-6 md:mb-4 bg-green-50 border border-green-200 text-green-700 text-base md:text-sm px-4 md:px-3 py-3 md:py-2 rounded whitespace-pre-line">
             {info}
           </div>
         )}
