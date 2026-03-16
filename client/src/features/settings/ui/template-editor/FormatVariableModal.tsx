@@ -410,22 +410,22 @@ export const FormatVariableModal = ({
     if (hasDatePlaceholder) {
       const scheduleSampleData = [
         {
-          name: '유혜경',
+          name: '홍길동',
           date: '2024-11-17',
           dayOfWeek: '일',
-          instructors: '도혜승(주), 유혜경(부), 김철수(보조)',
+          instructors: '도혜승(주), 홍길동(부), 김철수(보조)',
         },
         {
-          name: '유혜경',
+          name: '홍길동',
           date: '2024-11-18',
           dayOfWeek: '월',
-          instructors: '도혜승(주), 유혜경(부), 박영희(실습)',
+          instructors: '도혜승(주), 홍길동(부), 박영희(실습)',
         },
         {
-          name: '유혜경',
+          name: '홍길동',
           date: '2024-11-19',
           dayOfWeek: '화',
-          instructors: '유혜경(부), 김철수(보조)',
+          instructors: '홍길동(부), 김철수(보조)',
         },
       ];
       return scheduleSampleData
@@ -443,7 +443,7 @@ export const FormatVariableModal = ({
     const sampleData = [
       {
         index: '1',
-        name: '도혜승',
+        name: '홍길동',
         phone: '010-6254-1209',
         category: '부강사',
         virtues: '협력, 정의',

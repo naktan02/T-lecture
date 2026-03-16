@@ -23,9 +23,9 @@ const SAMPLE_DATA: Record<string, string> = {
   'period.endTime': '16:00',
   'period.lunchStartTime': '12:00',
   'period.lunchEndTime': '13:00',
-  'period.officerName': '대위 이용준',
-  'period.officerPhone': '010-6640-9433',
-  'period.officerEmail': 'lee.yongjun@army.mil.kr',
+  'period.officerName': '대위 홍길동',
+  'period.officerPhone': '010-0000-1234',
+  'period.officerEmail': 'sample@army.mil.kr',
   'period.excludedDates': '2024-11-18 / 2024-11-20',
   'period.hasCateredMeals': 'X',
   'period.hasHallLodging': 'O',
@@ -39,8 +39,8 @@ const SAMPLE_DATA: Record<string, string> = {
   'self.virtues': '협력, 정의',
 
   // === 하위 호환용 (기존 unit.* 변수) ===
-  'unit.officerName': '대위 이용준',
-  'unit.officerPhone': '010-6640-9433',
+  'unit.officerName': '대위 홍길동',
+  'unit.officerPhone': '010-0000-1234',
   'unit.startDate': '2024-11-17',
   'unit.endDate': '2024-11-19',
   'unit.startTime': '09:00',
@@ -192,11 +192,11 @@ function renderFormatSample(key: string, format: string): string {
   // instructors - 강사 목록 (세로)
   if (key === 'instructors') {
     const instructors = [
-      { index: '1', name: '김민지', phone: '010-6254-1209', category: '주', virtues: '협력, 정의' },
+      { index: '1', name: '홍길동', phone: '010-0000-1111', category: '주', virtues: '협력, 정의' },
       {
         index: '2',
         name: '홍길동',
-        phone: '010-1234-5678',
+        phone: '010-0000-2222',
         category: '부',
         virtues: '리더십, 소통',
       },
