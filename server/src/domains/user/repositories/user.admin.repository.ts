@@ -46,6 +46,9 @@ class AdminRepository {
 
     if (status) {
       where.status = status;
+    } else {
+      // 명시적인 상태 필터(status)가 없을 때 기본적으로 INACTIVE 유저는 조회하지 않음.
+      where.status = { not: UserStatus.INACTIVE };
     }
 
     if (name) {

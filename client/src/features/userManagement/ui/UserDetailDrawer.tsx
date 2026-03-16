@@ -28,7 +28,6 @@ interface UserDetailDrawerProps {
   onClose: () => void;
   user: User | null;
   onUpdate: (params: { id: number; data: UpdateUserDto }) => void;
-  onDelete: (id: number) => void;
   onApprove?: (id: number) => Promise<void>;
   onReject?: (id: number) => Promise<void>;
 }
@@ -96,7 +95,6 @@ export const UserDetailDrawer = ({
   onClose,
   user: initialUser,
   onUpdate,
-  onDelete,
   onApprove,
   onReject,
 }: UserDetailDrawerProps) => {
@@ -791,19 +789,8 @@ export const UserDetailDrawer = ({
         </div>
 
         {/* 푸터 */}
-        <div className="px-4 md:px-6 py-3 md:py-4 border-t bg-white flex justify-between shrink-0">
-          {/* 삭제 버튼: 같은 관리자면 숨김 */}
-          {initialUser && !isSameAdmin && (
-            <button
-              type="button"
-              onClick={() => onDelete(initialUser.id)}
-              className="text-red-500 hover:text-red-700 text-sm"
-            >
-              유저 삭제
-            </button>
-          )}
-
-          <div className="flex gap-2 ml-auto">
+        <div className="px-4 md:px-6 py-3 md:py-4 border-t bg-white flex justify-end shrink-0">
+          <div className="flex gap-2">
             {isPending && onApprove && onReject && (
               <>
                 <Button variant="danger" onClick={handleReject}>

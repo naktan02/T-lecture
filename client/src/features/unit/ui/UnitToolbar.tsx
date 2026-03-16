@@ -16,6 +16,7 @@ interface UnitToolbarProps {
   onUploadExcel: (file: File) => Promise<unknown>;
   onCreate: () => void;
   totalCount: number;
+  onShowTutorial?: () => void;
 }
 
 export const UnitToolbar = ({
@@ -23,6 +24,7 @@ export const UnitToolbar = ({
   onUploadExcel,
   onCreate,
   totalCount,
+  onShowTutorial,
 }: UnitToolbarProps): ReactElement => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -96,8 +98,19 @@ export const UnitToolbar = ({
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
       {/* 상단: 제목 + 액션 버튼 */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex items-center gap-3">
           <h2 className="text-lg md:text-xl font-bold text-gray-800 truncate">부대 관리</h2>
+          {onShowTutorial && (
+            <button
+              onClick={onShowTutorial}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors shadow-sm"
+              title="부대 관리 사용법 보기"
+            >
+              <span className="text-sm">💡</span> 사용법 보기
+            </button>
+          )}
+        </div>
+        <div>
           <p className="text-[10px] md:text-sm text-gray-500 mt-0.5">
             총 <span className="font-bold text-green-600">{totalCount.toLocaleString()}</span>개
           </p>
