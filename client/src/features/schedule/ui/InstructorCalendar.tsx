@@ -8,7 +8,7 @@ export const InstructorCalendar: React.FC = () => {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
 
-  const { selectedDays, toggleDay, saveSchedule, refresh, loading, fetching } = useSchedule(
+  const { selectedDays, toggleDay, saveSchedule, refresh, loading, fetching, cutoffDate } = useSchedule(
     year,
     month,
   );
@@ -118,6 +118,10 @@ export const InstructorCalendar: React.FC = () => {
               <span>선택됨</span>
             </div>
             <div className="flex items-center gap-1.5">
+              <div className="w-4 h-4 md:w-6 md:h-6 rounded bg-gray-200"></div>
+              <span className="text-gray-400">수정 불가</span>
+            </div>
+            <div className="flex items-center gap-1.5">
               <span className="text-red-600 font-semibold">공휴일</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -125,6 +129,14 @@ export const InstructorCalendar: React.FC = () => {
               <span>토요일</span>
             </div>
           </div>
+
+          {/* 잠금 안내 배너 */}
+          {cutoffDate && (
+            <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-xs text-orange-700">
+              <span>🔒</span>
+              <span>관리자가 <strong>{cutoffDate}</strong> 이전 날짜를 수정 불가로 설정했습니다.</span>
+            </div>
+          )}
 
           {/* 캘린더 */}
           <div className="bg-gray-50 rounded-xl p-3 md:p-6 border border-gray-100">
@@ -135,6 +147,7 @@ export const InstructorCalendar: React.FC = () => {
               onClickDay={handleClickDay}
               onMonthChange={handleMonthChange}
               size="large"
+              cutoffDate={cutoffDate}
             />
           </div>
         </div>

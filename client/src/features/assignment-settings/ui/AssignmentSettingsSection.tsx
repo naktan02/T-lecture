@@ -44,9 +44,12 @@ const CONFIG_ITEMS = [
 export const AssignmentSettingsSection = (): ReactElement => {
   const { configs, isLoading, updateConfig, isUpdating } = useAssignmentSettings();
 
-  // 로컬 폼 상태
+  // 로컬 폼 상태 (숫자 항목)
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [originalValues, setOriginalValues] = useState<Record<string, string>>({});
+  // 로컬 폼 상태 (잠금 기준일)
+  const [cutoffDate, setCutoffDate] = useState('');
+  const [originalCutoffDate, setOriginalCutoffDate] = useState('');
   const isInitialized = useRef(false);
 
   // 서버 데이터로 폼 초기화 (한 번만)
@@ -59,12 +62,21 @@ export const AssignmentSettingsSection = (): ReactElement => {
       });
       setFormValues(values);
       setOriginalValues(values);
+
+      // 잠금 기준일 초기화
+      const cutoffConfig = configs.find((c) => c.key === 'AVAILABILITY_EDIT_CUTOFF_DATE');
+      const cutoff = cutoffConfig?.value ?? '';
+      setCutoffDate(cutoff);
+      setOriginalCutoffDate(cutoff);
+
       isInitialized.current = true;
     }
   }, [configs]);
 
   // 변경 여부 확인
-  const hasChanges = CONFIG_ITEMS.some((item) => formValues[item.key] !== originalValues[item.key]);
+  const hasChanges =
+    CONFIG_ITEMS.some((item) => formValues[item.key] !== originalValues[item.key]) ||
+    cutoffDate !== originalCutoffDate;
 
   // 값 변경 핸들러
   const handleChange = (key: string, value: string) => {
@@ -74,6 +86,7 @@ export const AssignmentSettingsSection = (): ReactElement => {
   // 취소 - 원래 값으로 복원
   const handleCancel = () => {
     setFormValues({ ...originalValues });
+    setCutoffDate(originalCutoffDate);
   };
 
   // 저장
@@ -84,7 +97,12 @@ export const AssignmentSettingsSection = (): ReactElement => {
         updateConfig({ key: item.key, value });
       }
     });
+    // 잠금 기준일 변경 시 저장 (빈 문자열도 저장 허용 = 초기화)
+    if (cutoffDate !== originalCutoffDate) {
+      updateConfig({ key: 'AVAILABILITY_EDIT_CUTOFF_DATE', value: cutoffDate });
+    }
     setOriginalValues({ ...formValues });
+    setOriginalCutoffDate(cutoffDate);
   };
 
   if (isLoading) {
@@ -131,6 +149,47 @@ export const AssignmentSettingsSection = (): ReactElement => {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* 잠금 기준일 설정 */}
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="p-5">
+          <div className="flex flex-col gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                강사 근무가능일 수정 잠금 기준일
+              </label>
+              <p className="text-xs text-gray-500 mt-0.5">
+                이 날짜까지(포함)는 강사가 근무가능일을 수정할 수 없습니다. 비워두면 제한 없습니다.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="date"
+                value={cutoffDate}
+                onChange={(e) => setCutoffDate(e.target.value)}
+                max="2099-12-31"
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm
+                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              {cutoffDate && (
+                <button
+                  type="button"
+                  onClick={() => setCutoffDate('')}
+                  className="text-xs text-gray-400 hover:text-gray-600"
+                >
+                  초기화
+                </button>
+              )}
+            </div>
+            {cutoffDate && (
+              <p className="text-xs text-orange-600 flex items-center gap-1">
+                <span>⚠️</span>
+                <span>강사는 {cutoffDate} 이전 날짜를 수정할 수 없습니다.</span>
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* 저장/취소 버튼 */}
