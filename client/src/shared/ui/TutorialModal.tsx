@@ -33,12 +33,20 @@ export const TutorialModal = ({ isOpen, onClose, title, imageDir }: TutorialModa
     const detectImages = async () => {
       const found: string[] = [];
       const base = imageDir.endsWith('/') ? imageDir : `${imageDir}/`;
+      const extensions = ['.png', '.jpg', '.jpeg'];
 
       for (let i = 1; i <= 50; i++) {
-        const path = `${base}${i}.png`;
-        const ok = await canLoadImage(path);
-        if (!ok) break;
-        found.push(path);
+        let foundAny = false;
+        for (const ext of extensions) {
+          const path = `${base}${i}${ext}`;
+          const ok = await canLoadImage(path);
+          if (ok) {
+            found.push(path);
+            foundAny = true;
+            break;
+          }
+        }
+        if (!foundAny) break;
       }
 
       setImages(found);
@@ -115,10 +123,10 @@ export const TutorialModal = ({ isOpen, onClose, title, imageDir }: TutorialModa
               <span className="text-5xl mb-4">🖼️</span>
               <p className="text-sm font-bold text-gray-600">등록된 튜토리얼 이미지가 없습니다.</p>
               <p className="text-xs text-gray-400 mt-2">
-                아래 경로에 이미지를 추가하면 자동으로 표시됩니다.
+                아래 경로에 이미지(pnt, jpg, jpeg)를 추가하면 자동으로 표시됩니다.
               </p>
               <code className="mt-2 text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 break-all">
-                client/public{imageDir}1.png
+                client/public{imageDir}1.png (또는 .jpg, .jpeg)
               </code>
             </div>
           ) : (
