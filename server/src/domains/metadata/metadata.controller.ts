@@ -127,6 +127,12 @@ export const updateAssignmentConfig = asyncHandler(async (req: Request, res: Res
   res.status(200).json(updated);
 });
 
+// 강사 근무가능일 수정 잠금 기준일 조회 (강사도 접근 가능)
+export const getAvailabilityCutoff = asyncHandler(async (req: Request, res: Response) => {
+  const cutoffDate = await metadataService.getAvailabilityCutoff();
+  res.status(200).json({ cutoffDate });
+});
+
 // ===== 패널티 관리 (InstructorPenalty) =====
 
 // 패널티 목록 조회
@@ -225,6 +231,7 @@ module.exports = {
   updateTemplate,
   getAssignmentConfigs,
   updateAssignmentConfig,
+  getAvailabilityCutoff,
   getPenalties,
   addPenalty,
   updatePenalty,

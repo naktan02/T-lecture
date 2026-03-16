@@ -1,7 +1,12 @@
 // src/features/schedule/model/useSchedule.ts
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMyAvailability, updateAvailability, AvailabilityDate } from '../scheduleApi';
+import {
+  getMyAvailability,
+  updateAvailability,
+  getAvailabilityCutoff,
+  AvailabilityDate,
+} from '../scheduleApi';
 import { showSuccess, showError, showConfirm } from '../../../shared/utils';
 
 // Query key 생성 함수
@@ -10,6 +15,13 @@ const scheduleQueryKey = (year: number, month: number) => ['schedule', 'availabi
 export const useSchedule = (year: number, month: number) => {
   const queryClient = useQueryClient();
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
+
+  // 강사 근무가능일 수정 잠금 기준일 조회
+  const { data: cutoffDate, refetch: refetchCutoff } = useQuery<string | null>({
+    queryKey: ['availabilityCutoff'],
+    queryFn: getAvailabilityCutoff,
+    staleTime: 10 * 60 * 1000, // 10분간 fresh 상태
+  });
 
   // 월별 가용일 조회 (캐싱 적용)
   const {
@@ -89,11 +101,20 @@ export const useSchedule = (year: number, month: number) => {
         return;
       }
 
+      // 잠금 기준일 체크
+      if (cutoffDate) {
+        const cutoffUTC = new Date(cutoffDate + 'T00:00:00Z');
+        if (targetDateUTC <= cutoffUTC) {
+          showError(`${cutoffDate} 이전 날짜는 관리자가 잠금한 기간입니다.`);
+          return;
+        }
+      }
+
       setSelectedDays((prev) =>
         prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
       );
     },
-    [year, month],
+    [year, month, cutoffDate],
   );
 
   // 저장
@@ -111,9 +132,10 @@ export const useSchedule = (year: number, month: number) => {
     }
   };
 
-  // 새로고침 (서버에서 최신 데이터 가져오기)
+  // 새로고침 (서버에서 최신 데이터 가져오기 - 잠금 기준일포함)
   const refresh = () => {
     refetch();
+    refetchCutoff(); // 잠금 기준일도 강제 갱신 (staleTime 무시)
   };
 
   return {
@@ -125,5 +147,6 @@ export const useSchedule = (year: number, month: number) => {
     loading: saveMutation.isPending,
     fetching,
     error: error?.message || null,
+    cutoffDate: cutoffDate ?? null,
   };
 };

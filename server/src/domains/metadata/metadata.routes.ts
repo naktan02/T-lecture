@@ -52,6 +52,9 @@ router.put(
   metadataController.updateAssignmentConfig,
 );
 
+// 강사 근무가능일 수정 잠금 기준일 조회 (강사도 읽을 수 있음)
+router.get('/availability-cutoff', auth, metadataController.getAvailabilityCutoff);
+
 // ===== 패널티 관리 (InstructorPenalty) =====
 router.get('/penalties', auth, requireRole('ADMIN'), metadataController.getPenalties);
 router.post('/penalties', auth, requireRole('ADMIN'), metadataController.addPenalty);
