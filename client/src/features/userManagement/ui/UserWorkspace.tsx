@@ -1,10 +1,9 @@
-// client/src/features/userManagement/ui/UserWorkspace.tsx
 import { useState, ReactElement } from 'react';
 import { useUserManagement } from '../model/useUserManagement';
 import { UserToolbar } from './UserToolbar';
 import { UserList } from './UserList';
 import { UserDetailDrawer } from './UserDetailDrawer';
-import { ConfirmModal, Pagination } from '../../../shared/ui';
+import { ConfirmModal, Pagination, TutorialModal } from '../../../shared/ui';
 import type { User } from '../api/userManagementApi';
 
 interface SearchParams {
@@ -47,6 +46,9 @@ export const UserWorkspace = (): ReactElement => {
   // 삭제 확인 모달
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // 튜토리얼 모달 상태
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+
   // 일괄 액션 모달
   const [bulkAction, setBulkAction] = useState<'approve' | 'reject' | null>(null);
 
@@ -58,7 +60,6 @@ export const UserWorkspace = (): ReactElement => {
     setPage,
     isLoading,
     updateUser,
-    deleteUser,
     approveUser,
     rejectUser,
     approveUsersBulk,
@@ -138,6 +139,7 @@ export const UserWorkspace = (): ReactElement => {
             onSearch={handleSearch}
             totalCount={meta?.total || 0}
             pendingCount={pendingCount}
+            onShowTutorial={() => setIsTutorialOpen(true)}
           />
         </div>
 
@@ -242,10 +244,6 @@ export const UserWorkspace = (): ReactElement => {
         onClose={() => setIsDrawerOpen(false)}
         user={selectedUser}
         onUpdate={updateUser}
-        onDelete={(id) => {
-          deleteUser(id);
-          setIsDrawerOpen(false);
-        }}
         onApprove={approveUser}
         onReject={rejectUser}
       />
@@ -278,6 +276,14 @@ export const UserWorkspace = (): ReactElement => {
         confirmVariant={bulkAction === 'approve' ? undefined : 'danger'}
         onConfirm={handleBulkAction}
         onCancel={() => setBulkAction(null)}
+      />
+
+      {/* 튜토리얼 모달 */}
+      <TutorialModal
+        isOpen={isTutorialOpen}
+        onClose={() => setIsTutorialOpen(false)}
+        title="유저 관리"
+        imageDir="/images/tutorial/user"
       />
     </>
   );

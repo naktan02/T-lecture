@@ -17,3 +17,4 @@ export { Pagination } from './Pagination';
 export { BaseCalendar } from './BaseCalendar';
 export { DateInput } from './DateInput';
 export { TimeInput } from './TimeInput';
+export { TutorialModal } from './TutorialModal';

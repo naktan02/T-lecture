@@ -189,10 +189,31 @@ export const UnitDetailDrawerV2 = ({
                 onInfoSave={handleInfoSave}
                 onLocationsSave={handleLocationsSave}
                 onCancelLocations={handleCancelLocations}
+                isEditMode={isEditMode}
               />
             )}
           </form>
         </div>
+
+        {/* 신규 등록 모드 전용 Footer */}
+        {!isEditMode && (
+          <div className="shrink-0 px-4 md:px-6 py-3 md:py-4 border-t bg-white flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              취소
+            </button>
+            <button
+              type="submit"
+              form="unit-form"
+              className="px-4 py-2 text-sm font-medium bg-green-500 text-white rounded-lg hover:bg-green-600 active:scale-95 transition-all shadow-sm shadow-green-200"
+            >
+              등록
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

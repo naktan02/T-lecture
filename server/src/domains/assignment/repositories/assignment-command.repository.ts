@@ -185,6 +185,33 @@ class AssignmentCommandRepository {
             },
           });
 
+          // 날짜 기준 중복 배정 방지: 같은 날짜 다른 스케줄에 이미 배정된 강사 차단
+          // (Canceled/Rejected는 제외 - 실질 배정이 아님)
+          const targetSchedule = await tx.unitSchedule.findUnique({
+            where: { id: a.unitScheduleId },
+            select: { date: true },
+          });
+
+          if (targetSchedule?.date) {
+            const dateConflict = await tx.instructorUnitAssignment.findFirst({
+              where: {
+                userId: a.instructorId,
+                state: { in: ['Pending', 'Accepted'] },
+                UnitSchedule: {
+                  date: targetSchedule.date,
+                  // 현재 추가하려는 스케줄과 다른 스케줄에서 중복 확인
+                  NOT: { id: a.unitScheduleId },
+                },
+              },
+            });
+
+            if (dateConflict) {
+              // 중복이면 이 항목만 건너뜀 (트랜잭션 전체 롤백 대신 skip)
+              results.skipped = (results.skipped ?? 0) + 1;
+              continue;
+            }
+          }
+
           // 기존 배정이 Rejected였다면 패널티 사유 제거
           if (existingAssignment?.state === 'Rejected') {
             const unitName =
