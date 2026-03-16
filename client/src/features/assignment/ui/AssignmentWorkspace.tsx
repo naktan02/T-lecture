@@ -1048,7 +1048,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
           }
         />
       )}
-      
+
       {/* 튜토리얼 모달 */}
       <TutorialModal
         isOpen={isTutorialOpen}

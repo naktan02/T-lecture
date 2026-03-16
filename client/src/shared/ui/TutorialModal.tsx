@@ -105,7 +105,12 @@ export const TutorialModal = ({ isOpen, onClose, title, imageDir }: TutorialModa
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -148,7 +153,12 @@ export const TutorialModal = ({ isOpen, onClose, title, imageDir }: TutorialModa
                 className="absolute left-3 top-1/2 -translate-y-1/2 p-3 bg-white/90 shadow-lg rounded-full text-gray-700 hover:text-green-600 hover:bg-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
               >
                 <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
                 </svg>
               </button>
               <button
@@ -157,7 +167,12 @@ export const TutorialModal = ({ isOpen, onClose, title, imageDir }: TutorialModa
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-white/90 shadow-lg rounded-full text-gray-700 hover:text-green-600 hover:bg-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
               >
                 <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
                 </svg>
               </button>
             </>
