@@ -367,16 +367,15 @@ class AdminService {
     return await this.getUserById(id);
   }
 
-  // 유저 삭제
+  // 유저 식제 (모든 회원은 소프트 삭제 - 상태를 INACTIVE로 변경)
   async deleteUser(id: number | string) {
     const user = await userRepository.findById(id);
     if (!user) throw new AppError('해당 회원을 찾을 수 없습니다.', 404, 'USER_NOT_FOUND');
 
-    const isInstructor = !!user.instructor;
+    // 모든 회원의 기존 배정 내역 및 데이터를 유지하기 위해 INACTIVE 상태로 변경
+    await userRepository.update(id, { status: UserStatus.INACTIVE });
 
-    await userRepository.delete(id);
-
-    return { message: '회원이 삭제되었습니다.' };
+    return { message: '시스템 내역 유지를 위해 상태가 [비활성]으로 변경되었습니다.' };
   }
 
   // 유저 승인
