@@ -60,7 +60,6 @@ export const UserWorkspace = (): ReactElement => {
     setPage,
     isLoading,
     updateUser,
-    deleteUser,
     approveUser,
     rejectUser,
     approveUsersBulk,
