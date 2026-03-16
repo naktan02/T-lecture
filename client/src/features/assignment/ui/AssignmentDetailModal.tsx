@@ -347,7 +347,10 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
           (a) => a.unitScheduleId === unitScheduleId && a.trainingLocationId === trainingLocationId,
         )
         .map((a) => {
-          const instructor = availableInstructors.find((i) => i.id === a.instructorId);
+          // 가능강사 목록에서 먼저 찾고, 없으면 전체 강사 목록에서 fallback
+          const instructor =
+            availableInstructors.find((i) => i.id === a.instructorId) ??
+            allInstructors.find((i) => i.id === a.instructorId);
           return instructor
             ? {
                 instructorId: a.instructorId,
@@ -364,7 +367,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
         isLocalAdd: boolean;
       }[];
     },
-    [changeSet.add, availableInstructors],
+    [changeSet.add, availableInstructors, allInstructors],
   );
 
   // 해당 스케줄에 이미 배정된 강사 ID 목록 계산
@@ -462,12 +465,13 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
     [changeSet.roleChanges, group.unitId],
   );
 
-  // 모든 배정 강사 목록 (중복 제거)
+  // 모든 배정 강사 목록 (중복 제거):  서버 데이터 + 로컈 추가, 로컈 삭제 반영
   const allAssignedInstructors = useMemo(() => {
     const map = new Map<
       number,
       { instructorId: number; name: string; team: string; role?: string | null }
     >();
+    // 1. 서버 데이터
     group.trainingLocations.forEach((loc) => {
       loc.dates.forEach((d) => {
         d.instructors.forEach((inst) => {
@@ -484,8 +488,30 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
         });
       });
     });
+    // 2. 로컈 추가 강사
+    changeSet.add.forEach((a) => {
+      if (!map.has(a.instructorId)) {
+        const instructor =
+          availableInstructors.find((i) => i.id === a.instructorId) ??
+          allInstructors.find((i) => i.id === a.instructorId);
+        if (instructor) {
+          map.set(a.instructorId, {
+            instructorId: a.instructorId,
+            name: instructor.name,
+            team: instructor.teamName ?? instructor.team,
+            role: null,
+          });
+        }
+      }
+    });
     return Array.from(map.values());
-  }, [group.trainingLocations, isRemovedLocally]);
+  }, [
+    group.trainingLocations,
+    isRemovedLocally,
+    changeSet.add,
+    availableInstructors,
+    allInstructors,
+  ]);
 
   // 저장 처리
   const handleSave = async () => {
@@ -499,6 +525,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
       if (result.rolesUpdated > 0) msgs.push(`역할 변경 ${result.rolesUpdated}`);
       if (result.staffLocksUpdated > 0) msgs.push(`인원고정 ${result.staffLocksUpdated}`);
       if (result.statesUpdated > 0) msgs.push(`확정 ${result.statesUpdated}`);
+
       showSuccess(msgs.length > 0 ? `저장 완료: ${msgs.join(', ')}` : '저장 완료');
       setChangeSet({
         add: [],

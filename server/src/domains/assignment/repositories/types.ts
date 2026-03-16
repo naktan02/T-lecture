@@ -26,6 +26,7 @@ export interface BatchUpdateResult {
   rolesUpdated: number;
   staffLocksUpdated: number;
   statesUpdated: number;
+  skipped?: number; // 날짜 중복으로 건너뉖 항목 수
 }
 
 export interface BatchUpdateChanges {

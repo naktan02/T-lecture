@@ -127,7 +127,10 @@ class MetadataService {
     REJECTION_PENALTY_DAYS: { value: '15', description: '거절 패널티 기간 (일)' },
     INTERN_MAX_DISTANCE_KM: { value: '50', description: '실습강사 제한 거리 (km)' },
     SUB_MAX_DISTANCE_KM: { value: '0', description: '보조강사 제한 거리 (km), 0=제한없음' },
-    AVAILABILITY_EDIT_CUTOFF_DATE: { value: '', description: '강사 근무가능일 수정 잠금 기준일 (YYYY-MM-DD, 이 날짜까지 수정 불가)' },
+    AVAILABILITY_EDIT_CUTOFF_DATE: {
+      value: '',
+      description: '강사 근무가능일 수정 잠금 기준일 (YYYY-MM-DD, 이 날짜까지 수정 불가)',
+    },
   };
 
   // 배정 설정 조회
@@ -155,7 +158,11 @@ class MetadataService {
     // 날짜 형식 키: YYYY-MM-DD 또는 빈 문자열 허용 (비활성화 = 초기화)
     if (key === 'AVAILABILITY_EDIT_CUTOFF_DATE') {
       if (value !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-        throw new AppError('날짜 형식이 올바르지 않습니다. YYYY-MM-DD 형식으로 입력해주세요.', 400, 'VALIDATION_ERROR');
+        throw new AppError(
+          '날짜 형식이 올바르지 않습니다. YYYY-MM-DD 형식으로 입력해주세요.',
+          400,
+          'VALIDATION_ERROR',
+        );
       }
     } else {
       const numValue = Number(value);

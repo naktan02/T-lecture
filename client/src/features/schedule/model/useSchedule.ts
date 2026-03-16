@@ -1,7 +1,12 @@
 // src/features/schedule/model/useSchedule.ts
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMyAvailability, updateAvailability, getAvailabilityCutoff, AvailabilityDate } from '../scheduleApi';
+import {
+  getMyAvailability,
+  updateAvailability,
+  getAvailabilityCutoff,
+  AvailabilityDate,
+} from '../scheduleApi';
 import { showSuccess, showError, showConfirm } from '../../../shared/utils';
 
 // Query key 생성 함수

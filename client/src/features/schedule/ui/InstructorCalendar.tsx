@@ -8,10 +8,8 @@ export const InstructorCalendar: React.FC = () => {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
 
-  const { selectedDays, toggleDay, saveSchedule, refresh, loading, fetching, cutoffDate } = useSchedule(
-    year,
-    month,
-  );
+  const { selectedDays, toggleDay, saveSchedule, refresh, loading, fetching, cutoffDate } =
+    useSchedule(year, month);
 
   // 월 변경 핸들러
   const handleMonthChange = (newYear: number, newMonth: number) => {
@@ -134,7 +132,9 @@ export const InstructorCalendar: React.FC = () => {
           {cutoffDate && (
             <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-xs text-orange-700">
               <span>🔒</span>
-              <span>관리자가 <strong>{cutoffDate}</strong> 이전 날짜를 수정 불가로 설정했습니다.</span>
+              <span>
+                관리자가 <strong>{cutoffDate}</strong> 이전 날짜를 수정 불가로 설정했습니다.
+              </span>
             </div>
           )}
 
