@@ -242,10 +242,6 @@ export const UserWorkspace = (): ReactElement => {
         onClose={() => setIsDrawerOpen(false)}
         user={selectedUser}
         onUpdate={updateUser}
-        onDelete={(id) => {
-          deleteUser(id);
-          setIsDrawerOpen(false);
-        }}
         onApprove={approveUser}
         onReject={rejectUser}
       />
