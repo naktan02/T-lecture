@@ -72,6 +72,7 @@ interface TrainingPeriodTabProps {
   onLocationsSave?: () => Promise<void>;
   onCancelLocations?: () => void; // 장소 편집 취소 시 서버 데이터로 복원
   readOnly?: boolean;
+  isEditMode?: boolean; // true: 수정 모드 (개별 저장 표시), false: 신규 등록 모드 (개별 저장 숨김)
 }
 
 // 시간 포맷 (Date -> HH:mm)
@@ -112,10 +113,11 @@ export const TrainingPeriodTab = ({
   onLocationsSave,
   onCancelLocations,
   readOnly = false,
+  isEditMode = true,
 }: TrainingPeriodTabProps) => {
-  // 섹션별 편집 모드 상태
-  const [isEditingInfo, setIsEditingInfo] = useState(false);
-  const [isEditingLocations, setIsEditingLocations] = useState(false);
+  // 섹션별 편집 모드 상태 (신규 등록 모드에서는 기본 편집 활성화)
+  const [isEditingInfo, setIsEditingInfo] = useState(!isEditMode);
+  const [isEditingLocations, setIsEditingLocations] = useState(!isEditMode);
   const [isSavingInfo, setIsSavingInfo] = useState(false);
   const [isSavingLocations, setIsSavingLocations] = useState(false);
 
@@ -163,7 +165,7 @@ export const TrainingPeriodTab = ({
       <div className="bg-white border border-gray-200 rounded-lg p-4">
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-sm font-semibold text-gray-700">기본 정보</h4>
-          {!readOnly && (
+          {!readOnly && isEditMode && (
             <div className="flex items-center gap-2">
               {isEditingInfo ? (
                 <>
@@ -314,7 +316,7 @@ export const TrainingPeriodTab = ({
       <div className="bg-white border border-gray-200 rounded-lg p-4">
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-sm font-semibold text-gray-700">장소 정보</h4>
-          {!readOnly && (
+          {!readOnly && isEditMode && (
             <div className="flex items-center gap-2">
               {isEditingLocations ? (
                 <>

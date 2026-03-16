@@ -27,6 +27,7 @@ export interface BaseCalendarProps {
   readOnly?: boolean;
   showNeighboringMonth?: boolean;
   size?: 'small' | 'medium' | 'large';
+  cutoffDate?: string | null; // 잠금 기준일 (YYYY-MM-DD, 이 날짜이전포함 수정 불가)
 }
 
 export const BaseCalendar: React.FC<BaseCalendarProps> = ({
@@ -38,7 +39,10 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
   readOnly = false,
   showNeighboringMonth = false,
   size = 'medium',
+  cutoffDate,
 }) => {
+  // cutoffDate를 UTC Date로 미리 변환 (렬더마다 연산 방지)
+  const cutoffUTC = cutoffDate ? new Date(cutoffDate + 'T00:00:00Z') : null;
   // 월 변경 핸들러
   const handleActiveStartDateChange = ({ activeStartDate }: { activeStartDate: Date | null }) => {
     if (activeStartDate && onMonthChange) {
@@ -87,6 +91,14 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
       classes.push('base-calendar-disabled');
     }
 
+    // 잠금 기준일 이전 (포함)
+    if (cutoffUTC) {
+      const dateUTC = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      if (dateUTC <= cutoffUTC) {
+        classes.push('base-calendar-locked');
+      }
+    }
+
     return classes.join(' ');
   };
 
@@ -94,7 +106,13 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
   const getTileDisabled = ({ date, view }: CalendarTileArgs): boolean => {
     if (view !== 'month') return false;
     if (readOnly) return true;
-    return !isSelectableDate(date);
+    if (!isSelectableDate(date)) return true;
+    // 잠금 기준일 이전 날짜도 비활성화
+    if (cutoffUTC) {
+      const dateUTC = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      if (dateUTC <= cutoffUTC) return true;
+    }
+    return false;
   };
 
   // 사이즈에 따른 스타일
@@ -159,6 +177,14 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
         .react-calendar__tile.base-calendar-disabled { 
           cursor: not-allowed !important; 
           opacity: 0.6 !important; 
+        }
+        
+        /* 잠금 기준일 이전 날짜 */
+        .react-calendar__tile.base-calendar-locked {
+          cursor: not-allowed !important;
+          background: #f3f4f6 !important;
+          color: #9ca3af !important;
+          opacity: 0.7 !important;
         }
         
         /* 선택된 날짜 - 가느다란 파란색 원형 테두리 */

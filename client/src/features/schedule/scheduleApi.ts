@@ -43,3 +43,14 @@ export const updateAvailability = async (
   });
   return res.json();
 };
+
+/**
+ * 강사 근무가능일 수정 잠금 기준일 조회
+ * GET /api/v1/metadata/availability-cutoff
+ * 반환: { cutoffDate: string | null }  (YYYY-MM-DD 또는 null)
+ */
+export const getAvailabilityCutoff = async (): Promise<string | null> => {
+  const res = await apiClient('/api/v1/metadata/availability-cutoff');
+  const data: { cutoffDate: string | null } = await res.json();
+  return data.cutoffDate;
+};
