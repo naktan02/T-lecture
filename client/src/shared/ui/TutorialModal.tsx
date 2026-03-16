@@ -33,7 +33,7 @@ export const TutorialModal = ({ isOpen, onClose, title, imageDir }: TutorialModa
     const detectImages = async () => {
       const found: string[] = [];
       const base = imageDir.endsWith('/') ? imageDir : `${imageDir}/`;
-      const extensions = ['.png', '.jpg', '.jpeg'];
+      const extensions = ['.webp', '.png', '.jpg', '.jpeg'];
 
       for (let i = 1; i <= 50; i++) {
         let foundAny = false;
@@ -141,6 +141,7 @@ export const TutorialModal = ({ isOpen, onClose, title, imageDir }: TutorialModa
               alt={`${title} 튜토리얼 ${currentIndex + 1}`}
               className="max-w-full max-h-full object-contain select-none"
               draggable={false}
+              loading="lazy"
             />
           )}
 
