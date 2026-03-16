@@ -48,9 +48,6 @@ export const UserWorkspace = (): ReactElement => {
 
   // 튜토리얼 모달 상태
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
-  // 📌 튜토리얼 슬라이드 수 설정 (이미지 추가 후 숫자를 실제 장수로 수정하세요)
-  const TUTORIAL_SLIDE_COUNT = 5; // 유저 관리
-  const tutorialImages = Array.from({ length: TUTORIAL_SLIDE_COUNT }, (_, i) => `/images/tutorial/user/${i + 1}.png`);
 
   // 일괄 액션 모달
   const [bulkAction, setBulkAction] = useState<'approve' | 'reject' | null>(null);
@@ -287,7 +284,7 @@ export const UserWorkspace = (): ReactElement => {
         isOpen={isTutorialOpen}
         onClose={() => setIsTutorialOpen(false)}
         title="유저 관리"
-        images={tutorialImages}
+        imageDir="/images/tutorial/user"
       />
     </>
   );

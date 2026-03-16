@@ -63,9 +63,6 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
 
   // 튜토리얼 모달 상태
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
-  // 📌 튜토리얼 슬라이드 수 설정 (이미지 추가 후 숫자를 실제 장수로 수정하세요)
-  const TUTORIAL_SLIDE_COUNT = 5; // 강사 배정
-  const tutorialImages = Array.from({ length: TUTORIAL_SLIDE_COUNT }, (_, i) => `/images/tutorial/assignment/${i + 1}.png`);
 
   // 검색 상태
   const [unitSearch, setUnitSearch] = useState('');
@@ -1057,7 +1054,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
         isOpen={isTutorialOpen}
         onClose={() => setIsTutorialOpen(false)}
         title="강사 배정"
-        images={tutorialImages}
+        imageDir="/images/tutorial/assignment"
       />
     </div>
   );

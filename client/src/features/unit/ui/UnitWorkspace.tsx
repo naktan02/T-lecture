@@ -40,9 +40,6 @@ export const UnitWorkspace = (): ReactElement => {
 
   // 튜토리얼 모달 상태
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
-  // 📌 튜토리얼 슬라이드 수 설정 (이미지 추가 후 숫자를 실제 장수로 수정하세요)
-  const TUTORIAL_SLIDE_COUNT = 5; // 부대 관리
-  const tutorialImages = Array.from({ length: TUTORIAL_SLIDE_COUNT }, (_, i) => `/images/tutorial/unit/${i + 1}.png`);
 
   // useUnit 훅
   const {
@@ -235,7 +232,7 @@ export const UnitWorkspace = (): ReactElement => {
         isOpen={isTutorialOpen}
         onClose={() => setIsTutorialOpen(false)}
         title="부대 관리"
-        images={tutorialImages}
+        imageDir="/images/tutorial/unit"
       />
     </>
   );

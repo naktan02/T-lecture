@@ -4,29 +4,59 @@ export interface TutorialModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  images: string[];
+  /** 이미지가 들어있는 폴더 경로 (예: /images/tutorial/user/) */
+  imageDir: string;
 }
 
-export const TutorialModal = ({ isOpen, onClose, title, images }: TutorialModalProps) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
+/** 이미지 로드 가능 여부를 Promise로 반환 */
+const canLoadImage = (src: string): Promise<boolean> =>
+  new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = src;
+  });
 
+export const TutorialModal = ({ isOpen, onClose, title, imageDir }: TutorialModalProps) => {
+  const [images, setImages] = useState<string[]>([]);
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // 모달이 열릴 때마다 이미지 자동 감지
   useEffect(() => {
-    if (isOpen) {
-      setCurrentIndex(0);
-      setImageErrors({});
-    }
-  }, [isOpen]);
+    if (!isOpen) return;
+
+    setCurrentIndex(0);
+    setImages([]);
+    setIsDetecting(true);
+
+    const detectImages = async () => {
+      const found: string[] = [];
+      const base = imageDir.endsWith('/') ? imageDir : `${imageDir}/`;
+
+      for (let i = 1; i <= 50; i++) {
+        const path = `${base}${i}.png`;
+        const ok = await canLoadImage(path);
+        if (!ok) break;
+        found.push(path);
+      }
+
+      setImages(found);
+      setIsDetecting(false);
+    };
+
+    detectImages();
+  }, [isOpen, imageDir]);
 
   const handleNext = useCallback(() => {
-    if (currentIndex < images.length - 1) setCurrentIndex((prev) => prev + 1);
-  }, [currentIndex, images.length]);
+    setCurrentIndex((prev) => Math.min(prev + 1, images.length - 1));
+  }, [images.length]);
 
   const handlePrev = useCallback(() => {
-    if (currentIndex > 0) setCurrentIndex((prev) => prev - 1);
-  }, [currentIndex]);
+    setCurrentIndex((prev) => Math.max(prev - 1, 0));
+  }, []);
 
-  // Keyboard navigation
+  // 키보드 네비게이션
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
@@ -40,16 +70,12 @@ export const TutorialModal = ({ isOpen, onClose, title, images }: TutorialModalP
 
   if (!isOpen) return null;
 
-  const handleImageError = (index: number) => {
-    setImageErrors((prev) => ({ ...prev, [index]: true }));
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal — takes up 95% of viewport */}
+      {/* Modal — 창 95% 크기 */}
       <div
         className="relative z-10 flex flex-col bg-white rounded-2xl shadow-2xl"
         style={{ width: '95vw', height: '95vh', maxWidth: '1600px' }}
@@ -77,16 +103,23 @@ export const TutorialModal = ({ isOpen, onClose, title, images }: TutorialModalP
           </div>
         </div>
 
-        {/* Image Area — fills all remaining space */}
+        {/* Image Area */}
         <div className="relative flex-1 flex items-center justify-center overflow-hidden bg-gray-50 min-h-0">
-          {images.length === 0 ? (
-            <p className="text-gray-400 text-sm">등록된 튜토리얼 이미지가 없습니다.</p>
-          ) : imageErrors[currentIndex] ? (
-            <div className="flex flex-col items-center justify-center p-12 text-center">
+          {isDetecting ? (
+            <div className="flex flex-col items-center gap-3 text-gray-400">
+              <div className="w-8 h-8 border-4 border-gray-200 border-t-green-500 rounded-full animate-spin" />
+              <p className="text-sm">이미지 로딩 중...</p>
+            </div>
+          ) : images.length === 0 ? (
+            <div className="flex flex-col items-center justify-center text-center px-8">
               <span className="text-5xl mb-4">🖼️</span>
-              <p className="text-sm font-bold text-gray-600">이미지를 찾을 수 없습니다.</p>
-              <p className="text-xs text-gray-400 mt-2">경로: <code className="bg-gray-200 px-1 py-0.5 rounded break-all">{images[currentIndex]}</code></p>
-              <p className="text-xs text-gray-400 mt-1">해당 경로에 이미지를 추가해주세요.</p>
+              <p className="text-sm font-bold text-gray-600">등록된 튜토리얼 이미지가 없습니다.</p>
+              <p className="text-xs text-gray-400 mt-2">
+                아래 경로에 이미지를 추가하면 자동으로 표시됩니다.
+              </p>
+              <code className="mt-2 text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 break-all">
+                client/public{imageDir}1.png
+              </code>
             </div>
           ) : (
             <img
@@ -94,12 +127,11 @@ export const TutorialModal = ({ isOpen, onClose, title, images }: TutorialModalP
               src={images[currentIndex]}
               alt={`${title} 튜토리얼 ${currentIndex + 1}`}
               className="max-w-full max-h-full object-contain select-none"
-              onError={() => handleImageError(currentIndex)}
               draggable={false}
             />
           )}
 
-          {/* Prev Arrow */}
+          {/* Prev / Next Arrows */}
           {images.length > 1 && (
             <>
               <button
@@ -111,7 +143,6 @@ export const TutorialModal = ({ isOpen, onClose, title, images }: TutorialModalP
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              {/* Next Arrow */}
               <button
                 onClick={handleNext}
                 disabled={currentIndex === images.length - 1}
@@ -125,7 +156,7 @@ export const TutorialModal = ({ isOpen, onClose, title, images }: TutorialModalP
           )}
         </div>
 
-        {/* Footer — dot indicators */}
+        {/* Footer dots */}
         {images.length > 1 && (
           <div className="shrink-0 flex items-center justify-center gap-2 py-3 border-t border-gray-100 bg-white">
             {images.map((_, idx) => (

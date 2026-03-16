@@ -52,9 +52,6 @@ export const AssignmentSettingsSection = (): ReactElement => {
 
   // 튜토리얼 모달 상태
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
-  // 📌 튜토리얼 슬라이드 수 설정 (이미지 추가 후 숫자를 실제 장수로 수정하세요)
-  const TUTORIAL_SLIDE_COUNT = 5; // 배정 설정
-  const tutorialImages = Array.from({ length: TUTORIAL_SLIDE_COUNT }, (_, i) => `/images/tutorial/settings/${i + 1}.png`);
 
   // 서버 데이터로 폼 초기화 (한 번만)
   useEffect(() => {
@@ -187,7 +184,7 @@ export const AssignmentSettingsSection = (): ReactElement => {
         isOpen={isTutorialOpen}
         onClose={() => setIsTutorialOpen(false)}
         title="배정 설정"
-        images={tutorialImages}
+        imageDir="/images/tutorial/settings"
       />
     </div>
   );
