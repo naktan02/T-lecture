@@ -4,7 +4,7 @@ import { useUnit } from '../model/useUnit';
 import { UnitToolbar } from './UnitToolbar';
 import { UnitList } from './UnitList';
 import { UnitDetailDrawerV2 } from './UnitDetailDrawerV2';
-import { ConfirmModal, Pagination } from '../../../shared/ui';
+import { ConfirmModal, Pagination, TutorialModal } from '../../../shared/ui';
 import { Unit } from '../../../shared/types';
 
 interface SearchParams {
@@ -37,6 +37,10 @@ export const UnitWorkspace = (): ReactElement => {
 
   // 삭제 확인 모달
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // 튜토리얼 모달 상태
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  const tutorialImages = Array.from({ length: 5 }, (_, i) => `/images/tutorial/unit/${i + 1}.png`);
 
   // useUnit 훅
   const {
@@ -119,6 +123,7 @@ export const UnitWorkspace = (): ReactElement => {
             onUploadExcel={uploadExcel}
             onCreate={openCreateDrawer}
             totalCount={meta?.total || 0}
+            onShowTutorial={() => setIsTutorialOpen(true)}
           />
         </div>
 
@@ -221,6 +226,14 @@ export const UnitWorkspace = (): ReactElement => {
         confirmVariant="danger"
         onConfirm={handleDeleteSelected}
         onCancel={() => setShowDeleteConfirm(false)}
+      />
+
+      {/* 튜토리얼 모달 */}
+      <TutorialModal
+        isOpen={isTutorialOpen}
+        onClose={() => setIsTutorialOpen(false)}
+        title="부대 관리"
+        images={tutorialImages}
       />
     </>
   );

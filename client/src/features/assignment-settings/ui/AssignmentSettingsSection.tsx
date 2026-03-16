@@ -1,6 +1,7 @@
 // client/src/features/assignment-settings/ui/AssignmentSettingsSection.tsx
 import { ReactElement, useState, useEffect, useRef } from 'react';
 import { useAssignmentSettings } from '../model/useAssignmentSettings';
+import { TutorialModal } from '../../../shared/ui';
 
 // 설정 항목 정의
 const CONFIG_ITEMS = [
@@ -48,6 +49,10 @@ export const AssignmentSettingsSection = (): ReactElement => {
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [originalValues, setOriginalValues] = useState<Record<string, string>>({});
   const isInitialized = useRef(false);
+
+  // 튜토리얼 모달 상태
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  const tutorialImages = Array.from({ length: 5 }, (_, i) => `/images/tutorial/settings/${i + 1}.png`);
 
   // 서버 데이터로 폼 초기화 (한 번만)
   useEffect(() => {
@@ -97,12 +102,20 @@ export const AssignmentSettingsSection = (): ReactElement => {
 
   return (
     <div className="space-y-6">
-      {/* 헤더 */}
-      <div>
-        <h2 className="text-xl font-bold text-gray-800">배정 설정</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          자동 배정 알고리즘 및 배정 관련 설정을 관리합니다.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">배정 설정</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            자동 배정 알고리즘 및 배정 관련 설정을 관리합니다.
+          </p>
+        </div>
+        <button
+          onClick={() => setIsTutorialOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors shadow-sm self-start md:self-auto"
+          title="배정 설정 사용법 보기"
+        >
+          <span className="text-base">💡</span> 사용법 보기
+        </button>
       </div>
 
       {/* 설정 항목들 */}
@@ -166,6 +179,14 @@ export const AssignmentSettingsSection = (): ReactElement => {
           </div>
         </div>
       </div>
+
+      {/* 튜토리얼 모달 */}
+      <TutorialModal
+        isOpen={isTutorialOpen}
+        onClose={() => setIsTutorialOpen(false)}
+        title="배정 설정"
+        images={tutorialImages}
+      />
     </div>
   );
 };

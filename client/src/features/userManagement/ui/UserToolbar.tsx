@@ -18,6 +18,7 @@ interface UserToolbarProps {
   onSearch: (filters: SearchFilters) => void;
   totalCount: number;
   pendingCount?: number;
+  onShowTutorial?: () => void;
 }
 
 const STATUS_OPTIONS = [
@@ -58,6 +59,7 @@ export const UserToolbar = ({
   onSearch,
   totalCount,
   pendingCount = 0,
+  onShowTutorial,
 }: UserToolbarProps): ReactElement => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filters, setFilters] = useState<SearchFilters>(INITIAL_FILTERS);
@@ -106,8 +108,19 @@ export const UserToolbar = ({
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       {/* 상단 헤더 */}
       <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex items-center gap-3">
           <h2 className="text-lg md:text-xl font-bold text-gray-800 truncate">유저 관리</h2>
+          {onShowTutorial && (
+            <button
+              onClick={onShowTutorial}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors shadow-sm"
+              title="유저 관리 사용법 보기"
+            >
+              <span className="text-sm">💡</span> 사용법 보기
+            </button>
+          )}
+        </div>
+        <div>
           <p className="text-[10px] md:text-sm text-gray-500 mt-0.5">
             총 <span className="font-bold text-green-600">{totalCount.toLocaleString()}</span>명
             {pendingCount > 0 && (

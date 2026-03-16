@@ -2,7 +2,7 @@
 
 import { useState, useRef, ChangeEvent, MouseEvent, useEffect, useMemo, useCallback } from 'react';
 import { useAssignment } from '../model/useAssignment';
-import { Button, MiniCalendar } from '../../../shared/ui';
+import { Button, MiniCalendar, TutorialModal } from '../../../shared/ui';
 import { AssignmentDetailModal, AssignmentGroupDetailModal } from './AssignmentDetailModal';
 import { UnassignedUnitDetailModal } from './UnassignedUnitDetailModal';
 import { batchUpdateAssignmentsApi } from '../assignmentApi';
@@ -60,6 +60,10 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
 
   // ID 기반 선택 (스냅샷 대신 ID만 저장)
   const [selectionKey, setSelectionKey] = useState<SelectionKey>(null);
+
+  // 튜토리얼 모달 상태
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  const tutorialImages = Array.from({ length: 5 }, (_, i) => `/images/tutorial/assignment/${i + 1}.png`);
 
   // 검색 상태
   const [unitSearch, setUnitSearch] = useState('');
@@ -405,6 +409,13 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
           <Button variant="outline" size="small" onClick={executeAutoAssign} disabled={loading}>
             🤖 자동 배정
           </Button>
+          <button
+            onClick={() => setIsTutorialOpen(true)}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+            title="강사 배정 사용법 보기"
+          >
+            💡 사용법
+          </button>
         </div>
       </div>
 
@@ -1038,6 +1049,14 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
           }
         />
       )}
+      
+      {/* 튜토리얼 모달 */}
+      <TutorialModal
+        isOpen={isTutorialOpen}
+        onClose={() => setIsTutorialOpen(false)}
+        title="강사 배정"
+        images={tutorialImages}
+      />
     </div>
   );
 };
