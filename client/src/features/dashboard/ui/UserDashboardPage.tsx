@@ -408,10 +408,7 @@ export const UserDashboardPage: React.FC = () => {
   const activitiesData = activitiesQuery.data ?? null;
   const isLoading = statsQuery.isLoading;
   const isActivitiesLoading = activitiesQuery.isFetching && !!activitiesQuery.data;
-  const error =
-    statsQuery.error instanceof Error
-      ? '데이터를 불러오는데 실패했습니다.'
-      : null;
+  const error = statsQuery.error instanceof Error ? '데이터를 불러오는데 실패했습니다.' : null;
 
   if (isLoading && !stats) {
     // stats가 있으면(갱신 중이면) 로딩 안보여줌 (스켈레톤 대신 기존 데이터 유지)
