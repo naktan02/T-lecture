@@ -8,7 +8,7 @@ import { usePageRefresh } from '../../shared/hooks/usePageRefresh';
 const InstructorDashboardPage: React.FC = () => {
   // 강사 전용 페이지
   const { shouldRender } = useAuthGuard('INSTRUCTOR');
-  const refresh = usePageRefresh(['userDashboard']);
+  const refresh = usePageRefresh(['user-dashboard-stats', 'user-dashboard-activities']);
 
   if (!shouldRender) return null;
 

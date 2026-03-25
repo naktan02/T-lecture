@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   fetchDashboardStats,
   fetchInstructorAnalysis,
@@ -41,13 +42,6 @@ type ModalType =
   | null;
 
 export const AdminDashboard: React.FC = () => {
-  // Data states
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [instructors, setInstructors] = useState<InstructorAnalysis[]>([]);
-  const [teams, setTeams] = useState<TeamAnalysis[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   // Filter states
   const [rangeType, setRangeType] = useState<string>('1m'); // '1m', '3m', '6m', '12m', 'custom'
   const [startDate, setStartDate] = useState<string>('');
@@ -147,64 +141,34 @@ export const AdminDashboard: React.FC = () => {
     return { startDate: formatDate(start), endDate: formatDate(end) };
   }, [rangeType, startDate, endDate]);
 
-  // Using a ref to track the current controller is cleaner.
-  const abortControllerRef = React.useRef<AbortController | null>(null);
+  const { startDate: queryStartDate, endDate: queryEndDate } = getDateRange();
+  const isRangeReady = rangeType !== 'custom' || (!!queryStartDate && !!queryEndDate);
+  const dashboardParams = useMemo(
+    () => ({ startDate: queryStartDate, endDate: queryEndDate }),
+    [queryEndDate, queryStartDate],
+  );
 
-  const fetchWithAbort = useCallback(async () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    const { startDate: start, endDate: end } = getDateRange();
-
-    if (rangeType === 'custom' && (!start || !end)) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const queryParams = { startDate: start, endDate: end };
-
-      const [statsData, instructorsData, teamsData] = await Promise.all([
-        fetchDashboardStats(queryParams, controller.signal),
-        fetchInstructorAnalysis(queryParams, controller.signal),
-        fetchTeamAnalysis(queryParams, controller.signal),
+  const dashboardQuery = useQuery({
+    queryKey: ['admin-dashboard', dashboardParams],
+    queryFn: async ({ signal }) => {
+      const [stats, instructors, teams] = await Promise.all([
+        fetchDashboardStats(dashboardParams, signal),
+        fetchInstructorAnalysis(dashboardParams, signal),
+        fetchTeamAnalysis(dashboardParams, signal),
       ]);
+      return { stats, instructors, teams };
+    },
+    enabled: isRangeReady,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    placeholderData: (previousData) => previousData,
+  });
 
-      setStats(statsData);
-      setInstructors(instructorsData);
-      setTeams(teamsData);
-      setError(null);
-    } catch (err) {
-      if ((err as Error).name === 'AbortError') {
-        console.log('Request aborted');
-        return;
-      }
-      setError(err instanceof Error ? err.message : '데이터 로딩 실패');
-    } finally {
-      // Only unset loading if this is the current controller (not aborted by a newer one)
-      // Actually, if aborted, we might not want to touch state.
-      if (!controller.signal.aborted) {
-        setLoading(false);
-        // Only clear ref if it's still us
-        if (abortControllerRef.current === controller) {
-          abortControllerRef.current = null;
-        }
-      }
-    }
-  }, [getDateRange, rangeType]);
-
-  useEffect(() => {
-    fetchWithAbort();
-    return () => {
-      // Cleanup on unmount or deps change (triggered by new fetchWithAbort call basically, but standard consistency)
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [fetchWithAbort]);
+  const stats = dashboardQuery.data?.stats ?? null;
+  const instructors = dashboardQuery.data?.instructors ?? [];
+  const teams = dashboardQuery.data?.teams ?? [];
+  const loading = dashboardQuery.isLoading;
+  const error = dashboardQuery.error instanceof Error ? dashboardQuery.error.message : null;
 
   // Close all modals helper
   const closeAllModals = () => {
@@ -347,7 +311,7 @@ export const AdminDashboard: React.FC = () => {
       <div className="p-8 text-center text-red-500">
         <p>{error || '데이터를 불러올 수 없습니다.'}</p>
         <button
-          onClick={fetchWithAbort}
+          onClick={() => dashboardQuery.refetch()}
           className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
         >
           재시도
