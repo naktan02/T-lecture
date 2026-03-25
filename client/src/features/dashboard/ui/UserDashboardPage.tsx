@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import {
   dashboardApi,
   DashboardStats,
-  PaginatedActivities,
   ActivityGroup,
 } from '../api/dashboardApi';
 import { getMilitaryTypeLabel } from '@/shared/types/unit.types';
