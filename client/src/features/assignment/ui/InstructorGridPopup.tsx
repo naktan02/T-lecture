@@ -439,7 +439,7 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
                   </div>
                 </th>
                 {/* 이름(팀) + 거리 + 추가 버튼 열 */}
-                <th className="sticky left-8 sm:left-10 z-40 bg-gray-200 border border-gray-300 px-1 sm:px-2 py-1 sm:py-2 text-left whitespace-nowrap w-32 sm:w-auto min-w-[120px] sm:max-w-[250px] lg:max-w-[300px] overflow-hidden">
+                <th className="sticky left-8 sm:left-10 z-40 bg-gray-200 border border-gray-300 px-1 sm:px-2 py-1 sm:py-2 text-left whitespace-nowrap sm:w-auto max-w-[140px] sm:max-w-[250px] lg:max-w-[300px] overflow-hidden">
                   <span className="text-[10px] sm:text-xs block truncate w-full">이름(팀) / 거리</span>
                 </th>
                 {/* 날짜 헤더 */}
@@ -513,7 +513,7 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
                         </div>
                       </td>
                       {/* 이름(팀) + 거리 + 추가 버튼 */}
-                      <td className="sticky left-8 sm:left-10 z-20 bg-white border border-gray-200 p-1 sm:px-2 sm:py-1 group-hover:bg-gray-50 whitespace-nowrap overflow-hidden min-w-[120px] sm:max-w-[250px] lg:max-w-[300px]">
+                      <td className="sticky left-8 sm:left-10 z-20 bg-white border border-gray-200 p-1 sm:px-2 sm:py-1 group-hover:bg-gray-50 whitespace-nowrap overflow-hidden max-w-[140px] sm:max-w-[250px] lg:max-w-[300px]">
                         <div className="flex items-center gap-1 sm:gap-2 justify-between">
                           {/* 정보 영역 (클릭 가능) */}
                           <div
