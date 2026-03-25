@@ -2,9 +2,7 @@
 
 import { useMemo, useState, ReactNode, useCallback } from 'react';
 import { DetailModal, MiniCalendar, Button, ConfirmModal } from '../../../shared/ui';
-import { InstructorSelectionPopup } from './InstructorSelectionPopup';
 import { InstructorGridPopup } from './InstructorGridPopup';
-import { useIsDesktop } from '../../../shared/hooks/useMediaQuery';
 import { logger, showSuccess, showError } from '../../../shared/utils';
 import { AssignmentChangeSet, batchUpdateAssignmentsApi } from '../assignmentApi';
 
@@ -272,10 +270,6 @@ interface AssignmentGroupDetailModalProps {
   allConfirmedAssignments?: any[]; // 확정 배정 (Accepted)
   // 거리 필터링용 데이터
   distanceMap?: Record<string, number>; // `${instructorId}-${unitId}` → km
-  distanceLimits?: {
-    internMaxDistanceKm: number;
-    subMaxDistanceKm: number | null;
-  } | null;
   // 전체 조회 기간 (그리드 팝업용)
   queryDateRange?: { startDate: Date; endDate: Date };
   // 전체 부대 스케줄 범위
@@ -292,7 +286,6 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
   allAssignments = [],
   allConfirmedAssignments = [],
   distanceMap = {},
-  distanceLimits = null,
   queryDateRange,
   actualDateRange,
 }) => {
@@ -302,9 +295,6 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
     instructorId: number;
   } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-
-  // PC/모바일 감지
-  const isDesktop = useIsDesktop();
 
   // 강사 상세정보 모달 상태
   const [selectedInstructorId, setSelectedInstructorId] = useState<number | null>(null);
@@ -1088,83 +1078,60 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
         </div>
       </div>
 
-      {/* 4. 강사 추가 팝업 - PC: 대형 그리드, 모바일: 기존 팝업 */}
-      {addPopupTarget &&
-        (isDesktop ? (
-          <InstructorGridPopup
-            target={{
-              ...addPopupTarget,
-              unitId: group.unitId,
-            }}
-            queryDateRange={
-              queryDateRange || {
-                startDate: new Date(),
-                endDate: new Date(),
-              }
+      {/* 4. 강사 추가 팝업 - 공통으로 그리드 팝업 사용 */}
+      {addPopupTarget && (
+        <InstructorGridPopup
+          target={{
+            ...addPopupTarget,
+            unitId: group.unitId,
+          }}
+          queryDateRange={
+            queryDateRange || {
+              startDate: new Date(),
+              endDate: new Date(),
             }
-            educationDateRange={{
-              startDate: (() => {
-                // group.period에서 시작 날짜 추출 ("YYYY-MM-DD ~ YYYY-MM-DD" 형식)
-                const startStr = group.period?.split(' ~ ')[0];
-                if (startStr) {
-                  const [y, m, d] = startStr.split('-').map(Number);
-                  return new Date(y, m - 1, d);
-                }
-                return new Date();
-              })(),
-              endDate: (() => {
-                const endStr = group.period?.split(' ~ ')[1];
-                if (endStr) {
-                  const [y, m, d] = endStr.split('-').map(Number);
-                  return new Date(y, m - 1, d);
-                }
-                return new Date();
-              })(),
-            }}
-            actualDateRange={actualDateRange}
-            allAvailableInstructors={availableInstructors}
-            allInstructors={allInstructors}
-            assignments={allAssignments}
-            confirmedAssignments={allConfirmedAssignments}
-            assignedByDate={assignedByDate}
-            distanceMap={distanceMap}
-            locallyAddedIds={getAssignedInstructorIds(addPopupTarget.unitScheduleId)}
-            onClose={() => setAddPopupTarget(null)}
-            onAddMultiple={(instructors) => {
-              instructors.forEach((inst) => {
-                handleAddLocal(
-                  addPopupTarget.unitScheduleId,
-                  inst.id,
-                  addPopupTarget.trainingLocationId,
-                );
-              });
-              setAddPopupTarget(null);
-            }}
-            onInstructorClick={(instructorId) => setSelectedInstructorId(instructorId)}
-          />
-        ) : (
-          <InstructorSelectionPopup
-            target={{ ...addPopupTarget, unitId: group.unitId }}
-            allAvailableInstructors={availableInstructors}
-            allInstructors={allInstructors}
-            assignedInstructorIds={[
-              ...getAssignedInstructorIds(addPopupTarget.unitScheduleId),
-              ...(assignedByDate.get(addPopupTarget.date) || []),
-            ]}
-            distanceMap={distanceMap}
-            distanceLimits={distanceLimits}
-            onClose={() => setAddPopupTarget(null)}
-            onAdd={async (inst) => {
+          }
+          educationDateRange={{
+            startDate: (() => {
+              // group.period에서 시작 날짜 추출 ("YYYY-MM-DD ~ YYYY-MM-DD" 형식)
+              const startStr = group.period?.split(' ~ ')[0];
+              if (startStr) {
+                const [y, m, d] = startStr.split('-').map(Number);
+                return new Date(y, m - 1, d);
+              }
+              return new Date();
+            })(),
+            endDate: (() => {
+              const endStr = group.period?.split(' ~ ')[1];
+              if (endStr) {
+                const [y, m, d] = endStr.split('-').map(Number);
+                return new Date(y, m - 1, d);
+              }
+              return new Date();
+            })(),
+          }}
+          actualDateRange={actualDateRange}
+          allAvailableInstructors={availableInstructors}
+          allInstructors={allInstructors}
+          assignments={allAssignments}
+          confirmedAssignments={allConfirmedAssignments}
+          assignedByDate={assignedByDate}
+          distanceMap={distanceMap}
+          locallyAddedIds={getAssignedInstructorIds(addPopupTarget.unitScheduleId)}
+          onClose={() => setAddPopupTarget(null)}
+          onAddMultiple={(instructors) => {
+            instructors.forEach((inst) => {
               handleAddLocal(
                 addPopupTarget.unitScheduleId,
                 inst.id,
                 addPopupTarget.trainingLocationId,
               );
-              setAddPopupTarget(null);
-            }}
-            onInstructorClick={(instructorId) => setSelectedInstructorId(instructorId)}
-          />
-        ))}
+            });
+            setAddPopupTarget(null);
+          }}
+          onInstructorClick={(instructorId) => setSelectedInstructorId(instructorId)}
+        />
+      )}
       {/* 5. 삭제 확인 모달 */}
       <ConfirmModal
         isOpen={!!removeTarget}

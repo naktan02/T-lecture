@@ -350,30 +350,30 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-      {/* 대형 팝업 본체 */}
-      <div className="bg-white w-[95vw] max-w-[1600px] h-[90vh] rounded-xl shadow-2xl border border-gray-300 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 sm:p-4">
+      {/* 대형 팝업 본체 - 모바일에서는 꽉 차게, 데스크탑에서는 라운드 처리 */}
+      <div className="bg-white w-full h-[100dvh] sm:w-[95vw] sm:max-w-[1600px] sm:h-[90vh] sm:rounded-xl shadow-2xl border-0 sm:border sm:border-gray-300 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="bg-gray-800 text-white px-4 py-3 flex justify-between items-center">
+        <div className="bg-gray-800 text-white px-3 sm:px-4 py-2 sm:py-3 flex justify-between items-center shrink-0">
           <div>
-            <h3 className="font-bold text-base">강사 추가</h3>
-            <p className="text-xs text-gray-300">{target.locationName || '교육장소'}</p>
+            <h3 className="font-bold text-sm sm:text-base">강사 추가</h3>
+            <p className="text-[10px] sm:text-xs text-gray-300">{target.locationName || '교육장소'}</p>
           </div>
           <Button
             size="small"
             variant="ghost"
             onClick={onClose}
-            className="text-gray-400 hover:text-white"
+            className="text-gray-400 hover:text-white px-2 py-1 min-h-[32px] sm:min-h-0"
           >
-            ✕ 닫기
+            <span className="text-xl sm:text-sm">✕</span> <span className="hidden sm:inline">닫기</span>
           </Button>
         </div>
 
         {/* Tab + Search + 범례 */}
-        <div className="flex items-center justify-between border-b border-gray-200 px-3 py-2 bg-gray-50 gap-2 flex-wrap">
-          <div className="flex">
+        <div className="flex items-center justify-between border-b border-gray-200 px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-50 flex-wrap shrink-0">
+          <div className="flex w-full sm:w-auto mb-1.5 sm:mb-0">
             <button
-              className={`px-3 py-1.5 text-xs font-bold rounded-t transition-colors ${
+              className={`flex-1 sm:flex-none px-2 sm:px-3 py-1.5 sm:py-1.5 text-[11px] sm:text-xs font-bold rounded-t transition-colors ${
                 tab === 'AVAILABLE'
                   ? 'text-indigo-600 border-b-2 border-indigo-600 bg-white'
                   : 'text-gray-500 hover:bg-gray-100'
@@ -383,7 +383,7 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
               가능 강사 ({allAvailableInstructors.length})
             </button>
             <button
-              className={`px-3 py-1.5 text-xs font-bold rounded-t transition-colors ${
+              className={`flex-1 sm:flex-none px-2 sm:px-3 py-1.5 sm:py-1.5 text-[11px] sm:text-xs font-bold rounded-t transition-colors ${
                 tab === 'ALL'
                   ? 'text-indigo-600 border-b-2 border-indigo-600 bg-white'
                   : 'text-gray-500 hover:bg-gray-100'
@@ -393,7 +393,7 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
               전체 검색 ({allInstructors.length})
             </button>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between w-full sm:w-auto gap-2 sm:gap-3">
             {/* 범례 - 타부대 제거, 임시/확정만 표시 */}
             <div className="hidden lg:flex items-center gap-2 text-[10px] text-gray-500">
               <span className="flex items-center gap-1">
@@ -411,7 +411,7 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
             <input
               type="text"
               placeholder="이름/팀명 검색..."
-              className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-indigo-500 w-32"
+              className="border border-gray-300 rounded px-2 py-1.5 sm:py-1 text-xs focus:outline-indigo-500 w-full sm:w-32"
               value={search}
               onChange={handleSearchChange}
             />
@@ -419,26 +419,28 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
         </div>
 
         {/* Grid Table */}
-        <div className="flex-1 overflow-auto">
-          <table className="border-collapse text-xs table-auto">
-            <thead className="sticky top-0 z-10 bg-gray-100">
+        <div className="flex-1 overflow-x-auto overflow-y-auto overscroll-none" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <table className="border-collapse text-xs table-auto min-w-max">
+            <thead className="sticky top-0 z-30 bg-gray-100 shadow-sm">
               <tr>
-                {/* 체크박스 열 - 고정 너비 */}
-                <th className="sticky left-0 z-20 bg-gray-200 border border-gray-300 px-2 py-2 text-center w-10">
-                  <input
-                    type="checkbox"
-                    checked={
-                      selectedIds.size === filteredInstructors.length &&
-                      filteredInstructors.length > 0
-                    }
-                    onChange={toggleSelectAll}
-                    className="w-4 h-4 cursor-pointer"
-                    title="전체 선택"
-                  />
+                {/* 체크박스 열 */}
+                <th className="sticky left-0 z-40 bg-gray-200 border border-gray-300 p-1 sm:px-2 sm:py-2 text-center w-8 sm:w-10">
+                  <div className="flex items-center justify-center min-w-[24px] min-h-[32px] sm:min-h-0">
+                    <input
+                      type="checkbox"
+                      checked={
+                        selectedIds.size === filteredInstructors.length &&
+                        filteredInstructors.length > 0
+                      }
+                      onChange={toggleSelectAll}
+                      className="w-5 h-5 sm:w-4 sm:h-4 cursor-pointer"
+                      title="전체 선택"
+                    />
+                  </div>
                 </th>
-                {/* 이름(팀) + 거리 + 추가 버튼 열 - 체크박스 열(w-10=40px) 다음 위치 */}
-                <th className="sticky left-10 z-20 bg-gray-200 border border-gray-300 px-2 py-2 text-left whitespace-nowrap">
-                  <span className="text-xs">이름(팀) / 거리</span>
+                {/* 이름(팀) + 거리 + 추가 버튼 열 */}
+                <th className="sticky left-8 sm:left-10 z-40 bg-gray-200 border border-gray-300 px-1 sm:px-2 py-1 sm:py-2 text-left whitespace-nowrap w-32 sm:w-auto min-w-[120px] sm:max-w-[250px] lg:max-w-[300px] overflow-hidden">
+                  <span className="text-[10px] sm:text-xs block truncate w-full">이름(팀) / 거리</span>
                 </th>
                 {/* 날짜 헤더 */}
                 {allDates.map((date) => {
@@ -450,7 +452,7 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
                   return (
                     <th
                       key={date}
-                      className={`border border-gray-300 px-1 py-1 text-center w-12 ${
+                      className={`border border-gray-300 px-0.5 sm:px-1 py-1 text-center min-w-[36px] sm:min-w-[48px] w-10 sm:w-12 ${
                         isTargetDate
                           ? 'bg-rose-500 text-white ring-2 ring-rose-400 ring-inset'
                           : isInEducationPeriod
@@ -460,11 +462,11 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
                               : 'bg-gray-100 text-gray-600'
                       }`}
                     >
-                      <div className="text-[10px] font-bold leading-tight whitespace-nowrap">
+                      <div className="text-[9px] sm:text-[10px] font-bold leading-tight whitespace-nowrap">
                         {formatDateShort(date)}
                       </div>
                       <div
-                        className={`text-[8px] leading-tight ${
+                        className={`text-[8px] leading-none mt-0.5 ${
                           isInEducationPeriod
                             ? 'text-indigo-200'
                             : weekend
@@ -500,27 +502,29 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
                       className={`group ${isSelected ? 'bg-indigo-50' : 'hover:bg-gray-50'}`}
                     >
                       {/* 체크박스 */}
-                      <td className="sticky left-0 z-10 bg-white border border-gray-200 px-2 py-1 text-center w-10 group-hover:bg-gray-50">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelect(inst.id)}
-                          className="w-4 h-4 cursor-pointer"
-                        />
+                      <td className="sticky left-0 z-20 bg-white border border-gray-200 p-1 sm:px-2 sm:py-1 text-center w-8 sm:w-10 group-hover:bg-gray-50">
+                        <div className="flex items-center justify-center min-h-[44px] sm:min-h-0">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelect(inst.id)}
+                            className="w-5 h-5 sm:w-4 sm:h-4 cursor-pointer"
+                          />
+                        </div>
                       </td>
-                      {/* 이름(팀) + 거리 + 추가 버튼 - 체크박스 열(w-10=40px) 다음 위치 */}
-                      <td className="sticky left-10 z-10 bg-white border border-gray-200 px-2 py-1 group-hover:bg-gray-50 whitespace-nowrap">
-                        <div className="flex items-center gap-1">
+                      {/* 이름(팀) + 거리 + 추가 버튼 */}
+                      <td className="sticky left-8 sm:left-10 z-20 bg-white border border-gray-200 p-1 sm:px-2 sm:py-1 group-hover:bg-gray-50 whitespace-nowrap overflow-hidden min-w-[120px] sm:max-w-[250px] lg:max-w-[300px]">
+                        <div className="flex items-center gap-1 sm:gap-2 justify-between">
                           {/* 정보 영역 (클릭 가능) */}
                           <div
-                            className="flex-1 cursor-pointer hover:text-indigo-600"
+                            className="flex-1 cursor-pointer hover:text-indigo-600 min-w-0 flex flex-col justify-center py-1"
                             onClick={() => onInstructorClick?.(inst.id)}
                           >
                             <div className="flex items-center gap-1">
-                              <span className="font-bold text-gray-800 text-sm">{inst.name}</span>
+                              <span className="font-bold text-gray-800 text-[11px] sm:text-sm truncate max-w-[50px] sm:max-w-[none]">{inst.name}</span>
                               {categoryLabel && (
                                 <span
-                                  className={`px-1 text-[9px] font-bold rounded ${
+                                  className={`px-1 text-[8px] sm:text-[9px] font-bold rounded shrink-0 ${
                                     inst.category === 'Main'
                                       ? 'bg-purple-500 text-white'
                                       : inst.category === 'Co'
@@ -531,20 +535,20 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
                                   }`}
                                 >
                                   {categoryLabel}
-                                </span>
+                               </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-1 text-[10px] text-gray-500">
-                              <span>{teamName}</span>
+                            <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-gray-500 mt-0.5 w-full">
+                              <span className="truncate max-w-[40px] sm:max-w-[60px] inline-block">{teamName}</span>
                               {distanceText && (
-                                <span className="text-blue-600">{distanceText}</span>
+                                <span className="text-blue-600 shrink-0">{distanceText}</span>
                               )}
                             </div>
                           </div>
                           {/* 추가 버튼 */}
                           <button
                             onClick={() => onAddMultiple([inst])}
-                            className="w-5 h-5 rounded bg-indigo-500 text-white flex items-center justify-center hover:bg-indigo-600 transition-colors text-xs font-bold"
+                            className="shrink-0 w-7 h-7 sm:w-6 sm:h-6 rounded bg-indigo-500 text-white flex items-center justify-center hover:bg-indigo-600 transition-colors text-sm sm:text-xs font-bold shadow-sm"
                             title={`${inst.name} 배정 추가`}
                           >
                             +
@@ -561,7 +565,7 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
                         return (
                           <td
                             key={date}
-                            className={`border text-center h-7 w-12 ${cellStyle} ${isTargetDate ? 'border-rose-400 border-2' : 'border-gray-200'}`}
+                            className={`border text-center h-10 sm:h-8 w-10 sm:w-12 ${cellStyle} ${isTargetDate ? 'border-rose-400 border-2' : 'border-gray-200'}`}
                             title={
                               assignmentState === 'Accepted'
                                 ? '확정 배정'
@@ -583,22 +587,22 @@ export const InstructorGridPopup: React.FC<InstructorGridPopupProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-100 px-4 py-2 border-t border-gray-200 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-500">
-              {filteredInstructors.length}명 표시 (총 {instructorList.length}명) / 거리순 정렬
+        <div className="bg-gray-100 px-3 sm:px-4 py-2 sm:py-2 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center shrink-0">
+          <div className="flex items-center gap-2 mb-2 sm:mb-0 w-full sm:w-auto">
+            <span className="text-[10px] sm:text-xs text-gray-500 truncate shrink-0">
+              {filteredInstructors.length}명 표시 (거리순 정렬)
             </span>
             {selectedIds.size > 0 && (
-              <span className="text-xs text-indigo-600 font-bold">{selectedIds.size}명 선택됨</span>
+              <span className="text-[10px] sm:text-xs text-indigo-600 font-bold shrink-0">{selectedIds.size}명 선택됨</span>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto">
             {selectedIds.size > 0 && (
-              <Button onClick={handleAddSelected} variant="primary" size="small">
-                선택한 {selectedIds.size}명 추가
+              <Button onClick={handleAddSelected} variant="primary" size="small" className="flex-1 sm:flex-none py-2 sm:py-1 h-auto sm:h-auto font-bold text-sm sm:text-xs">
+                {selectedIds.size}명 일괄 추가
               </Button>
             )}
-            <Button onClick={onClose} variant="secondary" size="small">
+            <Button onClick={onClose} variant="secondary" size="small" className="flex-1 sm:flex-none py-2 sm:py-1 h-auto sm:h-auto font-bold text-sm sm:text-xs">
               닫기
             </Button>
           </div>
