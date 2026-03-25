@@ -232,10 +232,13 @@ export const toggleStaffLockApi = async (
   trainingPeriodId: number,
   isStaffLocked: boolean,
 ): Promise<{ message: string; result: unknown }> => {
-  const res = await apiClient(`/api/v1/assignments/training-period/${trainingPeriodId}/staff-lock`, {
-    method: 'PATCH',
-    body: JSON.stringify({ isStaffLocked }),
-  });
+  const res = await apiClient(
+    `/api/v1/assignments/training-period/${trainingPeriodId}/staff-lock`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ isStaffLocked }),
+    },
+  );
   if (!res.ok) throw new Error('인원고정 설정에 실패했습니다.');
   return res.json();
 };

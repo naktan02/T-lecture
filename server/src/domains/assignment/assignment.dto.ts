@@ -132,8 +132,7 @@ class AssignmentDTO {
                 lunchEndTime: toKSTTimeString(period.lunchEndTime),
                 hasInstructorLounge:
                   (defaultLoc as TrainingLocationRaw).hasInstructorLounge || false,
-                hasWomenRestroom:
-                  (defaultLoc as TrainingLocationRaw).hasWomenRestroom || false,
+                hasWomenRestroom: (defaultLoc as TrainingLocationRaw).hasWomenRestroom || false,
                 hasCateredMeals: period.hasCateredMeals,
                 hasHallLodging: period.hasHallLodging,
                 allowsPhoneBeforeAfter: period.allowsPhoneBeforeAfter,
@@ -285,7 +284,10 @@ class AssignmentDTO {
                   const scheduleLoc = schedule.scheduleLocations?.find(
                     (sl) => sl.trainingLocationId === loc.id,
                   );
-                  const requiredPerDay = calcRequiredInstructors(scheduleLoc, traineesPerInstructor);
+                  const requiredPerDay = calcRequiredInstructors(
+                    scheduleLoc,
+                    traineesPerInstructor,
+                  );
 
                   const assignmentsForLocation = (schedule.assignments || []).filter(
                     (a: AssignmentRaw) =>
@@ -477,10 +479,7 @@ class AssignmentDTO {
             period: `${startDate} ~ ${endDate}`,
             totalRequired,
             totalAssigned,
-            progress:
-              totalRequired > 0
-                ? Math.round((totalAssigned / totalRequired) * 100)
-                : 0,
+            progress: totalRequired > 0 ? Math.round((totalAssigned / totalRequired) * 100) : 0,
             trainingLocations: trainingLocations,
             confirmedMessageSent,
             unsentCount, // 미발송 인원 수

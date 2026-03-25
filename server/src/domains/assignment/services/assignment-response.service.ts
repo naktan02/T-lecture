@@ -132,9 +132,8 @@ class AssignmentResponseService {
    * 자동 확정 체크
    */
   async checkAndAutoConfirm(unitScheduleId: number) {
-    const trainingPeriodId = await assignmentQueryRepository.getTrainingPeriodIdByScheduleId(
-      unitScheduleId,
-    );
+    const trainingPeriodId =
+      await assignmentQueryRepository.getTrainingPeriodIdByScheduleId(unitScheduleId);
     if (!trainingPeriodId) return;
 
     const trainingPeriod =

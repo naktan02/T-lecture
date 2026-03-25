@@ -459,11 +459,7 @@ export class ReportService {
     // 월 유효성 검사 - 해당 연도/월에 데이터가 있는지 확인
     const availableMonths = await this.getAvailableMonths(year);
     if (!availableMonths.includes(month)) {
-      throw new AppError(
-        `${year}년 ${month}월에 교육 데이터가 없습니다.`,
-        404,
-        'DATA_NOT_FOUND',
-      );
+      throw new AppError(`${year}년 ${month}월에 교육 데이터가 없습니다.`, 404, 'DATA_NOT_FOUND');
     }
 
     // ISO 8601 기준 월간 범위: 1주차 월요일 ~ 마지막 주차 일요일

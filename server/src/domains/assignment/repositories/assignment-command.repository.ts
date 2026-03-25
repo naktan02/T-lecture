@@ -82,7 +82,10 @@ class AssignmentCommandRepository {
 
     const dedupedRequested = uniqueMatches.length;
     const inputDupRemoved = requested - dedupedRequested;
-    const skipped = Math.max(dedupedRequested - dateConflictSkipped - created, 0) + inputDupRemoved + dateConflictSkipped;
+    const skipped =
+      Math.max(dedupedRequested - dateConflictSkipped - created, 0) +
+      inputDupRemoved +
+      dateConflictSkipped;
 
     return { requested, created, skipped };
   }
