@@ -57,6 +57,8 @@ const UserProfilePage: React.FC = () => {
   } = useQuery({
     queryKey: ['myProfile'],
     queryFn: getMyProfile,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   // 메타데이터 로드
