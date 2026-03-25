@@ -1,11 +1,7 @@
 // client/src/features/dashboard/ui/UserDashboardPage.tsx
-import React, { useEffect, useState } from 'react';
-import {
-  dashboardApi,
-  DashboardStats,
-  PaginatedActivities,
-  ActivityGroup,
-} from '../api/dashboardApi';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { dashboardApi, DashboardStats, ActivityGroup } from '../api/dashboardApi';
 import { getMilitaryTypeLabel } from '@/shared/types/unit.types';
 import {
   ClockIcon,
@@ -301,13 +297,6 @@ const ActivityHistory: React.FC<ActivityHistoryProps> = ({
 
 // 메인 대시보드 페이지
 export const UserDashboardPage: React.FC = () => {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [activitiesData, setActivitiesData] = useState<PaginatedActivities | null>(null);
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [isActivitiesLoading, setIsActivitiesLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   // 날짜 필터 상태
   const [rangeType, setRangeType] = useState<string>('1m'); // '1m', '3m', '6m', '12m', 'custom'
   const [startDate, setStartDate] = useState<string>('');
@@ -380,80 +369,41 @@ export const UserDashboardPage: React.FC = () => {
     setPage(1);
   }, [rangeType, startDate, endDate]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const fetchData = async () => {
-      // custom이고 날짜가 없으면 요청 안함
-      if (rangeType === 'custom' && (!startDate || !endDate)) {
-        if (!controller.signal.aborted) setIsLoading(false);
-        return;
-      }
-
-      const params: any = {};
-      if (rangeType === 'custom') {
-        params.startDate = startDate;
-        params.endDate = endDate;
-      } else {
-        params.period = rangeType;
-      }
-
-      try {
-        setIsLoading(true);
-        // 통계와 첫 페이지 활동 내역 동시 요청
-        const [statsRes, activitiesRes] = await Promise.all([
-          dashboardApi.getUserStats(params, controller.signal),
-          dashboardApi.getUserActivities({ ...params, page: 1, limit: LIMIT }, controller.signal),
-        ]);
-
-        if (!controller.signal.aborted) {
-          setStats(statsRes);
-          setActivitiesData(activitiesRes);
-        }
-      } catch (err) {
-        if ((err as Error).name !== 'AbortError') {
-          console.error(err);
-          setError('데이터를 불러오는데 실패했습니다.');
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    if (rangeType !== 'custom' || (startDate && endDate)) {
-      fetchData();
-    }
-
-    return () => {
-      controller.abort();
-    };
-  }, [rangeType, startDate, endDate]);
-
-  // 페이지 변경 시 활동 내역만 별도 로드
-  const fetchActivitiesPage = async (newPage: number) => {
-    if (rangeType === 'custom' && (!startDate || !endDate)) return;
-
-    const params: any = { page: newPage, limit: LIMIT };
+  const isRangeReady = rangeType !== 'custom' || (!!startDate && !!endDate);
+  const statsParams = useMemo(() => {
     if (rangeType === 'custom') {
-      params.startDate = startDate;
-      params.endDate = endDate;
-    } else {
-      params.period = rangeType;
+      return { startDate, endDate };
     }
+    return { period: rangeType };
+  }, [endDate, rangeType, startDate]);
+  const activitiesParams = useMemo(
+    () => ({ ...statsParams, page, limit: LIMIT }),
+    [LIMIT, page, statsParams],
+  );
 
-    try {
-      setIsActivitiesLoading(true);
-      const data = await dashboardApi.getUserActivities(params);
-      setActivitiesData(data);
-      setPage(newPage);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsActivitiesLoading(false);
-    }
-  };
+  const statsQuery = useQuery({
+    queryKey: ['user-dashboard-stats', statsParams],
+    queryFn: ({ signal }) => dashboardApi.getUserStats(statsParams, signal),
+    enabled: isRangeReady,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    placeholderData: (previousData) => previousData,
+  });
+
+  const activitiesQuery = useQuery({
+    queryKey: ['user-dashboard-activities', activitiesParams],
+    queryFn: ({ signal }) => dashboardApi.getUserActivities(activitiesParams, signal),
+    enabled: isRangeReady,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    placeholderData: (previousData) => previousData,
+  });
+
+  const stats = statsQuery.data ?? null;
+  const activitiesData = activitiesQuery.data ?? null;
+  const isLoading = statsQuery.isLoading;
+  const isActivitiesLoading = activitiesQuery.isFetching && !!activitiesQuery.data;
+  const error = statsQuery.error instanceof Error ? '데이터를 불러오는데 실패했습니다.' : null;
 
   if (isLoading && !stats) {
     // stats가 있으면(갱신 중이면) 로딩 안보여줌 (스켈레톤 대신 기존 데이터 유지)
@@ -581,7 +531,7 @@ export const UserDashboardPage: React.FC = () => {
               }
               currentPage={page}
               totalPages={activitiesData?.pagination.totalPages || 1}
-              onPageChange={fetchActivitiesPage}
+              onPageChange={setPage}
               isLoading={isActivitiesLoading}
               totalCount={activitiesData?.pagination.total || 0}
             />
