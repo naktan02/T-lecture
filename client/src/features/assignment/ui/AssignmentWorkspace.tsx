@@ -53,7 +53,6 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
     assignments,
     confirmedAssignments,
     distanceMap,
-    distanceLimits,
     actualDateRange, // 전체 부대 스케줄 범위
     fetchData,
     executeAutoAssign,
@@ -70,6 +69,8 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
   // 검색 상태
   const [unitSearch, setUnitSearch] = useState('');
   const [instructorSearch, setInstructorSearch] = useState('');
+  const [assignmentSearch, setAssignmentSearch] = useState('');
+  const [confirmedSearch, setConfirmedSearch] = useState('');
 
   type ModalKey = { groupKey: string; bucket: 'PENDING' | 'ACCEPTED' } | null;
   const [detailModalKey, setDetailModalKey] = useState<ModalKey>(null);
@@ -315,9 +316,24 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
   };
 
   const filteredAssignments = useMemo(() => {
-    if (assignmentFilters.length === 0) return assignments; // 전체 보기
+    let result = assignments;
 
-    return assignments.filter((g) => {
+    // 1. 텍스트 검색 
+    if (assignmentSearch.trim() !== '') {
+      const q = assignmentSearch.toLowerCase();
+      result = result.filter(
+        (g) =>
+          g.unitName?.toLowerCase().includes(q) ||
+          g.region?.toLowerCase().includes(q) ||
+          g.trainingPeriodName?.toLowerCase().includes(q) ||
+          g.period?.toLowerCase().includes(q),
+      );
+    }
+
+    // 2. 상태 필터 (미배정, 미응답, 응답 완료)
+    if (assignmentFilters.length === 0) return result; // 필터가 없으면 검색 결과만 반환
+
+    return result.filter((g) => {
       // 그룹 내 모든 강사의 상태를 평면화하여 추출
       const allInstructors: { state: string; messageSent: boolean }[] = [];
       (g.trainingLocations as any[]).forEach((loc: any) => {
@@ -349,7 +365,24 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
 
       return false;
     });
-  }, [assignments, assignmentFilters]);
+  }, [assignments, assignmentFilters, assignmentSearch]);
+
+  // 확정 배정 완료 필터링 리스트 (텍스트 검색)
+  const filteredConfirmedAssignments = useMemo(() => {
+    let result = confirmedAssignments;
+
+    if (confirmedSearch.trim() !== '') {
+      const q = confirmedSearch.toLowerCase();
+      result = result.filter(
+        (g) =>
+          g.unitName?.toLowerCase().includes(q) ||
+          g.region?.toLowerCase().includes(q) ||
+          g.trainingPeriodName?.toLowerCase().includes(q) ||
+          g.period?.toLowerCase().includes(q),
+      );
+    }
+    return result;
+  }, [confirmedAssignments, confirmedSearch]);
 
   // 각 필터별 카운트 계산 (같은 로직 사용)
   const filterCounts = useMemo(() => {
@@ -392,7 +425,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
               name="startDate"
               value={formatDate(dateRange.startDate)}
               onChange={handleDateChange}
-              className="bg-transparent focus:outline-none text-xs text-gray-700 w-24"
+              className="bg-transparent focus:outline-none text-xs text-gray-700 w-[115px]"
             />
             <span className="text-gray-400 text-xs">~</span>
             <input
@@ -400,7 +433,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
               name="endDate"
               value={formatDate(dateRange.endDate)}
               onChange={handleDateChange}
-              className="bg-transparent focus:outline-none text-xs text-gray-700 w-24"
+              className="bg-transparent focus:outline-none text-xs text-gray-700 w-[115px]"
             />
           </div>
         </div>
@@ -608,7 +641,16 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
         <div className="flex flex-col gap-4 h-fit md:h-auto md:overflow-hidden">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden h-fit max-h-[40vh] md:flex-1 md:h-auto md:max-h-none">
             <div className="p-3 bg-orange-50 border-b border-orange-100 border-l-4 border-l-orange-500 flex justify-between items-start">
-              <span className="font-bold text-gray-700 mt-1">⚖️ 배정 작업 공간 (부대별)</span>
+              <div className="flex flex-col gap-2">
+                <span className="font-bold text-gray-700 mt-1">⚖️ 배정 작업 공간 (부대별)</span>
+                <input
+                  type="text"
+                  placeholder="부대/지역/기간 검색..."
+                  value={assignmentSearch}
+                  onChange={(e) => setAssignmentSearch(e.target.value)}
+                  className="w-full max-w-48 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-400"
+                />
+              </div>
               <div className="flex flex-col items-end gap-2">
                 <div className="flex items-center gap-1.5">
                   {assignments.length > 0 && (
@@ -768,36 +810,45 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
 
           {/* Panel 4: 확정 배정 완료 */}
           <div className="md:flex-1 max-h-[40vh] md:max-h-none bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
-            <div className="p-3 bg-blue-50 border-b border-blue-100 border-l-4 border-l-blue-500 font-bold text-gray-700 flex justify-between items-center">
-              <span>✅ 확정 배정 완료</span>
-              <div className="flex items-center gap-1.5">
-                {confirmedAssignments.length > 0 && (
+            <div className="p-3 bg-blue-50 border-b border-blue-100 border-l-4 border-l-blue-500 flex justify-between items-start">
+              <div className="flex flex-col gap-2">
+                <span className="font-bold text-gray-700 mt-1">✅ 확정 배정 완료</span>
+                <input
+                  type="text"
+                  placeholder="부대/지역/기간 검색..."
+                  value={confirmedSearch}
+                  onChange={(e) => setConfirmedSearch(e.target.value)}
+                  className="w-full max-w-48 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
+                />
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <div className="flex items-center gap-1.5">
+                  {confirmedAssignments.length > 0 && (
+                    <button
+                      onClick={() => setTableModal('ACCEPTED')}
+                      className="px-2.5 py-1.5 bg-white border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 shadow-sm transition-all text-xs font-bold flex items-center gap-1"
+                    >
+                      📊 펼치기
+                    </button>
+                  )}
                   <button
-                    onClick={() => setTableModal('ACCEPTED')}
-                    className="px-2.5 py-1.5 bg-white border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 shadow-sm transition-all text-xs font-bold flex items-center gap-1"
+                    onClick={sendConfirmedMessages}
+                    disabled={confirmedAssignments.length === 0}
+                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm transition-all text-xs font-bold flex items-center gap-1"
                   >
-                    📊 펼치기
+                    📩 일괄 확정 메시지 전송
                   </button>
-                )}
-                <button
-                  onClick={sendConfirmedMessages}
-                  disabled={confirmedAssignments.length === 0}
-                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
-                             disabled:bg-gray-300 disabled:cursor-not-allowed
-                             shadow-sm transition-all text-xs font-bold flex items-center gap-1"
-                >
-                  📩 일괄 확정 메시지 전송
-                </button>
+                </div>
               </div>
             </div>
             <div className="flex-1 p-4 overflow-y-auto bg-gray-50/50">
-              {confirmedAssignments.length === 0 ? (
+              {filteredConfirmedAssignments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-gray-400 text-sm">
                   <span>아직 확정된 배정이 없습니다.</span>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {confirmedAssignments.map((group) => (
+                  {filteredConfirmedAssignments.map((group) => (
                     <div
                       key={group.groupKey}
                       onClick={() =>
@@ -910,7 +961,6 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
           allAssignments={assignments}
           allConfirmedAssignments={confirmedAssignments}
           distanceMap={distanceMap}
-          distanceLimits={distanceLimits}
           actualDateRange={actualDateRange}
           queryDateRange={
             dateRange.startDate && dateRange.endDate
@@ -1061,7 +1111,6 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
           allAssignments={assignments}
           allConfirmedAssignments={confirmedAssignments}
           distanceMap={distanceMap}
-          distanceLimits={distanceLimits}
           actualDateRange={actualDateRange}
           queryDateRange={
             dateRange.startDate && dateRange.endDate
