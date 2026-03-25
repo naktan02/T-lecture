@@ -442,12 +442,12 @@ class AssignmentCommandService {
     add: Array<{ unitScheduleId: number; instructorId: number; trainingLocationId: number | null }>;
     remove: Array<{ unitScheduleId: number; instructorId: number }>;
     roleChanges?: Array<{
-      unitId: number;
+      trainingPeriodId: number;
       instructorId: number;
       role: 'Head' | 'Supervisor' | null;
     }>;
     staffLockChanges?: Array<{
-      unitId: number;
+      trainingPeriodId: number;
       isStaffLocked: boolean;
     }>;
     stateChanges?: Array<{
