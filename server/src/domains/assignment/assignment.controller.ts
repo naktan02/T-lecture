@@ -197,7 +197,7 @@ export const bulkSaveAssignments = asyncHandler(async (req: Request, res: Respon
 
 // [부대 인원고정 설정/해제]
 export const toggleStaffLock = asyncHandler(async (req: Request, res: Response) => {
-  const trainingPeriodId = Number(req.params.trainingPeriodId ?? req.params.unitId);
+  const trainingPeriodId = Number(req.params.trainingPeriodId);
   const { isStaffLocked } = req.body;
 
   if (!Number.isFinite(trainingPeriodId)) {

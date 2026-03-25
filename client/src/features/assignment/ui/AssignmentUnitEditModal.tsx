@@ -182,15 +182,6 @@ export const AssignmentUnitEditModal: React.FC<Props> = ({
   };
 
   const handleScheduleSave = async () => {
-    // eslint-disable-next-line no-console
-    console.log(
-      'handleScheduleSave called, trainingPeriodId:',
-      trainingPeriodId,
-      'startDate:',
-      editStartDate,
-      'endDate:',
-      editEndDate,
-    );
     if (!trainingPeriodId) {
       showError('교육기간 ID가 없습니다. 페이지를 새로고침해주세요.');
       return;
@@ -472,8 +463,6 @@ export const AssignmentUnitEditModal: React.FC<Props> = ({
   // === Save Handlers ===
 
   const handleInfoSave = async () => {
-    // eslint-disable-next-line no-console
-    console.log('handleInfoSave called, trainingPeriodId:', trainingPeriodId);
     if (!trainingPeriodId) {
       showError('교육기간 ID가 없습니다. 페이지를 새로고침해주세요.');
       return;
@@ -502,8 +491,6 @@ export const AssignmentUnitEditModal: React.FC<Props> = ({
   };
 
   const handleLocationsSave = async () => {
-    // eslint-disable-next-line no-console
-    console.log('handleLocationsSave called, trainingPeriodId:', trainingPeriodId);
     if (!trainingPeriodId) {
       showError('교육기간 ID가 없습니다. 페이지를 새로고침해주세요.');
       return;
@@ -557,10 +544,6 @@ export const AssignmentUnitEditModal: React.FC<Props> = ({
           });
         }
       }
-
-      // eslint-disable-next-line no-console
-      console.log('Saving scheduleLocations:', scheduleLocations);
-
       await unitApi.updateTrainingPeriodScheduleLocations(trainingPeriodId, {
         locations: periodForm.locations.map((loc) => ({
           id: loc.id,

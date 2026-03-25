@@ -3,6 +3,7 @@ import { Workbook, Worksheet } from 'exceljs';
 import path from 'path';
 import prisma from '../../libs/prisma';
 import { MilitaryType } from '../../generated/prisma/client.js';
+import AppError from '../../common/errors/AppError';
 
 // SystemConfig에서 TRAINEES_PER_INSTRUCTOR 값 가져오기 (캐시)
 let cachedTraineesPerInstructor: number | null = null;
@@ -244,7 +245,11 @@ export class ReportService {
     // 주차 유효성 검사
     const availableWeeks = await this.getAvailableWeeks(year, month);
     if (!availableWeeks.includes(week)) {
-      throw new Error(`${year}년 ${month}월 ${week}주차에 교육 데이터가 없습니다.`);
+      throw new AppError(
+        `${year}년 ${month}월 ${week}주차에 교육 데이터가 없습니다.`,
+        404,
+        'DATA_NOT_FOUND',
+      );
     }
 
     const { startDate, endDate } = this.getWeekRangeISO8601(year, month, week);
@@ -454,7 +459,11 @@ export class ReportService {
     // 월 유효성 검사 - 해당 연도/월에 데이터가 있는지 확인
     const availableMonths = await this.getAvailableMonths(year);
     if (!availableMonths.includes(month)) {
-      throw new Error(`${year}년 ${month}월에 교육 데이터가 없습니다.`);
+      throw new AppError(
+        `${year}년 ${month}월에 교육 데이터가 없습니다.`,
+        404,
+        'DATA_NOT_FOUND',
+      );
     }
 
     // ISO 8601 기준 월간 범위: 1주차 월요일 ~ 마지막 주차 일요일

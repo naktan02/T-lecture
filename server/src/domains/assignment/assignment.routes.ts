@@ -37,13 +37,7 @@ router.patch(
   assignmentController.cancelAssignmentByAdmin,
 );
 
-// 관리자: 부대 인원고정 설정/해제
-router.patch(
-  '/unit/:unitId/staff-lock',
-  auth,
-  requireRole('ADMIN'),
-  assignmentController.toggleStaffLock,
-);
+// 관리자: 교육기간 인원고정 설정/해제
 router.patch(
   '/training-period/:trainingPeriodId/staff-lock',
   auth,

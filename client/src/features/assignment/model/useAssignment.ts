@@ -147,14 +147,20 @@ export const useAssignment = (): UseAssignmentReturn => {
       // 서버에서 계산된 실제 날짜 범위 저장
       if (data.actualDateRange) {
         setActualDateRange(data.actualDateRange);
+      } else {
+        setActualDateRange(null);
       }
 
       // 거리 데이터 저장 (강사 선택 필터링용)
       if (data.distanceMap) {
         setDistanceMap(data.distanceMap);
+      } else {
+        setDistanceMap({});
       }
       if (data.distanceLimits) {
         setDistanceLimits(data.distanceLimits);
+      } else {
+        setDistanceLimits(null);
       }
 
       // 배정 현황 설정 (상태별 분리) - 첫 날짜 기준 정렬
