@@ -53,6 +53,14 @@ interface Assignment {
   userId: number;
   trainingLocationId?: number | null;
   state: string;
+  User?: {
+    instructor?: {
+      category?: 'Main' | 'Co' | 'Assistant' | 'Practicum' | null;
+      team?: { id?: number | null; name?: string | null } | null;
+      isTeamLeader?: boolean;
+      generation?: number | null;
+    } | null;
+  };
 }
 
 interface Schedule {
@@ -104,7 +112,7 @@ interface AssignmentResult {
   unitScheduleId: number;
   instructorId: number;
   trainingLocationId: number | null;
-  role: string | null;
+  role: 'Head' | 'Supervisor' | null;
   // 이름 정보 (가독성)
   instructorName: string;
   unitName: string;
@@ -141,11 +149,21 @@ interface LocationInfo {
  * - 이미 배정된 장소가 있으면 그 장소 유지
  */
 function distributeToLocations(
-  assignments: { unitScheduleId: number; instructorId: number }[],
+  assignments: {
+    unitScheduleId: number;
+    instructorId: number;
+    role?: 'Head' | 'Supervisor' | null;
+  }[],
   scheduleLocationMap: Map<number, LocationInfo[]>,
   instructorLocationPreference: Map<string, number>,
   trainingPeriodIdByScheduleId: Map<number, number>,
-): { unitScheduleId: number; instructorId: number; trainingLocationId: number | null }[] {
+  existingLocationCountsBySchedule: Map<number, Map<number, number>>,
+): {
+  unitScheduleId: number;
+  instructorId: number;
+  trainingLocationId: number | null;
+  role?: 'Head' | 'Supervisor' | null;
+}[] {
   // 스케줄별로 그룹화
   const bySchedule = new Map<number, typeof assignments>();
   for (const a of assignments) {
@@ -174,9 +192,11 @@ function distributeToLocations(
     }
 
     // 장소별 현재 배정 수 추적
-    const locationAssignmentCount = new Map<number, number>();
+    const locationAssignmentCount = new Map(existingLocationCountsBySchedule.get(scheduleId) ?? []);
     for (const loc of locations) {
-      locationAssignmentCount.set(loc.id, 0);
+      if (!locationAssignmentCount.has(loc.id)) {
+        locationAssignmentCount.set(loc.id, 0);
+      }
     }
 
     for (const a of scheduleAssignments) {
@@ -254,6 +274,7 @@ class AssignmentAlgorithm {
       traineesPerInstructor,
     );
     const candidates = this.transformInstructors(rawInstructors, options);
+    const initialAssignments = this.extractExistingAssignments(rawUnits);
 
     if (units.length === 0 || candidates.length === 0) {
       return { assignments: [] };
@@ -261,6 +282,7 @@ class AssignmentAlgorithm {
 
     // 2. 엔진 실행
     const result = engine.execute(units, candidates, {
+      initialAssignments,
       blockedInstructorIdsBySchedule: options?.blockedInstructorIdsBySchedule,
       debugTopK: options?.debugTopK ?? 0,
       instructorDistances: options?.instructorDistances,
@@ -268,18 +290,30 @@ class AssignmentAlgorithm {
 
     // 3. 장소 분배 (같은 TrainingPeriod 내 일관성 유지)
     const instructorLocationPreference = new Map<string, number>();
+    const existingLocationCountsBySchedule = new Map<number, Map<number, number>>();
 
     // 기존 배정에서 선호 장소 추출
     for (const unit of rawUnits) {
       for (const period of unit.trainingPeriods || []) {
         for (const schedule of period.schedules || []) {
           for (const assignment of schedule.assignments || []) {
-            if (
-              assignment.trainingLocationId &&
-              ['Pending', 'Accepted'].includes(assignment.state)
-            ) {
+            if (!['Pending', 'Accepted'].includes(assignment.state)) {
+              continue;
+            }
+
+            if (assignment.trainingLocationId) {
               const key = `${assignment.userId}_${period.id}`;
               instructorLocationPreference.set(key, assignment.trainingLocationId);
+
+              if (!existingLocationCountsBySchedule.has(schedule.id)) {
+                existingLocationCountsBySchedule.set(schedule.id, new Map<number, number>());
+              }
+
+              const countMap = existingLocationCountsBySchedule.get(schedule.id)!;
+              countMap.set(
+                assignment.trainingLocationId,
+                (countMap.get(assignment.trainingLocationId) ?? 0) + 1,
+              );
             }
           }
         }
@@ -291,6 +325,7 @@ class AssignmentAlgorithm {
       scheduleLocationMap,
       instructorLocationPreference,
       trainingPeriodIdByScheduleId,
+      existingLocationCountsBySchedule,
     );
 
     // 4. 결과 변환 (이름 정보 추가)
@@ -330,7 +365,7 @@ class AssignmentAlgorithm {
         unitScheduleId: a.unitScheduleId,
         instructorId: a.instructorId,
         trainingLocationId: a.trainingLocationId,
-        role: null, // 역할은 나중에 계산
+        role: a.role ?? null,
         instructorName: instructorNameMap.get(a.instructorId) || `강사_${a.instructorId}`,
         unitName: scheduleInfo?.unitName || '',
         trainingLocationName: a.trainingLocationId
@@ -495,6 +530,53 @@ class AssignmentAlgorithm {
         monthlyAvailabilityCount: availableDates.length,
       };
     });
+  }
+
+  private extractExistingAssignments(rawUnits: UnitWithSchedules[]) {
+    const initialAssignments: Array<{
+      unitScheduleId: number;
+      scheduleId: number;
+      unitId: number;
+      trainingPeriodId: number;
+      date: string;
+      instructorId: number;
+      category: 'Main' | 'Co' | 'Assistant' | 'Practicum' | null;
+      teamId: number | null;
+      state: 'Pending' | 'Accepted';
+      classification: null;
+      isTeamLeader?: boolean;
+      generation?: number | null;
+    }> = [];
+
+    for (const unit of rawUnits) {
+      for (const period of unit.trainingPeriods || []) {
+        for (const schedule of period.schedules || []) {
+          if (!schedule.date) continue;
+          const date = toDateString(schedule.date);
+
+          for (const assignment of schedule.assignments || []) {
+            if (!['Pending', 'Accepted'].includes(assignment.state)) continue;
+
+            initialAssignments.push({
+              unitScheduleId: schedule.id,
+              scheduleId: schedule.id,
+              unitId: unit.id,
+              trainingPeriodId: period.id,
+              date,
+              instructorId: assignment.userId,
+              category: assignment.User?.instructor?.category ?? null,
+              teamId: assignment.User?.instructor?.team?.id ?? null,
+              state: assignment.state as 'Pending' | 'Accepted',
+              classification: null,
+              isTeamLeader: assignment.User?.instructor?.isTeamLeader ?? false,
+              generation: assignment.User?.instructor?.generation ?? null,
+            });
+          }
+        }
+      }
+    }
+
+    return initialAssignments;
   }
 }
 

@@ -46,12 +46,13 @@ class AssignmentQueryService {
     let maxScheduleDate = end;
 
     for (const unit of unitsRaw) {
-      const schedules = unit.trainingPeriods?.[0]?.schedules || [];
-      for (const schedule of schedules) {
-        if (!schedule.date) continue;
-        const scheduleDate = new Date(schedule.date);
-        if (scheduleDate < minScheduleDate) minScheduleDate = scheduleDate;
-        if (scheduleDate > maxScheduleDate) maxScheduleDate = scheduleDate;
+      for (const period of unit.trainingPeriods || []) {
+        for (const schedule of period.schedules || []) {
+          if (!schedule.date) continue;
+          const scheduleDate = new Date(schedule.date);
+          if (scheduleDate < minScheduleDate) minScheduleDate = scheduleDate;
+          if (scheduleDate > maxScheduleDate) maxScheduleDate = scheduleDate;
+        }
       }
     }
 

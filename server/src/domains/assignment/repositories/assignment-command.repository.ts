@@ -3,6 +3,7 @@
 
 import prisma from '../../../libs/prisma';
 import { AssignmentState } from '../../../generated/prisma/client.js';
+import AppError from '../../../common/errors/AppError';
 import type {
   MatchResult,
   BulkCreateSummary,
@@ -31,9 +32,42 @@ class AssignmentCommandRepository {
     }
     const uniqueMatches = Array.from(uniqueMap.values());
 
-    const created = await prisma.$transaction(async (tx) => {
+    const { created, dateConflictSkipped } = await prisma.$transaction(async (tx) => {
+      const schedules = await tx.unitSchedule.findMany({
+        where: { id: { in: uniqueMatches.map((match) => match.unitScheduleId) } },
+        select: { id: true, date: true },
+      });
+      const scheduleDateMap = new Map(schedules.map((schedule) => [schedule.id, schedule.date]));
+
+      const validMatches: MatchResult[] = [];
+      let skipped = 0;
+
+      for (const match of uniqueMatches) {
+        const scheduleDate = scheduleDateMap.get(match.unitScheduleId);
+        if (scheduleDate) {
+          const dateConflict = await tx.instructorUnitAssignment.findFirst({
+            where: {
+              userId: match.instructorId,
+              state: { in: ['Pending', 'Accepted'] },
+              UnitSchedule: {
+                date: scheduleDate,
+                NOT: { id: match.unitScheduleId },
+              },
+            },
+            select: { userId: true },
+          });
+
+          if (dateConflict) {
+            skipped++;
+            continue;
+          }
+        }
+
+        validMatches.push(match);
+      }
+
       const res = await tx.instructorUnitAssignment.createMany({
-        data: uniqueMatches.map((match) => ({
+        data: validMatches.map((match) => ({
           unitScheduleId: match.unitScheduleId,
           userId: match.instructorId,
           trainingLocationId: match.trainingLocationId ?? null,
@@ -43,12 +77,13 @@ class AssignmentCommandRepository {
         })),
         skipDuplicates: true,
       });
-      return res.count;
+
+      return { created: res.count, dateConflictSkipped: skipped };
     });
 
     const dedupedRequested = uniqueMatches.length;
     const inputDupRemoved = requested - dedupedRequested;
-    const skipped = Math.max(dedupedRequested - created, 0) + inputDupRemoved;
+    const skipped = Math.max(dedupedRequested - dateConflictSkipped - created, 0) + inputDupRemoved + dateConflictSkipped;
 
     return { requested, created, skipped };
   }
@@ -107,9 +142,18 @@ class AssignmentCommandRepository {
   /**
    * 교육기간 인원고정 설정/해제
    */
-  async toggleStaffLock(trainingPeriodId: number, isStaffLocked: boolean) {
+  async toggleStaffLock(unitId: number, isStaffLocked: boolean) {
+    const period = await prisma.trainingPeriod.findFirst({
+      where: { unitId },
+      select: { id: true },
+    });
+
+    if (!period) {
+      throw new AppError('대상 교육기간을 찾을 수 없습니다.', 404, 'NOT_FOUND');
+    }
+
     return await prisma.trainingPeriod.update({
-      where: { id: trainingPeriodId },
+      where: { id: period.id },
       data: { isStaffLocked },
     });
   }
@@ -407,7 +451,7 @@ class AssignmentCommandRepository {
 
     if (mainInstructors.length === 1) {
       headUserId = mainInstructors[0].userId;
-      roleType = 'Supervisor';
+      roleType = 'Head';
     } else if (mainInstructors.length >= 2) {
       mainInstructors.sort((a, b) => {
         if (a.isTeamLeader !== b.isTeamLeader) {
@@ -416,7 +460,7 @@ class AssignmentCommandRepository {
         return (a.generation ?? 999) - (b.generation ?? 999);
       });
       headUserId = mainInstructors[0].userId;
-      roleType = 'Head';
+      roleType = 'Supervisor';
     }
 
     // 모든 배정의 role 업데이트
