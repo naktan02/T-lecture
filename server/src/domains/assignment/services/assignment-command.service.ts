@@ -298,11 +298,15 @@ class AssignmentCommandService {
 
     // 후처리: 병렬 실행으로 최적화
     const assignedInstructorIds = Array.from(new Set(matchResults.map((m) => m.instructorId)));
-    const affectedUnitIds = Array.from(new Set(units.map((u) => u.id)));
+    const affectedTrainingPeriodIds = Array.from(
+      new Set(units.flatMap((u) => u.trainingPeriods.map((period) => period.id))),
+    );
 
     await Promise.all([
       ...assignedInstructorIds.map((id) => this.consumePriorityCredit(id)),
-      ...affectedUnitIds.map((id) => assignmentCommandRepository.recalculateRolesForUnit(id)),
+      ...affectedTrainingPeriodIds.map((id) =>
+        assignmentCommandRepository.recalculateRolesForTrainingPeriod(id),
+      ),
     ]);
 
     return { summary };
@@ -462,11 +466,14 @@ class AssignmentCommandService {
 
       if (scheduleIds.length > 0) {
         // 배치 쿼리로 한 번에 조회 (N+1 방지)
-        const unitIds = await assignmentQueryRepository.getUnitIdsByScheduleIds(scheduleIds);
+        const trainingPeriodIds =
+          await assignmentQueryRepository.getTrainingPeriodIdsByScheduleIds(scheduleIds);
 
         // 병렬 실행으로 최적화
         await Promise.all(
-          Array.from(unitIds).map((id) => assignmentCommandRepository.recalculateRolesForUnit(id)),
+          Array.from(trainingPeriodIds).map((id) =>
+            assignmentCommandRepository.recalculateRolesForTrainingPeriod(id),
+          ),
         );
       }
     }
@@ -489,20 +496,27 @@ class AssignmentCommandService {
   /**
    * 부대 인원고정 설정/해제
    */
-  async toggleStaffLock(unitId: number, isStaffLocked: boolean) {
-    const result = await assignmentCommandRepository.toggleStaffLock(unitId, isStaffLocked);
+  async toggleStaffLock(trainingPeriodId: number, isStaffLocked: boolean) {
+    const result = await assignmentCommandRepository.toggleStaffLock(
+      trainingPeriodId,
+      isStaffLocked,
+    );
     return result;
   }
 
   /**
    * 역할 변경 (관리자용)
    */
-  async updateRoleForUnit(
-    unitId: number,
+  async updateRoleForTrainingPeriod(
+    trainingPeriodId: number,
     instructorId: number,
     role: 'Head' | 'Supervisor' | null,
   ) {
-    return await assignmentCommandRepository.updateRoleForUnit(unitId, instructorId, role);
+    return await assignmentCommandRepository.updateRoleForTrainingPeriod(
+      trainingPeriodId,
+      instructorId,
+      role,
+    );
   }
 }
 

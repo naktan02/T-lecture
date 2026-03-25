@@ -33,8 +33,10 @@ export interface UnitScheduleDetail {
 
 export interface UnitSchedule {
   type: 'UNIT';
-  id: string; // "u-${unitId}-s-${scheduleId}-l-${locationId}" 형식
+  id: string; // "u-${unitId}-p-${trainingPeriodId}-s-${scheduleId}-l-${locationId}" 형식
+  groupKey?: string;
   trainingPeriodId: number; // 자동 배정용 교육기간 ID
+  trainingPeriodName?: string;
   unitName: string;
   originalPlace: string;
   actualCount: number | null; // 서버에서 계산된 참여인원
@@ -227,10 +229,10 @@ export const addAssignmentApi = async (
  * 부대 인원고정 설정/해제
  */
 export const toggleStaffLockApi = async (
-  unitId: number,
+  trainingPeriodId: number,
   isStaffLocked: boolean,
 ): Promise<{ message: string; result: unknown }> => {
-  const res = await apiClient(`/api/v1/assignments/unit/${unitId}/staff-lock`, {
+  const res = await apiClient(`/api/v1/assignments/training-period/${trainingPeriodId}/staff-lock`, {
     method: 'PATCH',
     body: JSON.stringify({ isStaffLocked }),
   });
@@ -329,8 +331,12 @@ export const getMyAssignmentsApi = async (): Promise<MyAssignmentsResponse> => {
 export interface AssignmentChangeSet {
   add: Array<{ unitScheduleId: number; instructorId: number; trainingLocationId: number | null }>;
   remove: Array<{ unitScheduleId: number; instructorId: number }>;
-  roleChanges: Array<{ unitId: number; instructorId: number; role: 'Head' | 'Supervisor' | null }>;
-  staffLockChanges: Array<{ unitId: number; isStaffLocked: boolean }>;
+  roleChanges: Array<{
+    trainingPeriodId: number;
+    instructorId: number;
+    role: 'Head' | 'Supervisor' | null;
+  }>;
+  staffLockChanges: Array<{ trainingPeriodId: number; isStaffLocked: boolean }>;
   stateChanges: Array<{
     unitScheduleId: number;
     instructorId: number;

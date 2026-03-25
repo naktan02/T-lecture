@@ -132,21 +132,19 @@ class AssignmentResponseService {
    * 자동 확정 체크
    */
   async checkAndAutoConfirm(unitScheduleId: number) {
-    const unitId = await assignmentQueryRepository.getUnitIdByScheduleId(unitScheduleId);
-    if (!unitId) return;
-
-    const unit = await assignmentQueryRepository.getUnitWithAssignments(unitId);
-    if (!unit) return;
-
-    const allPeriods = unit.trainingPeriods || [];
-    if (allPeriods.length === 0) return;
-
-    const allSchedules = allPeriods.flatMap((period) =>
-      period.schedules.map((schedule) => ({
-        ...schedule,
-        isStaffLocked: period.isStaffLocked ?? false,
-      })),
+    const trainingPeriodId = await assignmentQueryRepository.getTrainingPeriodIdByScheduleId(
+      unitScheduleId,
     );
+    if (!trainingPeriodId) return;
+
+    const trainingPeriod =
+      await assignmentQueryRepository.getTrainingPeriodWithAssignments(trainingPeriodId);
+    if (!trainingPeriod) return;
+
+    const allSchedules = (trainingPeriod.schedules || []).map((schedule) => ({
+      ...schedule,
+      isStaffLocked: trainingPeriod.isStaffLocked ?? false,
+    }));
 
     const hasAnyAssignment = allSchedules.some((s) => s.assignments.length > 0);
     if (!hasAnyAssignment) return;
@@ -179,7 +177,10 @@ class AssignmentResponseService {
     }
 
     if (allSchedulesFilled && allSchedules.length > 0) {
-      await assignmentCommandRepository.updateClassificationByUnit(unitId, 'Confirmed');
+      await assignmentCommandRepository.updateClassificationByTrainingPeriod(
+        trainingPeriodId,
+        'Confirmed',
+      );
     }
   }
 

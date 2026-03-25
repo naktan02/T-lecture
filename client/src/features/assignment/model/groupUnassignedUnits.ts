@@ -22,14 +22,16 @@ export interface LocationSchedule {
 
 // 부대별 그룹화된 미배정 데이터
 export interface GroupedUnassignedUnit {
+  groupKey: string;
   unitId: number;
+  trainingPeriodId: number; // 교육기간 ID (수정 API용)
+  trainingPeriodName?: string;
   unitName: string;
   region: string;
   totalRequired: number;
   uniqueDates: string[]; // 중복 제거된 날짜 목록
   locations: LocationSchedule[];
   detail: UnitScheduleDetail; // 부대 상세 정보
-  trainingPeriodId: number; // 교육기간 ID (수정 API용)
 }
 
 /**
@@ -43,30 +45,33 @@ export interface GroupedUnassignedUnit {
  * @returns 부대별 그룹화된 데이터
  */
 export const groupUnassignedUnits = (units: UnitSchedule[]): GroupedUnassignedUnit[] => {
-  const unitMap = new Map<number, GroupedUnassignedUnit>();
+  const unitMap = new Map<string, GroupedUnassignedUnit>();
 
   for (const unit of units) {
-    // id 형식: "u-${unitId}-s-${scheduleId}-l-${locationId}"
+    // id 형식: "u-${unitId}-p-${trainingPeriodId}-s-${scheduleId}-l-${locationId}"
     const parts = unit.id.split('-');
     const unitId = parseInt(parts[1], 10);
-    const scheduleId = parts[3];
-    const locationId = parts[5];
+    const scheduleId = parts[5];
+    const locationId = parts[7];
+    const groupKey = unit.groupKey || `${unitId}:${unit.trainingPeriodId}`;
 
     // 부대 초기화
-    if (!unitMap.has(unitId)) {
-      unitMap.set(unitId, {
+    if (!unitMap.has(groupKey)) {
+      unitMap.set(groupKey, {
+        groupKey,
         unitId,
+        trainingPeriodId: unit.trainingPeriodId,
+        trainingPeriodName: unit.trainingPeriodName,
         unitName: unit.unitName,
         region: unit.location,
         totalRequired: 0,
         uniqueDates: [],
         locations: [],
         detail: unit.detail,
-        trainingPeriodId: unit.trainingPeriodId, // 교육기간 ID 저장
       });
     }
 
-    const group = unitMap.get(unitId)!;
+    const group = unitMap.get(groupKey)!;
 
     // 장소 찾기 또는 추가
     let location = group.locations.find((l) => l.locationId === locationId);

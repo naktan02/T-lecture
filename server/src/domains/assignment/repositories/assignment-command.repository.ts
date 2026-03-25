@@ -3,7 +3,6 @@
 
 import prisma from '../../../libs/prisma';
 import { AssignmentState } from '../../../generated/prisma/client.js';
-import AppError from '../../../common/errors/AppError';
 import type {
   MatchResult,
   BulkCreateSummary,
@@ -108,15 +107,15 @@ class AssignmentCommandRepository {
   /**
    * 역할(role) 업데이트 - 관리자가 수동으로 설정
    */
-  async updateRoleForUnit(
-    unitId: number,
+  async updateRoleForTrainingPeriod(
+    trainingPeriodId: number,
     instructorId: number,
     role: 'Head' | 'Supervisor' | null,
   ): Promise<{ updated: number }> {
     // 1. 부대 전체 배정의 role 초기화
     await prisma.instructorUnitAssignment.updateMany({
       where: {
-        UnitSchedule: { trainingPeriod: { unitId } },
+        UnitSchedule: { trainingPeriodId },
         state: { in: ['Pending', 'Accepted'] },
       },
       data: { role: null },
@@ -127,7 +126,7 @@ class AssignmentCommandRepository {
     if (role) {
       const result = await prisma.instructorUnitAssignment.updateMany({
         where: {
-          UnitSchedule: { trainingPeriod: { unitId } },
+          UnitSchedule: { trainingPeriodId },
           userId: instructorId,
           state: { in: ['Pending', 'Accepted'] },
         },
@@ -142,18 +141,9 @@ class AssignmentCommandRepository {
   /**
    * 교육기간 인원고정 설정/해제
    */
-  async toggleStaffLock(unitId: number, isStaffLocked: boolean) {
-    const period = await prisma.trainingPeriod.findFirst({
-      where: { unitId },
-      select: { id: true },
-    });
-
-    if (!period) {
-      throw new AppError('대상 교육기간을 찾을 수 없습니다.', 404, 'NOT_FOUND');
-    }
-
+  async toggleStaffLock(trainingPeriodId: number, isStaffLocked: boolean) {
     return await prisma.trainingPeriod.update({
-      where: { id: period.id },
+      where: { id: trainingPeriodId },
       data: { isStaffLocked },
     });
   }
@@ -179,12 +169,15 @@ class AssignmentCommandRepository {
   /**
    * 부대의 모든 배정을 일괄 확정 (Accepted 상태인 것만)
    */
-  async updateClassificationByUnit(unitId: number, classification: 'Temporary' | 'Confirmed') {
-    const periods = await prisma.trainingPeriod.findMany({
-      where: { unitId: unitId },
-      include: { schedules: { select: { id: true } } },
+  async updateClassificationByTrainingPeriod(
+    trainingPeriodId: number,
+    classification: 'Temporary' | 'Confirmed',
+  ) {
+    const schedules = await prisma.unitSchedule.findMany({
+      where: { trainingPeriodId },
+      select: { id: true },
     });
-    const scheduleIds = periods.flatMap((p) => p.schedules.map((s) => s.id));
+    const scheduleIds = schedules.map((s) => s.id);
 
     if (scheduleIds.length === 0) return { count: 0 };
 
@@ -346,7 +339,7 @@ class AssignmentCommandRepository {
         for (const rc of changes.roleChanges) {
           await tx.instructorUnitAssignment.updateMany({
             where: {
-              UnitSchedule: { trainingPeriod: { unitId: rc.unitId } },
+              UnitSchedule: { trainingPeriodId: rc.trainingPeriodId },
               state: { in: ['Pending', 'Accepted'] },
             },
             data: { role: null },
@@ -355,7 +348,7 @@ class AssignmentCommandRepository {
           if (rc.role) {
             await tx.instructorUnitAssignment.updateMany({
               where: {
-                UnitSchedule: { trainingPeriod: { unitId: rc.unitId } },
+                UnitSchedule: { trainingPeriodId: rc.trainingPeriodId },
                 userId: rc.instructorId,
                 state: { in: ['Pending', 'Accepted'] },
               },
@@ -369,15 +362,10 @@ class AssignmentCommandRepository {
       // 4. 인원고정 변경
       if (changes.staffLockChanges && changes.staffLockChanges.length > 0) {
         for (const slc of changes.staffLockChanges) {
-          const period = await tx.trainingPeriod.findFirst({
-            where: { unitId: slc.unitId },
+          await tx.trainingPeriod.update({
+            where: { id: slc.trainingPeriodId },
+            data: { isStaffLocked: slc.isStaffLocked },
           });
-          if (period) {
-            await tx.trainingPeriod.update({
-              where: { id: period.id },
-              data: { isStaffLocked: slc.isStaffLocked },
-            });
-          }
           results.staffLocksUpdated++;
         }
       }
@@ -405,10 +393,10 @@ class AssignmentCommandRepository {
   /**
    * 부대의 역할(Head/Supervisor) 재계산
    */
-  async recalculateRolesForUnit(unitId: number): Promise<{ updated: number }> {
+  async recalculateRolesForTrainingPeriod(trainingPeriodId: number): Promise<{ updated: number }> {
     const assignments = await prisma.instructorUnitAssignment.findMany({
       where: {
-        UnitSchedule: { trainingPeriod: { unitId } },
+        UnitSchedule: { trainingPeriodId },
         state: { in: ['Pending', 'Accepted'] },
       },
       include: {
@@ -466,7 +454,7 @@ class AssignmentCommandRepository {
     // 모든 배정의 role 업데이트
     await prisma.instructorUnitAssignment.updateMany({
       where: {
-        UnitSchedule: { trainingPeriod: { unitId } },
+        UnitSchedule: { trainingPeriodId },
         state: { in: ['Pending', 'Accepted'] },
       },
       data: { role: null },
@@ -476,7 +464,7 @@ class AssignmentCommandRepository {
     if (headUserId && roleType) {
       const result = await prisma.instructorUnitAssignment.updateMany({
         where: {
-          UnitSchedule: { trainingPeriod: { unitId } },
+          UnitSchedule: { trainingPeriodId },
           userId: headUserId,
           state: { in: ['Pending', 'Accepted'] },
         },

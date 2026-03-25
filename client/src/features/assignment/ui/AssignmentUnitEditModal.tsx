@@ -1,7 +1,7 @@
 // src/features/assignment/ui/AssignmentUnitEditModal.tsx
 // 배정 페이지 전용 부대 편집 모달
 // - 부대 기본정보: 읽기전용 헤더
-// - 현재 교육기간만 표시 (다른 기간은 표시 안함)
+// - 현재 선택된 교육기간만 표시 (다른 기간은 표시 안함)
 // - 교육기간 일정 수정 가능 (시작일, 종료일, 불가일자)
 // - 기본정보/장소정보 수정 가능
 // - 이미 가져온 데이터 활용 (추가 API 호출 최소화)
@@ -134,7 +134,7 @@ export const AssignmentUnitEditModal: React.FC<Props> = ({
 
     return {
       id: trainingPeriodId,
-      name: '', // 교육기간 이름은 API에서 제공하지 않음
+      name: unit.trainingPeriodName || '',
       workStartTime: formatTimeForInput(detail.workStartTime),
       workEndTime: formatTimeForInput(detail.workEndTime),
       lunchStartTime: formatTimeForInput(detail.lunchStartTime),

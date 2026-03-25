@@ -11,7 +11,7 @@ import type { AssignmentData } from '../model/useAssignment';
 
 // ID 기반 선택 키
 type SelectionKey =
-  | { type: 'UNIT'; unitId: number }
+  | { type: 'UNIT'; groupKey: string }
   | { type: 'INSTRUCTOR'; instructorId: number }
   | null;
 
@@ -23,7 +23,10 @@ interface CalendarPopup {
 }
 
 export interface AssignmentGroup {
+  groupKey: string;
   unitId: number;
+  trainingPeriodId: number;
+  trainingPeriodName?: string;
   unitName: string;
   region: string;
   period: string;
@@ -68,7 +71,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
   const [unitSearch, setUnitSearch] = useState('');
   const [instructorSearch, setInstructorSearch] = useState('');
 
-  type ModalKey = { unitId: number; bucket: 'PENDING' | 'ACCEPTED' } | null;
+  type ModalKey = { groupKey: string; bucket: 'PENDING' | 'ACCEPTED' } | null;
   const [detailModalKey, setDetailModalKey] = useState<ModalKey>(null);
 
   // 표 모달 상태: 'PENDING' = 배정 작업 공간, 'ACCEPTED' = 확정 배정
@@ -79,9 +82,9 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
   // 표에서 선택된 그룹 (상세 모달용)
   const tableDetailGroup =
     tableDetailKey?.bucket === 'PENDING'
-      ? assignments.find((g) => g.unitId === tableDetailKey.unitId)
+      ? assignments.find((g) => g.groupKey === tableDetailKey.groupKey)
       : tableDetailKey?.bucket === 'ACCEPTED'
-        ? confirmedAssignments.find((g) => g.unitId === tableDetailKey.unitId)
+        ? confirmedAssignments.find((g) => g.groupKey === tableDetailKey.groupKey)
         : null;
 
   // 그룹에서 유니크 강사 이름 추출 헬퍼
@@ -138,7 +141,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
   // 실시간 데이터 조회 (ID로 최신 데이터 찾기)
   const selectedUnit =
     selectionKey?.type === 'UNIT'
-      ? groupedUnassignedUnits.find((u) => u.unitId === selectionKey.unitId)
+      ? groupedUnassignedUnits.find((u) => u.groupKey === selectionKey.groupKey)
       : null;
 
   // 선택된 부대에 배정된 날짜들 계산 (실제로 강사가 배정된 날짜만)
@@ -150,7 +153,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
 
     // 해당 unitId에 일치하는 그룹에서 실제 배정된 날짜만 추출
     for (const group of allGroups) {
-      if (group.unitId === selectedUnit.unitId) {
+      if (group.groupKey === selectedUnit.groupKey) {
         // trainingLocations.dates에서 실제 강사가 배정된 날짜만 추출
         const locations = group.trainingLocations as Array<{
           dates?: Array<{
@@ -181,9 +184,9 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
 
   const currentGroup =
     detailModalKey?.bucket === 'PENDING'
-      ? assignments.find((g) => g.unitId === detailModalKey.unitId)
+      ? assignments.find((g) => g.groupKey === detailModalKey.groupKey)
       : detailModalKey?.bucket === 'ACCEPTED'
-        ? confirmedAssignments.find((g) => g.unitId === detailModalKey.unitId)
+        ? confirmedAssignments.find((g) => g.groupKey === detailModalKey.groupKey)
         : null;
 
   // 데이터 삭제 시 모달 자동 닫기
@@ -428,10 +431,10 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
       <div className="flex-1 p-4 grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-min md:auto-rows-fr overflow-y-auto md:overflow-hidden bg-gray-100">
         {/* Left Column */}
         <div className="flex flex-col gap-4 h-fit md:h-auto md:overflow-hidden">
-          {/* Panel 1: 미배정 부대 (교육단위별 그룹화) */}
+          {/* Panel 1: 미배정 부대 (교육기간별 그룹화) */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden h-fit max-h-[35vh] md:flex-1 md:h-auto md:max-h-none">
             <div className="p-3 bg-red-50 border-b border-red-100 border-l-4 border-l-red-500 font-bold text-gray-700 flex justify-between items-center gap-2">
-              <span className="flex items-center gap-2 shrink-0">📋 배정 대상 부대 (부대별)</span>
+              <span className="flex items-center gap-2 shrink-0">📋 배정 대상 부대 (교육기간별)</span>
               <input
                 type="text"
                 placeholder="부대 검색..."
@@ -460,8 +463,8 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
                   )
                   .map((unit) => (
                     <div
-                      key={unit.unitId}
-                      onClick={() => setSelectionKey({ type: 'UNIT', unitId: unit.unitId })}
+                      key={unit.groupKey}
+                      onClick={() => setSelectionKey({ type: 'UNIT', groupKey: unit.groupKey })}
                       className="bg-white border border-gray-200 rounded-lg p-2.5 cursor-pointer hover:shadow-md hover:border-red-300 transition-all border-l-4 border-l-transparent hover:border-l-red-400 group"
                     >
                       <div className="font-bold text-gray-800 text-xs flex justify-between items-center mb-1">
@@ -474,6 +477,11 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
                           )}
                         </div>
                       </div>
+                      {unit.trainingPeriodName && (
+                        <div className="text-[10px] text-indigo-600 mb-1">
+                          {unit.trainingPeriodName}
+                        </div>
+                      )}
                       <div className="text-[10px] text-gray-500 mb-1">📍 {unit.region}</div>
                       <div className="flex flex-wrap gap-0.5">
                         {unit.uniqueDates.slice(0, 3).map((date, idx) => (
@@ -649,8 +657,10 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
                 <div className="space-y-2">
                   {filteredAssignments.map((group) => (
                     <div
-                      key={group.unitId}
-                      onClick={() => setDetailModalKey({ unitId: group.unitId, bucket: 'PENDING' })}
+                      key={group.groupKey}
+                      onClick={() =>
+                        setDetailModalKey({ groupKey: group.groupKey, bucket: 'PENDING' })
+                      }
                       className={`bg-white border border-gray-200 rounded-lg p-2.5 shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 ${
                         group.totalAssigned === 0
                           ? 'border-l-gray-400 bg-gray-50/70'
@@ -660,6 +670,11 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
                       <div className="flex justify-between items-start mb-1">
                         <div>
                           <h3 className="font-bold text-gray-800 text-sm">{group.unitName}</h3>
+                          {group.trainingPeriodName && (
+                            <div className="text-[10px] text-indigo-600 mt-0.5">
+                              {group.trainingPeriodName}
+                            </div>
+                          )}
                           <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">
                             {group.region}
                           </span>
@@ -784,15 +799,20 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
                 <div className="space-y-2">
                   {confirmedAssignments.map((group) => (
                     <div
-                      key={group.unitId}
+                      key={group.groupKey}
                       onClick={() =>
-                        setDetailModalKey({ unitId: group.unitId, bucket: 'ACCEPTED' })
+                        setDetailModalKey({ groupKey: group.groupKey, bucket: 'ACCEPTED' })
                       }
                       className="bg-white border border-gray-200 rounded-lg p-2.5 shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 border-l-blue-500"
                     >
                       <div className="flex justify-between items-start">
                         <div>
                           <h3 className="font-bold text-gray-800 text-sm">{group.unitName}</h3>
+                          {group.trainingPeriodName && (
+                            <div className="text-[10px] text-indigo-600 mt-0.5">
+                              {group.trainingPeriodName}
+                            </div>
+                          )}
                           <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">
                             {group.region}
                           </span>
@@ -949,11 +969,11 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
                       const status = getStatusLabel(group);
                       return (
                         <tr
-                          key={group.unitId}
+                          key={group.groupKey}
                           className="hover:bg-blue-50/50 transition-colors cursor-pointer"
                           onClick={() =>
                             setTableDetailKey({
-                              unitId: group.unitId,
+                              groupKey: group.groupKey,
                               bucket: tableModal === 'PENDING' ? 'PENDING' : 'ACCEPTED',
                             })
                           }
@@ -962,7 +982,12 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
                             {idx + 1}
                           </td>
                           <td className="px-3 py-2 border border-gray-200 font-medium text-gray-800">
-                            {group.unitName}
+                            <div>{group.unitName}</div>
+                            {group.trainingPeriodName && (
+                              <div className="text-[10px] text-indigo-600 mt-0.5">
+                                {group.trainingPeriodName}
+                              </div>
+                            )}
                           </td>
                           <td className="px-3 py-2 border border-gray-200 text-gray-600">
                             {group.region}

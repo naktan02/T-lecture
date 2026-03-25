@@ -81,6 +81,11 @@ export const UnassignedUnitDetailModal: React.FC<Props> = ({
                     {localUnit.locations.length}개 장소
                   </span>
                 )}
+                {localUnit.trainingPeriodName && (
+                  <span className="text-sm font-medium text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md">
+                    {localUnit.trainingPeriodName}
+                  </span>
+                )}
               </h2>
               <p className="text-sm text-gray-500 mt-1">
                 📍 {localUnit.region} | 📅 {localUnit.uniqueDates.length}일 | 👤 총{' '}
@@ -109,6 +114,7 @@ export const UnassignedUnitDetailModal: React.FC<Props> = ({
               <h3 className="font-bold text-gray-700 mb-3">🏢 부대 정보</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                 <InfoRow label="부대명" value={localUnit.unitName} />
+                <InfoRow label="교육기간명" value={String(localUnit.trainingPeriodName || '-')} />
                 <InfoRow label="광역" value={String(detail.wideArea || '-')} />
                 <InfoRow label="지역" value={localUnit.region} />
                 <InfoRow label="부대주소" value={String(detail.address || '-')} isLong />

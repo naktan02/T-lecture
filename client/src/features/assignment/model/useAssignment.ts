@@ -31,7 +31,10 @@ interface SourceData {
 
 // AssignmentGroup과 호환되는 타입
 export interface AssignmentData {
+  groupKey: string;
   unitId: number;
+  trainingPeriodId: number;
+  trainingPeriodName?: string;
   unitName: string;
   region: string;
   period: string;
@@ -69,7 +72,7 @@ interface UseAssignmentReturn {
     instructorId: number,
     trainingLocationId: number | null,
   ) => Promise<void>;
-  toggleStaffLock: (unitId: number, isStaffLocked: boolean) => Promise<void>; // 인원고정
+  toggleStaffLock: (trainingPeriodId: number, isStaffLocked: boolean) => Promise<void>; // 인원고정
   fetchData: () => Promise<void>;
   executeAutoAssign: () => Promise<void>;
   sendTemporaryMessages: () => Promise<void>;
@@ -280,10 +283,13 @@ export const useAssignment = (): UseAssignmentReturn => {
   };
 
   // 부대 인원고정 설정/해제
-  const toggleStaffLock = async (unitId: number, isStaffLocked: boolean): Promise<void> => {
+  const toggleStaffLock = async (
+    trainingPeriodId: number,
+    isStaffLocked: boolean,
+  ): Promise<void> => {
     try {
       setLoading(true);
-      await toggleStaffLockApi(unitId, isStaffLocked);
+      await toggleStaffLockApi(trainingPeriodId, isStaffLocked);
       showSuccess(isStaffLocked ? '인원고정 설정 완료' : '인원고정 해제');
       await fetchData();
     } catch (e) {

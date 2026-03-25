@@ -44,6 +44,12 @@ router.patch(
   requireRole('ADMIN'),
   assignmentController.toggleStaffLock,
 );
+router.patch(
+  '/training-period/:trainingPeriodId/staff-lock',
+  auth,
+  requireRole('ADMIN'),
+  assignmentController.toggleStaffLock,
+);
 
 // 관리자: 일괄 배정 업데이트 (모달 저장)
 router.post('/batch-update', auth, requireRole('ADMIN'), assignmentController.batchUpdate);

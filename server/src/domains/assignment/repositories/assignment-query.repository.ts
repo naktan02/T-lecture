@@ -362,64 +362,71 @@ class AssignmentQueryRepository {
   /**
    * 스케줄 ID로 부대 ID 조회
    */
-  async getUnitIdByScheduleId(unitScheduleId: number): Promise<number | null> {
+  async getTrainingPeriodIdByScheduleId(unitScheduleId: number): Promise<number | null> {
     const schedule = await prisma.unitSchedule.findUnique({
       where: { id: unitScheduleId },
-      select: { trainingPeriod: { select: { unitId: true } } },
+      select: { trainingPeriodId: true },
     });
-    return schedule?.trainingPeriod?.unitId ?? null;
+    return schedule?.trainingPeriodId ?? null;
   }
 
   /**
    * 여러 스케줄 ID로 부대 ID 목록 한 번에 조회 (배치)
    */
-  async getUnitIdsByScheduleIds(scheduleIds: number[]): Promise<Set<number>> {
+  async getTrainingPeriodIdsByScheduleIds(scheduleIds: number[]): Promise<Set<number>> {
     if (!scheduleIds || scheduleIds.length === 0) return new Set();
 
     const schedules = await prisma.unitSchedule.findMany({
       where: { id: { in: scheduleIds } },
-      select: { trainingPeriod: { select: { unitId: true } } },
+      select: { trainingPeriodId: true },
     });
 
-    const unitIds = new Set<number>();
+    const trainingPeriodIds = new Set<number>();
     for (const s of schedules) {
-      if (s.trainingPeriod?.unitId) {
-        unitIds.add(s.trainingPeriod.unitId);
+      if (s.trainingPeriodId) {
+        trainingPeriodIds.add(s.trainingPeriodId);
       }
     }
-    return unitIds;
+    return trainingPeriodIds;
   }
 
   /**
    * 부대의 모든 스케줄과 배정 정보 조회 (장소별 필요 인원 포함)
    */
-  async getUnitWithAssignments(unitId: number) {
-    return await prisma.unit.findUnique({
-      where: { id: unitId },
+  async getTrainingPeriodWithAssignments(trainingPeriodId: number) {
+    return await prisma.trainingPeriod.findUnique({
+      where: { id: trainingPeriodId },
       select: {
         id: true,
+        unitId: true,
         name: true,
-        trainingPeriods: {
+        isStaffLocked: true,
+        unit: {
           select: {
             id: true,
-            isStaffLocked: true,
-            locations: {
+            name: true,
+          },
+        },
+        locations: {
+          select: {
+            id: true,
+            scheduleLocations: {
               select: {
-                id: true,
-                scheduleLocations: {
-                  select: { actualCount: true, unitScheduleId: true },
-                },
+                actualCount: true,
+                plannedCount: true,
+                requiredCount: true,
+                unitScheduleId: true,
               },
             },
-            schedules: {
-              select: {
-                id: true,
-                scheduleLocations: true,
-                assignments: {
-                  where: { state: { in: ['Pending', 'Accepted'] } },
-                  select: { userId: true, state: true, trainingLocationId: true },
-                },
-              },
+          },
+        },
+        schedules: {
+          select: {
+            id: true,
+            scheduleLocations: true,
+            assignments: {
+              where: { state: { in: ['Pending', 'Accepted'] } },
+              select: { userId: true, state: true, trainingLocationId: true },
             },
           },
         },

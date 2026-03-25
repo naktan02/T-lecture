@@ -74,7 +74,10 @@ interface TrainingLocation {
 }
 
 interface AssignmentGroup {
+  groupKey: string;
   unitId: number;
+  trainingPeriodId: number;
+  trainingPeriodName?: string;
   unitName: string;
   region: string;
   period: string;
@@ -441,28 +444,35 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
   const handleRoleChange = useCallback(
     (instructorId: number, role: 'Head' | 'Supervisor' | null) => {
       setChangeSet((prev) => {
-        // 같은 부대에 대한 기존 roleChange 제거 후 새로 추가
-        const filtered = prev.roleChanges.filter((rc) => rc.unitId !== group.unitId);
+        // 같은 교육기간에 대한 기존 roleChange 제거 후 새로 추가
+        const filtered = prev.roleChanges.filter(
+          (rc) => rc.trainingPeriodId !== group.trainingPeriodId,
+        );
         return {
           ...prev,
-          roleChanges: [...filtered, { unitId: group.unitId, instructorId, role }],
+          roleChanges: [
+            ...filtered,
+            { trainingPeriodId: group.trainingPeriodId, instructorId, role },
+          ],
         };
       });
       setShowRoleSelector(null);
     },
-    [group.unitId],
+    [group.trainingPeriodId],
   );
 
   // 현재 역할 가져오기 (로컬 변경 우선)
   const getCurrentRole = useCallback(
     (instructorId: number, serverRole: string | null | undefined): string | null => {
-      const localChange = changeSet.roleChanges.find((rc) => rc.unitId === group.unitId);
+      const localChange = changeSet.roleChanges.find(
+        (rc) => rc.trainingPeriodId === group.trainingPeriodId,
+      );
       if (localChange) {
         return localChange.instructorId === instructorId ? localChange.role : null;
       }
       return serverRole ?? null;
     },
-    [changeSet.roleChanges, group.unitId],
+    [changeSet.roleChanges, group.trainingPeriodId],
   );
 
   // 모든 배정 강사 목록 (중복 제거):  서버 데이터 + 로컈 추가, 로컈 삭제 반영
@@ -561,6 +571,11 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
               <span className="text-sm font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded-md">
                 {group.region}
               </span>
+              {group.trainingPeriodName && (
+                <span className="text-sm font-medium text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md">
+                  {group.trainingPeriodName}
+                </span>
+              )}
             </h2>
             <div className="flex items-center gap-4 mt-1">
               <p className="text-sm text-gray-500">📅 교육 기간: {group.period}</p>
@@ -585,7 +600,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                     checked={(() => {
                       // 로컬 변경 우선.
                       const localChange = changeSet.staffLockChanges.find(
-                        (slc) => slc.unitId === group.unitId,
+                        (slc) => slc.trainingPeriodId === group.trainingPeriodId,
                       );
                       if (localChange !== undefined) {
                         return localChange.isStaffLocked;
@@ -597,8 +612,13 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                       setChangeSet((prev) => ({
                         ...prev,
                         staffLockChanges: [
-                          ...prev.staffLockChanges.filter((slc) => slc.unitId !== group.unitId),
-                          { unitId: group.unitId, isStaffLocked: e.target.checked },
+                          ...prev.staffLockChanges.filter(
+                            (slc) => slc.trainingPeriodId !== group.trainingPeriodId,
+                          ),
+                          {
+                            trainingPeriodId: group.trainingPeriodId,
+                            isStaffLocked: e.target.checked,
+                          },
                         ],
                       }));
                     }}
@@ -643,7 +663,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                       {(() => {
                         // 로컬 변경 우선 확인
                         const localChange = changeSet.roleChanges.find(
-                          (rc) => rc.unitId === group.unitId,
+                          (rc) => rc.trainingPeriodId === group.trainingPeriodId,
                         );
                         if (localChange) {
                           const changedInst = allAssignedInstructors.find(
@@ -997,7 +1017,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                       {(() => {
                         // 인원고정 상태 확인 (로컬 변경 우선, 없으면 서버 값)
                         const localChange = changeSet.staffLockChanges.find(
-                          (slc) => slc.unitId === group.unitId,
+                          (slc) => slc.trainingPeriodId === group.trainingPeriodId,
                         );
                         const isStaffLocked =
                           localChange !== undefined
