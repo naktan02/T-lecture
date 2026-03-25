@@ -9,6 +9,31 @@ import {
 import AppError from '../../../common/errors/AppError';
 
 class AssignmentResponseService {
+  private calculateRequiredForSchedule(
+    schedule: {
+      scheduleLocations?: Array<{
+        requiredCount?: number | null;
+        actualCount?: number | null;
+        plannedCount?: number | null;
+      }>;
+    },
+    traineesPerInstructor: number,
+  ): number {
+    const scheduleLocations = schedule.scheduleLocations || [];
+    if (scheduleLocations.length === 0) {
+      return 2;
+    }
+
+    return scheduleLocations.reduce((sum, scheduleLocation) => {
+      if (scheduleLocation.requiredCount && scheduleLocation.requiredCount > 0) {
+        return sum + scheduleLocation.requiredCount;
+      }
+
+      const headcount = scheduleLocation.actualCount ?? scheduleLocation.plannedCount ?? 0;
+      return sum + (Math.floor(headcount / Math.max(1, traineesPerInstructor)) || 1);
+    }, 0);
+  }
+
   /**
    * 시스템 설정 숫자 값 조회
    */
@@ -107,48 +132,54 @@ class AssignmentResponseService {
    * 자동 확정 체크
    */
   async checkAndAutoConfirm(unitScheduleId: number) {
-    const unitId = await assignmentQueryRepository.getUnitIdByScheduleId(unitScheduleId);
-    if (!unitId) return;
+    const trainingPeriodId =
+      await assignmentQueryRepository.getTrainingPeriodIdByScheduleId(unitScheduleId);
+    if (!trainingPeriodId) return;
 
-    const unit = await assignmentQueryRepository.getUnitWithAssignments(unitId);
-    if (!unit) return;
+    const trainingPeriod =
+      await assignmentQueryRepository.getTrainingPeriodWithAssignments(trainingPeriodId);
+    if (!trainingPeriod) return;
 
-    const firstPeriod = unit.trainingPeriods[0];
-    if (!firstPeriod) return;
-
-    const allSchedules = firstPeriod.schedules;
-    const allLocations = firstPeriod.locations;
+    const allSchedules = (trainingPeriod.schedules || []).map((schedule) => ({
+      ...schedule,
+      isStaffLocked: trainingPeriod.isStaffLocked ?? false,
+    }));
 
     const hasAnyAssignment = allSchedules.some((s) => s.assignments.length > 0);
     if (!hasAnyAssignment) return;
 
-    const isStaffLocked = firstPeriod.isStaffLocked ?? false;
-
     const traineesPerInstructor = await this.getTraineesPerInstructor();
-    const totalRequiredPerSchedule = allLocations.reduce((sum, loc) => {
-      const actualCount = loc.scheduleLocations?.[0]?.actualCount || 0;
-      return sum + (Math.floor(actualCount / Math.max(1, traineesPerInstructor)) || 1);
-    }, 0);
-
     let allSchedulesFilled = true;
 
     for (const schedule of allSchedules) {
       const acceptedCount = schedule.assignments.filter((a) => a.state === 'Accepted').length;
       const pendingCount = schedule.assignments.filter((a) => a.state === 'Pending').length;
+      const requiredCount = this.calculateRequiredForSchedule(schedule, traineesPerInstructor);
 
       if (pendingCount > 0) {
         allSchedulesFilled = false;
         break;
       }
 
-      if (!isStaffLocked && acceptedCount < totalRequiredPerSchedule) {
+      if (schedule.isStaffLocked) {
+        if (acceptedCount === 0) {
+          allSchedulesFilled = false;
+          break;
+        }
+        continue;
+      }
+
+      if (acceptedCount < requiredCount) {
         allSchedulesFilled = false;
         break;
       }
     }
 
     if (allSchedulesFilled && allSchedules.length > 0) {
-      await assignmentCommandRepository.updateClassificationByUnit(unitId, 'Confirmed');
+      await assignmentCommandRepository.updateClassificationByTrainingPeriod(
+        trainingPeriodId,
+        'Confirmed',
+      );
     }
   }
 

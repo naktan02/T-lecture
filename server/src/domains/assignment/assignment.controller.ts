@@ -197,18 +197,18 @@ export const bulkSaveAssignments = asyncHandler(async (req: Request, res: Respon
 
 // [부대 인원고정 설정/해제]
 export const toggleStaffLock = asyncHandler(async (req: Request, res: Response) => {
-  const unitId = Number(req.params.unitId);
+  const trainingPeriodId = Number(req.params.trainingPeriodId);
   const { isStaffLocked } = req.body;
 
-  if (!Number.isFinite(unitId)) {
-    throw new AppError('unitId가 필요합니다.', 400, 'VALIDATION_ERROR');
+  if (!Number.isFinite(trainingPeriodId)) {
+    throw new AppError('trainingPeriodId가 필요합니다.', 400, 'VALIDATION_ERROR');
   }
 
   if (typeof isStaffLocked !== 'boolean') {
     throw new AppError('isStaffLocked(boolean)가 필요합니다.', 400, 'VALIDATION_ERROR');
   }
 
-  const result = await assignmentService.toggleStaffLock(unitId, isStaffLocked);
+  const result = await assignmentService.toggleStaffLock(trainingPeriodId, isStaffLocked);
   res.status(200).json({
     message: isStaffLocked ? '인원고정 설정 완료' : '인원고정 해제',
     result,
@@ -261,10 +261,10 @@ export const batchUpdate = asyncHandler(async (req: Request, res: Response) => {
 
 // [역할 변경] 관리자가 수동으로 총괄/책임강사 역할 변경
 export const updateRole = asyncHandler(async (req: Request, res: Response) => {
-  const { unitId, instructorId, role } = req.body;
+  const { trainingPeriodId, instructorId, role } = req.body;
 
-  if (!unitId || instructorId === undefined) {
-    throw new AppError('unitId와 instructorId가 필요합니다.', 400, 'VALIDATION_ERROR');
+  if (!trainingPeriodId || instructorId === undefined) {
+    throw new AppError('trainingPeriodId와 instructorId가 필요합니다.', 400, 'VALIDATION_ERROR');
   }
 
   // role 유효성 검사
@@ -272,8 +272,8 @@ export const updateRole = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('role은 Head, Supervisor, 또는 null이어야 합니다.', 400, 'VALIDATION_ERROR');
   }
 
-  const result = await assignmentService.updateRoleForUnit(
-    Number(unitId),
+  const result = await assignmentService.updateRoleForTrainingPeriod(
+    Number(trainingPeriodId),
     Number(instructorId),
     role || null,
   );

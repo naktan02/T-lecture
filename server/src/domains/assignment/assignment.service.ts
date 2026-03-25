@@ -69,12 +69,12 @@ class AssignmentService {
     add: Array<{ unitScheduleId: number; instructorId: number; trainingLocationId: number | null }>;
     remove: Array<{ unitScheduleId: number; instructorId: number }>;
     roleChanges?: Array<{
-      unitId: number;
+      trainingPeriodId: number;
       instructorId: number;
       role: 'Head' | 'Supervisor' | null;
     }>;
     staffLockChanges?: Array<{
-      unitId: number;
+      trainingPeriodId: number;
       isStaffLocked: boolean;
     }>;
     stateChanges?: Array<{
@@ -86,12 +86,20 @@ class AssignmentService {
     return assignmentCommandService.batchUpdateAssignments(changes);
   }
 
-  toggleStaffLock(unitId: number, isStaffLocked: boolean) {
-    return assignmentCommandService.toggleStaffLock(unitId, isStaffLocked);
+  toggleStaffLock(trainingPeriodId: number, isStaffLocked: boolean) {
+    return assignmentCommandService.toggleStaffLock(trainingPeriodId, isStaffLocked);
   }
 
-  updateRoleForUnit(unitId: number, instructorId: number, role: 'Head' | 'Supervisor' | null) {
-    return assignmentCommandService.updateRoleForUnit(unitId, instructorId, role);
+  updateRoleForTrainingPeriod(
+    trainingPeriodId: number,
+    instructorId: number,
+    role: 'Head' | 'Supervisor' | null,
+  ) {
+    return assignmentCommandService.updateRoleForTrainingPeriod(
+      trainingPeriodId,
+      instructorId,
+      role,
+    );
   }
 
   // =============================================================================

@@ -81,84 +81,28 @@ class AssignmentDTO {
   mapUnitsToCards(units: UnitRaw[]) {
     const list: unknown[] = [];
     units.forEach((unit) => {
-      // 첫 번째 TrainingPeriod 가져오기
-      const period = unit.trainingPeriods[0];
-      if (!period) return; // TrainingPeriod가 없으면 스킵
+      for (const period of unit.trainingPeriods || []) {
+        const locations =
+          period.locations && period.locations.length > 0
+            ? period.locations
+            : [{ id: 'def', originalPlace: '교육장소 미정' }];
 
-      // 1. 교육장소 목록 준비 (TrainingPeriod.locations)
-      const locations =
-        period.locations && period.locations.length > 0
-          ? period.locations
-          : [{ id: 'def', originalPlace: '교육장소 미정' }];
+        (period.schedules || []).forEach((schedule: ScheduleRaw) => {
+          const dateStr = toKSTDateString(schedule.date);
+          const scheduleLocs = schedule.scheduleLocations || [];
 
-      // 2. 스케줄(날짜)별로 반복 (TrainingPeriod.schedules)
-      (period.schedules || []).forEach((schedule: ScheduleRaw) => {
-        const dateStr = toKSTDateString(schedule.date);
-        const scheduleLocs = schedule.scheduleLocations || [];
-
-        // ScheduleLocation 기반으로 반복 (실제 매핑된 장소만)
-        if (scheduleLocs.length === 0) {
-          // 매핑된 장소가 없으면 첫 번째 장소 또는 기본 장소로 카드 생성
-          const defaultLoc = locations[0] || { id: 'def', originalPlace: '교육장소 미정' };
-          list.push({
-            type: 'UNIT',
-            id: `u-${unit.id}-s-${schedule.id}-l-${defaultLoc.id}`,
-            trainingPeriodId: period.id,
-            unitName: unit.name,
-            originalPlace: defaultLoc.originalPlace,
-            actualCount: 0,
-            requiredCount: null,
-            date: dateStr,
-            time: toKSTTimeString(period.workStartTime),
-            location: unit.region,
-            detail: {
-              unitName: unit.name,
-              region: unit.region,
-              wideArea: unit.wideArea,
-              address: unit.addressDetail,
-              detailAddress: unit.detailAddress,
-              officerName: period.officerName,
-              officerPhone: period.officerPhone,
-              officerEmail: period.officerEmail,
-              originalPlace: defaultLoc.originalPlace,
-              changedPlace: (defaultLoc as TrainingLocationRaw).changedPlace || null,
-              plannedCount: 0,
-              actualCount: 0,
-              note: (defaultLoc as TrainingLocationRaw).note || null,
-              educationStart: period.schedules[0]
-                ? toKSTDateString(period.schedules[0].date)
-                : null,
-              educationEnd: period.schedules[period.schedules.length - 1]
-                ? toKSTDateString(period.schedules[period.schedules.length - 1].date)
-                : null,
-              workStartTime: toKSTTimeString(period.workStartTime),
-              workEndTime: toKSTTimeString(period.workEndTime),
-              lunchStartTime: toKSTTimeString(period.lunchStartTime),
-              lunchEndTime: toKSTTimeString(period.lunchEndTime),
-              hasInstructorLounge: (defaultLoc as TrainingLocationRaw).hasInstructorLounge || false,
-              hasWomenRestroom: (defaultLoc as TrainingLocationRaw).hasWomenRestroom || false,
-              hasCateredMeals: period.hasCateredMeals,
-              hasHallLodging: period.hasHallLodging,
-              allowsPhoneBeforeAfter: period.allowsPhoneBeforeAfter,
-              excludedDates: (period.excludedDates as string[]) || [],
-            },
-          });
-        } else {
-          // 실제 매핑된 장소만 카드 생성
-          scheduleLocs.forEach((sl) => {
-            const loc = locations.find(
-              (l: TrainingLocationRaw) => l.id === sl.trainingLocationId,
-            ) as TrainingLocationRaw | undefined;
-            if (!loc) return; // 장소가 삭제된 경우 스킵
-
+          if (scheduleLocs.length === 0) {
+            const defaultLoc = locations[0] || { id: 'def', originalPlace: '교육장소 미정' };
             list.push({
               type: 'UNIT',
-              id: `u-${unit.id}-s-${schedule.id}-l-${loc.id}`,
+              id: `u-${unit.id}-p-${period.id}-s-${schedule.id}-l-${defaultLoc.id}`,
+              groupKey: `${unit.id}:${period.id}`,
               trainingPeriodId: period.id,
+              trainingPeriodName: period.name,
               unitName: unit.name,
-              originalPlace: loc.originalPlace,
-              actualCount: sl.actualCount ?? 0,
-              requiredCount: sl.requiredCount ?? null,
+              originalPlace: defaultLoc.originalPlace,
+              actualCount: 0,
+              requiredCount: null,
               date: dateStr,
               time: toKSTTimeString(period.workStartTime),
               location: unit.region,
@@ -171,11 +115,11 @@ class AssignmentDTO {
                 officerName: period.officerName,
                 officerPhone: period.officerPhone,
                 officerEmail: period.officerEmail,
-                originalPlace: loc.originalPlace,
-                changedPlace: loc.changedPlace,
-                plannedCount: sl.plannedCount ?? 0,
-                actualCount: sl.actualCount ?? 0,
-                note: loc.note,
+                originalPlace: defaultLoc.originalPlace,
+                changedPlace: (defaultLoc as TrainingLocationRaw).changedPlace || null,
+                plannedCount: 0,
+                actualCount: 0,
+                note: (defaultLoc as TrainingLocationRaw).note || null,
                 educationStart: period.schedules[0]
                   ? toKSTDateString(period.schedules[0].date)
                   : null,
@@ -186,17 +130,71 @@ class AssignmentDTO {
                 workEndTime: toKSTTimeString(period.workEndTime),
                 lunchStartTime: toKSTTimeString(period.lunchStartTime),
                 lunchEndTime: toKSTTimeString(period.lunchEndTime),
-                hasInstructorLounge: loc.hasInstructorLounge,
-                hasWomenRestroom: loc.hasWomenRestroom,
+                hasInstructorLounge:
+                  (defaultLoc as TrainingLocationRaw).hasInstructorLounge || false,
+                hasWomenRestroom: (defaultLoc as TrainingLocationRaw).hasWomenRestroom || false,
                 hasCateredMeals: period.hasCateredMeals,
                 hasHallLodging: period.hasHallLodging,
                 allowsPhoneBeforeAfter: period.allowsPhoneBeforeAfter,
                 excludedDates: (period.excludedDates as string[]) || [],
               },
             });
-          });
-        }
-      });
+          } else {
+            scheduleLocs.forEach((sl) => {
+              const loc = locations.find(
+                (l: TrainingLocationRaw) => l.id === sl.trainingLocationId,
+              ) as TrainingLocationRaw | undefined;
+              if (!loc) return;
+
+              list.push({
+                type: 'UNIT',
+                id: `u-${unit.id}-p-${period.id}-s-${schedule.id}-l-${loc.id}`,
+                groupKey: `${unit.id}:${period.id}`,
+                trainingPeriodId: period.id,
+                trainingPeriodName: period.name,
+                unitName: unit.name,
+                originalPlace: loc.originalPlace,
+                actualCount: sl.actualCount ?? 0,
+                requiredCount: sl.requiredCount ?? null,
+                date: dateStr,
+                time: toKSTTimeString(period.workStartTime),
+                location: unit.region,
+                detail: {
+                  unitName: unit.name,
+                  region: unit.region,
+                  wideArea: unit.wideArea,
+                  address: unit.addressDetail,
+                  detailAddress: unit.detailAddress,
+                  officerName: period.officerName,
+                  officerPhone: period.officerPhone,
+                  officerEmail: period.officerEmail,
+                  originalPlace: loc.originalPlace,
+                  changedPlace: loc.changedPlace,
+                  plannedCount: sl.plannedCount ?? 0,
+                  actualCount: sl.actualCount ?? 0,
+                  note: loc.note,
+                  educationStart: period.schedules[0]
+                    ? toKSTDateString(period.schedules[0].date)
+                    : null,
+                  educationEnd: period.schedules[period.schedules.length - 1]
+                    ? toKSTDateString(period.schedules[period.schedules.length - 1].date)
+                    : null,
+                  workStartTime: toKSTTimeString(period.workStartTime),
+                  workEndTime: toKSTTimeString(period.workEndTime),
+                  lunchStartTime: toKSTTimeString(period.lunchStartTime),
+                  lunchEndTime: toKSTTimeString(period.lunchEndTime),
+                  hasInstructorLounge: loc.hasInstructorLounge,
+                  hasWomenRestroom: loc.hasWomenRestroom,
+                  hasCateredMeals: period.hasCateredMeals,
+                  hasHallLodging: period.hasHallLodging,
+                  allowsPhoneBeforeAfter: period.allowsPhoneBeforeAfter,
+                  excludedDates: (period.excludedDates as string[]) || [],
+                },
+              });
+            });
+          }
+        });
+      }
     });
     return list;
   }
@@ -258,69 +256,68 @@ class AssignmentDTO {
   ) {
     return (
       unitsWithAssignments
-        // 1단계: 부대별 상태 계산
-        .map((unit) => {
-          // 첫 번째 TrainingPeriod 가져오기
-          const period = unit.trainingPeriods[0];
-          if (!period) return null; // TrainingPeriod가 없으면 스킵
+        .flatMap((unit) =>
+          (unit.trainingPeriods || []).map((period) => {
+            const locations =
+              period.locations?.length > 0
+                ? period.locations
+                : [{ id: 'default', originalPlace: '교육장소 미정' }];
 
-          const locations =
-            period.locations?.length > 0
-              ? period.locations
-              : [{ id: 'default', originalPlace: '교육장소 미정' }];
+            const schedules = period.schedules || [];
 
-          const schedules = period.schedules || [];
+            let isUnitConfirmed = true;
+            const isStaffLocked = period.isStaffLocked ?? false;
 
-          let isUnitConfirmed = true;
-          const isStaffLocked = period.isStaffLocked ?? false;
-
-          // 인원고정인 경우: Pending 없고 최소 1명 이상 Accepted면 확정
-          if (isStaffLocked) {
-            let hasPending = false;
-            let hasAccepted = false;
-            for (const schedule of schedules as ScheduleRaw[]) {
-              for (const a of (schedule.assignments || []) as AssignmentRaw[]) {
-                if (a.state === 'Pending') hasPending = true;
-                if (a.state === 'Accepted') hasAccepted = true;
-              }
-            }
-            isUnitConfirmed = !hasPending && hasAccepted;
-          } else {
-            // 일반 경우
-            for (const loc of locations as TrainingLocationRaw[]) {
-              // ScheduleLocation에서 actualCount 가져오기
+            if (isStaffLocked) {
+              let hasPending = false;
+              let hasAccepted = false;
               for (const schedule of schedules as ScheduleRaw[]) {
-                const scheduleLoc = schedule.scheduleLocations?.find(
-                  (sl) => sl.trainingLocationId === loc.id,
-                );
-                const requiredPerDay = calcRequiredInstructors(scheduleLoc, traineesPerInstructor);
-
-                const assignmentsForLocation = (schedule.assignments || []).filter(
-                  (a: AssignmentRaw) =>
-                    a.trainingLocationId === loc.id || a.trainingLocationId === null,
-                );
-
-                const acceptedCount = assignmentsForLocation.filter(
-                  (a: AssignmentRaw) => a.state === 'Accepted',
-                ).length;
-
-                const hasPending = assignmentsForLocation.some(
-                  (a: AssignmentRaw) => a.state === 'Pending',
-                );
-
-                if (acceptedCount < requiredPerDay || hasPending) {
-                  isUnitConfirmed = false;
-                  break;
+                for (const a of (schedule.assignments || []) as AssignmentRaw[]) {
+                  if (a.state === 'Pending') hasPending = true;
+                  if (a.state === 'Accepted') hasAccepted = true;
                 }
               }
-              if (!isUnitConfirmed) break;
+              isUnitConfirmed = !hasPending && hasAccepted;
+            } else {
+              for (const loc of locations as TrainingLocationRaw[]) {
+                for (const schedule of schedules as ScheduleRaw[]) {
+                  const scheduleLoc = schedule.scheduleLocations?.find(
+                    (sl) => sl.trainingLocationId === loc.id,
+                  );
+                  const requiredPerDay = calcRequiredInstructors(
+                    scheduleLoc,
+                    traineesPerInstructor,
+                  );
+
+                  const assignmentsForLocation = (schedule.assignments || []).filter(
+                    (a: AssignmentRaw) =>
+                      a.trainingLocationId === loc.id || a.trainingLocationId === null,
+                  );
+
+                  const acceptedCount = assignmentsForLocation.filter(
+                    (a: AssignmentRaw) => a.state === 'Accepted',
+                  ).length;
+
+                  const hasPending = assignmentsForLocation.some(
+                    (a: AssignmentRaw) => a.state === 'Pending',
+                  );
+
+                  if (acceptedCount < requiredPerDay || hasPending) {
+                    isUnitConfirmed = false;
+                    break;
+                  }
+                }
+                if (!isUnitConfirmed) break;
+              }
             }
-          }
 
-          const unitStatus: 'Confirmed' | 'Temporary' = isUnitConfirmed ? 'Confirmed' : 'Temporary';
+            const unitStatus: 'Confirmed' | 'Temporary' = isUnitConfirmed
+              ? 'Confirmed'
+              : 'Temporary';
 
-          return { ...unit, unitStatus, locations, schedules, period, isStaffLocked };
-        })
+            return { ...unit, unitStatus, locations, schedules, period, isStaffLocked };
+          }),
+        )
         .filter((unit): unit is NonNullable<typeof unit> => unit !== null)
         // 2단계: 부대 단위로 필터링
         .filter((unit) => {
@@ -331,7 +328,6 @@ class AssignmentDTO {
         .map((unit) => {
           let totalRequired = 0;
           let totalAssigned = 0;
-          const assignedInstructorIds = new Set<number>();
           const locations = unit.locations;
 
           const trainingLocations = locations.map((loc: TrainingLocationRaw) => {
@@ -365,7 +361,6 @@ class AssignmentDTO {
                 )
                 .map((assign: AssignmentRaw) => {
                   totalAssigned++;
-                  assignedInstructorIds.add(assign.userId);
                   // 발송 여부: dispatchAssignments가 있으면 발송됨
                   const messageSent = (assign.dispatchAssignments?.length ?? 0) > 0;
                   return {
@@ -475,16 +470,16 @@ class AssignmentDTO {
           const unsentCount = unsentInstructorIds.size;
 
           return {
+            groupKey: `${unit.id}:${unit.period.id}`,
             unitId: unit.id,
+            trainingPeriodId: unit.period.id,
+            trainingPeriodName: unit.period.name,
             unitName: unit.name,
             region: `${unit.wideArea} ${unit.region}`,
             period: `${startDate} ~ ${endDate}`,
             totalRequired,
-            totalAssigned: assignedInstructorIds.size,
-            progress:
-              totalRequired > 0
-                ? Math.round((assignedInstructorIds.size / totalRequired) * 100)
-                : 0,
+            totalAssigned,
+            progress: totalRequired > 0 ? Math.round((totalAssigned / totalRequired) * 100) : 0,
             trainingLocations: trainingLocations,
             confirmedMessageSent,
             unsentCount, // 미발송 인원 수

@@ -95,9 +95,7 @@ export const canceledBlockFilter: AssignmentFilter = {
     const map = context.blockedInstructorIdsBySchedule;
     if (!map) return true;
 
-    // uniqueScheduleId = (원본 scheduleId * 1000) + locIdx
-    const originalScheduleId = Math.floor(context.currentScheduleId / 1000);
-    const blocked = map.get(originalScheduleId);
+    const blocked = map.get(context.currentScheduleId);
     if (!blocked) return true;
     return !blocked.has(candidate.userId);
   },

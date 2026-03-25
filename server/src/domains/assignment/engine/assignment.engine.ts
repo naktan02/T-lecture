@@ -134,6 +134,7 @@ export class AssignmentEngine {
     units: UnitData[],
     candidates: InstructorCandidate[],
     options?: {
+      initialAssignments?: AssignmentData[];
       blockedInstructorIdsBySchedule?: Map<number, Set<number>>;
       /**
        * 디버그 후보 리포트 생성 (0이면 생성 안 함)
@@ -148,7 +149,7 @@ export class AssignmentEngine {
     },
   ): EngineResult {
     const assignments: AssignmentResult[] = [];
-    const currentAssignments: AssignmentData[] = [];
+    const currentAssignments: AssignmentData[] = [...(options?.initialAssignments ?? [])];
     const debugSchedules: DebugScheduleInfo[] = [];
     const debugTopK = options?.debugTopK ?? 0;
 
