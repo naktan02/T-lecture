@@ -1,11 +1,7 @@
 // client/src/features/dashboard/ui/UserDashboardPage.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  dashboardApi,
-  DashboardStats,
-  ActivityGroup,
-} from '../api/dashboardApi';
+import { dashboardApi, DashboardStats, ActivityGroup } from '../api/dashboardApi';
 import { getMilitaryTypeLabel } from '@/shared/types/unit.types';
 import {
   ClockIcon,
