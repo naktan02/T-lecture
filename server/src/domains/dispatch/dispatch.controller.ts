@@ -4,6 +4,8 @@ import dispatchService from './dispatch.service';
 import asyncHandler from '../../common/middlewares/asyncHandler';
 import AppError from '../../common/errors/AppError';
 import logger from '../../config/logger';
+import { measureOperation } from '../../common/utils/operationMonitor';
+import { runExclusiveOperation } from '../../common/utils/operationLock';
 
 // ==========================================
 // 배정 발송 관련 컨트롤러 (임시/확정)
@@ -13,9 +15,32 @@ import logger from '../../config/logger';
 export const sendTemporaryDispatches = asyncHandler(async (req: Request, res: Response) => {
   const { startDate, endDate } = req.query;
   logger.info('[Dispatch] Sending temporary dispatches...', { startDate, endDate });
-  const result = await dispatchService.sendTemporaryDispatches(
-    startDate ? String(startDate) : undefined,
-    endDate ? String(endDate) : undefined,
+  const result = await runExclusiveOperation(
+    'dispatch:temporary',
+    () =>
+      measureOperation(
+        'dispatch.sendTemporary',
+        () =>
+          dispatchService.sendTemporaryDispatches(
+            startDate ? String(startDate) : undefined,
+            endDate ? String(endDate) : undefined,
+          ),
+        {
+          warnThresholdMs: 6000,
+          meta: {
+            userId: req.user?.id ?? null,
+            startDate: startDate ? String(startDate) : null,
+            endDate: endDate ? String(endDate) : null,
+          },
+          summarizeResult: (value) => ({
+            count: value.count ?? null,
+            uniqueUserCount: value.uniqueUserCount ?? null,
+          }),
+        },
+      ),
+    {
+      conflictMessage: '임시 배정 발송 작업이 이미 실행 중입니다. 잠시 후 다시 시도해주세요.',
+    },
   );
   res.json(result);
 });
@@ -23,9 +48,31 @@ export const sendTemporaryDispatches = asyncHandler(async (req: Request, res: Re
 // 확정 배정 발송 일괄 발송 (날짜 범위 필터링)
 export const sendConfirmedDispatches = asyncHandler(async (req: Request, res: Response) => {
   const { startDate, endDate } = req.query;
-  const result = await dispatchService.sendConfirmedDispatches(
-    startDate ? String(startDate) : undefined,
-    endDate ? String(endDate) : undefined,
+  const result = await runExclusiveOperation(
+    'dispatch:confirmed',
+    () =>
+      measureOperation(
+        'dispatch.sendConfirmed',
+        () =>
+          dispatchService.sendConfirmedDispatches(
+            startDate ? String(startDate) : undefined,
+            endDate ? String(endDate) : undefined,
+          ),
+        {
+          warnThresholdMs: 6000,
+          meta: {
+            userId: req.user?.id ?? null,
+            startDate: startDate ? String(startDate) : null,
+            endDate: endDate ? String(endDate) : null,
+          },
+          summarizeResult: (value) => ({
+            createdCount: value.createdCount ?? null,
+          }),
+        },
+      ),
+    {
+      conflictMessage: '확정 배정 발송 작업이 이미 실행 중입니다. 잠시 후 다시 시도해주세요.',
+    },
   );
   res.json(result);
 });
