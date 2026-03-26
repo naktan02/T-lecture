@@ -23,6 +23,9 @@ export interface AssignmentContext {
   maxMonthlyAvailCount: number;
   avgAssignmentCount: number;
   blockedInstructorIdsBySchedule?: Map<number, Set<number>>;
+  activeTeamCount: number;
+  currentPeriodSlack: number;
+  currentScheduleRemainingCount: number;
 
   // 기회비용 계산용 (Slack 기반)
   remainingSlotsByInstructor?: Map<number, number>; // instructorId → 남은 배정 가능 슬롯 수
@@ -57,6 +60,7 @@ export interface InstructorCandidate {
   priorityCredits: number; // 우선배정 크레딧
   recentRejectionCount: number; // 최근 거절 횟수
   recentAssignmentCount: number; // 최근 배정 횟수
+  recentConfirmedCompletedCount: number; // 최근 확정완료(실제 진행) 횟수
   monthlyAvailabilityCount: number; // 해당 월 가능일 수
 }
 
@@ -75,6 +79,7 @@ export interface AssignmentData {
   teamId: number | null;
   state: AssignmentState;
   classification: AssignmentCategory | null;
+  isExisting?: boolean;
   // 역할 결정용
   isTeamLeader?: boolean;
   generation?: number | null;
@@ -240,6 +245,7 @@ export interface DebugCandidateInfo {
   totalScore: number;
   monthlyAvailCount: number;
   recentAssignmentCount: number;
+  recentConfirmedCompletedCount: number;
   recentRejectionCount: number;
   priorityCredits: number;
   tieRand: number; // deterministic 0~1

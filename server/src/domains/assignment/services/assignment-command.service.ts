@@ -256,11 +256,16 @@ class AssignmentCommandService {
     const assignmentSince = this.subtractMonths(minDate, fairnessLookbackMonths);
     const rejectionSince = this.subtractMonths(minDate, rejectionPenaltyMonths);
 
-    const { recentAssignmentCountByInstructorId, recentRejectionCountByInstructorId } =
+    const {
+      recentAssignmentCountByInstructorId,
+      recentRejectionCountByInstructorId,
+      recentConfirmedCompletedCountByInstructorId,
+    } =
       await assignmentQueryRepository.getInstructorRecentStats(
         instructorIds,
         assignmentSince,
         rejectionSince,
+        minDate,
       );
 
     // 6) 거리 데이터 조회 및 변환 (미터 → km)
@@ -283,6 +288,7 @@ class AssignmentCommandService {
       blockedInstructorIdsBySchedule,
       recentAssignmentCountByInstructorId,
       recentRejectionCountByInstructorId,
+      recentConfirmedCompletedCountByInstructorId,
       internMaxDistanceKm,
       subMaxDistanceKm,
       instructorDistances,
@@ -370,11 +376,16 @@ class AssignmentCommandService {
     const assignmentSince = this.subtractMonths(start, fairnessLookbackMonths);
     const rejectionSince = this.subtractMonths(start, rejectionPenaltyMonths);
 
-    const { recentAssignmentCountByInstructorId, recentRejectionCountByInstructorId } =
+    const {
+      recentAssignmentCountByInstructorId,
+      recentRejectionCountByInstructorId,
+      recentConfirmedCompletedCountByInstructorId,
+    } =
       await assignmentQueryRepository.getInstructorRecentStats(
         instructorIds,
         assignmentSince,
         rejectionSince,
+        minScheduleDate,
       );
 
     const internMaxDistanceKm = await this.getSystemConfigNumber('INTERN_MAX_DISTANCE_KM', 50);
@@ -400,6 +411,7 @@ class AssignmentCommandService {
       blockedInstructorIdsBySchedule,
       recentAssignmentCountByInstructorId,
       recentRejectionCountByInstructorId,
+      recentConfirmedCompletedCountByInstructorId,
       debugTopK,
       internMaxDistanceKm,
       subMaxDistanceKm,

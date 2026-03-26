@@ -15,15 +15,22 @@ class AssignmentQueryRepository {
     instructorIds: number[],
     assignmentSince: Date,
     rejectionSince: Date,
+    completedBefore: Date,
   ): Promise<{
     recentAssignmentCountByInstructorId: Map<number, number>;
     recentRejectionCountByInstructorId: Map<number, number>;
+    recentConfirmedCompletedCountByInstructorId: Map<number, number>;
   }> {
     const recentAssignmentCountByInstructorId = new Map<number, number>();
     const recentRejectionCountByInstructorId = new Map<number, number>();
+    const recentConfirmedCompletedCountByInstructorId = new Map<number, number>();
 
     if (!instructorIds || instructorIds.length === 0) {
-      return { recentAssignmentCountByInstructorId, recentRejectionCountByInstructorId };
+      return {
+        recentAssignmentCountByInstructorId,
+        recentRejectionCountByInstructorId,
+        recentConfirmedCompletedCountByInstructorId,
+      };
     }
 
     // 1) 최근 배정(Pending/Accepted) - 일정별 카운트
@@ -41,6 +48,27 @@ class AssignmentQueryRepository {
 
     for (const r of assignmentAgg) {
       recentAssignmentCountByInstructorId.set(r.userId, r._count._all);
+    }
+
+    // 1-1) 최근 확정완료(Confirmed + Accepted + 과거 일정)
+    const confirmedCompletedAgg = await prisma.instructorUnitAssignment.groupBy({
+      by: ['userId'],
+      where: {
+        userId: { in: instructorIds },
+        state: 'Accepted',
+        classification: 'Confirmed',
+        UnitSchedule: {
+          date: {
+            gte: assignmentSince,
+            lt: completedBefore,
+          },
+        },
+      },
+      _count: { _all: true },
+    });
+
+    for (const r of confirmedCompletedAgg) {
+      recentConfirmedCompletedCountByInstructorId.set(r.userId, r._count._all);
     }
 
     // 2) 최근 거절(Rejected) - 부대별 카운트 (+1 per unit, not per schedule)
@@ -76,7 +104,11 @@ class AssignmentQueryRepository {
       recentRejectionCountByInstructorId.set(userId, unitIds.size);
     }
 
-    return { recentAssignmentCountByInstructorId, recentRejectionCountByInstructorId };
+    return {
+      recentAssignmentCountByInstructorId,
+      recentRejectionCountByInstructorId,
+      recentConfirmedCompletedCountByInstructorId,
+    };
   }
 
   /**

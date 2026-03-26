@@ -155,6 +155,5 @@ export const allFilters: AssignmentFilter[] = [
   areaRestrictionFilter,
   internDistanceFilter,
   subDistanceFilter,
-  mainInstructorFilter,
-  // traineeFilter 제거 - Practicum은 같은 팀 주강사와 배정 가능
+  // Main 보장은 엔진의 교육기간 선행 단계에서 처리
 ];

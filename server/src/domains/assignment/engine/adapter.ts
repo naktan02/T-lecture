@@ -18,6 +18,7 @@ type ExecuteOptions = {
   blockedInstructorIdsBySchedule?: Map<number, Set<number>>;
   recentAssignmentCountByInstructorId?: Map<number, number>;
   recentRejectionCountByInstructorId?: Map<number, number>;
+  recentConfirmedCompletedCountByInstructorId?: Map<number, number>;
   /** 디버그용: 상위 K명의 breakdown 수집 (0이면 수집 안 함) */
   debugTopK?: number;
   /** 실습강사 최대 배정 거리 (km) */
@@ -512,6 +513,8 @@ class AssignmentAlgorithm {
         options.recentAssignmentCountByInstructorId?.get(instructor.userId) ?? 0;
       const recentRejectionCount =
         options.recentRejectionCountByInstructorId?.get(instructor.userId) ?? 0;
+      const recentConfirmedCompletedCount =
+        options.recentConfirmedCompletedCountByInstructorId?.get(instructor.userId) ?? 0;
       return {
         userId: instructor.userId,
         name: instructor.User?.name || `강사_${instructor.userId}`,
@@ -527,6 +530,7 @@ class AssignmentAlgorithm {
         priorityCredits: instructor.priorityCredit?.credits ?? 0,
         recentRejectionCount,
         recentAssignmentCount,
+        recentConfirmedCompletedCount,
         monthlyAvailabilityCount: availableDates.length,
       };
     });
@@ -544,6 +548,7 @@ class AssignmentAlgorithm {
       teamId: number | null;
       state: 'Pending' | 'Accepted';
       classification: null;
+      isExisting?: boolean;
       isTeamLeader?: boolean;
       generation?: number | null;
     }> = [];
@@ -568,6 +573,7 @@ class AssignmentAlgorithm {
               teamId: assignment.User?.instructor?.team?.id ?? null,
               state: assignment.state as 'Pending' | 'Accepted',
               classification: null,
+              isExisting: true,
               isTeamLeader: assignment.User?.instructor?.isTeamLeader ?? false,
               generation: assignment.User?.instructor?.generation ?? null,
             });
