@@ -3,6 +3,7 @@ import winston from 'winston';
 import winstonDaily from 'winston-daily-rotate-file';
 import Transport from 'winston-transport';
 import path from 'path';
+import { inspect } from 'util';
 import * as Sentry from '@sentry/node';
 
 const logDir = 'logs';
@@ -13,8 +14,13 @@ const isProd = process.env.NODE_ENV === 'production';
 const consoleLogLevel = isProd ? 'warn' : 'info'; // 프로덕션: warn, 개발: info
 const debugToFile = process.env.DEBUG_TO_FILE === 'true';
 
-const logFormat = printf(({ level, message, timestamp }) => {
-  return `${timestamp} [${level}]: ${message}`;
+const logFormat = printf(({ level, message, timestamp, ...meta }) => {
+  const metaString =
+    Object.keys(meta).length > 0
+      ? ` ${inspect(meta, { depth: 5, breakLength: Infinity, colors: false })}`
+      : '';
+
+  return `${timestamp} [${level}]: ${message}${metaString}`;
 });
 
 /**

@@ -27,7 +27,7 @@ export const applicationCountScorer: AssignmentScorer = {
   calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
     const count = getMonthlyAvailCount(candidate, context);
     const max = context.maxMonthlyAvailCount || 1;
-    return (count / max) * 5; // 0~5점
+    return Math.sqrt(count / max) * 5; // 많이 열수록 우대하되 독점은 완화
   },
 };
 
@@ -42,20 +42,21 @@ export const fairnessScorer: AssignmentScorer = {
   description: '배정이 적을수록 높은 점수',
   defaultWeight: SCORER_WEIGHTS.FAIRNESS,
   calculate(candidate: InstructorCandidate, context: AssignmentContext): number {
-    // 1. 이번 실행 중 배정된 횟수 (현재 context에서)
+    // 1. 이번 실행 중 새로 배정된 횟수만 반영 (기존 DB 배정과 중복 방지)
     const runtimeAssignments = context.currentAssignments.filter(
-      (a) => a.instructorId === candidate.userId,
+      (a) => a.instructorId === candidate.userId && !a.isExisting,
     ).length;
 
-    // 2. 기존 배정 횟수 (DB에서)
-    const existingCount = candidate.recentAssignmentCount;
+    // 2. 최근 확정완료(실제 진행) 횟수
+    const completedCount = candidate.recentConfirmedCompletedCount;
 
-    // 3. 총 배정 횟수
-    const totalCount = runtimeAssignments + existingCount;
+    // 3. 최근 진행/예정 배정 횟수
+    const activeCount = candidate.recentAssignmentCount;
 
-    // 4. 배정 횟수가 많을수록 점수 감소 (각 배정당 -2점)
-    const penalty = totalCount * 2;
-    return Math.max(0, 10 - penalty); // 0~10점, 5번 이상이면 0점
+    // 4. 실제 진행 이력은 더 강하게, 현재 잡힌 일정/이번 실행분도 함께 반영
+    const penalty = completedCount * 1.6 + activeCount * 1.1 + runtimeAssignments * 1.4;
+
+    return Math.max(0, 10 - penalty);
   },
 };
 
@@ -148,7 +149,11 @@ export const teamMatchingScorer: AssignmentScorer = {
     const sameTeamAssigned = context.currentAssignments.some(
       (a) => a.scheduleId === context.currentScheduleId && a.teamId === candidate.teamId,
     );
-    return sameTeamAssigned ? 3 : 0;
+    if (!sameTeamAssigned) return 0;
+
+    if (context.currentPeriodSlack >= 3) return 3;
+    if (context.currentPeriodSlack >= 1) return 2;
+    return 1;
   },
 };
 
@@ -253,9 +258,8 @@ export const teamDiversityScorer: AssignmentScorer = {
     if (totalOtherAssignments === 0) return 0;
 
     // 팀 배정 비율이 평균보다 높으면 감점
-    // 7개 팀 기준: 평균 14.3% 이상이면 감점
     const ratio = teamAssignmentsInOtherPeriods / totalOtherAssignments;
-    const avgRatio = 1 / 7; // 7개 팀 기준
+    const avgRatio = 1 / Math.max(1, context.activeTeamCount);
 
     if (ratio > avgRatio * 2) {
       // 평균의 2배 이상 → 큰 감점
@@ -351,8 +355,7 @@ export const weeklyTeamBalanceScorer: AssignmentScorer = {
 
     if (allPeriodIds.size < 3) return 0; // 교육기간이 3개 미만이면 적용 안 함
 
-    // 7개 팀 기준 평균 비율 (약 14.3%)
-    const avgRatio = 1 / 7;
+    const avgRatio = 1 / Math.max(1, context.activeTeamCount);
     const ratio = teamPeriodIds.size / allPeriodIds.size;
 
     // 평균 대비 교육기간 점유 비율에 따라 감점

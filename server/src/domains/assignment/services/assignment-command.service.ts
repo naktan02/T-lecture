@@ -256,12 +256,16 @@ class AssignmentCommandService {
     const assignmentSince = this.subtractMonths(minDate, fairnessLookbackMonths);
     const rejectionSince = this.subtractMonths(minDate, rejectionPenaltyMonths);
 
-    const { recentAssignmentCountByInstructorId, recentRejectionCountByInstructorId } =
-      await assignmentQueryRepository.getInstructorRecentStats(
-        instructorIds,
-        assignmentSince,
-        rejectionSince,
-      );
+    const {
+      recentAssignmentCountByInstructorId,
+      recentRejectionCountByInstructorId,
+      recentConfirmedCompletedCountByInstructorId,
+    } = await assignmentQueryRepository.getInstructorRecentStats(
+      instructorIds,
+      assignmentSince,
+      rejectionSince,
+      minDate,
+    );
 
     // 6) 거리 데이터 조회 및 변환 (미터 → km)
     // distance가 null이면 preDistance 사용 (주소 변경 후 재계산 대기 중)
@@ -283,6 +287,7 @@ class AssignmentCommandService {
       blockedInstructorIdsBySchedule,
       recentAssignmentCountByInstructorId,
       recentRejectionCountByInstructorId,
+      recentConfirmedCompletedCountByInstructorId,
       internMaxDistanceKm,
       subMaxDistanceKm,
       instructorDistances,
@@ -370,12 +375,16 @@ class AssignmentCommandService {
     const assignmentSince = this.subtractMonths(start, fairnessLookbackMonths);
     const rejectionSince = this.subtractMonths(start, rejectionPenaltyMonths);
 
-    const { recentAssignmentCountByInstructorId, recentRejectionCountByInstructorId } =
-      await assignmentQueryRepository.getInstructorRecentStats(
-        instructorIds,
-        assignmentSince,
-        rejectionSince,
-      );
+    const {
+      recentAssignmentCountByInstructorId,
+      recentRejectionCountByInstructorId,
+      recentConfirmedCompletedCountByInstructorId,
+    } = await assignmentQueryRepository.getInstructorRecentStats(
+      instructorIds,
+      assignmentSince,
+      rejectionSince,
+      minScheduleDate,
+    );
 
     const internMaxDistanceKm = await this.getSystemConfigNumber('INTERN_MAX_DISTANCE_KM', 50);
     const subMaxDistanceKm = await this.getSystemConfigNumberOrNull('SUB_MAX_DISTANCE_KM');
@@ -400,6 +409,7 @@ class AssignmentCommandService {
       blockedInstructorIdsBySchedule,
       recentAssignmentCountByInstructorId,
       recentRejectionCountByInstructorId,
+      recentConfirmedCompletedCountByInstructorId,
       debugTopK,
       internMaxDistanceKm,
       subMaxDistanceKm,

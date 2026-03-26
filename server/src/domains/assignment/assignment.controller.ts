@@ -5,6 +5,8 @@ import assignmentDTO from './assignment.dto';
 import asyncHandler from '../../common/middlewares/asyncHandler';
 import AppError from '../../common/errors/AppError';
 import logger from '../../config/logger';
+import { measureOperation } from '../../common/utils/operationMonitor';
+import { runExclusiveOperation } from '../../common/utils/operationLock';
 
 // [근무 이력 조회] (Confirmed + Past)
 export const getWorkHistory = asyncHandler(async (req: Request, res: Response) => {
@@ -122,9 +124,32 @@ export const autoAssign = asyncHandler(async (req: Request, res: Response) => {
     instructorCount: instructorIds.length,
   });
 
-  const result = await assignmentService.createAutoAssignmentsByPeriodIds(
-    trainingPeriodIds.map(Number),
-    instructorIds.map(Number),
+  const result = await runExclusiveOperation(
+    'assignment:auto-assign',
+    () =>
+      measureOperation(
+        'assignment.autoAssign',
+        () =>
+          assignmentService.createAutoAssignmentsByPeriodIds(
+            trainingPeriodIds.map(Number),
+            instructorIds.map(Number),
+          ),
+        {
+          warnThresholdMs: 8000,
+          meta: {
+            userId: req.user!.id,
+            trainingPeriodCount: trainingPeriodIds.length,
+            instructorCount: instructorIds.length,
+          },
+          summarizeResult: (value) => ({
+            created: value.summary?.created ?? null,
+            skipped: value.summary?.skipped ?? null,
+          }),
+        },
+      ),
+    {
+      conflictMessage: '자동배정 작업이 이미 실행 중입니다. 잠시 후 다시 시도해주세요.',
+    },
   );
 
   res.status(200).json(result);
@@ -174,7 +199,22 @@ export const previewAutoAssign = asyncHandler(async (req: Request, res: Response
     debugTopK,
   });
 
-  const result = await assignmentService.previewAutoAssignments(s, e, debugTopK);
+  const result = await measureOperation(
+    'assignment.previewAutoAssign',
+    () => assignmentService.previewAutoAssignments(s, e, debugTopK),
+    {
+      warnThresholdMs: 6000,
+      meta: {
+        userId: req.user!.id,
+        startDate,
+        endDate,
+        debugTopK,
+      },
+      summarizeResult: (value) => ({
+        assignedCount: value.assignedCount ?? null,
+      }),
+    },
+  );
   res.status(200).json(result);
 });
 
