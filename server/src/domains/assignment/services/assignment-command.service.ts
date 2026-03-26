@@ -260,13 +260,12 @@ class AssignmentCommandService {
       recentAssignmentCountByInstructorId,
       recentRejectionCountByInstructorId,
       recentConfirmedCompletedCountByInstructorId,
-    } =
-      await assignmentQueryRepository.getInstructorRecentStats(
-        instructorIds,
-        assignmentSince,
-        rejectionSince,
-        minDate,
-      );
+    } = await assignmentQueryRepository.getInstructorRecentStats(
+      instructorIds,
+      assignmentSince,
+      rejectionSince,
+      minDate,
+    );
 
     // 6) 거리 데이터 조회 및 변환 (미터 → km)
     // distance가 null이면 preDistance 사용 (주소 변경 후 재계산 대기 중)
@@ -380,13 +379,12 @@ class AssignmentCommandService {
       recentAssignmentCountByInstructorId,
       recentRejectionCountByInstructorId,
       recentConfirmedCompletedCountByInstructorId,
-    } =
-      await assignmentQueryRepository.getInstructorRecentStats(
-        instructorIds,
-        assignmentSince,
-        rejectionSince,
-        minScheduleDate,
-      );
+    } = await assignmentQueryRepository.getInstructorRecentStats(
+      instructorIds,
+      assignmentSince,
+      rejectionSince,
+      minScheduleDate,
+    );
 
     const internMaxDistanceKm = await this.getSystemConfigNumber('INTERN_MAX_DISTANCE_KM', 50);
     const subMaxDistanceKm = await this.getSystemConfigNumberOrNull('SUB_MAX_DISTANCE_KM');

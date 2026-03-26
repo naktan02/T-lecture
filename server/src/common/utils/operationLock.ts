@@ -21,7 +21,8 @@ export async function runExclusiveOperation<T>(
     });
 
     throw new AppError(
-      options.conflictMessage || '현재 동일한 작업이 이미 실행 중입니다. 잠시 후 다시 시도해주세요.',
+      options.conflictMessage ||
+        '현재 동일한 작업이 이미 실행 중입니다. 잠시 후 다시 시도해주세요.',
       409,
       'OPERATION_IN_PROGRESS',
       {

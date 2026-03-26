@@ -106,7 +106,10 @@ export const useAuthGuard = (requiredRole: RequiredRole): AuthGuardResult => {
 
       if (requiredRole === 'SUPER_ADMIN' && userRole !== 'SUPER_ADMIN') {
         hasPermission = false;
-      } else if (requiredRole === 'ADMIN' && !(userRole === 'ADMIN' || userRole === 'SUPER_ADMIN')) {
+      } else if (
+        requiredRole === 'ADMIN' &&
+        !(userRole === 'ADMIN' || userRole === 'SUPER_ADMIN')
+      ) {
         hasPermission = false;
       } else if (requiredRole === 'INSTRUCTOR' && !isInstructor) {
         hasPermission = false;

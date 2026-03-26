@@ -214,7 +214,10 @@ export class AssignmentEngine {
       if (!periodSlackMap.has(info.bundle.trainingPeriodId)) {
         periodSlackMap.set(info.bundle.trainingPeriodId, Math.max(0, info.minSlack));
       }
-      if (!periodStartDateMap.has(info.bundle.trainingPeriodId) && info.bundle.schedules.length > 0) {
+      if (
+        !periodStartDateMap.has(info.bundle.trainingPeriodId) &&
+        info.bundle.schedules.length > 0
+      ) {
         periodStartDateMap.set(
           info.bundle.trainingPeriodId,
           new Date(info.bundle.schedules[0].date).getTime(),
