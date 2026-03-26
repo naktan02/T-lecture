@@ -2,6 +2,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { showError } from '../utils';
+import { clearAuthStorage, getAccessToken, refreshAccessToken } from '../auth/session';
 
 interface JwtPayload {
   exp: number;
@@ -34,7 +35,7 @@ export const useVisibilityChange = () => {
     // 중복 체크 방지
     if (isCheckingRef.current) return;
 
-    const token = localStorage.getItem('accessToken');
+    const token = getAccessToken();
 
     // 토큰이 없으면 이미 로그아웃 상태
     if (!token) return;
@@ -44,37 +45,10 @@ export const useVisibilityChange = () => {
       isCheckingRef.current = true;
 
       try {
-        // Refresh 시도
-        const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL || ''}/api/v1/auth/refresh`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-          },
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          localStorage.setItem('accessToken', data.accessToken);
-        } else {
-          // Refresh 실패 시 로그아웃 처리
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('userRole');
-          localStorage.removeItem('currentUser');
-          localStorage.removeItem('isInstructor');
-          localStorage.removeItem('instructorProfileCompleted');
-          showError('세션이 만료되었습니다. 다시 로그인해주세요.');
-          window.location.href = '/login';
-        }
+        await refreshAccessToken();
       } catch {
-        // 네트워크 에러 시 로그아웃
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('isInstructor');
-        localStorage.removeItem('instructorProfileCompleted');
-        showError('연결 오류가 발생했습니다. 다시 로그인해주세요.');
+        clearAuthStorage();
+        showError('세션을 갱신하지 못했습니다. 다시 로그인해주세요.');
         window.location.href = '/login';
       } finally {
         isCheckingRef.current = false;

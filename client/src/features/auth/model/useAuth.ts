@@ -4,6 +4,7 @@ import { useNavigate, NavigateFunction } from 'react-router-dom';
 import { login as loginApi, logout as logoutApi, LoginPayload, LoginResponse } from '../authApi';
 import { USER_ROLES, ADMIN_LEVELS } from '../../../shared/constants';
 import { logger } from '../../../shared/utils';
+import { clearAuthStorage, setAccessToken } from '../../../shared/auth/session';
 
 interface User {
   id: number;
@@ -31,7 +32,7 @@ export const useAuth = () => {
     mutationFn: loginApi,
     onSuccess: (data: LoginResponse, variables: LoginPayload) => {
       const user = data.user as User;
-      localStorage.setItem('accessToken', data.accessToken);
+      setAccessToken(data.accessToken);
       localStorage.setItem('currentUser', JSON.stringify(user));
 
       const role = determineUserRole(user);
@@ -56,11 +57,7 @@ export const useAuth = () => {
       // React Query 캐시 전체 삭제 (이전 사용자 데이터 제거)
       queryClient.clear();
       // deviceId는 유지하고 인증 관련 정보만 삭제
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('isInstructor');
-      localStorage.removeItem('instructorProfileCompleted');
+      clearAuthStorage();
       navigate('/login');
     },
   });
