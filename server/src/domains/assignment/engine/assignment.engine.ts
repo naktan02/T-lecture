@@ -101,6 +101,7 @@ interface FullCoverCandidateMeta {
   monthlyAvailCount: number;
   tieRand: number;
   scoreByScheduleId: Map<number, number>;
+  existingPeriodAssignmentsCount: number;
 }
 
 export class AssignmentEngine {
@@ -199,6 +200,8 @@ export class AssignmentEngine {
     const allSchedules: ScheduleWithUnit[] = [];
     const periodRiskMap = new Map<number, number>();
     const periodSlackMap = new Map<number, number>();
+    const periodStartDateMap = new Map<number, number>();
+    const periodExistingAssignmentsCountMap = new Map<number, number>();
     const scheduleToUnitIdMap = new Map<number, number>();
 
     for (const info of sortedSlackInfos) {
@@ -210,6 +213,20 @@ export class AssignmentEngine {
       }
       if (!periodSlackMap.has(info.bundle.trainingPeriodId)) {
         periodSlackMap.set(info.bundle.trainingPeriodId, Math.max(0, info.minSlack));
+      }
+      if (!periodStartDateMap.has(info.bundle.trainingPeriodId) && info.bundle.schedules.length > 0) {
+        periodStartDateMap.set(
+          info.bundle.trainingPeriodId,
+          new Date(info.bundle.schedules[0].date).getTime(),
+        );
+      }
+      if (!periodExistingAssignmentsCountMap.has(info.bundle.trainingPeriodId)) {
+        periodExistingAssignmentsCountMap.set(
+          info.bundle.trainingPeriodId,
+          currentAssignments.filter(
+            (assignment) => assignment.trainingPeriodId === info.bundle.trainingPeriodId,
+          ).length,
+        );
       }
 
       for (const schedule of info.bundle.schedules) {
@@ -226,8 +243,15 @@ export class AssignmentEngine {
     }
 
     allSchedules.sort((a, b) => {
+      const aExistingCount = periodExistingAssignmentsCountMap.get(a.trainingPeriodId) ?? 0;
+      const bExistingCount = periodExistingAssignmentsCountMap.get(b.trainingPeriodId) ?? 0;
+      if (aExistingCount !== bExistingCount) return bExistingCount - aExistingCount;
+
       const aRisk = periodRiskMap.get(a.trainingPeriodId) ?? 0;
       const bRisk = periodRiskMap.get(b.trainingPeriodId) ?? 0;
+      const aStart = periodStartDateMap.get(a.trainingPeriodId) ?? 0;
+      const bStart = periodStartDateMap.get(b.trainingPeriodId) ?? 0;
+      if (aStart !== bStart) return aStart - bStart;
       if (aRisk !== bRisk) return aRisk - bRisk;
       if (a.trainingPeriodId !== b.trainingPeriodId) return a.trainingPeriodId - b.trainingPeriodId;
       return new Date(a.schedule.date).getTime() - new Date(b.schedule.date).getTime();
@@ -507,6 +531,11 @@ export class AssignmentEngine {
           `${priorityKey}|${openSchedules[0].trainingPeriodId}|${candidate.userId}`,
         ),
         scoreByScheduleId,
+        existingPeriodAssignmentsCount: currentAssignments.filter(
+          (assignment) =>
+            assignment.trainingPeriodId === openSchedules[0].trainingPeriodId &&
+            assignment.instructorId === candidate.userId,
+        ).length,
       };
     };
 
@@ -542,6 +571,10 @@ export class AssignmentEngine {
         }
 
         metas.sort((a, b) => {
+          const continuityDiff =
+            b.existingPeriodAssignmentsCount - a.existingPeriodAssignmentsCount;
+          if (continuityDiff !== 0) return continuityDiff;
+
           const aPriorityFull =
             a.candidate.priorityCredits > 0 &&
             a.coverableOpenScheduleIds.length === openSchedules.length;
@@ -557,10 +590,6 @@ export class AssignmentEngine {
           const missingDiff =
             b.coverableMissingScheduleIds.length - a.coverableMissingScheduleIds.length;
           if (missingDiff !== 0) return missingDiff;
-
-          const continuityDiff =
-            b.existingPeriodAssignmentsCount - a.existingPeriodAssignmentsCount;
-          if (continuityDiff !== 0) return continuityDiff;
 
           const scoreDiff = b.aggregateScore - a.aggregateScore;
           if (Math.abs(scoreDiff) > 1e-9) return scoreDiff;
@@ -599,6 +628,10 @@ export class AssignmentEngine {
         if (metas.length === 0) break;
 
         metas.sort((a, b) => {
+          const continuityDiff =
+            b.existingPeriodAssignmentsCount - a.existingPeriodAssignmentsCount;
+          if (continuityDiff !== 0) return continuityDiff;
+
           const priorityDiff =
             Number(b.candidate.priorityCredits > 0) - Number(a.candidate.priorityCredits > 0);
           if (priorityDiff !== 0) return priorityDiff;

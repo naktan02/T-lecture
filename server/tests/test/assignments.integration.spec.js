@@ -172,4 +172,172 @@ describe('AssignmentEngine', () => {
     const assignedIds = result.assignments.map((assignment) => assignment.instructorId).sort();
     assert.deepEqual(assignedIds, [1, 2]);
   });
+
+  it('prefers the earlier-starting period when overlap risk is tied', () => {
+    const engine = new AssignmentEngine();
+    const units = [
+      {
+        id: 1,
+        name: 'A부대',
+        region: '서울',
+        wideArea: '서울',
+        trainingPeriods: [
+          {
+            id: 20,
+            unitId: 1,
+            unitName: 'A부대',
+            region: '서울',
+            wideArea: '서울',
+            isStaffLocked: false,
+            excludedDates: [],
+            locations: [],
+            schedules: [
+              { id: 101, date: new Date('2026-02-11T00:00:00.000Z'), requiredCount: 1 },
+              { id: 102, date: new Date('2026-02-12T00:00:00.000Z'), requiredCount: 1 },
+              { id: 103, date: new Date('2026-02-13T00:00:00.000Z'), requiredCount: 1 },
+            ],
+          },
+        ],
+      },
+      {
+        id: 2,
+        name: 'B부대',
+        region: '서울',
+        wideArea: '서울',
+        trainingPeriods: [
+          {
+            id: 10,
+            unitId: 2,
+            unitName: 'B부대',
+            region: '서울',
+            wideArea: '서울',
+            isStaffLocked: false,
+            excludedDates: [],
+            locations: [],
+            schedules: [
+              { id: 201, date: new Date('2026-02-13T00:00:00.000Z'), requiredCount: 1 },
+              { id: 202, date: new Date('2026-02-14T00:00:00.000Z'), requiredCount: 1 },
+              { id: 203, date: new Date('2026-02-15T00:00:00.000Z'), requiredCount: 1 },
+            ],
+          },
+        ],
+      },
+    ];
+    const candidates = [
+      makeCandidate({
+        userId: 1,
+        name: '연속우선강사',
+        availableDates: [
+          '2026-02-11',
+          '2026-02-12',
+          '2026-02-13',
+          '2026-02-14',
+          '2026-02-15',
+        ],
+      }),
+    ];
+
+    const result = engine.execute(units, candidates);
+    const assignedScheduleIds = result.assignments.map((assignment) => assignment.unitScheduleId);
+
+    assert.deepEqual(assignedScheduleIds, [101, 102, 103, 202, 203]);
+  });
+
+  it('keeps continuity for an already-started period before a new overlapping period', () => {
+    const engine = new AssignmentEngine();
+    const units = [
+      {
+        id: 1,
+        name: 'A부대',
+        region: '서울',
+        wideArea: '서울',
+        trainingPeriods: [
+          {
+            id: 50,
+            unitId: 1,
+            unitName: 'A부대',
+            region: '서울',
+            wideArea: '서울',
+            isStaffLocked: false,
+            excludedDates: [],
+            locations: [],
+            schedules: [
+              { id: 101, date: new Date('2026-02-11T00:00:00.000Z'), requiredCount: 1 },
+              { id: 102, date: new Date('2026-02-12T00:00:00.000Z'), requiredCount: 1 },
+              { id: 103, date: new Date('2026-02-13T00:00:00.000Z'), requiredCount: 1 },
+            ],
+          },
+        ],
+      },
+      {
+        id: 2,
+        name: 'B부대',
+        region: '서울',
+        wideArea: '서울',
+        trainingPeriods: [
+          {
+            id: 10,
+            unitId: 2,
+            unitName: 'B부대',
+            region: '서울',
+            wideArea: '서울',
+            isStaffLocked: false,
+            excludedDates: [],
+            locations: [],
+            schedules: [
+              { id: 201, date: new Date('2026-02-13T00:00:00.000Z'), requiredCount: 1 },
+              { id: 202, date: new Date('2026-02-14T00:00:00.000Z'), requiredCount: 1 },
+              { id: 203, date: new Date('2026-02-15T00:00:00.000Z'), requiredCount: 1 },
+            ],
+          },
+        ],
+      },
+    ];
+    const candidates = [
+      makeCandidate({
+        userId: 1,
+        name: '진행중강사',
+        availableDates: [
+          '2026-02-11',
+          '2026-02-12',
+          '2026-02-13',
+          '2026-02-14',
+          '2026-02-15',
+        ],
+      }),
+    ];
+    const initialAssignments = [
+      {
+        unitScheduleId: 101,
+        scheduleId: 101,
+        unitId: 1,
+        trainingPeriodId: 50,
+        date: '2026-02-11',
+        instructorId: 1,
+        category: 'Main',
+        teamId: null,
+        state: 'Accepted',
+        classification: null,
+        isExisting: true,
+      },
+      {
+        unitScheduleId: 102,
+        scheduleId: 102,
+        unitId: 1,
+        trainingPeriodId: 50,
+        date: '2026-02-12',
+        instructorId: 1,
+        category: 'Main',
+        teamId: null,
+        state: 'Accepted',
+        classification: null,
+        isExisting: true,
+      },
+    ];
+
+    const result = engine.execute(units, candidates, { initialAssignments });
+    const assignedScheduleIds = result.assignments.map((assignment) => assignment.unitScheduleId);
+
+    assert.deepEqual(assignedScheduleIds, [103, 202, 203]);
+  });
 });
