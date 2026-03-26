@@ -19,6 +19,17 @@ export function setAccessToken(token: string): void {
   localStorage.setItem('accessToken', token);
 }
 
+export function redirectToLogin(delayMs = 0): void {
+  const redirect = () => window.location.replace('/login');
+
+  if (delayMs > 0) {
+    window.setTimeout(redirect, delayMs);
+    return;
+  }
+
+  redirect();
+}
+
 export async function refreshAccessToken(timeoutMs = DEFAULT_REFRESH_TIMEOUT_MS): Promise<string> {
   if (refreshPromise) {
     return refreshPromise;

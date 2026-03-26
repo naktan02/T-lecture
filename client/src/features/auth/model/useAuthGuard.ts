@@ -3,7 +3,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { showWarning, showError } from '../../../shared/utils';
-import { clearAuthStorage, getAccessToken, refreshAccessToken } from '../../../shared/auth/session';
+import {
+  clearAuthStorage,
+  getAccessToken,
+  redirectToLogin,
+  refreshAccessToken,
+} from '../../../shared/auth/session';
 
 type RequiredRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN' | 'GUEST' | 'INSTRUCTOR';
 
@@ -79,7 +84,7 @@ export const useAuthGuard = (requiredRole: RequiredRole): AuthGuardResult => {
           toastShownRef.current = true;
           showWarning('로그인이 필요합니다.');
         }
-        navigate('/login', { replace: true });
+        redirectToLogin(100);
         finish(false);
         return;
       }
@@ -93,7 +98,7 @@ export const useAuthGuard = (requiredRole: RequiredRole): AuthGuardResult => {
             toastShownRef.current = true;
             showError('세션이 만료되었습니다. 다시 로그인해주세요.');
           }
-          navigate('/login', { replace: true });
+          redirectToLogin(100);
           finish(false);
           return;
         }

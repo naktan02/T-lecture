@@ -2,7 +2,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { showError } from '../utils';
-import { clearAuthStorage, getAccessToken, refreshAccessToken } from '../auth/session';
+import { clearAuthStorage, getAccessToken, redirectToLogin, refreshAccessToken } from '../auth/session';
 
 interface JwtPayload {
   exp: number;
@@ -49,7 +49,7 @@ export const useVisibilityChange = () => {
       } catch {
         clearAuthStorage();
         showError('세션을 갱신하지 못했습니다. 다시 로그인해주세요.');
-        window.location.href = '/login';
+        redirectToLogin();
       } finally {
         isCheckingRef.current = false;
       }

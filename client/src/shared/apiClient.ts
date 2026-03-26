@@ -1,6 +1,6 @@
 // client/src/shared/apiClient.ts
 import { showError } from './utils';
-import { clearAuthStorage, getAccessToken, refreshAccessToken } from './auth/session';
+import { clearAuthStorage, getAccessToken, redirectToLogin, refreshAccessToken } from './auth/session';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -57,24 +57,33 @@ export const apiClient = async (url: string, options: ApiClientOptions = {}): Pr
     const response = await fetch(`${API_BASE_URL}${url}`, config);
 
     if (response.status === 401 && !options.skipInterceptor) {
-      try {
-        const newAccessToken = await refreshAccessToken();
-        headers['Authorization'] = `Bearer ${newAccessToken}`;
-        const retryRes = await fetch(`${API_BASE_URL}${url}`, { ...config, headers });
+      let newAccessToken: string;
 
-        if (!retryRes.ok) {
-          const msg = await readErrorMessage(retryRes);
-          throw new Error(msg);
-        }
-        return retryRes;
+      try {
+        newAccessToken = await refreshAccessToken();
       } catch (err) {
         clearAuthStorage();
         showError('세션이 만료되었습니다. 다시 로그인해주세요.');
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 100);
+        redirectToLogin(100);
         return Promise.reject(err);
       }
+
+      headers['Authorization'] = `Bearer ${newAccessToken}`;
+      const retryRes = await fetch(`${API_BASE_URL}${url}`, { ...config, headers });
+
+      if (retryRes.status === 401) {
+        clearAuthStorage();
+        showError('세션이 만료되었습니다. 다시 로그인해주세요.');
+        redirectToLogin(100);
+        return Promise.reject(new Error('세션이 만료되었습니다. 다시 로그인해주세요.'));
+      }
+
+      if (!retryRes.ok) {
+        const msg = await readErrorMessage(retryRes);
+        throw new Error(msg);
+      }
+
+      return retryRes;
     }
 
     if (!response.ok) {
