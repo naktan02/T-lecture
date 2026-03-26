@@ -54,10 +54,7 @@ export const fairnessScorer: AssignmentScorer = {
     const activeCount = candidate.recentAssignmentCount;
 
     // 4. 실제 진행 이력은 더 강하게, 현재 잡힌 일정/이번 실행분도 함께 반영
-    const penalty =
-      completedCount * 1.6 +
-      activeCount * 1.1 +
-      runtimeAssignments * 1.4;
+    const penalty = completedCount * 1.6 + activeCount * 1.1 + runtimeAssignments * 1.4;
 
     return Math.max(0, 10 - penalty);
   },

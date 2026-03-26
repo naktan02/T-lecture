@@ -252,7 +252,10 @@ export class AssignmentEngine {
         orderedPeriodIds.push(scheduleInfo.trainingPeriodId);
       }
       schedulesByPeriodId.get(scheduleInfo.trainingPeriodId)!.push(scheduleInfo);
-      remainingRequiredByScheduleId.set(scheduleInfo.schedule.id, scheduleInfo.schedule.requiredCount);
+      remainingRequiredByScheduleId.set(
+        scheduleInfo.schedule.id,
+        scheduleInfo.schedule.requiredCount,
+      );
     }
 
     const getMonthlyAvailabilityStats = (targetMonth: string) => {
@@ -293,8 +296,10 @@ export class AssignmentEngine {
         remainingSlotsByInstructor,
         totalRemainingSlots,
         activeTeamCount,
-        currentPeriodSlack: periodSlackMap.get(scheduleInfo.trainingPeriodId) ?? scheduleInfo.periodSlack,
-        currentScheduleRemainingCount: remainingRequiredByScheduleId.get(scheduleInfo.schedule.id) ?? 0,
+        currentPeriodSlack:
+          periodSlackMap.get(scheduleInfo.trainingPeriodId) ?? scheduleInfo.periodSlack,
+        currentScheduleRemainingCount:
+          remainingRequiredByScheduleId.get(scheduleInfo.schedule.id) ?? 0,
       };
     };
 
@@ -314,7 +319,9 @@ export class AssignmentEngine {
     ): RankedCandidate[] => {
       const context = buildContext(scheduleInfo);
       const { byInstructorId } = getMonthlyAvailabilityStats(context.targetMonth);
-      const filtered = candidatePool.filter((candidate) => passesFilters(candidate, context, requireMain));
+      const filtered = candidatePool.filter((candidate) =>
+        passesFilters(candidate, context, requireMain),
+      );
 
       const ranked = filtered.map((candidate) => {
         const { total, breakdown } = this.calculateScoreWithBreakdown(candidate, context);
@@ -353,7 +360,9 @@ export class AssignmentEngine {
     };
 
     const hasMainAssigned = (scheduleId: number): boolean =>
-      currentAssignments.some((assignment) => assignment.scheduleId === scheduleId && assignment.category === 'Main');
+      currentAssignments.some(
+        (assignment) => assignment.scheduleId === scheduleId && assignment.category === 'Main',
+      );
 
     const decrementOpportunitySlots = (candidateId: number) => {
       const current = remainingSlotsByInstructor.get(candidateId) ?? 0;
@@ -423,7 +432,9 @@ export class AssignmentEngine {
       openSchedules: ScheduleWithUnit[],
       missingMainSchedules: ScheduleWithUnit[],
     ): CandidateCoverageMeta | null => {
-      const missingScheduleIds = new Set(missingMainSchedules.map((scheduleInfo) => scheduleInfo.schedule.id));
+      const missingScheduleIds = new Set(
+        missingMainSchedules.map((scheduleInfo) => scheduleInfo.schedule.id),
+      );
       const coverableMissingScheduleIds: number[] = [];
       const coverableOpenScheduleIds: number[] = [];
       const scoreByScheduleId = new Map<number, number>();
@@ -452,7 +463,9 @@ export class AssignmentEngine {
         candidate,
         aggregateScore,
         monthlyAvailCount: byInstructorId.get(candidate.userId) ?? 0,
-        tieRand: deterministicRand01(`main|${openSchedules[0]?.trainingPeriodId ?? 0}|${candidate.userId}`),
+        tieRand: deterministicRand01(
+          `main|${openSchedules[0]?.trainingPeriodId ?? 0}|${candidate.userId}`,
+        ),
         coverableMissingScheduleIds,
         coverableOpenScheduleIds,
         scoreByScheduleId,
@@ -490,13 +503,17 @@ export class AssignmentEngine {
         candidate,
         aggregateScore,
         monthlyAvailCount: byInstructorId.get(candidate.userId) ?? 0,
-        tieRand: deterministicRand01(`${priorityKey}|${openSchedules[0].trainingPeriodId}|${candidate.userId}`),
+        tieRand: deterministicRand01(
+          `${priorityKey}|${openSchedules[0].trainingPeriodId}|${candidate.userId}`,
+        ),
         scoreByScheduleId,
       };
     };
 
     const ensureMainCoverageForPeriod = (periodSchedules: ScheduleWithUnit[]) => {
-      const activeSchedules = periodSchedules.filter((scheduleInfo) => !scheduleInfo.schedule.isBlocked);
+      const activeSchedules = periodSchedules.filter(
+        (scheduleInfo) => !scheduleInfo.schedule.isBlocked,
+      );
 
       while (true) {
         const openSchedules = activeSchedules.filter(
@@ -525,18 +542,24 @@ export class AssignmentEngine {
         }
 
         metas.sort((a, b) => {
-          const aPriorityFull = a.candidate.priorityCredits > 0 && a.coverableOpenScheduleIds.length === openSchedules.length;
-          const bPriorityFull = b.candidate.priorityCredits > 0 && b.coverableOpenScheduleIds.length === openSchedules.length;
+          const aPriorityFull =
+            a.candidate.priorityCredits > 0 &&
+            a.coverableOpenScheduleIds.length === openSchedules.length;
+          const bPriorityFull =
+            b.candidate.priorityCredits > 0 &&
+            b.coverableOpenScheduleIds.length === openSchedules.length;
           if (aPriorityFull !== bPriorityFull) return aPriorityFull ? -1 : 1;
 
           const aFullMissing = a.coverableMissingScheduleIds.length === missingMainSchedules.length;
           const bFullMissing = b.coverableMissingScheduleIds.length === missingMainSchedules.length;
           if (aFullMissing !== bFullMissing) return aFullMissing ? -1 : 1;
 
-          const missingDiff = b.coverableMissingScheduleIds.length - a.coverableMissingScheduleIds.length;
+          const missingDiff =
+            b.coverableMissingScheduleIds.length - a.coverableMissingScheduleIds.length;
           if (missingDiff !== 0) return missingDiff;
 
-          const continuityDiff = b.existingPeriodAssignmentsCount - a.existingPeriodAssignmentsCount;
+          const continuityDiff =
+            b.existingPeriodAssignmentsCount - a.existingPeriodAssignmentsCount;
           if (continuityDiff !== 0) return continuityDiff;
 
           const scoreDiff = b.aggregateScore - a.aggregateScore;
@@ -559,7 +582,9 @@ export class AssignmentEngine {
     };
 
     const assignFullCoverAnchorsForPeriod = (periodSchedules: ScheduleWithUnit[]) => {
-      const activeSchedules = periodSchedules.filter((scheduleInfo) => !scheduleInfo.schedule.isBlocked);
+      const activeSchedules = periodSchedules.filter(
+        (scheduleInfo) => !scheduleInfo.schedule.isBlocked,
+      );
 
       while (true) {
         const openSchedules = activeSchedules.filter(
@@ -689,7 +714,8 @@ export class AssignmentEngine {
           date: toDateString(scheduleInfo.schedule.date),
           required: scheduleInfo.schedule.requiredCount,
           candidatesTotal: candidates.length,
-          candidatesAfterFilter: debugTopCandidatesByScheduleId.get(scheduleInfo.schedule.id)?.length ?? 0,
+          candidatesAfterFilter:
+            debugTopCandidatesByScheduleId.get(scheduleInfo.schedule.id)?.length ?? 0,
           topK: debugTopK,
           topCandidates: debugTopCandidatesByScheduleId.get(scheduleInfo.schedule.id) ?? [],
           selected: debugSelectedByScheduleId.get(scheduleInfo.schedule.id) ?? [],
@@ -734,7 +760,11 @@ export class AssignmentEngine {
         sum +
         unit.trainingPeriods.reduce(
           (periodSum, period) =>
-            periodSum + period.schedules.reduce((scheduleSum, schedule) => scheduleSum + schedule.requiredCount, 0),
+            periodSum +
+            period.schedules.reduce(
+              (scheduleSum, schedule) => scheduleSum + schedule.requiredCount,
+              0,
+            ),
           0,
         ),
       0,
