@@ -1,6 +1,11 @@
 // client/src/shared/apiClient.ts
 import { showError } from './utils';
-import { clearAuthStorage, getAccessToken, redirectToLogin, refreshAccessToken } from './auth/session';
+import {
+  clearAuthStorage,
+  getAccessToken,
+  redirectToLogin,
+  refreshAccessToken,
+} from './auth/session';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 

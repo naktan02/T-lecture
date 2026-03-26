@@ -2,7 +2,12 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { showError } from '../utils';
-import { clearAuthStorage, getAccessToken, redirectToLogin, refreshAccessToken } from '../auth/session';
+import {
+  clearAuthStorage,
+  getAccessToken,
+  redirectToLogin,
+  refreshAccessToken,
+} from '../auth/session';
 
 interface JwtPayload {
   exp: number;
