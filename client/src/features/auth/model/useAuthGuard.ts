@@ -30,6 +30,17 @@ export const useAuthGuard = (requiredRole: RequiredRole): AuthGuardResult => {
   const toastShownRef = useRef(false);
   const [shouldRender, setShouldRender] = useState(false);
 
+  const getAuthorizedPath = (): string => {
+    const userRole = localStorage.getItem('userRole');
+    const isInstructor = localStorage.getItem('isInstructor') === 'true';
+    const isProfileCompleted = localStorage.getItem('instructorProfileCompleted') !== 'false';
+
+    if (userRole === 'SUPER_ADMIN') return '/admin/super';
+    if (userRole === 'ADMIN') return '/admin/assignments';
+    if (isInstructor && !isProfileCompleted) return '/user-main/profile';
+    return '/user-main';
+  };
+
   // [Helper] 토큰 만료 여부 확인 함수
   const isTokenExpired = (token: string | null): boolean => {
     if (!token) return true;
@@ -54,54 +65,40 @@ export const useAuthGuard = (requiredRole: RequiredRole): AuthGuardResult => {
     };
 
     const runGuard = async () => {
-      const token = getAccessToken();
+      const ensureValidToken = async (): Promise<boolean> => {
+        const token = getAccessToken();
 
-      if (requiredRole === 'GUEST') {
-        if (!token) {
-          finish(true);
-          return;
-        }
-
-        if (!isTokenExpired(token)) {
-          navigate('/user-main', { replace: true });
-          finish(false);
-          return;
+        if (token && !isTokenExpired(token)) {
+          return true;
         }
 
         try {
           await refreshAccessToken();
-          navigate('/user-main', { replace: true });
-          finish(false);
+          return true;
         } catch {
           clearAuthStorage();
+          return false;
+        }
+      };
+
+      if (requiredRole === 'GUEST') {
+        if (await ensureValidToken()) {
+          navigate(getAuthorizedPath(), { replace: true });
+          finish(false);
+        } else {
           finish(true);
         }
         return;
       }
 
-      if (!token) {
+      if (!(await ensureValidToken())) {
         if (!toastShownRef.current) {
           toastShownRef.current = true;
-          showWarning('로그인이 필요합니다.');
+          showError('세션이 만료되었습니다. 다시 로그인해주세요.');
         }
         redirectToLogin(100);
         finish(false);
         return;
-      }
-
-      if (isTokenExpired(token)) {
-        try {
-          await refreshAccessToken();
-        } catch {
-          clearAuthStorage();
-          if (!toastShownRef.current) {
-            toastShownRef.current = true;
-            showError('세션이 만료되었습니다. 다시 로그인해주세요.');
-          }
-          redirectToLogin(100);
-          finish(false);
-          return;
-        }
       }
 
       const userRole = localStorage.getItem('userRole');

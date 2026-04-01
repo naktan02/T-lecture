@@ -1,9 +1,15 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const DEFAULT_REFRESH_TIMEOUT_MS = 10000;
 
+if (typeof window !== 'undefined') {
+  localStorage.removeItem('accessToken');
+}
+
+let accessToken: string | null = null;
 let refreshPromise: Promise<string> | null = null;
 
 export function clearAuthStorage(): void {
+  accessToken = null;
   localStorage.removeItem('accessToken');
   localStorage.removeItem('userRole');
   localStorage.removeItem('currentUser');
@@ -12,11 +18,12 @@ export function clearAuthStorage(): void {
 }
 
 export function getAccessToken(): string | null {
-  return localStorage.getItem('accessToken');
+  return accessToken;
 }
 
 export function setAccessToken(token: string): void {
-  localStorage.setItem('accessToken', token);
+  accessToken = token;
+  localStorage.removeItem('accessToken');
 }
 
 export function redirectToLogin(delayMs = 0): void {

@@ -371,7 +371,8 @@ async function createUnit(
   config: UnitConfig,
   location: { address: string; wideArea: string; region: string; lat: number; lng: number },
 ) {
-  const { month, hasMultipleLocations, hasExcludedDates, hasAdditionalTraining, locationIndex } = config;
+  const { month, hasMultipleLocations, hasExcludedDates, hasAdditionalTraining, locationIndex } =
+    config;
 
   const unitName = generateUniqueUnitName(index);
   const militaryType = getMilitaryType();
@@ -583,13 +584,32 @@ async function generateExcelTestFile() {
 
   // 헤더 정의 (6행)
   const headers = [
-    '부대명', '군구분', '광역', '지역', '부대주소', '부대상세주소',
-    '교육시작일자', '교육종료일자', '교육불가일자',
-    '근무시작시간', '근무종료시간', '점심시작시간', '점심종료시간',
-    '간부명', '간부 전화번호', '간부 이메일 주소',
-    '수탁급식여부', '회관숙박여부', '사전사후 휴대폰 불출 여부',
-    '기존교육장소', '변경교육장소', '강사휴게실 여부', '여자화장실 여부',
-    '계획인원', '참여인원', '특이사항'
+    '부대명',
+    '군구분',
+    '광역',
+    '지역',
+    '부대주소',
+    '부대상세주소',
+    '교육시작일자',
+    '교육종료일자',
+    '교육불가일자',
+    '근무시작시간',
+    '근무종료시간',
+    '점심시작시간',
+    '점심종료시간',
+    '간부명',
+    '간부 전화번호',
+    '간부 이메일 주소',
+    '수탁급식여부',
+    '회관숙박여부',
+    '사전사후 휴대폰 불출 여부',
+    '기존교육장소',
+    '변경교육장소',
+    '강사휴게실 여부',
+    '여자화장실 여부',
+    '계획인원',
+    '참여인원',
+    '특이사항',
   ];
   const headerRow = sheet.getRow(6);
   headers.forEach((h, i) => {
@@ -631,16 +651,16 @@ async function generateExcelTestFile() {
     for (let locIdx = 0; locIdx < period.locations.length; locIdx++) {
       const loc = period.locations[locIdx];
       const schedLoc = period.schedules[0]?.scheduleLocations.find(
-        (sl) => sl.trainingLocationId === loc.id
+        (sl) => sl.trainingLocationId === loc.id,
       );
 
       const row = sheet.getRow(rowNum);
       row.getCell(1).value = locIdx === 0 ? unit.name : ''; // 부대명은 첫 번째 장소만
-      row.getCell(2).value = locIdx === 0 ? (unit.unitType || '') : '';
-      row.getCell(3).value = locIdx === 0 ? (unit.wideArea || '') : '';
-      row.getCell(4).value = locIdx === 0 ? (unit.region || '') : '';
-      row.getCell(5).value = locIdx === 0 ? (unit.addressDetail || '') : '';
-      row.getCell(6).value = locIdx === 0 ? (unit.detailAddress || '') : '';
+      row.getCell(2).value = locIdx === 0 ? unit.unitType || '' : '';
+      row.getCell(3).value = locIdx === 0 ? unit.wideArea || '' : '';
+      row.getCell(4).value = locIdx === 0 ? unit.region || '' : '';
+      row.getCell(5).value = locIdx === 0 ? unit.addressDetail || '' : '';
+      row.getCell(6).value = locIdx === 0 ? unit.detailAddress || '' : '';
       row.getCell(7).value = locIdx === 0 ? startDate : '';
       row.getCell(8).value = locIdx === 0 ? endDate : '';
       row.getCell(9).value = locIdx === 0 ? (period.excludedDates || []).join(',') : '';
@@ -648,9 +668,9 @@ async function generateExcelTestFile() {
       row.getCell(11).value = locIdx === 0 ? '18:00' : '';
       row.getCell(12).value = locIdx === 0 ? '12:00' : '';
       row.getCell(13).value = locIdx === 0 ? '13:00' : '';
-      row.getCell(14).value = locIdx === 0 ? (period.officerName || '') : '';
-      row.getCell(15).value = locIdx === 0 ? (period.officerPhone || '') : '';
-      row.getCell(16).value = locIdx === 0 ? (period.officerEmail || '') : '';
+      row.getCell(14).value = locIdx === 0 ? period.officerName || '' : '';
+      row.getCell(15).value = locIdx === 0 ? period.officerPhone || '' : '';
+      row.getCell(16).value = locIdx === 0 ? period.officerEmail || '' : '';
       row.getCell(17).value = locIdx === 0 ? (period.hasCateredMeals ? 'O' : 'X') : '';
       row.getCell(18).value = locIdx === 0 ? (period.hasHallLodging ? 'O' : 'X') : '';
       row.getCell(19).value = locIdx === 0 ? (period.allowsPhoneBeforeAfter ? 'O' : 'X') : '';

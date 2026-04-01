@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { InputField, Button } from '../../shared/ui';
 import { showSuccess, showError } from '../../shared/utils';
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 type Step = 'EMAIL' | 'VERIFY' | 'RESET';
 
@@ -28,7 +28,7 @@ export default function ForgotPasswordPage() {
 
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/password-reset/send-code`, {
+      const res = await fetch(`${API_BASE}/api/v1/auth/password-reset/send-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -88,7 +88,7 @@ export default function ForgotPasswordPage() {
 
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/password-reset/reset`, {
+      const res = await fetch(`${API_BASE}/api/v1/auth/password-reset/reset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code, newPassword }),

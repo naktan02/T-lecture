@@ -41,8 +41,7 @@ function makeCandidate(overrides = {}) {
     restrictedArea: overrides.restrictedArea ?? null,
     maxDistanceKm: overrides.maxDistanceKm ?? null,
     location: overrides.location ?? null,
-    availableDates:
-      overrides.availableDates ?? ['2026-04-01', '2026-04-02', '2026-04-03'],
+    availableDates: overrides.availableDates ?? ['2026-04-01', '2026-04-02', '2026-04-03'],
     priorityCredits: overrides.priorityCredits ?? 0,
     recentRejectionCount: overrides.recentRejectionCount ?? 0,
     recentAssignmentCount: overrides.recentAssignmentCount ?? 0,
@@ -101,8 +100,9 @@ describe('AssignmentEngine', () => {
       makeCandidate({
         userId: 30,
         name: '신청많음',
-        availableDates: Array.from({ length: 20 }, (_, index) =>
-          `2026-04-${String(index + 1).padStart(2, '0')}`,
+        availableDates: Array.from(
+          { length: 20 },
+          (_, index) => `2026-04-${String(index + 1).padStart(2, '0')}`,
         ),
         monthlyAvailabilityCount: 20,
         recentAssignmentCount: 2,
@@ -227,13 +227,7 @@ describe('AssignmentEngine', () => {
       makeCandidate({
         userId: 1,
         name: '연속우선강사',
-        availableDates: [
-          '2026-02-11',
-          '2026-02-12',
-          '2026-02-13',
-          '2026-02-14',
-          '2026-02-15',
-        ],
+        availableDates: ['2026-02-11', '2026-02-12', '2026-02-13', '2026-02-14', '2026-02-15'],
       }),
     ];
 
@@ -297,13 +291,7 @@ describe('AssignmentEngine', () => {
       makeCandidate({
         userId: 1,
         name: '진행중강사',
-        availableDates: [
-          '2026-02-11',
-          '2026-02-12',
-          '2026-02-13',
-          '2026-02-14',
-          '2026-02-15',
-        ],
+        availableDates: ['2026-02-11', '2026-02-12', '2026-02-13', '2026-02-14', '2026-02-15'],
       }),
     ];
     const initialAssignments = [

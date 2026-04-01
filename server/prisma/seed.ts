@@ -347,16 +347,26 @@ async function main() {
   try {
     const maxTeam = await prisma.team.aggregate({ _max: { id: true } });
     const maxVirtue = await prisma.virtue.aggregate({ _max: { id: true } });
-    
-    const seqTeam: any = await prisma.$queryRawUnsafe(`SELECT pg_get_serial_sequence('"team"', 'id') AS seq`);
-    const seqVirtue: any = await prisma.$queryRawUnsafe(`SELECT pg_get_serial_sequence('"덕목"', 'id') AS seq`);
-    
+
+    const seqTeam: any = await prisma.$queryRawUnsafe(
+      `SELECT pg_get_serial_sequence('"team"', 'id') AS seq`,
+    );
+    const seqVirtue: any = await prisma.$queryRawUnsafe(
+      `SELECT pg_get_serial_sequence('"덕목"', 'id') AS seq`,
+    );
+
     if (seqTeam[0]?.seq) {
-      await prisma.$executeRawUnsafe(`SELECT setval('${seqTeam[0].seq}', coalesce($1, 0) + 1, false)`, maxTeam._max.id || 0);
+      await prisma.$executeRawUnsafe(
+        `SELECT setval('${seqTeam[0].seq}', coalesce($1, 0) + 1, false)`,
+        maxTeam._max.id || 0,
+      );
       console.log('  ✅ 팀 시퀀스 동기화 완료');
     }
     if (seqVirtue[0]?.seq) {
-      await prisma.$executeRawUnsafe(`SELECT setval('${seqVirtue[0].seq}', coalesce($1, 0) + 1, false)`, maxVirtue._max.id || 0);
+      await prisma.$executeRawUnsafe(
+        `SELECT setval('${seqVirtue[0].seq}', coalesce($1, 0) + 1, false)`,
+        maxVirtue._max.id || 0,
+      );
       console.log('  ✅ 덕목 시퀀스 동기화 완료');
     }
   } catch (e) {

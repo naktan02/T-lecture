@@ -238,7 +238,9 @@ async function readInstructorSchedule() {
         const weekStart = JAN_WEEKS[weekIdx].start;
 
         if (DEBUG && rowNum === 2) {
-          console.log(`    Row ${rowNum}, Week ${weekIdx + 1}: cell=${cellValue}, days=${days.join(',')}`);
+          console.log(
+            `    Row ${rowNum}, Week ${weekIdx + 1}: cell=${cellValue}, days=${days.join(',')}`,
+          );
         }
 
         for (const day of days) {
@@ -272,7 +274,9 @@ async function readInstructorSchedule() {
         const weekStart = FEB_WEEKS[weekIdx].start;
 
         if (DEBUG && rowNum === 2) {
-          console.log(`    Row ${rowNum}, Week ${weekIdx + 1}: cell=${cellValue}, days=${days.join(',')}`);
+          console.log(
+            `    Row ${rowNum}, Week ${weekIdx + 1}: cell=${cellValue}, days=${days.join(',')}`,
+          );
         }
 
         for (const day of days) {
@@ -303,7 +307,9 @@ async function readInstructorSchedule() {
       else if (day <= 20) febByWeek[2]++;
       else febByWeek[3]++;
     }
-    console.log(`  📅 2월 주차별 분포: 1주=${febByWeek[0]}, 2주=${febByWeek[1]}, 3주=${febByWeek[2]}, 4주=${febByWeek[3]}`);
+    console.log(
+      `  📅 2월 주차별 분포: 1주=${febByWeek[0]}, 2주=${febByWeek[1]}, 3주=${febByWeek[2]}, 4주=${febByWeek[3]}`,
+    );
   }
 
   return Object.values(instructors);
