@@ -15,12 +15,15 @@ interface InquiryGetParams {
 class InquiryService {
   // 문의사항 생성
   async create(data: { title: string; content: string }, authorId: number) {
-    if (!data.title || !data.content) {
+    const title = data.title?.trim();
+    const content = data.content?.trim();
+
+    if (!title || !content) {
       throw new AppError('제목과 내용을 모두 입력해주세요.', 400, 'VALIDATION_ERROR');
     }
     const inquiry = await inquiryRepository.create({
-      title: data.title,
-      content: data.content,
+      title,
+      content,
       authorId,
     });
 
@@ -83,11 +86,16 @@ class InquiryService {
 
   // 문의사항 답변 작성 (관리자)
   async answer(id: number, answer: string, answeredBy: number) {
-    if (!answer) {
+    const trimmedAnswer = answer?.trim();
+
+    if (!trimmedAnswer) {
       throw new AppError('답변 내용을 입력해주세요.', 400, 'VALIDATION_ERROR');
     }
     await this.getInquiryHelper(id);
-    const updated = await inquiryRepository.answer(id, { answer, answeredBy });
+    const updated = await inquiryRepository.answer(id, {
+      answer: trimmedAnswer,
+      answeredBy,
+    });
 
     const author = updated.authorId ? await inquiryRepository.findUserById(updated.authorId) : null;
     const answerer = await inquiryRepository.findUserById(answeredBy);

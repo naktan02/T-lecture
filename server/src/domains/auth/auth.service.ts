@@ -30,7 +30,7 @@ class AuthService {
   async sendPasswordResetCode(email: string) {
     const user = await userRepository.findByEmail(email);
     if (!user) {
-      throw new AppError('가입되지 않은 이메일입니다.', 404, 'USER_NOT_FOUND');
+      return { message: '입력한 이메일로 계정이 존재하면 인증번호가 발송됩니다. (유효시간 3분)' };
     }
 
     const code = crypto.randomInt(100000, 999999).toString();
@@ -39,7 +39,7 @@ class AuthService {
     await authRepository.createVerificationCode(email, code, expiresAt);
     await sendAuthCode(email, code);
 
-    return { message: '인증번호가 발송되었습니다. (유효시간 3분)' };
+    return { message: '입력한 이메일로 계정이 존재하면 인증번호가 발송됩니다. (유효시간 3분)' };
   }
 
   // 인증번호 검증
@@ -260,16 +260,23 @@ class AuthService {
 
   // 비밀번호 재설정
   async resetPassword(email: string, code: string, newPassword: string) {
+    const invalidResetError = () =>
+      new AppError(
+        '이메일 또는 인증번호가 올바르지 않거나 만료되었습니다.',
+        400,
+        'VERIFICATION_FAILED',
+      );
+
     const user = await userRepository.findByEmail(email);
-    if (!user) throw new AppError('가입되지 않은 이메일입니다.', 404, 'USER_NOT_FOUND');
+    if (!user) throw invalidResetError();
 
     const record = await authRepository.findLatestVerification(email);
     if (!record || record.code !== code) {
-      throw new AppError('인증번호가 올바르지 않습니다.', 400, 'VERIFICATION_FAILED');
+      throw invalidResetError();
     }
 
     if (new Date() > record.expiresAt) {
-      throw new AppError('인증번호가 만료되었습니다.', 400, 'VERIFICATION_EXPIRED');
+      throw invalidResetError();
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);

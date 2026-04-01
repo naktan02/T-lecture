@@ -135,10 +135,9 @@ export const InquiryAnswerDrawer = ({
                           문의 내용
                         </label>
                         <div className="bg-gray-50 rounded-xl p-4">
-                          <div
-                            className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap"
-                            dangerouslySetInnerHTML={{ __html: inquiry.content }}
-                          />
+                          <div className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+                            {inquiry.content}
+                          </div>
                         </div>
                       </div>
 
@@ -150,10 +149,9 @@ export const InquiryAnswerDrawer = ({
                             등록된 답변
                           </label>
                           <div className="bg-green-50 rounded-xl p-4">
-                            <div
-                              className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap"
-                              dangerouslySetInnerHTML={{ __html: inquiry.answer }}
-                            />
+                            <div className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+                              {inquiry.answer}
+                            </div>
                           </div>
                           <p className="text-xs text-gray-400 mt-2">
                             답변자: {inquiry.answeredBy?.name || '-'} | 답변일:{' '}
