@@ -52,7 +52,10 @@ function buildStages(levels, rampSeconds, holdSeconds, cooldownSeconds) {
 }
 
 function totalStageSeconds(stages) {
-  return stages.reduce((sum, stage) => sum + parseNumber(String(stage.duration).replace('s', ''), 0), 0);
+  return stages.reduce(
+    (sum, stage) => sum + parseNumber(String(stage.duration).replace('s', ''), 0),
+    0,
+  );
 }
 
 function authParams(token, role, name) {
