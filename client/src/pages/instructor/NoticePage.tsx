@@ -24,6 +24,10 @@ const NoticePage = (): ReactElement => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | undefined>(undefined);
 
   const fetchNotices = useCallback(async () => {
+    if (!shouldRender) {
+      return;
+    }
+
     try {
       const data = await noticeApi.getNotices({
         page,
@@ -40,11 +44,15 @@ const NoticePage = (): ReactElement => {
     } catch {
       showError('공지사항을 불러오는데 실패했습니다.');
     }
-  }, [page, searchQuery, sortField, sortOrder]);
+  }, [page, searchQuery, shouldRender, sortField, sortOrder]);
 
   useEffect(() => {
+    if (!shouldRender) {
+      return;
+    }
+
     void fetchNotices();
-  }, [fetchNotices]);
+  }, [fetchNotices, shouldRender]);
 
   const handleSort = (field: string) => {
     if (sortField === field) {
