@@ -60,13 +60,14 @@ const sendNoticeAttachment = (
   res: Response,
   attachment: { mimeType: string; originalName: string; size: number; data: Uint8Array | Buffer },
 ) => {
+  const binary = Buffer.isBuffer(attachment.data) ? attachment.data : Buffer.from(attachment.data);
   res.setHeader('Content-Type', attachment.mimeType || 'application/octet-stream');
   res.setHeader(
     'Content-Disposition',
     `attachment; filename*=UTF-8''${encodeURIComponent(attachment.originalName)}`,
   );
   res.setHeader('Content-Length', String(attachment.size));
-  res.send(attachment.data);
+  res.send(binary);
 };
 
 export const getNotices = asyncHandler(async (req: Request, res: Response) => {

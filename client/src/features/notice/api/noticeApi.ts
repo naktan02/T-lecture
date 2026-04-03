@@ -164,14 +164,47 @@ const buildNoticeFormData = (data: NoticeUpsertPayload) => {
 };
 
 const triggerBrowserDownload = (downloadUrl: string, fallbackName: string) => {
+  void downloadBinaryFile(downloadUrl, fallbackName);
+};
+
+const readDownloadError = async (response: Response) => {
+  const contentType = response.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    const payload = (await response.json().catch(() => ({}))) as {
+      error?: string;
+      message?: string;
+    };
+    return payload.error || payload.message || `Download failed: ${response.status}`;
+  }
+
+  const text = await response.text().catch(() => '');
+  return text || `Download failed: ${response.status}`;
+};
+
+const saveBlobAsFile = (blob: Blob, fallbackName: string) => {
+  const objectUrl = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
-  anchor.href = downloadUrl;
+  anchor.href = objectUrl;
   anchor.download = fallbackName;
-  anchor.target = '_blank';
-  anchor.rel = 'noopener noreferrer';
   document.body.appendChild(anchor);
   anchor.click();
   document.body.removeChild(anchor);
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+};
+
+const downloadBinaryFile = async (downloadUrl: string, fallbackName: string) => {
+  const response = await fetch(downloadUrl, {
+    method: 'GET',
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new Error(await readDownloadError(response));
+  }
+
+  const blob = await response.blob();
+  saveBlobAsFile(blob, fallbackName);
 };
 
 export const noticeApi = {
