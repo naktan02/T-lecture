@@ -75,10 +75,28 @@ model Notice {
 
   // 관계
   author   User            @relation("NoticeAuthor", fields: [authorId], references: [id])
-  receipts NoticeReceipt[]
+  receipts    NoticeReceipt[]
+  attachments NoticeAttachment[]
 
   @@index([createdAt], map: "공지_createdAt_idx")
   @@map("공지사항")
+}
+
+model NoticeAttachment {
+  id           Int       @id @default(autoincrement())
+  noticeId     Int
+  originalName String
+  mimeType     String
+  size         Int
+  data         Bytes
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  notice Notice @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+
+  @@index([noticeId], map: "notice_attachment_noticeId_idx")
+  @@index([expiresAt], map: "notice_attachment_expiresAt_idx")
+  @@map("notice_attachment")
 }
 
 model NoticeReceipt {
@@ -106,15 +124,16 @@ enum InquiryStatus {
 }
 
 model Inquiry {
-  id         Int           @id @default(autoincrement())
-  title      String        @map("제목")
-  body       String        @map("본문") @db.Text
-  authorId   Int           @map("작성자id")
-  status     InquiryStatus @default(Waiting) @map("상태")
-  answer     String?       @map("답변") @db.Text
-  answeredBy Int?          @map("답변자id")
-  answeredAt DateTime?     @map("답변일시")
-  createdAt  DateTime      @default(now()) @map("생성일시")
+  id           Int           @id @default(autoincrement())
+  title        String        @map("제목")
+  body         String        @map("본문") @db.Text
+  authorId     Int           @map("작성자id")
+  status       InquiryStatus @default(Waiting) @map("상태")
+  answer       String?       @map("답변") @db.Text
+  answeredBy   Int?          @map("답변자id")
+  answeredAt   DateTime?     @map("답변일시")
+  answerReadAt DateTime?     @map("답변읽은일시")
+  createdAt    DateTime      @default(now()) @map("생성일시")
 
   // 관계
   author         User  @relation("InquiryAuthor", fields: [authorId], references: [id])

@@ -26,7 +26,8 @@ export const getInquiries = asyncHandler(async (req: Request, res: Response) => 
 // 문의사항 단건 조회
 export const getInquiry = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const isAdmin = req.user?.isAdmin === true;
+  const isInstructorView = req.query.viewAs === 'instructor';
+  const isAdmin = req.user?.isAdmin === true && !isInstructorView;
   const inquiry = await inquiryService.getOne(Number(id), req.user!.id, isAdmin);
   res.json(inquiry);
 });

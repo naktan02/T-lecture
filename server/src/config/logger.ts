@@ -14,7 +14,9 @@ const isProd = process.env.NODE_ENV === 'production';
 const consoleLogLevel = isProd ? 'warn' : 'info'; // 프로덕션: warn, 개발: info
 const debugToFile = process.env.DEBUG_TO_FILE === 'true';
 
-const logFormat = printf(({ level, message, timestamp, ...meta }) => {
+const logFormat = printf((info) => {
+  const { level, message, timestamp, ...rest } = info;
+  const meta = Object.fromEntries(Object.entries(rest).filter(([, value]) => value !== undefined));
   const metaString =
     Object.keys(meta).length > 0
       ? ` ${inspect(meta, { depth: 5, breakLength: Infinity, colors: false })}`

@@ -12,11 +12,16 @@ export const getMyProfile = asyncHandler(async (req: Request, res: Response) => 
   res.json(profile);
 });
 
+export const getMyHeaderCounts = asyncHandler(async (req: Request, res: Response) => {
+  const counts = await userMeService.getMyHeaderCounts(req.user!.id);
+  res.json(counts);
+});
+
 // ✅ 내 프로필 수정
 export const updateMyProfile = asyncHandler(async (req: Request, res: Response) => {
   const updatedProfile = await userMeService.updateMyProfile(req.user!.id, req.body);
 
-  logger.info('[user.updateMyProfile]', {
+  logger.debug('[user.updateMyProfile]', {
     userId: req.user!.id,
     bodyKeys: Object.keys(req.body || {}),
   });
@@ -28,7 +33,7 @@ export const updateMyProfile = asyncHandler(async (req: Request, res: Response) 
 export const withdraw = asyncHandler(async (req: Request, res: Response) => {
   const result = await userMeService.withdraw(req.user!.id);
 
-  logger.info('[user.withdraw]', {
+  logger.debug('[user.withdraw]', {
     userId: req.user!.id,
   });
 
@@ -40,7 +45,7 @@ export const updateMyAddress = asyncHandler(async (req: Request, res: Response) 
   const { address, locationDetail } = req.body;
   const updatedProfile = await userMeService.updateMyAddress(req.user!.id, address, locationDetail);
 
-  logger.info('[user.updateMyAddress]', {
+  logger.debug('[user.updateMyAddress]', {
     userId: req.user!.id,
     address,
     locationDetail,
@@ -50,4 +55,4 @@ export const updateMyAddress = asyncHandler(async (req: Request, res: Response) 
 });
 
 // CommonJS 호환 (JS 파일에서 require() 사용 시)
-module.exports = { getMyProfile, updateMyProfile, withdraw, updateMyAddress };
+module.exports = { getMyProfile, getMyHeaderCounts, updateMyProfile, withdraw, updateMyAddress };

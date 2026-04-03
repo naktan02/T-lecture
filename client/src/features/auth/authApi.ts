@@ -7,6 +7,7 @@ export interface LoginPayload {
   email: string;
   password: string;
   loginType: string;
+  rememberMe: boolean;
 }
 
 export interface LoginResponse {
@@ -60,11 +61,16 @@ export interface InstructorMetaResponse {
 }
 
 // 1. 로그인 (토큰 갱신 로직 불필요 -> skipInterceptor: true)
-export async function login({ email, password, loginType }: LoginPayload): Promise<LoginResponse> {
+export async function login({
+  email,
+  password,
+  loginType,
+  rememberMe,
+}: LoginPayload): Promise<LoginResponse> {
   const deviceId = getDeviceId();
   const res = await apiClient('/api/v1/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password, loginType, deviceId }),
+    body: JSON.stringify({ email, password, loginType, deviceId, rememberMe }),
     skipInterceptor: true,
   });
   return res.json();

@@ -67,8 +67,14 @@ export const inquiryApi = {
   },
 
   // 문의사항 단건 조회
-  getInquiry: async (id: number) => {
-    const response = await apiClient(`${BASE_PATH}/${id}`);
+  getInquiry: async (id: number, options?: { viewAs?: string }) => {
+    const urlParams = new URLSearchParams();
+    if (options?.viewAs) {
+      urlParams.append('viewAs', options.viewAs);
+    }
+    const response = await apiClient(
+      `${BASE_PATH}/${id}${urlParams.toString() ? `?${urlParams.toString()}` : ''}`,
+    );
     return response.json() as Promise<Inquiry>;
   },
 

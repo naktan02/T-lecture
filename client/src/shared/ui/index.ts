@@ -3,6 +3,7 @@
 
 export { Button } from './Button';
 export { InputField } from './InputField';
+export { AddressSearchInput, type DaumPostcodeData } from './AddressSearchInput';
 export { SelectField } from './SelectField';
 export { CommonHeader, type NavLink } from './CommonHeader';
 export { ContentWrapper } from './ContentWrapper';

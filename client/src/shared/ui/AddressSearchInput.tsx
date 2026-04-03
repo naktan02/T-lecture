@@ -1,20 +1,132 @@
 import React from 'react';
 import { showWarning } from '../utils/toast';
 
+const DAUM_POSTCODE_SCRIPT_SRC = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+
+let daumPostcodeLoadPromise: Promise<void> | null = null;
+
+type DaumPostcodeInstance = {
+  open: (options?: Record<string, string>) => void;
+  embed: (element: HTMLElement) => void;
+};
+
 declare global {
   interface Window {
-    daum: any;
+    daum?: {
+      Postcode: new (options: {
+        oncomplete?: (data: DaumPostcodeData) => void;
+        onclose?: (state: string) => void;
+      }) => DaumPostcodeInstance;
+    };
   }
+}
+
+export interface DaumPostcodeData {
+  address: string;
+  roadAddress: string;
+  jibunAddress: string;
+  autoRoadAddress?: string;
+  autoJibunAddress?: string;
+  sido: string;
+  sigungu: string;
+  zonecode: string;
+  bname?: string;
+  buildingName?: string;
 }
 
 interface AddressSearchInputProps {
   value: string;
-  onChange?: (value: string) => void; // 선택적 (onSelect만 쓸 수도 있음)
-  onSelect?: (data: any) => void; // 전체 데이터 반환용
+  onChange?: (value: string) => void;
+  onSelect?: (data: DaumPostcodeData) => void;
   placeholder?: string;
   className?: string;
+  inputClassName?: string;
+  buttonClassName?: string;
+  buttonLabel?: string;
   readOnly?: boolean;
+  layerTitle?: string;
 }
+
+const resolveSelectedAddress = (data: DaumPostcodeData): string =>
+  [data.address, data.roadAddress, data.jibunAddress, data.autoRoadAddress, data.autoJibunAddress]
+    .find((candidate) => typeof candidate === 'string' && candidate.trim().length > 0)
+    ?.trim() ?? '';
+
+const shouldUseLayerMode = (): boolean => {
+  if (typeof window === 'undefined') return false;
+
+  const userAgent = window.navigator.userAgent.toLowerCase();
+  const isNarrowViewport = window.matchMedia
+    ? window.matchMedia('(max-width: 767px)').matches
+    : window.innerWidth < 768;
+  const isMobileDevice = /android|iphone|ipad|ipod/.test(userAgent) || isNarrowViewport;
+  const isWebView =
+    /\bwv\b/.test(userAgent) || /kakaotalk|naver|line|instagram|fb_iab|fbav/.test(userAgent);
+
+  return isMobileDevice || isWebView;
+};
+
+const loadDaumPostcodeScript = (): Promise<void> => {
+  if (typeof window === 'undefined') {
+    return Promise.reject(new Error('Window is not available.'));
+  }
+
+  if (window.daum?.Postcode) {
+    return Promise.resolve();
+  }
+
+  if (daumPostcodeLoadPromise) {
+    return daumPostcodeLoadPromise;
+  }
+
+  daumPostcodeLoadPromise = new Promise<void>((resolve, reject) => {
+    const handleLoad = () => {
+      if (window.daum?.Postcode) {
+        resolve();
+        return;
+      }
+
+      daumPostcodeLoadPromise = null;
+      reject(new Error('Daum Postcode script did not initialize.'));
+    };
+
+    const handleError = () => {
+      daumPostcodeLoadPromise = null;
+      reject(new Error('Failed to load Daum Postcode script.'));
+    };
+
+    const existingScript = document.querySelector(
+      `script[src="${DAUM_POSTCODE_SCRIPT_SRC}"]`,
+    ) as HTMLScriptElement | null;
+
+    if (existingScript) {
+      if (window.daum?.Postcode || existingScript.dataset.loaded === 'true') {
+        handleLoad();
+        return;
+      }
+
+      existingScript.addEventListener('load', handleLoad, { once: true });
+      existingScript.addEventListener('error', handleError, { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = DAUM_POSTCODE_SCRIPT_SRC;
+    script.async = true;
+    script.addEventListener(
+      'load',
+      () => {
+        script.dataset.loaded = 'true';
+        handleLoad();
+      },
+      { once: true },
+    );
+    script.addEventListener('error', handleError, { once: true });
+    document.body.appendChild(script);
+  });
+
+  return daumPostcodeLoadPromise;
+};
 
 export const AddressSearchInput: React.FC<AddressSearchInputProps> = ({
   value,
@@ -22,65 +134,151 @@ export const AddressSearchInput: React.FC<AddressSearchInputProps> = ({
   onSelect,
   placeholder = '주소 검색을 클릭하여 주소를 입력하세요',
   className,
+  inputClassName,
+  buttonClassName,
+  buttonLabel = '주소 검색',
   readOnly = false,
+  layerTitle = '주소 검색',
 }) => {
-  // Daum Postcode 스크립트 로드
-  React.useEffect(() => {
-    if (!window.daum) {
-      const script = document.createElement('script');
-      script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
-      script.async = true;
-      document.body.appendChild(script);
+  const [isLayerOpen, setIsLayerOpen] = React.useState(false);
+  const layerContainerRef = React.useRef<HTMLDivElement | null>(null);
 
-      return () => {
-        if (document.body.contains(script)) {
-          document.body.removeChild(script);
-        }
+  const handleComplete = React.useCallback(
+    (data: DaumPostcodeData) => {
+      const selectedAddress = resolveSelectedAddress(data);
+
+      if (!selectedAddress) {
+        showWarning('선택한 주소를 불러오지 못했습니다. 다시 시도해주세요.');
+        return;
+      }
+
+      const normalizedData = {
+        ...data,
+        address: selectedAddress,
       };
-    }
+
+      onChange?.(selectedAddress);
+      onSelect?.(normalizedData);
+      setIsLayerOpen(false);
+    },
+    [onChange, onSelect],
+  );
+
+  const handleScriptLoadError = React.useCallback(() => {
+    showWarning('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
   }, []);
 
-  const handleAddressSearch = () => {
-    if (readOnly) return;
+  React.useEffect(() => {
+    loadDaumPostcodeScript().catch(() => {});
+  }, []);
 
-    if (!window.daum || !window.daum.Postcode) {
-      showWarning('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+  React.useEffect(() => {
+    if (!isLayerOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isLayerOpen]);
+
+  React.useEffect(() => {
+    if (!isLayerOpen || !layerContainerRef.current || !window.daum?.Postcode) {
       return;
     }
 
-    new window.daum.Postcode({
-      oncomplete: function (data: any) {
-        // 팝업에서 검색결과 항목을 클릭했을때 실행할 코드를 작성하는 부분.
+    layerContainerRef.current.innerHTML = '';
 
-        // 각 주소의 노출 규칙에 따라 주소를 조합한다.
-        // 내려오는 변수가 값이 없는 경우엔 공백('')값을 가지므로, 이를 참고하여 분기 한다.
-        const addr = data.roadAddress || data.jibunAddress; // 도로명 주소 또는 지번 주소
-
-        if (onChange) onChange(addr);
-        if (onSelect) onSelect(data);
+    const postcode = new window.daum.Postcode({
+      oncomplete: handleComplete,
+      onclose: (state: string) => {
+        if (state === 'FORCE_CLOSE') {
+          setIsLayerOpen(false);
+        }
       },
-    }).open();
+    });
+
+    postcode.embed(layerContainerRef.current);
+  }, [handleComplete, isLayerOpen]);
+
+  const handleAddressSearch = async () => {
+    if (readOnly) return;
+
+    try {
+      await loadDaumPostcodeScript();
+
+      if (!window.daum?.Postcode) {
+        handleScriptLoadError();
+        return;
+      }
+
+      if (shouldUseLayerMode()) {
+        setIsLayerOpen(true);
+        return;
+      }
+
+      const postcode = new window.daum.Postcode({
+        oncomplete: handleComplete,
+      });
+
+      postcode.open({ popupTitle: layerTitle });
+    } catch {
+      handleScriptLoadError();
+    }
   };
 
+  const mergedInputClassName = [
+    'w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none cursor-pointer',
+    inputClassName,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const mergedButtonClassName = [
+    'px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-700 whitespace-nowrap',
+    buttonClassName,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <div className={`flex gap-2 ${className || ''}`}>
-      <input
-        type="text"
-        readOnly
-        placeholder={placeholder}
-        value={value}
-        onClick={handleAddressSearch}
-        className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none cursor-pointer"
-      />
-      {!readOnly && (
-        <button
-          type="button"
+    <>
+      <div className={['flex gap-2', className].filter(Boolean).join(' ')}>
+        <input
+          type="text"
+          readOnly
+          placeholder={placeholder}
+          value={value}
           onClick={handleAddressSearch}
-          className="px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-700 whitespace-nowrap"
-        >
-          주소 검색
-        </button>
+          className={mergedInputClassName}
+        />
+        {!readOnly && (
+          <button type="button" onClick={handleAddressSearch} className={mergedButtonClassName}>
+            {buttonLabel}
+          </button>
+        )}
+      </div>
+
+      {isLayerOpen && (
+        <div className="fixed inset-0 z-[80] bg-black/50 p-4">
+          <div className="mx-auto flex h-full w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+              <h3 className="text-sm font-semibold text-gray-900">{layerTitle}</h3>
+              <button
+                type="button"
+                onClick={() => setIsLayerOpen(false)}
+                className="rounded-md px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              >
+                닫기
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <div ref={layerContainerRef} className="h-full w-full" />
+            </div>
+          </div>
+        </div>
       )}
-    </div>
+    </>
   );
 };

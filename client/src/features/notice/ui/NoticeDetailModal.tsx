@@ -1,7 +1,8 @@
 import { Fragment, ReactElement } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { Notice } from '../api/noticeApi';
+import { showError } from '../../../shared/utils/toast';
+import { Notice, noticeApi } from '../api/noticeApi';
 
 interface NoticeDetailModalProps {
   isOpen: boolean;
@@ -9,12 +10,21 @@ interface NoticeDetailModalProps {
   notice: Notice | null;
 }
 
+const formatBytes = (size: number) => {
+  const mb = size / (1024 * 1024);
+  return `${mb.toFixed(mb >= 1 ? 1 : 2)}MB`;
+};
+
 export const NoticeDetailModal = ({
   isOpen,
   onClose,
   notice,
 }: NoticeDetailModalProps): ReactElement => {
-  if (!notice) return <></>;
+  if (!notice) {
+    return <></>;
+  }
+
+  const attachments = notice.attachments ?? [];
 
   return (
     <Transition.Root show={isOpen} as={Fragment}>
@@ -53,23 +63,83 @@ export const NoticeDetailModal = ({
                     <XMarkIcon className="h-6 w-6" aria-hidden="true" />
                   </button>
                 </div>
-                <div>
-                  <div className="mt-3 text-left sm:mt-5">
-                    <Dialog.Title
-                      as="h3"
-                      className="text-xl font-semibold leading-6 text-gray-900 border-b pb-4"
-                    >
-                      {notice.title}
-                    </Dialog.Title>
-                    <div className="mt-4 flex gap-4 text-sm text-gray-500 border-b pb-4">
-                      <span>작성자: {notice.author.name || '관리자'}</span>
-                      <span>작성일: {new Date(notice.createdAt).toLocaleDateString()}</span>
-                      <span>조회수: {notice.viewCount}</span>
-                    </div>
-                    <div className="mt-4 min-h-[200px] whitespace-pre-wrap">
-                      <p className="text-sm text-gray-700">{notice.content}</p>
-                    </div>
+                <div className="mt-3 text-left sm:mt-5">
+                  <Dialog.Title
+                    as="h3"
+                    className="border-b pb-4 text-xl font-semibold leading-6 text-gray-900"
+                  >
+                    {notice.title}
+                  </Dialog.Title>
+                  <div className="mt-4 flex gap-4 border-b pb-4 text-sm text-gray-500">
+                    <span>작성자: {notice.author.name || '관리자'}</span>
+                    <span>작성일: {new Date(notice.createdAt).toLocaleDateString()}</span>
+                    <span>조회수: {notice.viewCount}</span>
                   </div>
+                  <div className="mt-4 min-h-[200px] whitespace-pre-wrap">
+                    <p className="text-sm text-gray-700">{notice.content}</p>
+                  </div>
+
+                  {attachments.length > 0 && (
+                    <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold text-gray-800">첨부파일</h4>
+                        {notice.isPinned && (
+                          <span className="text-xs text-amber-600">
+                            상단 고정 중이라 첨부 만료가 유예됩니다.
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-3 space-y-2">
+                        {attachments.map((attachment) => (
+                          <div
+                            key={attachment.id}
+                            className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-gray-800">
+                                {attachment.originalName}
+                              </p>
+                              <div className="mt-1 flex flex-wrap gap-2 text-xs text-gray-500">
+                                <span>{formatBytes(attachment.size)}</span>
+                                {attachment.isImage && <span>이미지</span>}
+                                {attachment.isExpired ? (
+                                  <span className="text-red-500">다운로드 만료</span>
+                                ) : attachment.expiresAt ? (
+                                  <span>
+                                    다운로드 가능:{' '}
+                                    {new Date(attachment.expiresAt).toLocaleDateString()}
+                                  </span>
+                                ) : (
+                                  <span>상단 고정 중</span>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              disabled={attachment.isExpired}
+                              onClick={async () => {
+                                try {
+                                  await noticeApi.downloadAttachment(
+                                    attachment.id,
+                                    attachment.originalName,
+                                  );
+                                } catch (error) {
+                                  showError(
+                                    error instanceof Error
+                                      ? error.message
+                                      : '첨부파일 다운로드에 실패했습니다.',
+                                  );
+                                }
+                              }}
+                              className="ml-3 rounded-md bg-indigo-600 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-gray-300"
+                            >
+                              다운로드
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="mt-5 sm:mt-6">
                   <button

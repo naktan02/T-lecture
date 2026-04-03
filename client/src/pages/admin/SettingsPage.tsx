@@ -10,7 +10,7 @@ const SettingsPage = (): ReactElement => {
   if (!shouldRender) return <></>;
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+    <div className="min-h-[100dvh] bg-gray-50 flex flex-col overflow-hidden">
       <AdminHeader />
       <ContentWrapper scrollable={false}>
         <div className="flex flex-col h-full">

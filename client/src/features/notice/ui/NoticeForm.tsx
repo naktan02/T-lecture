@@ -1,7 +1,9 @@
-import { ReactElement, useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { ChangeEvent, ReactElement, useEffect, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
+import { showError } from '../../../shared/utils/toast';
 import { getTeams, Team } from '../../settings/settingsApi';
 import { userManagementApi, User } from '../../userManagement/api/userManagementApi';
+import { NoticeAttachment, noticeApi, NoticeUpsertPayload } from '../api/noticeApi';
 
 type TargetType = 'ALL' | 'TEAM' | 'INDIVIDUAL';
 
@@ -16,14 +18,25 @@ interface NoticeFormData {
 
 interface NoticeFormProps {
   initialData?: Partial<NoticeFormData>;
-  onSubmit: (data: NoticeFormData) => Promise<void>;
+  existingAttachments?: NoticeAttachment[];
+  onSubmit: (data: NoticeUpsertPayload) => Promise<void>;
   isLoading?: boolean;
   onCancel: () => void;
-  isEditMode?: boolean; // 수정 모드일 때 발송 대상 숨김
+  isEditMode?: boolean;
 }
+
+const NOTICE_ATTACHMENT_MAX_FILES = 10;
+const NOTICE_ATTACHMENT_MAX_TOTAL_BYTES = 5 * 1024 * 1024;
+const NOTICE_ATTACHMENT_ACCEPT = '.pdf,.hwp,.hwpx,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp';
+
+const formatBytes = (size: number) => {
+  const mb = size / (1024 * 1024);
+  return `${mb.toFixed(mb >= 1 ? 1 : 2)}MB`;
+};
 
 export const NoticeForm = ({
   initialData,
+  existingAttachments = [],
   onSubmit,
   isLoading,
   onCancel,
@@ -34,53 +47,90 @@ export const NoticeForm = ({
   const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [removedAttachmentIds, setRemovedAttachmentIds] = useState<number[]>([]);
 
   const {
+    control,
     register,
     handleSubmit,
-    watch,
     reset,
     formState: { errors },
   } = useForm<NoticeFormData>({
     defaultValues: initialData || { title: '', content: '', isPinned: false, targetType: 'ALL' },
   });
 
-  const targetType = watch('targetType');
+  const targetType = useWatch({ control, name: 'targetType' });
+  const isPinned = useWatch({ control, name: 'isPinned' });
+  const keptExistingAttachments = existingAttachments.filter(
+    (attachment) => !removedAttachmentIds.includes(attachment.id),
+  );
+  const totalAttachmentSize =
+    keptExistingAttachments.reduce((sum, attachment) => sum + attachment.size, 0) +
+    selectedFiles.reduce((sum, file) => sum + file.size, 0);
 
-  // 팀 목록 로드
   useEffect(() => {
-    getTeams().then(setTeams).catch(console.error);
+    getTeams()
+      .then(setTeams)
+      .catch(() => showError('팀 목록을 불러오지 못했습니다.'));
   }, []);
 
-  // 사용자 목록 로드 (INDIVIDUAL 선택 시)
   useEffect(() => {
-    if (targetType === 'INDIVIDUAL') {
-      userManagementApi
-        .getUsers({ status: 'APPROVED', limit: 100 })
-        .then((res) => setUsers(res.data))
-        .catch(console.error);
+    if (targetType !== 'INDIVIDUAL') {
+      return;
     }
+
+    userManagementApi
+      .getUsers({ status: 'APPROVED', limit: 100 })
+      .then((res) => setUsers(res.data))
+      .catch(() => showError('강사 목록을 불러오지 못했습니다.'));
   }, [targetType]);
 
-  // 초기 데이터 설정 (수정 모드 시)
   useEffect(() => {
-    if (initialData) {
-      reset(initialData);
-      if (initialData.targetTeamIds) {
-        setSelectedTeamIds(initialData.targetTeamIds);
-      }
-      if (initialData.targetUserIds) {
-        setSelectedUserIds(initialData.targetUserIds);
-      }
+    if (!initialData) {
+      reset({ title: '', content: '', isPinned: false, targetType: 'ALL' });
+      setSelectedTeamIds([]);
+      setSelectedUserIds([]);
+      setSelectedFiles([]);
+      setRemovedAttachmentIds([]);
+      return;
     }
+
+    reset(initialData);
+    setSelectedTeamIds(initialData.targetTeamIds || []);
+    setSelectedUserIds(initialData.targetUserIds || []);
+    setSelectedFiles([]);
+    setRemovedAttachmentIds([]);
   }, [initialData, reset]);
 
-  const handleFormSubmit = (data: NoticeFormData) => {
-    onSubmit({
-      ...data,
-      targetTeamIds: data.targetType === 'TEAM' ? selectedTeamIds : undefined,
-      targetUserIds: data.targetType === 'INDIVIDUAL' ? selectedUserIds : undefined,
-    });
+  const validateAttachments = (nextExisting: NoticeAttachment[], nextFiles: File[]) => {
+    if (nextExisting.length + nextFiles.length > NOTICE_ATTACHMENT_MAX_FILES) {
+      showError('첨부파일 수가 너무 많습니다. 파일 수를 줄여주세요.');
+      return false;
+    }
+
+    const totalBytes =
+      nextExisting.reduce((sum, attachment) => sum + attachment.size, 0) +
+      nextFiles.reduce((sum, file) => sum + file.size, 0);
+
+    if (totalBytes > NOTICE_ATTACHMENT_MAX_TOTAL_BYTES) {
+      showError(
+        `첨부파일 총합은 ${formatBytes(NOTICE_ATTACHMENT_MAX_TOTAL_BYTES)} 이하만 가능합니다.`,
+      );
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextFiles = Array.from(event.target.files || []);
+    if (!validateAttachments(keptExistingAttachments, nextFiles)) {
+      event.target.value = '';
+      return;
+    }
+
+    setSelectedFiles(nextFiles);
   };
 
   const toggleTeam = (teamId: number) => {
@@ -95,7 +145,36 @@ export const NoticeForm = ({
     );
   };
 
-  // 사용자 검색 필터링 (이름 또는 팀으로 검색)
+  const toggleAttachmentRemoval = (attachment: NoticeAttachment) => {
+    const isRemoved = removedAttachmentIds.includes(attachment.id);
+
+    if (isRemoved) {
+      const nextExisting = [...keptExistingAttachments, attachment];
+      if (!validateAttachments(nextExisting, selectedFiles)) {
+        return;
+      }
+
+      setRemovedAttachmentIds((prev) => prev.filter((id) => id !== attachment.id));
+      return;
+    }
+
+    setRemovedAttachmentIds((prev) => [...prev, attachment.id]);
+  };
+
+  const removeSelectedFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, currentIndex) => currentIndex !== index));
+  };
+
+  const handleFormSubmit = async (data: NoticeFormData) => {
+    await onSubmit({
+      ...data,
+      targetTeamIds: data.targetType === 'TEAM' ? selectedTeamIds : undefined,
+      targetUserIds: data.targetType === 'INDIVIDUAL' ? selectedUserIds : undefined,
+      files: selectedFiles,
+      removeAttachmentIds: removedAttachmentIds,
+    });
+  };
+
   const filteredUsers = users.filter((user) => {
     const query = userSearchQuery.toLowerCase();
     const matchesName = user.name?.toLowerCase().includes(query);
@@ -112,9 +191,9 @@ export const NoticeForm = ({
         <input
           type="text"
           id="title"
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border"
-          placeholder="공지사항 제목을 입력하세요"
-          {...register('title', { required: '제목을 입력해주세요.' })}
+          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+          placeholder="공지사항 제목을 입력해 주세요."
+          {...register('title', { required: '제목을 입력해 주세요.' })}
         />
         {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>}
       </div>
@@ -126,18 +205,129 @@ export const NoticeForm = ({
         <textarea
           id="content"
           rows={6}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border"
-          placeholder="공지사항 내용을 입력하세요"
-          {...register('content', { required: '내용을 입력해주세요.' })}
+          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+          placeholder="공지사항 내용을 입력해 주세요."
+          {...register('content', { required: '내용을 입력해 주세요.' })}
         />
         {errors.content && <p className="mt-1 text-sm text-red-600">{errors.content.message}</p>}
       </div>
 
-      {/* 대상 선택 */}
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+        <div className="flex items-center justify-between">
+          <label htmlFor="attachments" className="block text-sm font-medium text-gray-700">
+            첨부파일
+          </label>
+          <span className="text-xs text-gray-500">
+            총 {formatBytes(NOTICE_ATTACHMENT_MAX_TOTAL_BYTES)}까지
+          </span>
+        </div>
+        <input
+          id="attachments"
+          type="file"
+          multiple
+          accept={NOTICE_ATTACHMENT_ACCEPT}
+          onChange={handleFileChange}
+          className="mt-2 block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
+        />
+        <p className="mt-2 text-xs text-gray-500">
+          문서와 이미지 파일만 첨부할 수 있으며, 첨부파일 총 용량은 5MB까지 가능합니다. 상단 고정
+          중에는 첨부 만료가 유예됩니다.
+        </p>
+
+        {(keptExistingAttachments.length > 0 || removedAttachmentIds.length > 0) && (
+          <div className="mt-3 space-y-2">
+            <p className="text-xs font-medium text-gray-600">기존 첨부파일</p>
+            {existingAttachments.map((attachment) => {
+              const isRemoved = removedAttachmentIds.includes(attachment.id);
+
+              return (
+                <div
+                  key={attachment.id}
+                  className={`flex items-center justify-between rounded-md border px-3 py-2 text-sm ${
+                    isRemoved ? 'border-red-200 bg-red-50 text-red-500' : 'border-gray-200 bg-white'
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{attachment.originalName}</p>
+                    <p className="text-xs text-gray-500">{formatBytes(attachment.size)}</p>
+                  </div>
+                  <div className="ml-3 flex items-center gap-2">
+                    {!isRemoved && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await noticeApi.downloadAttachment(
+                              attachment.id,
+                              attachment.originalName,
+                            );
+                          } catch (error) {
+                            showError(
+                              error instanceof Error
+                                ? error.message
+                                : '첨부파일 다운로드에 실패했습니다.',
+                            );
+                          }
+                        }}
+                        className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50"
+                      >
+                        다운로드
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => toggleAttachmentRemoval(attachment)}
+                      className={`rounded-md px-2 py-1 text-xs ${
+                        isRemoved
+                          ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          : 'bg-red-50 text-red-600 hover:bg-red-100'
+                      }`}
+                    >
+                      {isRemoved ? '복구' : '삭제'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {selectedFiles.length > 0 && (
+          <div className="mt-3 space-y-2">
+            <p className="text-xs font-medium text-gray-600">새로 첨부할 파일</p>
+            {selectedFiles.map((file, index) => (
+              <div
+                key={`${file.name}-${file.size}-${index}`}
+                className="flex items-center justify-between rounded-md border border-indigo-100 bg-white px-3 py-2 text-sm"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-gray-800">{file.name}</p>
+                  <p className="text-xs text-gray-500">{formatBytes(file.size)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeSelectedFile(index)}
+                  className="ml-3 rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-gray-200"
+                >
+                  제거
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-3 flex items-center justify-between rounded-md bg-white px-3 py-2 text-xs text-gray-500">
+          <span>현재 업로드 용량</span>
+          <span>
+            {formatBytes(totalAttachmentSize)} / {formatBytes(NOTICE_ATTACHMENT_MAX_TOTAL_BYTES)}
+          </span>
+        </div>
+      </div>
+
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">발송 대상</label>
+        <label className="mb-2 block text-sm font-medium text-gray-700">발송 대상</label>
         <div className="flex gap-4">
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label className="flex cursor-pointer items-center gap-2">
             <input
               type="radio"
               value="ALL"
@@ -146,7 +336,7 @@ export const NoticeForm = ({
             />
             <span className="text-sm text-gray-700">전체</span>
           </label>
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label className="flex cursor-pointer items-center gap-2">
             <input
               type="radio"
               value="TEAM"
@@ -155,22 +345,21 @@ export const NoticeForm = ({
             />
             <span className="text-sm text-gray-700">특정 팀</span>
           </label>
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label className="flex cursor-pointer items-center gap-2">
             <input
               type="radio"
               value="INDIVIDUAL"
               className="h-4 w-4 text-indigo-600 focus:ring-indigo-500"
               {...register('targetType')}
             />
-            <span className="text-sm text-gray-700">특정 개인</span>
+            <span className="text-sm text-gray-700">특정 강사</span>
           </label>
         </div>
       </div>
 
-      {/* 팀 선택 (TEAM일 때만) */}
       {targetType === 'TEAM' && (
-        <div className="bg-gray-50 p-3 rounded-md">
-          <p className="text-sm font-medium text-gray-700 mb-2">
+        <div className="rounded-md bg-gray-50 p-3">
+          <p className="mb-2 text-sm font-medium text-gray-700">
             팀 선택 <span className="text-indigo-600">({selectedTeamIds.length}개)</span>
           </p>
           <div className="flex flex-wrap gap-2">
@@ -179,10 +368,10 @@ export const NoticeForm = ({
                 key={team.id}
                 type="button"
                 onClick={() => toggleTeam(team.id)}
-                className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
+                className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
                   selectedTeamIds.includes(team.id)
-                    ? 'bg-indigo-600 text-white border-indigo-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-500'
+                    ? 'border-indigo-600 bg-indigo-600 text-white'
+                    : 'border-gray-300 bg-white text-gray-700 hover:border-indigo-500'
                 }`}
               >
                 {team.name}
@@ -190,36 +379,33 @@ export const NoticeForm = ({
             ))}
           </div>
           {selectedTeamIds.length === 0 && (
-            <p className="text-xs text-amber-600 mt-2">⚠️ 팀을 선택해주세요</p>
+            <p className="mt-2 text-xs text-amber-600">최소 한 개의 팀을 선택해 주세요.</p>
           )}
         </div>
       )}
 
-      {/* 개인 선택 (INDIVIDUAL일 때) */}
       {targetType === 'INDIVIDUAL' && (
-        <div className="bg-gray-50 p-3 rounded-md">
-          <div className="flex items-center justify-between mb-2">
+        <div className="rounded-md bg-gray-50 p-3">
+          <div className="mb-2 flex items-center justify-between">
             <p className="text-sm font-medium text-gray-700">
-              사용자 선택 <span className="text-indigo-600">({selectedUserIds.length}명)</span>
+              강사 선택 <span className="text-indigo-600">({selectedUserIds.length}명)</span>
             </p>
           </div>
-          {/* 검색창 */}
           <input
             type="text"
-            placeholder="이름 또는 팀으로 검색..."
+            placeholder="이름 또는 팀명으로 검색.."
             value={userSearchQuery}
-            onChange={(e) => setUserSearchQuery(e.target.value)}
-            className="w-full mb-2 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+            onChange={(event) => setUserSearchQuery(event.target.value)}
+            className="mb-2 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:ring-indigo-500"
           />
-          {/* 사용자 목록 */}
-          <div className="max-h-48 overflow-y-auto space-y-1">
+          <div className="max-h-48 space-y-1 overflow-y-auto">
             {filteredUsers.length === 0 ? (
-              <p className="text-sm text-gray-500 py-2">검색 결과가 없습니다.</p>
+              <p className="py-2 text-sm text-gray-500">검색 결과가 없습니다.</p>
             ) : (
               filteredUsers.map((user) => (
                 <label
                   key={user.id}
-                  className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors ${
+                  className={`flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 transition-colors ${
                     selectedUserIds.includes(user.id) ? 'bg-indigo-100' : 'hover:bg-gray-100'
                   }`}
                 >
@@ -227,7 +413,7 @@ export const NoticeForm = ({
                     type="checkbox"
                     checked={selectedUserIds.includes(user.id)}
                     onChange={() => toggleUser(user.id)}
-                    className="h-4 w-4 text-indigo-600 rounded"
+                    className="h-4 w-4 rounded text-indigo-600"
                   />
                   <span className="text-sm text-gray-700">{user.name || '이름 없음'}</span>
                   {user.instructor?.team?.name && (
@@ -238,29 +424,34 @@ export const NoticeForm = ({
             )}
           </div>
           {selectedUserIds.length === 0 && (
-            <p className="text-xs text-amber-600 mt-2">⚠️ 사용자를 선택해주세요</p>
+            <p className="mt-2 text-xs text-amber-600">최소 한 명의 강사를 선택해 주세요.</p>
           )}
         </div>
       )}
 
-      {/* 상단 고정 옵션 */}
       <div className="flex items-center gap-2">
         <input
           type="checkbox"
           id="isPinned"
-          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
           {...register('isPinned')}
         />
         <label htmlFor="isPinned" className="text-sm font-medium text-gray-700">
-          📌 상단에 고정
+          상단에 고정
         </label>
       </div>
+
+      {isPinned && (
+        <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          상단 고정 중에는 첨부파일 만료가 유예되고, 고정 해제 시점부터 다시 만료 기간이 계산됩니다.
+        </div>
+      )}
 
       <div className="flex justify-end gap-2 pt-4">
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
         >
           취소
         </button>
@@ -271,9 +462,9 @@ export const NoticeForm = ({
             (!isEditMode && targetType === 'TEAM' && selectedTeamIds.length === 0) ||
             (!isEditMode && targetType === 'INDIVIDUAL' && selectedUserIds.length === 0)
           }
-          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+          className="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
         >
-          {isLoading ? '저장 중...' : '저장'}
+          {isLoading ? '저장 중..' : '저장'}
         </button>
       </div>
     </form>

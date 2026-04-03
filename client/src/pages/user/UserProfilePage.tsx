@@ -6,7 +6,7 @@ import {
   updateMyAddress,
   UpdateProfilePayload,
 } from '../../features/user/api/user.me.api';
-import { ContentWrapper } from '../../shared/ui';
+import { AddressSearchInput, ContentWrapper } from '../../shared/ui';
 import { showSuccess, showError, showWarning } from '../../shared/utils';
 import {
   sendVerificationCode,
@@ -14,13 +14,20 @@ import {
   getInstructorMeta,
 } from '../../features/auth/authApi';
 import { useAuthGuard } from '../../features/auth/model/useAuthGuard';
+import {
+  setStoredInstructorProfileCompleted,
+  updateStoredCurrentUser,
+} from '../../shared/auth/session';
 
-// Daum Postcode 타입 정의 (간략)
-declare global {
-  interface Window {
-    daum: any;
-  }
-}
+const getErrorMessage = (error: unknown, fallbackMessage: string) =>
+  error instanceof Error && error.message ? error.message : fallbackMessage;
+
+const CATEGORY_LABELS: Record<string, string> = {
+  Main: '주강사',
+  Co: '부강사',
+  Assistant: '보조강사',
+  Practicum: '실습강사',
+};
 
 const UserProfilePage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -49,6 +56,7 @@ const UserProfilePage: React.FC = () => {
 
   // 메타데이터 상태 (덕목 목록)
   const [virtueOptions, setVirtueOptions] = useState<{ id: number; name: string }[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<{ id: string; label: string }[]>([]);
 
   const {
     data: user,
@@ -65,12 +73,12 @@ const UserProfilePage: React.FC = () => {
   useEffect(() => {
     if (user?.instructor) {
       getInstructorMeta().then((meta) => {
-        // null safe mapping
-        const options = meta.virtues.map((v) => ({
+        const virtueItems = meta.virtues.map((v) => ({
           id: v.id,
           name: v.name || '이름 없음',
         }));
-        setVirtueOptions(options);
+        setVirtueOptions(virtueItems);
+        setCategoryOptions(meta.categories);
       });
     }
   }, [user]);
@@ -92,6 +100,7 @@ const UserProfilePage: React.FC = () => {
           phoneNumber: user.userphoneNumber || '',
           address: user.instructor?.location || '',
           locationDetail: user.instructor?.locationDetail || '',
+          category: user.instructor?.category || '',
           email: user.userEmail,
           password: '',
           restrictedArea: user.instructor?.restrictedArea || '',
@@ -107,20 +116,9 @@ const UserProfilePage: React.FC = () => {
     }
   }, [user]);
 
-  // Daum Postcode 스크립트 로드
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
-    script.async = true;
-    document.body.appendChild(script);
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
-
   const updateMutation = useMutation({
     mutationFn: updateMyProfile,
-    onSuccess: () => {
+    onSuccess: (updatedProfile) => {
       showSuccess('프로필이 수정되었습니다.');
       queryClient.invalidateQueries({ queryKey: ['myProfile'] });
       setIsEditing(false);
@@ -130,15 +128,26 @@ const UserProfilePage: React.FC = () => {
       setEmailCode('');
       setIsEmailVerified(false);
       setEmailVerificationMsg('');
-      // 프로필 완성 상태 업데이트 (강사인 경우)
-      if (isProfileIncomplete) {
-        localStorage.setItem('instructorProfileCompleted', 'true');
-        setIsProfileIncomplete(false);
+
+      const isInstructorProfileComplete = updatedProfile.instructor?.profileCompleted !== false;
+      setStoredInstructorProfileCompleted(isInstructorProfileComplete);
+      updateStoredCurrentUser((currentUser) =>
+        currentUser
+          ? {
+              ...currentUser,
+              name: updatedProfile.name,
+              email: updatedProfile.userEmail,
+            }
+          : currentUser,
+      );
+      setIsProfileIncomplete(!isInstructorProfileComplete);
+
+      if (isProfileIncomplete && isInstructorProfileComplete) {
         showSuccess('강사 프로필이 완성되었습니다!');
       }
     },
-    onError: (err: any) => {
-      showError(err.message || '프로필 수정에 실패했습니다.');
+    onError: (err: unknown) => {
+      showError(getErrorMessage(err, '프로필 수정에 실패했습니다.'));
     },
   });
 
@@ -149,6 +158,7 @@ const UserProfilePage: React.FC = () => {
         phoneNumber: user.userphoneNumber || '',
         address: user.instructor?.location || '',
         locationDetail: user.instructor?.locationDetail || '',
+        category: user.instructor?.category || '',
         email: user.userEmail,
         password: '',
         restrictedArea: user.instructor?.restrictedArea || '',
@@ -196,6 +206,11 @@ const UserProfilePage: React.FC = () => {
       return;
     }
 
+    if (isInstructor && isProfileIncomplete && !formData.category) {
+      showWarning('직책을 선택해주세요.');
+      return;
+    }
+
     updateMutation.mutate(formData);
   };
 
@@ -233,22 +248,6 @@ const UserProfilePage: React.FC = () => {
     });
   };
 
-  // 주소 검색 핸들러
-  const handleAddressSearch = () => {
-    if (window.daum && window.daum.Postcode) {
-      new window.daum.Postcode({
-        oncomplete: function (data: any) {
-          // 팝업에서 검색결과 항목을 클릭했을때 실행할 코드를 작성하는 부분.
-          // 예제를 참고하여 다양한 주소 조합을 적용할 수 있습니다.
-          const fullAddress = data.address; // 기본 주소
-          setFormData((prev) => ({ ...prev, address: fullAddress }));
-        },
-      }).open();
-    } else {
-      showWarning('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
-    }
-  };
-
   // 주소 분리 저장 핸들러
   const handleSaveAddress = async () => {
     if (!formData.address) {
@@ -269,8 +268,8 @@ const UserProfilePage: React.FC = () => {
       setOriginalLocationDetail(formData.locationDetail || '');
       queryClient.invalidateQueries({ queryKey: ['myProfile'] });
       showSuccess('주소가 저장되었습니다. 좌표가 자동 계산됩니다.');
-    } catch (err: any) {
-      showError(err.message || '주소 저장에 실패했습니다.');
+    } catch (err: unknown) {
+      showError(getErrorMessage(err, '주소 저장에 실패했습니다.'));
     } finally {
       setIsSavingAddress(false);
     }
@@ -287,8 +286,8 @@ const UserProfilePage: React.FC = () => {
       await sendVerificationCode(formData.email);
       setEmailVerificationMsg('인증번호가 발송되었습니다.');
       setIsEmailVerified(false);
-    } catch (e: any) {
-      showError(e.message);
+    } catch (e: unknown) {
+      showError(getErrorMessage(e, '인증번호 발송에 실패했습니다.'));
     } finally {
       setIsSendingCode(false);
     }
@@ -302,9 +301,9 @@ const UserProfilePage: React.FC = () => {
       await verifyEmailCode(formData.email, emailCode);
       setIsEmailVerified(true);
       setEmailVerificationMsg('인증되었습니다.');
-    } catch (e: any) {
+    } catch (e: unknown) {
       setIsEmailVerified(false);
-      showError(e.message);
+      showError(getErrorMessage(e, '인증번호 확인에 실패했습니다.'));
     } finally {
       setIsVerifyingCode(false);
     }
@@ -419,7 +418,9 @@ const UserProfilePage: React.FC = () => {
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">강사 유형</label>
                     <span className="text-sm font-medium text-gray-800">
-                      {user.instructor?.category || '미지정'}
+                      {user.instructor?.category
+                        ? CATEGORY_LABELS[user.instructor.category] || user.instructor.category
+                        : '미지정'}
                     </span>
                   </div>
                 )}
@@ -598,22 +599,16 @@ const UserProfilePage: React.FC = () => {
                         <>
                           <div className="space-y-2">
                             <div className="flex gap-2">
-                              <input
-                                type="text"
-                                name="address"
-                                readOnly
+                              <AddressSearchInput
                                 value={formData.address || ''}
-                                onChange={handleInputChange}
-                                className="mt-1 flex-1 min-w-0 rounded-md border-gray-300 shadow-sm bg-gray-50 sm:text-sm p-2 border cursor-pointer"
-                                onClick={handleAddressSearch}
+                                onChange={(value) =>
+                                  setFormData((prev) => ({ ...prev, address: value }))
+                                }
+                                className="mt-1 flex-1 min-w-0"
+                                inputClassName="rounded-md border-gray-300 shadow-sm bg-gray-50 sm:text-sm p-2 border"
+                                buttonClassName="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-2 py-2 rounded-md text-xs font-medium whitespace-nowrap"
+                                buttonLabel="검색"
                               />
-                              <button
-                                type="button"
-                                onClick={handleAddressSearch}
-                                className="mt-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-2 py-2 rounded-md text-xs font-medium whitespace-nowrap"
-                              >
-                                검색
-                              </button>
                               <button
                                 type="button"
                                 onClick={handleSaveAddress}
@@ -651,6 +646,31 @@ const UserProfilePage: React.FC = () => {
                           {user.instructor?.locationDetail
                             ? ` ${user.instructor.locationDetail}`
                             : ''}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <label className="block text-sm font-medium text-gray-700">직책</label>
+                      {isEditing ? (
+                        <select
+                          name="category"
+                          value={formData.category || ''}
+                          onChange={handleInputChange}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                        >
+                          <option value="">직책 선택</option>
+                          {categoryOptions.map((option) => (
+                            <option key={option.id} value={option.id}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div className="mt-1 text-sm text-gray-900">
+                          {user.instructor?.category
+                            ? CATEGORY_LABELS[user.instructor.category] || user.instructor.category
+                            : '미지정'}
                         </div>
                       )}
                     </div>

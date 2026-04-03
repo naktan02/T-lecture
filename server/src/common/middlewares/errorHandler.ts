@@ -1,9 +1,9 @@
-// server/src/common/middlewares/errorHandler.ts
-import { Request, Response, NextFunction } from 'express';
 import * as Sentry from '@sentry/node';
+import { NextFunction, Request, Response } from 'express';
+import multer from 'multer';
 import logger from '../../config/logger';
-import { mapPrismaError } from '../errors/prismaErrorMapper';
 import AppError from '../errors/AppError';
+import { mapPrismaError } from '../errors/prismaErrorMapper';
 
 const defaultCodeByStatus = (statusCode: number): string => {
   const statusMap: Record<number, string> = {
@@ -12,10 +12,12 @@ const defaultCodeByStatus = (statusCode: number): string => {
     403: 'FORBIDDEN',
     404: 'NOT_FOUND',
     409: 'CONFLICT',
+    410: 'GONE',
     422: 'UNPROCESSABLE_ENTITY',
     429: 'RATE_LIMITED',
     500: 'INTERNAL_ERROR',
   };
+
   return statusMap[statusCode] || 'INTERNAL_ERROR';
 };
 
@@ -39,7 +41,32 @@ function normalizeError(err: unknown): {
     };
   }
 
-  // 누군가 `throw "boom"` 같은 걸 해도 안전하게
+  if (err instanceof multer.MulterError) {
+    switch (err.code) {
+      case 'LIMIT_FILE_COUNT':
+        return {
+          statusCode: 400,
+          code: 'FILE_COUNT_LIMIT_EXCEEDED',
+          message: '첨부파일 수가 너무 많습니다. 파일 수를 줄여주세요.',
+          isAppError: true,
+        };
+      case 'LIMIT_FILE_SIZE':
+        return {
+          statusCode: 400,
+          code: 'FILE_SIZE_LIMIT_EXCEEDED',
+          message: '첨부파일 용량은 5MB 이하만 가능합니다.',
+          isAppError: true,
+        };
+      default:
+        return {
+          statusCode: 400,
+          code: 'FILE_UPLOAD_ERROR',
+          message: err.message,
+          isAppError: true,
+        };
+    }
+  }
+
   if (err instanceof Error) {
     return {
       statusCode: 500,
@@ -61,8 +88,10 @@ function normalizeError(err: unknown): {
 export const errorHandler = (err: unknown, req: Request, res: Response, _next: NextFunction) => {
   const mapped = mapPrismaError(err);
   const normalized = normalizeError(mapped ?? err);
+  const requestUrl = req.originalUrl || req.url || '';
+  const isExpectedRefreshFailure =
+    requestUrl.startsWith('/api/v1/auth/refresh') && normalized.statusCode === 401;
 
-  // 500 이상의 서버 오류이거나, 의도된 AppError가 아닌 경우 보안을 위해 메시지 숨김
   const safeMessage =
     normalized.statusCode >= 500 || !normalized.isAppError
       ? '서버 내부 오류가 발생했습니다.'
@@ -82,7 +111,6 @@ export const errorHandler = (err: unknown, req: Request, res: Response, _next: N
   if (normalized.statusCode >= 500) {
     logger.error('[API ERROR]', logPayload);
 
-    // Sentry에 500 에러 전송 (컨텍스트 포함)
     Sentry.withScope((scope) => {
       scope.setUser({ id: req.user?.id?.toString() });
       scope.setTag('statusCode', normalized.statusCode.toString());
@@ -99,6 +127,8 @@ export const errorHandler = (err: unknown, req: Request, res: Response, _next: N
       });
       Sentry.captureException(err);
     });
+  } else if (isExpectedRefreshFailure) {
+    logger.debug('[API ERROR]', logPayload);
   } else {
     logger.warn('[API ERROR]', logPayload);
   }
