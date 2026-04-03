@@ -1,12 +1,25 @@
-// src/domains/notice/notice.service.ts
-import noticeRepository from './notice.repository';
 import AppError from '../../common/errors/AppError';
+import noticeRepository from './notice.repository';
+
+type NoticeTargetSetting = {
+  targetType: 'ALL' | 'TEAM' | 'INDIVIDUAL';
+  targetTeamIds: number[];
+  targetUserIds: number[];
+};
+
+type SortOrder = 'asc' | 'desc';
+
+interface NoticeOrderBy {
+  title?: SortOrder;
+  viewCount?: SortOrder;
+  createdAt?: SortOrder;
+  author?: { name: SortOrder };
+}
 
 interface NoticeCreateData {
   title: string;
   content: string;
   isPinned?: boolean;
-  // 타겟팅 옵션
   targetType?: 'ALL' | 'TEAM' | 'INDIVIDUAL';
   targetTeamIds?: number[];
   targetUserIds?: number[];
@@ -17,18 +30,33 @@ interface NoticeGetParams {
   limit?: number;
   search?: string;
   sortField?: string;
-  sortOrder?: 'asc' | 'desc';
-  userId?: number; // 필터링을 위한 유저 ID
+  sortOrder?: SortOrder;
+  userId?: number;
+  isAdmin?: boolean;
+}
+
+interface NoticeFormatInput {
+  id: number;
+  title: string;
+  body: string;
+  createdAt: Date;
+  updatedAt: Date;
+  viewCount: number;
+  isPinned: boolean;
+  targetSetting: unknown;
+  authorId?: number | null;
+  author?: {
+    name: string | null;
+  };
 }
 
 class NoticeService {
-  // 공지사항 생성
   async create(data: NoticeCreateData, authorId: number) {
     if (!data.title || !data.content) {
-      throw new AppError('제목과 내용을 모두 입력해주세요.', 400, 'VALIDATION_ERROR');
+      throw new AppError('제목과 내용은 모두 입력해 주세요.', 400, 'VALIDATION_ERROR');
     }
 
-    const targetSetting = {
+    const targetSetting: NoticeTargetSetting = {
       targetType: data.targetType || 'ALL',
       targetTeamIds: data.targetTeamIds || [],
       targetUserIds: data.targetUserIds || [],
@@ -42,7 +70,6 @@ class NoticeService {
       targetSetting,
     });
 
-    // 타겟팅에 따른 수신자 생성
     const targetType = data.targetType || 'ALL';
     let userIds: number[] = [];
 
@@ -62,22 +89,21 @@ class NoticeService {
     return this.formatNotice(notice, author?.name || null);
   }
 
-  // 공지사항 목록 조회 (관리자용 - 전체 목록)
   async getAll(params: NoticeGetParams = {}) {
     const { page = 1, limit = 10, search, sortField, sortOrder } = params;
     const skip = (page - 1) * limit;
-
-    let orderBy: any; // Prisma type import needed or uses any
-    // To handle Prisma types cleanly without importing everywhere, 'any' is safe here if repo handles it.
-    // Repo expects Prisma.NoticeOrderByWithRelationInput.
-    // I can construct object.
+    let orderBy: NoticeOrderBy | undefined;
 
     if (sortField && sortOrder) {
-      if (sortField === 'title') orderBy = { title: sortOrder };
-      else if (sortField === 'viewCount') orderBy = { viewCount: sortOrder };
-      else if (sortField === 'createdAt' || sortField === 'date')
+      if (sortField === 'title') {
+        orderBy = { title: sortOrder };
+      } else if (sortField === 'viewCount') {
+        orderBy = { viewCount: sortOrder };
+      } else if (sortField === 'createdAt' || sortField === 'date') {
         orderBy = { createdAt: sortOrder };
-      else if (sortField === 'author') orderBy = { author: { name: sortOrder } };
+      } else if (sortField === 'author') {
+        orderBy = { author: { name: sortOrder } };
+      }
     }
 
     const { notices, total } = await noticeRepository.findAll({
@@ -88,9 +114,8 @@ class NoticeService {
       userId: params.userId,
     });
 
-    // Repository에서 이미 author를 include하므로 별도 조회 불필요
     return {
-      notices: notices.map((n: any) => this.formatNotice(n, n.author?.name || null)),
+      notices: notices.map((notice) => this.formatNotice(notice, notice.author?.name || null)),
       meta: {
         total,
         page,
@@ -99,23 +124,35 @@ class NoticeService {
     };
   }
 
-  // 공지사항 단건 조회
-  async getOne(id: number) {
-    const notice = await this.getNoticeHelper(id);
-    // 조회수 증가 비동기 처리
-    noticeRepository.increaseViewCount(id).catch(() => {});
+  async getOne(id: number, params: Pick<NoticeGetParams, 'userId' | 'isAdmin'> = {}) {
+    const { userId, isAdmin = false } = params;
 
-    const author = notice.authorId ? await noticeRepository.findAuthorById(notice.authorId) : null;
-    return this.formatNotice(notice, author?.name || null);
+    const notice =
+      userId && !isAdmin
+        ? await noticeRepository.findByIdForUser(id, userId)
+        : await noticeRepository.findById(id);
+
+    if (!notice) {
+      throw new AppError('공지사항을 찾을 수 없습니다.', 404, 'NOTICE_NOT_FOUND');
+    }
+
+    const updatedNotice = await noticeRepository.increaseViewCount(id);
+
+    if (userId && !isAdmin) {
+      await noticeRepository.markAsRead(userId, id);
+    }
+
+    const author = updatedNotice.authorId
+      ? await noticeRepository.findAuthorById(updatedNotice.authorId)
+      : null;
+
+    return this.formatNotice(updatedNotice, author?.name || null);
   }
 
-  // 공지사항 수정
-  // 공지사항 수정
   async update(id: number, data: NoticeCreateData) {
-    const existing = await this.getNoticeHelper(id);
+    await this.getNoticeHelper(id);
 
-    // 대상 설정 데이터 구성
-    const targetSetting = {
+    const targetSetting: NoticeTargetSetting = {
       targetType: data.targetType || 'ALL',
       targetTeamIds: data.targetTeamIds || [],
       targetUserIds: data.targetUserIds || [],
@@ -128,7 +165,6 @@ class NoticeService {
       targetSetting,
     });
 
-    // 수신자 동기화 (설정이 변경되었을 수 있으므로 기존 삭제 후 재생성)
     await noticeRepository.deleteReceipts(id);
 
     let userIds: number[] = [];
@@ -152,35 +188,35 @@ class NoticeService {
     return this.formatNotice(updated, author?.name || null);
   }
 
-  // 공지사항 삭제
   async delete(id: number) {
     await this.getNoticeHelper(id);
     return await noticeRepository.delete(id);
   }
 
-  // 공지사항 고정 토글
   async togglePin(id: number) {
     await this.getNoticeHelper(id);
     const toggled = await noticeRepository.togglePin(id);
-    if (!toggled) throw new AppError('공지사항을 찾을 수 없습니다.', 404, 'NOTICE_NOT_FOUND');
+
+    if (!toggled) {
+      throw new AppError('공지사항을 찾을 수 없습니다.', 404, 'NOTICE_NOT_FOUND');
+    }
+
     const author = toggled.authorId
       ? await noticeRepository.findAuthorById(toggled.authorId)
       : null;
     return this.formatNotice(toggled, author?.name || null);
   }
 
-  // Helper: 공지사항 존재 확인
   private async getNoticeHelper(id: number) {
     const notice = await noticeRepository.findById(id);
     if (!notice) {
       throw new AppError('공지사항을 찾을 수 없습니다.', 404, 'NOTICE_NOT_FOUND');
     }
+
     return notice;
   }
 
-  // Helper: 공지사항 응답 포맷
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private formatNotice(notice: any, authorName: string | null) {
+  private formatNotice(notice: NoticeFormatInput, authorName: string | null) {
     return {
       id: notice.id,
       title: notice.title,

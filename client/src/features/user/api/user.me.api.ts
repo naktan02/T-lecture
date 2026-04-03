@@ -59,6 +59,12 @@ export interface UserProfile {
   instructor?: InstructorProfile;
 }
 
+export interface UserHeaderCounts {
+  dispatchUnreadCount: number;
+  noticeUnreadCount: number;
+  inquiryUnreadAnswerCount: number;
+}
+
 export interface UpdateProfilePayload {
   name?: string;
   phoneNumber?: string;
@@ -74,6 +80,11 @@ export interface UpdateProfilePayload {
 // 내 정보 조회
 export async function getMyProfile(): Promise<UserProfile> {
   const response = await apiClient('/api/v1/users/me');
+  return response.json();
+}
+
+export async function getMyHeaderCounts(): Promise<UserHeaderCounts> {
+  const response = await apiClient('/api/v1/users/me/header-counts');
   return response.json();
 }
 

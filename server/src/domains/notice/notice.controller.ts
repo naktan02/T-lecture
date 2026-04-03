@@ -24,7 +24,12 @@ export const getNotices = asyncHandler(async (req: Request, res: Response) => {
 // 공지사항 단건 조회
 export const getNotice = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const notice = await noticeService.getOne(Number(id));
+  const isInstructorView = req.query.viewAs === 'instructor';
+  const isAdmin = req.user?.isAdmin === true && !isInstructorView;
+  const notice = await noticeService.getOne(Number(id), {
+    userId: req.user?.id,
+    isAdmin,
+  });
   res.json(notice);
 });
 

@@ -1,5 +1,19 @@
-// src/domains/inquiry/inquiry.repository.ts
 import prisma from '../../libs/prisma';
+
+type SortOrder = 'asc' | 'desc';
+
+interface InquiryOrderBy {
+  title?: SortOrder;
+  status?: SortOrder;
+  createdAt?: SortOrder;
+  author?: { name: SortOrder };
+}
+
+interface InquiryWhere {
+  authorId?: number;
+  status?: 'Waiting' | 'Answered';
+  OR?: Array<{ title?: { contains: string }; body?: { contains: string } }>;
+}
 
 interface InquiryCreateData {
   title: string;
@@ -10,14 +24,13 @@ interface InquiryCreateData {
 interface InquiryFindAllParams {
   skip: number;
   take: number;
-  authorId?: number; // 본인 문의만 조회 (강사용)
+  authorId?: number;
   status?: 'Waiting' | 'Answered';
   search?: string;
-  orderBy?: Record<string, unknown>;
+  orderBy?: InquiryOrderBy;
 }
 
 class InquiryRepository {
-  // 문의사항 생성
   async create(data: InquiryCreateData) {
     return await prisma.inquiry.create({
       data: {
@@ -29,20 +42,24 @@ class InquiryRepository {
     });
   }
 
-  // 문의사항 목록 조회 (content 포함)
   async findAll({ skip, take, authorId, status, search, orderBy }: InquiryFindAllParams) {
-    const where = {
-      ...(authorId && { authorId }),
-      ...(status && { status }),
-      ...(search && {
-        OR: [{ title: { contains: search } }, { body: { contains: search } }],
-      }),
-    };
+    const where: InquiryWhere = {};
 
-    // 전체 대기중 개수 (필터 적용 전)
-    const waitingWhere = {
-      ...(authorId && { authorId }),
-      status: 'Waiting' as const,
+    if (authorId) {
+      where.authorId = authorId;
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (search) {
+      where.OR = [{ title: { contains: search } }, { body: { contains: search } }];
+    }
+
+    const waitingWhere: InquiryWhere = {
+      ...(authorId ? { authorId } : {}),
+      status: 'Waiting',
     };
 
     const [inquiries, total, waitingCount] = await Promise.all([
@@ -63,17 +80,16 @@ class InquiryRepository {
       prisma.inquiry.count({ where }),
       prisma.inquiry.count({ where: waitingWhere }),
     ]);
+
     return { inquiries, total, waitingCount };
   }
 
-  // 문의사항 단건 조회
   async findById(id: number) {
     return await prisma.inquiry.findUnique({
       where: { id },
     });
   }
 
-  // 문의사항 답변 작성
   async answer(id: number, data: { answer: string; answeredBy: number }) {
     return await prisma.inquiry.update({
       where: { id },
@@ -81,19 +97,41 @@ class InquiryRepository {
         answer: data.answer,
         answeredBy: data.answeredBy,
         answeredAt: new Date(),
+        answerReadAt: null,
         status: 'Answered',
       },
     });
   }
 
-  // 문의사항 삭제
+  async markAnswerAsRead(id: number, authorId: number) {
+    return await prisma.inquiry.updateMany({
+      where: {
+        id,
+        authorId,
+        status: 'Answered',
+      },
+      data: {
+        answerReadAt: new Date(),
+      },
+    });
+  }
+
+  async countUnreadAnswers(authorId: number) {
+    return await prisma.inquiry.count({
+      where: {
+        authorId,
+        status: 'Answered',
+        answerReadAt: null,
+      },
+    });
+  }
+
   async delete(id: number) {
     return await prisma.inquiry.delete({
       where: { id },
     });
   }
 
-  // 작성자/답변자 정보 조회
   async findUserById(userId: number) {
     return await prisma.user.findUnique({
       where: { id: userId },

@@ -1,13 +1,9 @@
-// src/features/user/ui/headers/UserHeader.tsx
 import React from 'react';
-import { CommonHeader } from '../../../../shared/ui';
+import { useQuery } from '@tanstack/react-query';
+import { CommonHeader, NavLink } from '../../../../shared/ui';
 import { useCurrentUser } from '../../../auth/model/useCurrentUser';
 import { useAuth } from '../../../auth/model/useAuth';
-
-interface NavLink {
-  label: string;
-  path: string;
-}
+import { getMyHeaderCounts } from '../../api/user.me.api';
 
 interface UserHeaderProps {
   onRefresh?: () => void;
@@ -16,20 +12,35 @@ interface UserHeaderProps {
 export const UserHeader: React.FC<UserHeaderProps> = ({ onRefresh }) => {
   const userLabel = useCurrentUser();
   const { isInstructor } = useAuth();
+  const { data: headerCounts } = useQuery({
+    queryKey: ['userHeaderCounts'],
+    queryFn: getMyHeaderCounts,
+    staleTime: 30 * 1000,
+  });
 
   const links: NavLink[] = [
-    { label: '배정 알림', path: '/user-main/dispatches' }, // 모든 사용자에게 표시
+    {
+      label: '배정 알림',
+      path: '/user-main/dispatches',
+      badgeCount: headerCounts?.dispatchUnreadCount,
+    },
   ];
 
-  // 강사인 경우에만 일정 관리 및 공지사항/문의사항 메뉴 추가
   if (isInstructor) {
     links.push({ label: '일정 관리', path: '/instructor/schedule' });
     links.push({ label: '대시보드', path: '/instructor/dashboard' });
-    links.push({ label: '공지사항', path: '/instructor/notices' });
-    links.push({ label: '문의사항', path: '/instructor/inquiries' });
+    links.push({
+      label: '공지사항',
+      path: '/instructor/notices',
+      badgeCount: headerCounts?.noticeUnreadCount,
+    });
+    links.push({
+      label: '문의사항',
+      path: '/instructor/inquiries',
+      badgeCount: headerCounts?.inquiryUnreadAnswerCount,
+    });
   }
 
-  // 내 정보는 항상 마지막
   links.push({ label: '내 정보', path: '/user-main/profile' });
 
   return (

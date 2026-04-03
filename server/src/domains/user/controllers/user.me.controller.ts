@@ -12,6 +12,11 @@ export const getMyProfile = asyncHandler(async (req: Request, res: Response) => 
   res.json(profile);
 });
 
+export const getMyHeaderCounts = asyncHandler(async (req: Request, res: Response) => {
+  const counts = await userMeService.getMyHeaderCounts(req.user!.id);
+  res.json(counts);
+});
+
 // ✅ 내 프로필 수정
 export const updateMyProfile = asyncHandler(async (req: Request, res: Response) => {
   const updatedProfile = await userMeService.updateMyProfile(req.user!.id, req.body);
@@ -50,4 +55,4 @@ export const updateMyAddress = asyncHandler(async (req: Request, res: Response) 
 });
 
 // CommonJS 호환 (JS 파일에서 require() 사용 시)
-module.exports = { getMyProfile, updateMyProfile, withdraw, updateMyAddress };
+module.exports = { getMyProfile, getMyHeaderCounts, updateMyProfile, withdraw, updateMyAddress };

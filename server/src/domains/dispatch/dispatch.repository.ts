@@ -309,6 +309,15 @@ class DispatchRepository {
   }
 
   // 특정 유저-TrainingPeriod의 모든 배정 조회 (날짜 필터 없이 전체)
+  async countUnread(userId: number) {
+    return await prisma.dispatch.count({
+      where: {
+        userId: Number(userId),
+        readAt: null,
+      },
+    });
+  }
+
   async findAllAssignmentsForUserInUnit(userId: number, unitId: number) {
     return await prisma.instructorUnitAssignment.findMany({
       where: {

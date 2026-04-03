@@ -1,16 +1,14 @@
-// client/src/shared/ui/CommonHeader.tsx
-
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../features/auth/model/useAuth';
 import { showConfirm } from '../utils';
 
-// NavLink: 단일 링크 또는 드롭다운 그룹
 export interface NavLink {
   label: string;
-  path?: string; // 단일 링크용 (children이 있으면 무시됨)
+  path?: string;
   icon?: string;
-  children?: NavLink[]; // 드롭다운 자식 메뉴
+  badgeCount?: number;
+  children?: NavLink[];
 }
 
 interface CommonHeaderProps {
@@ -18,15 +16,56 @@ interface CommonHeaderProps {
   userLabel?: string;
   links?: NavLink[];
   logoPath?: string;
-  onRefresh?: () => void; // 새로고침 버튼 클릭 시 호출되는 콜백
+  onRefresh?: () => void;
 }
 
-// 드롭다운 메뉴 컴포넌트
+// Hide the badge when the count is zero or missing.
+const formatBadgeCount = (count?: number) => {
+  if (!count || count <= 0) {
+    return null;
+  }
+
+  return count > 99 ? '99+' : String(count);
+};
+
+const HeaderBadge = ({ count }: { count?: number }) => {
+  const label = formatBadgeCount(count);
+
+  if (!label) {
+    return null;
+  }
+
+  return (
+    <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white">
+      {label}
+    </span>
+  );
+};
+
+const PositionedHeaderBadge = ({ count }: { count?: number }) => {
+  const label = formatBadgeCount(count);
+
+  if (!label) {
+    return null;
+  }
+
+  return (
+    <span className="absolute -top-2 -right-3 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold leading-none text-white shadow-sm">
+      {label}
+    </span>
+  );
+};
+
+const DesktopNavLabel = ({ label, count }: { label: string; count?: number }) => (
+  <span className={`relative inline-flex ${count && count > 0 ? 'pr-3' : ''}`}>
+    <span>{label}</span>
+    <PositionedHeaderBadge count={count} />
+  </span>
+);
+
 const DropdownMenu = ({ item, isActive }: { item: NavLink; isActive: boolean }) => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-
-  // 자식 중 하나라도 현재 경로에 해당하면 활성화 표시
   const isChildActive = item.children?.some((child) => location.pathname === child.path);
 
   return (
@@ -36,15 +75,15 @@ const DropdownMenu = ({ item, isActive }: { item: NavLink; isActive: boolean }) 
       onMouseLeave={() => setIsOpen(false)}
     >
       <button
-        className={`flex items-center gap-1.5 px-2 lg:px-3 py-1.5 lg:py-2 rounded-md transition-all duration-200 text-xs lg:text-sm whitespace-nowrap ${
+        className={`flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs whitespace-nowrap transition-all duration-200 lg:px-3 lg:py-2 lg:text-sm ${
           isActive || isChildActive
-            ? 'text-white bg-white/10'
-            : 'text-gray-300 hover:text-white hover:bg-white/5'
+            ? 'bg-white/10 text-white'
+            : 'text-gray-300 hover:bg-white/5 hover:text-white'
         }`}
       >
-        {item.label}
+        <DesktopNavLabel label={item.label} count={item.badgeCount} />
         <svg
-          className={`w-3.5 h-3.5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+          className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -53,35 +92,35 @@ const DropdownMenu = ({ item, isActive }: { item: NavLink; isActive: boolean }) 
         </svg>
       </button>
 
-      {/* 드롭다운 패널 - 다크 테마 */}
       <div
-        className={`absolute top-full left-0 pt-2 z-50 transition-all duration-200 origin-top ${
-          isOpen ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-95 invisible'
+        className={`absolute top-full left-0 z-50 origin-top pt-2 transition-all duration-200 ${
+          isOpen ? 'visible scale-100 opacity-100' : 'invisible scale-95 opacity-0'
         }`}
       >
-        <div className="bg-[#1a252f] rounded-lg shadow-2xl border border-gray-700/50 py-1.5 backdrop-blur-sm whitespace-nowrap">
-          {/* 상단 삼각형 화살표 */}
-          <div className="absolute -top-1.5 left-4 w-3 h-3 bg-[#1a252f] border-l border-t border-gray-700/50 transform rotate-45" />
+        <div className="whitespace-nowrap rounded-lg border border-gray-700/50 bg-[#1a252f] py-1.5 shadow-2xl backdrop-blur-sm">
+          <div className="absolute -top-1.5 left-4 h-3 w-3 rotate-45 border-t border-l border-gray-700/50 bg-[#1a252f]" />
 
           {item.children?.map((child) => (
             <Link
-              key={child.path}
+              key={child.path || child.label}
               to={child.path || '#'}
-              className={`group flex items-center gap-3 px-4 py-2.5 text-sm transition-all duration-150 ${
+              className={`group flex items-center justify-between gap-4 px-4 py-2.5 text-sm transition-all duration-150 ${
                 location.pathname === child.path
                   ? 'bg-green-500/20 text-green-400'
                   : 'text-gray-300 hover:bg-white/5 hover:text-white'
               }`}
             >
-              {/* 활성화 인디케이터 */}
-              <span
-                className={`w-1.5 h-1.5 rounded-full transition-all duration-150 ${
-                  location.pathname === child.path
-                    ? 'bg-green-400'
-                    : 'bg-gray-600 group-hover:bg-gray-400'
-                }`}
-              />
-              {child.label}
+              <span className="flex items-center gap-3">
+                <span
+                  className={`h-1.5 w-1.5 rounded-full transition-all duration-150 ${
+                    location.pathname === child.path
+                      ? 'bg-green-400'
+                      : 'bg-gray-600 group-hover:bg-gray-400'
+                  }`}
+                />
+                <span>{child.label}</span>
+              </span>
+              <HeaderBadge count={child.badgeCount} />
             </Link>
           ))}
         </div>
@@ -90,42 +129,43 @@ const DropdownMenu = ({ item, isActive }: { item: NavLink; isActive: boolean }) 
   );
 };
 
-// 모바일 아코디언 메뉴 아이템
 const MobileAccordionItem = ({ item, onClose }: { item: NavLink; onClose: () => void }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const location = useLocation();
 
-  // 단일 링크인 경우
   if (!item.children || item.children.length === 0) {
     return (
       <Link
         to={item.path || '#'}
         onClick={onClose}
-        className={`px-4 py-2.5 rounded-lg transition-colors text-sm ${
+        className={`flex items-center justify-between rounded-lg px-4 py-2.5 text-sm transition-colors ${
           location.pathname === item.path
-            ? 'bg-green-50 text-green-700 font-semibold'
+            ? 'bg-green-50 font-semibold text-green-700'
             : 'text-gray-700 hover:bg-gray-50'
         }`}
       >
-        {item.label}
+        <span>{item.label}</span>
+        <HeaderBadge count={item.badgeCount} />
       </Link>
     );
   }
 
-  // 드롭다운 그룹인 경우
   const isChildActive = item.children.some((child) => location.pathname === child.path);
 
   return (
     <div>
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className={`w-full flex justify-between items-center px-4 py-2.5 rounded-lg text-sm transition-colors ${
-          isChildActive ? 'text-green-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'
+        onClick={() => setIsExpanded((current) => !current)}
+        className={`flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-sm transition-colors ${
+          isChildActive ? 'font-semibold text-green-700' : 'text-gray-700 hover:bg-gray-50'
         }`}
       >
-        <span>{item.label}</span>
+        <span className="flex items-center gap-2">
+          <span>{item.label}</span>
+          <HeaderBadge count={item.badgeCount} />
+        </span>
         <svg
-          className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -135,19 +175,20 @@ const MobileAccordionItem = ({ item, onClose }: { item: NavLink; onClose: () => 
       </button>
 
       {isExpanded && (
-        <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 pl-3">
+        <div className="mt-1 ml-4 space-y-1 border-l-2 border-gray-200 pl-3">
           {item.children.map((child) => (
             <Link
-              key={child.path}
+              key={child.path || child.label}
               to={child.path || '#'}
               onClick={onClose}
-              className={`block px-3 py-2 rounded-lg text-sm transition-colors ${
+              className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors ${
                 location.pathname === child.path
-                  ? 'bg-green-50 text-green-700 font-medium'
+                  ? 'bg-green-50 font-medium text-green-700'
                   : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
-              {child.label}
+              <span>{child.label}</span>
+              <HeaderBadge count={child.badgeCount} />
             </Link>
           ))}
         </div>
@@ -156,11 +197,6 @@ const MobileAccordionItem = ({ item, onClose }: { item: NavLink; onClose: () => 
   );
 };
 
-/**
- * @param title - 왼쪽 상단 제목
- * @param userLabel - 오른쪽 유저 이름/직책 (선택적, 없으면 로그인된 사용자 이름 사용)
- * @param links - 네비게이션 메뉴 목록 [{ label: '메뉴명', path: '/이동경로', children: [...] }]
- */
 export const CommonHeader = ({
   title,
   userLabel,
@@ -172,8 +208,6 @@ export const CommonHeader = ({
   const location = useLocation();
   const { logout, isAdmin, isSuperAdmin } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  // 스크롤 시 헤더 숨기기 로직
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
 
@@ -181,31 +215,23 @@ export const CommonHeader = ({
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
 
-      // 모바일 메뉴가 열려있을 때는 헤더를 숨기지 않음
       if (isMobileMenuOpen) {
         setIsVisible(true);
         lastScrollY.current = currentScrollY;
         return;
       }
 
-      // 최상단에서는 항시 노출
       if (currentScrollY <= 0) {
         setIsVisible(true);
         lastScrollY.current = currentScrollY;
         return;
       }
 
-      // 50px 이상 스크롤했을 때만 동작 (미세한 진동 방지)
-      if (Math.abs(currentScrollY - lastScrollY.current) < 10) return;
-
-      if (currentScrollY > lastScrollY.current) {
-        // 아래로 스크롤 중 -> 숨김
-        setIsVisible(false);
-      } else {
-        // 위로 스크롤 중 -> 노출
-        setIsVisible(true);
+      if (Math.abs(currentScrollY - lastScrollY.current) < 10) {
+        return;
       }
 
+      setIsVisible(currentScrollY < lastScrollY.current);
       lastScrollY.current = currentScrollY;
     };
 
@@ -213,9 +239,9 @@ export const CommonHeader = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, [isMobileMenuOpen]);
 
-  // userLabel이 없으면 localStorage에서 사용자 이름 가져오기
   const userName = localStorage.getItem('userName') || '사용자';
   const displayLabel = userLabel || userName;
+  const isInAdminPage = location.pathname.startsWith('/admin');
 
   const handleLogout = async (): Promise<void> => {
     const confirmed = await showConfirm('정말 로그아웃 하시겠습니까?');
@@ -224,61 +250,53 @@ export const CommonHeader = ({
     }
   };
 
-  const isInAdminPage = location.pathname.startsWith('/admin');
-
-  // 모드 전환 버튼 렌더링 로직
   const renderModeSwitch = () => {
-    // 슈퍼 관리자는 모드 전환 버튼 없음
-    if (isSuperAdmin) return null;
+    if (isSuperAdmin) {
+      return null;
+    }
 
-    // 1. 관리자 페이지에 있을 때 -> '사용자 모드로 이동'
     if (isInAdminPage) {
       return (
         <button
           onClick={() => navigate('/user-main')}
-          className="px-2 lg:px-3 py-1.5 lg:py-2 bg-green-600 hover:bg-green-700 rounded-lg text-xs lg:text-sm 
-                     transition-all duration-200 active:scale-95 hidden sm:block whitespace-nowrap"
+          className="hidden whitespace-nowrap rounded-lg bg-green-600 px-2 py-1.5 text-xs transition-all duration-200 active:scale-95 hover:bg-green-700 sm:block lg:px-3 lg:py-2 lg:text-sm"
         >
           사용자 모드
         </button>
       );
     }
 
-    // 2. 일반 페이지에 있는데 관리자 권한이 있을 때 -> '관리자 모드로 이동'
     if (isAdmin) {
       return (
         <button
           onClick={() => navigate(isSuperAdmin ? '/admin/super' : '/admin')}
-          className="px-2 lg:px-3 py-1.5 lg:py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-xs lg:text-sm 
-                     transition-all duration-200 active:scale-95 hidden sm:block whitespace-nowrap"
+          className="hidden whitespace-nowrap rounded-lg bg-blue-600 px-2 py-1.5 text-xs transition-all duration-200 active:scale-95 hover:bg-blue-700 sm:block lg:px-3 lg:py-2 lg:text-sm"
         >
           관리자 모드
         </button>
       );
     }
+
     return null;
   };
 
   return (
     <div className="h-[var(--header-height)]">
       <header
-        className={`fixed top-0 left-0 w-full flex justify-between items-center bg-[#2c3e50] px-4 md:px-6 py-4 shadow-md text-white z-50 transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 z-50 flex w-full items-center justify-between bg-[#2c3e50] px-4 py-4 text-white shadow-md transition-transform duration-300 ease-in-out md:px-6 ${
           isVisible ? 'translate-y-0' : '-translate-y-full'
         }`}
       >
-        {/* 1. 왼쪽: 타이틀 및 메뉴 */}
         <div className="flex items-center gap-4 md:gap-8">
-          <Link to={logoPath} className="hover:opacity-80 transition-opacity">
-            <h1 className="text-sm lg:text-lg xl:text-xl font-bold text-green-400 whitespace-nowrap">
+          <Link to={logoPath} className="transition-opacity hover:opacity-80">
+            <h1 className="whitespace-nowrap text-sm font-bold text-green-400 lg:text-lg xl:text-xl">
               {title}
             </h1>
           </Link>
 
-          {/* 데스크톱 네비게이션 */}
-          <nav className="hidden md:flex gap-1 lg:gap-3 xl:gap-6 text-xs lg:text-sm">
+          <nav className="hidden gap-1 text-xs md:flex lg:gap-3 lg:text-sm xl:gap-6">
             {links.map((link) =>
               link.children && link.children.length > 0 ? (
-                // 드롭다운 메뉴
                 <DropdownMenu
                   key={link.label}
                   item={link}
@@ -286,31 +304,29 @@ export const CommonHeader = ({
                 />
               ) : (
                 <Link
-                  key={link.path}
+                  key={link.path || link.label}
                   to={link.path || '#'}
-                  className={`px-2 lg:px-3 py-1.5 lg:py-2 rounded-md transition-all duration-200 whitespace-nowrap ${
+                  className={`flex items-center gap-2 rounded-md px-2 py-1.5 whitespace-nowrap transition-all duration-200 lg:px-3 lg:py-2 ${
                     location.pathname === link.path
-                      ? 'text-white bg-white/10'
-                      : 'text-gray-300 hover:text-white hover:bg-white/5'
+                      ? 'bg-white/10 text-white'
+                      : 'text-gray-300 hover:bg-white/5 hover:text-white'
                   }`}
                 >
-                  {link.label}
+                  <DesktopNavLabel label={link.label} count={link.badgeCount} />
                 </Link>
               ),
             )}
           </nav>
         </div>
 
-        {/* 2. 오른쪽: 새로고침, 유저 정보 및 로그아웃 */}
         <div className="flex items-center gap-2 md:gap-4">
-          {/* 새로고침 버튼 */}
           {onRefresh && (
             <button
               onClick={onRefresh}
-              className="p-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-md transition-all duration-200 active:scale-95"
+              className="rounded-md p-2 text-gray-300 transition-all duration-200 active:scale-95 hover:bg-white/10 hover:text-white"
               title="새로고침"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -321,71 +337,62 @@ export const CommonHeader = ({
             </button>
           )}
 
-          {/* 데스크톱 모드 전환 버튼 */}
           <div className="hidden md:block">{renderModeSwitch()}</div>
 
-          {/* 유저 라벨 */}
-          <span className="hidden sm:inline text-xs lg:text-sm font-medium border border-gray-600 rounded px-1.5 lg:px-2 py-0.5 lg:py-1 bg-gray-700 whitespace-nowrap">
+          <span className="hidden whitespace-nowrap rounded border border-gray-600 bg-gray-700 px-1.5 py-0.5 text-xs font-medium sm:inline lg:px-2 lg:py-1 lg:text-sm">
             {displayLabel}
           </span>
 
-          {/* 데스크톱 로그아웃 */}
           <button
             onClick={handleLogout}
-            className="hidden md:block px-2 lg:px-3 py-1 bg-red-600 hover:bg-red-700 rounded-md text-xs lg:text-sm transition duration-150 whitespace-nowrap"
+            className="hidden whitespace-nowrap rounded-md bg-red-600 px-2 py-1 text-xs transition duration-150 hover:bg-red-700 md:block lg:px-3 lg:text-sm"
           >
             로그아웃
           </button>
 
-          {/* 햄버거 메뉴 버튼 (모바일) */}
           <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden flex flex-col justify-center items-center w-8 h-8 focus:outline-none"
+            onClick={() => setIsMobileMenuOpen((current) => !current)}
+            className="flex h-8 w-8 flex-col items-center justify-center focus:outline-none md:hidden"
             aria-label="메뉴"
           >
             <span
-              className={`block w-6 h-0.5 bg-white transition-all duration-300 ${
-                isMobileMenuOpen ? 'rotate-45 translate-y-1.5' : ''
+              className={`block h-0.5 w-6 bg-white transition-all duration-300 ${
+                isMobileMenuOpen ? 'translate-y-1.5 rotate-45' : ''
               }`}
             />
             <span
-              className={`block w-6 h-0.5 bg-white mt-1.5 transition-all duration-300 ${
+              className={`mt-1.5 block h-0.5 w-6 bg-white transition-all duration-300 ${
                 isMobileMenuOpen ? 'opacity-0' : ''
               }`}
             />
             <span
-              className={`block w-6 h-0.5 bg-white mt-1.5 transition-all duration-300 ${
-                isMobileMenuOpen ? '-rotate-45 -translate-y-1.5' : ''
+              className={`mt-1.5 block h-0.5 w-6 bg-white transition-all duration-300 ${
+                isMobileMenuOpen ? '-translate-y-1.5 -rotate-45' : ''
               }`}
             />
           </button>
         </div>
       </header>
 
-      {/* 모바일 사이드바 메뉴 */}
       {isMobileMenuOpen && (
         <>
-          {/* 오버레이 배경 */}
           <div
-            className="fixed inset-0 bg-black/30 z-40 md:hidden backdrop-blur-sm"
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm md:hidden"
             onClick={() => setIsMobileMenuOpen(false)}
           />
 
-          {/* 사이드바 */}
-          <div className="fixed top-0 right-0 h-full w-64 bg-white shadow-2xl z-50 md:hidden flex flex-col transform transition-transform duration-300">
-            {/* 헤더 */}
-            <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50">
-              <span className="text-gray-700 font-semibold text-sm">메뉴</span>
+          <div className="fixed top-0 right-0 z-50 flex h-full w-64 flex-col bg-white shadow-2xl transition-transform duration-300 md:hidden">
+            <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 p-4">
+              <span className="text-sm font-semibold text-gray-700">메뉴</span>
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="text-gray-400 hover:text-gray-600 text-2xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-2xl text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
               >
                 ×
               </button>
             </div>
 
-            {/* 메뉴 리스트 - 아코디언 */}
-            <nav className="flex flex-col p-3 space-y-1 flex-1 overflow-y-auto">
+            <nav className="flex flex-1 flex-col space-y-1 overflow-y-auto p-3">
               {links.map((link) => (
                 <MobileAccordionItem
                   key={link.label}
@@ -394,17 +401,15 @@ export const CommonHeader = ({
                 />
               ))}
 
-              {/* 구분선 */}
-              {links.length > 0 && <div className="border-t border-gray-200 my-2" />}
+              {links.length > 0 && <div className="my-2 border-t border-gray-200" />}
 
-              {/* 모드 전환 버튼 */}
               {!isSuperAdmin && isInAdminPage && (
                 <button
                   onClick={() => {
                     navigate('/user-main');
                     setIsMobileMenuOpen(false);
                   }}
-                  className="px-4 py-2.5 rounded-lg text-sm text-green-700 hover:bg-green-50 font-medium transition text-left"
+                  className="px-4 py-2.5 text-left text-sm font-medium text-green-700 transition hover:bg-green-50"
                 >
                   사용자 모드로 이동
                 </button>
@@ -416,26 +421,24 @@ export const CommonHeader = ({
                     navigate(isSuperAdmin ? '/admin/super' : '/admin');
                     setIsMobileMenuOpen(false);
                   }}
-                  className="px-4 py-2.5 rounded-lg text-sm text-blue-700 hover:bg-blue-50 font-medium transition text-left"
+                  className="px-4 py-2.5 text-left text-sm font-medium text-blue-700 transition hover:bg-blue-50"
                 >
                   관리자 모드로 이동
                 </button>
               )}
 
-              {/* 로그아웃 */}
               <button
                 onClick={() => {
-                  handleLogout();
+                  void handleLogout();
                   setIsMobileMenuOpen(false);
                 }}
-                className="px-4 py-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 font-medium transition text-left"
+                className="px-4 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
               >
                 로그아웃
               </button>
             </nav>
 
-            {/* 하단 유저 정보 */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-gray-50">
+            <div className="absolute right-0 bottom-0 left-0 border-t border-gray-200 bg-gray-50 p-4">
               <div className="text-xs text-gray-500">{displayLabel}</div>
             </div>
           </div>

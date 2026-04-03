@@ -1,26 +1,43 @@
-// src/domains/notice/notice.repository.ts
 import prisma from '../../libs/prisma';
+
+type NoticeTargetSetting = {
+  targetType: 'ALL' | 'TEAM' | 'INDIVIDUAL';
+  targetTeamIds: number[];
+  targetUserIds: number[];
+};
+
+type SortOrder = 'asc' | 'desc';
+
+interface NoticeOrderBy {
+  isPinned?: SortOrder;
+  title?: SortOrder;
+  viewCount?: SortOrder;
+  createdAt?: SortOrder;
+  author?: { name: SortOrder };
+}
+
+interface NoticeWhere {
+  OR?: Array<{ title?: { contains: string }; body?: { contains: string } }>;
+  receipts?: { some: { userId: number } };
+}
 
 interface NoticeCreateData {
   title: string;
   content: string;
   authorId: number;
   isPinned?: boolean;
-  targetSetting?: any; // JSON
+  targetSetting?: NoticeTargetSetting;
 }
-
-import { Prisma } from '../../generated/prisma/client.js';
 
 interface NoticeFindAllParams {
   skip: number;
   take: number;
   search?: string;
-  orderBy?: Prisma.NoticeOrderByWithRelationInput;
-  userId?: number; // 필터링을 위한 유저 ID
+  orderBy?: NoticeOrderBy;
+  userId?: number;
 }
 
 class NoticeRepository {
-  // 공지사항 생성
   async create(data: NoticeCreateData) {
     return await prisma.notice.create({
       data: {
@@ -33,23 +50,20 @@ class NoticeRepository {
     });
   }
 
-  // 공지사항 목록 조회 (content 포함)
   async findAll({ skip, take, search, orderBy, userId }: NoticeFindAllParams) {
-    const where: Prisma.NoticeWhereInput = search
-      ? {
-          OR: [{ title: { contains: search } }, { body: { contains: search } }],
-        }
-      : {};
+    const where: NoticeWhere = {};
 
-    // 일반 사용자라면 본인이 수신자인 공지만 조회
+    if (search) {
+      where.OR = [{ title: { contains: search } }, { body: { contains: search } }];
+    }
+
     if (userId) {
       where.receipts = {
         some: { userId },
       };
     }
 
-    // Pinned always on top, then custom sort or default createdAt desc
-    const sortRule: Prisma.NoticeOrderByWithRelationInput[] = [{ isPinned: 'desc' }];
+    const sortRule: NoticeOrderBy[] = [{ isPinned: 'desc' }];
     if (orderBy) {
       sortRule.push(orderBy);
     } else {
@@ -70,20 +84,35 @@ class NoticeRepository {
       }),
       prisma.notice.count({ where }),
     ]);
+
     return { notices, total };
   }
 
-  // 공지사항 단건 조회
   async findById(id: number) {
     return await prisma.notice.findUnique({
       where: { id },
     });
   }
 
-  // 공지사항 수정
+  async findByIdForUser(id: number, userId: number) {
+    return await prisma.notice.findFirst({
+      where: {
+        id,
+        receipts: {
+          some: { userId },
+        },
+      },
+    });
+  }
+
   async update(
     id: number,
-    data: { title?: string; content?: string; isPinned?: boolean; targetSetting?: any },
+    data: {
+      title?: string;
+      content?: string;
+      isPinned?: boolean;
+      targetSetting?: NoticeTargetSetting;
+    },
   ) {
     return await prisma.notice.update({
       where: { id },
@@ -96,21 +125,18 @@ class NoticeRepository {
     });
   }
 
-  // 수신자 목록 초기화 (수정 시 사용)
   async deleteReceipts(noticeId: number) {
     await prisma.noticeReceipt.deleteMany({
       where: { noticeId },
     });
   }
 
-  // 공지사항 삭제
   async delete(id: number) {
     return await prisma.notice.delete({
       where: { id },
     });
   }
 
-  // 조회수 증가
   async increaseViewCount(id: number) {
     return await prisma.notice.update({
       where: { id },
@@ -118,17 +144,18 @@ class NoticeRepository {
     });
   }
 
-  // 고정 토글
   async togglePin(id: number) {
     const notice = await prisma.notice.findUnique({ where: { id } });
-    if (!notice) return null;
+    if (!notice) {
+      return null;
+    }
+
     return await prisma.notice.update({
       where: { id },
       data: { isPinned: !notice.isPinned },
     });
   }
 
-  // 작성자 정보 조회
   async findAuthorById(authorId: number) {
     return await prisma.user.findUnique({
       where: { id: authorId },
@@ -136,9 +163,10 @@ class NoticeRepository {
     });
   }
 
-  // 수신자 Receipt 생성 (전체, 팀, 개인)
   async createReceipts(noticeId: number, userIds: number[]) {
-    if (userIds.length === 0) return;
+    if (userIds.length === 0) {
+      return;
+    }
 
     await prisma.noticeReceipt.createMany({
       data: userIds.map((userId) => ({
@@ -149,25 +177,24 @@ class NoticeRepository {
     });
   }
 
-  // 전체 승인된 사용자 ID 조회
   async findAllApprovedUserIds(): Promise<number[]> {
     const users = await prisma.user.findMany({
       where: { status: 'APPROVED' },
       select: { id: true },
     });
-    return users.map((u) => u.id);
+
+    return users.map((user) => user.id);
   }
 
-  // 팀별 사용자 ID 조회
   async findUserIdsByTeamIds(teamIds: number[]): Promise<number[]> {
     const instructors = await prisma.instructor.findMany({
       where: { teamId: { in: teamIds } },
       select: { userId: true },
     });
-    return instructors.map((i) => i.userId);
+
+    return instructors.map((instructor) => instructor.userId);
   }
 
-  // 내 공지사항 목록 조회 (수신자용)
   async findMyNotices(userId: number) {
     return await prisma.noticeReceipt.findMany({
       where: { userId },
@@ -178,16 +205,22 @@ class NoticeRepository {
     });
   }
 
-  // 공지사항 읽음 처리
   async markAsRead(userId: number, noticeId: number) {
-    return await prisma.noticeReceipt.update({
+    return await prisma.noticeReceipt.updateMany({
       where: {
-        noticeId_userId: {
-          noticeId,
-          userId,
-        },
+        noticeId,
+        userId,
       },
       data: { readAt: new Date() },
+    });
+  }
+
+  async countUnread(userId: number) {
+    return await prisma.noticeReceipt.count({
+      where: {
+        userId,
+        readAt: null,
+      },
     });
   }
 }

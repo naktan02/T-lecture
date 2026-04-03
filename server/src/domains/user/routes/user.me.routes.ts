@@ -7,6 +7,7 @@ const router = express.Router();
 
 // [내 정보 조회] - 로그인 필요
 router.get('/me', auth, userMeController.getMyProfile);
+router.get('/me/header-counts', auth, userMeController.getMyHeaderCounts);
 
 // [내 정보 수정] - 로그인 필요
 router.patch('/me', auth, userMeController.updateMyProfile);

@@ -62,8 +62,14 @@ export const noticeApi = {
     return response.json() as Promise<NoticeListResponse>;
   },
 
-  getNotice: async (id: number) => {
-    const response = await apiClient(`${BASE_PATH}/${id}`);
+  getNotice: async (id: number, options?: { viewAs?: string }) => {
+    const urlParams = new URLSearchParams();
+    if (options?.viewAs) {
+      urlParams.append('viewAs', options.viewAs);
+    }
+    const response = await apiClient(
+      `${BASE_PATH}/${id}${urlParams.toString() ? `?${urlParams.toString()}` : ''}`,
+    );
     return response.json() as Promise<Notice>;
   },
 

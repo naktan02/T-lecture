@@ -106,15 +106,16 @@ enum InquiryStatus {
 }
 
 model Inquiry {
-  id         Int           @id @default(autoincrement())
-  title      String        @map("제목")
-  body       String        @map("본문") @db.Text
-  authorId   Int           @map("작성자id")
-  status     InquiryStatus @default(Waiting) @map("상태")
-  answer     String?       @map("답변") @db.Text
-  answeredBy Int?          @map("답변자id")
-  answeredAt DateTime?     @map("답변일시")
-  createdAt  DateTime      @default(now()) @map("생성일시")
+  id           Int           @id @default(autoincrement())
+  title        String        @map("제목")
+  body         String        @map("본문") @db.Text
+  authorId     Int           @map("작성자id")
+  status       InquiryStatus @default(Waiting) @map("상태")
+  answer       String?       @map("답변") @db.Text
+  answeredBy   Int?          @map("답변자id")
+  answeredAt   DateTime?     @map("답변일시")
+  answerReadAt DateTime?     @map("답변읽은일시")
+  createdAt    DateTime      @default(now()) @map("생성일시")
 
   // 관계
   author         User  @relation("InquiryAuthor", fields: [authorId], references: [id])
