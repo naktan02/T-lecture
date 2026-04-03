@@ -1,4 +1,4 @@
-import { Fragment, ReactElement } from 'react';
+import { Fragment, ReactElement, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { showError } from '../../../shared/utils/toast';
@@ -20,6 +20,8 @@ export const NoticeDetailModal = ({
   onClose,
   notice,
 }: NoticeDetailModalProps): ReactElement => {
+  const [downloadingAttachmentIds, setDownloadingAttachmentIds] = useState<number[]>([]);
+
   if (!notice) {
     return <></>;
   }
@@ -116,8 +118,15 @@ export const NoticeDetailModal = ({
                             </div>
                             <button
                               type="button"
-                              disabled={attachment.isExpired}
+                              disabled={
+                                attachment.isExpired ||
+                                downloadingAttachmentIds.includes(attachment.id)
+                              }
                               onClick={async () => {
+                                setDownloadingAttachmentIds((prev) =>
+                                  prev.includes(attachment.id) ? prev : [...prev, attachment.id],
+                                );
+
                                 try {
                                   await noticeApi.downloadAttachment(
                                     attachment.id,
@@ -129,11 +138,17 @@ export const NoticeDetailModal = ({
                                       ? error.message
                                       : '첨부파일 다운로드에 실패했습니다.',
                                   );
+                                } finally {
+                                  setDownloadingAttachmentIds((prev) =>
+                                    prev.filter((id) => id !== attachment.id),
+                                  );
                                 }
                               }}
                               className="ml-3 rounded-md bg-indigo-600 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-gray-300"
                             >
-                              다운로드
+                              {downloadingAttachmentIds.includes(attachment.id)
+                                ? '다운로드 중...'
+                                : '다운로드'}
                             </button>
                           </div>
                         ))}

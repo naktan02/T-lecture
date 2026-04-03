@@ -49,6 +49,7 @@ export const NoticeForm = ({
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [removedAttachmentIds, setRemovedAttachmentIds] = useState<number[]>([]);
+  const [downloadingAttachmentIds, setDownloadingAttachmentIds] = useState<number[]>([]);
 
   const {
     control,
@@ -255,7 +256,12 @@ export const NoticeForm = ({
                     {!isRemoved && (
                       <button
                         type="button"
+                        disabled={downloadingAttachmentIds.includes(attachment.id)}
                         onClick={async () => {
+                          setDownloadingAttachmentIds((prev) =>
+                            prev.includes(attachment.id) ? prev : [...prev, attachment.id],
+                          );
+
                           try {
                             await noticeApi.downloadAttachment(
                               attachment.id,
@@ -267,11 +273,17 @@ export const NoticeForm = ({
                                 ? error.message
                                 : '첨부파일 다운로드에 실패했습니다.',
                             );
+                          } finally {
+                            setDownloadingAttachmentIds((prev) =>
+                              prev.filter((id) => id !== attachment.id),
+                            );
                           }
                         }}
-                        className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50"
+                        className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
                       >
-                        다운로드
+                        {downloadingAttachmentIds.includes(attachment.id)
+                          ? '다운로드 중...'
+                          : '다운로드'}
                       </button>
                     )}
                     <button
