@@ -164,6 +164,8 @@ interface UpdateUserDto {
   teamId?: number | null;
   generation?: number | null;
   restrictedArea?: string | null;
+  virtueIds?: number[];
+  availabilities?: string[];
 }
 
 interface PaginationQuery extends QueryFilters {
@@ -221,6 +223,7 @@ class AdminService {
       teamId,
       generation,
       restrictedArea,
+      virtueIds,
       availabilities,
     } = dto;
 
@@ -243,6 +246,14 @@ class AdminService {
 
     if (availabilities !== undefined && !Array.isArray(availabilities)) {
       throw new AppError('availabilities는 배열이어야 합니다.', 400, 'INVALID_INPUT');
+    }
+
+    if (
+      virtueIds !== undefined &&
+      (!Array.isArray(virtueIds) ||
+        virtueIds.some((virtueId) => typeof virtueId !== 'number' || !Number.isInteger(virtueId)))
+    ) {
+      throw new AppError('virtueIds는 정수 배열이어야 합니다.', 400, 'INVALID_INPUT');
     }
 
     const validCategories = ['Main', 'Co', 'Assistant', 'Practicum'] as const;
@@ -280,6 +291,7 @@ class AdminService {
       teamId !== undefined ||
       generation !== undefined ||
       restrictedArea !== undefined ||
+      virtueIds !== undefined ||
       availabilities !== undefined;
 
     if (!hasAny) {
@@ -327,7 +339,7 @@ class AdminService {
       }
       // 관리자 직접 관리 필드
       if (category !== undefined) {
-        instructorData.category = category as any;
+        instructorData.category = category as UserCategory;
       }
       if (teamId !== undefined) {
         if (teamId === null) {
@@ -345,6 +357,15 @@ class AdminService {
 
       // 프로필 완료 여부 자동 계산
       // 필수 필드: 주소, 분류 (팀 소속은 무소속 가능하므로 제외)
+      if (virtueIds !== undefined) {
+        instructorData.virtues = {
+          deleteMany: {},
+          create: virtueIds.map((virtueId) => ({
+            virtue: { connect: { id: virtueId } },
+          })),
+        };
+      }
+
       const finalLocation = address !== undefined ? address : user.instructor!.location;
       const finalCategory = category !== undefined ? category : user.instructor!.category;
 
@@ -361,7 +382,7 @@ class AdminService {
       }
     }
 
-    const updatedUser = await userRepository.update(id, userData, instructorData);
+    await userRepository.update(id, userData, instructorData);
 
     // 업데이트된 availabilities를 포함해서 반환하기 위해 다시 조회 (선택사항)
     return await this.getUserById(id);

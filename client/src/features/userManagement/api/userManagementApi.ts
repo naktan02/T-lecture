@@ -98,6 +98,7 @@ export interface UpdateUserDto {
   generation?: number | null;
   restrictedArea?: string | null;
   availabilities?: string[];
+  virtueIds?: number[];
   profileCompleted?: boolean;
   locationDetail?: string; // 상세주소 업데이트 필드 추가
 }

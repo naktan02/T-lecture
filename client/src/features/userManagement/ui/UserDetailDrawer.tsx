@@ -270,6 +270,18 @@ export const UserDetailDrawer = ({
       if (isDatesChanged) {
         updateData.availabilities = availableDates;
       }
+
+      const originalVirtueIds = (boundUser.instructor.virtues || [])
+        .map((virtue) => virtue.virtueId)
+        .sort((a, b) => a - b);
+      const nextVirtueIds = [...selectedVirtues].sort((a, b) => a - b);
+      const isVirtuesChanged =
+        originalVirtueIds.length !== nextVirtueIds.length ||
+        originalVirtueIds.some((virtueId, index) => virtueId !== nextVirtueIds[index]);
+
+      if (isVirtuesChanged) {
+        updateData.virtueIds = nextVirtueIds;
+      }
     }
 
     if (Object.keys(updateData).length === 0) {
