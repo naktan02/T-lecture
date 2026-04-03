@@ -6,6 +6,7 @@ import {
   NOTICE_ATTACHMENT_MAX_TOTAL_BYTES,
   createNoticeAttachmentExpiry,
 } from './notice-attachment.constants';
+import { normalizeNoticeAttachmentFilename } from './notice-attachment-filename';
 import {
   createNoticeAttachmentDownloadToken,
   verifyNoticeAttachmentDownloadToken,
@@ -75,7 +76,9 @@ class NoticeService {
       throw new AppError('제목과 내용을 모두 입력해 주세요.', 400, 'VALIDATION_ERROR');
     }
 
-    this.validateNewAttachments(files);
+    const normalizedFiles = this.normalizeUploadedFiles(files);
+
+    this.validateNewAttachments(normalizedFiles);
 
     const targetSetting = this.buildTargetSetting(data);
     const isPinned = data.isPinned === true;
@@ -94,7 +97,7 @@ class NoticeService {
       });
 
       await noticeRepository.createReceipts(notice.id, userIds, tx);
-      await this.createAttachments(tx, notice.id, files, isPinned);
+      await this.createAttachments(tx, notice.id, normalizedFiles, isPinned);
 
       return notice.id;
     });
@@ -173,6 +176,7 @@ class NoticeService {
       throw new AppError('공지사항을 찾을 수 없습니다.', 404, 'NOTICE_NOT_FOUND');
     }
 
+    const normalizedFiles = this.normalizeUploadedFiles(files);
     const nextIsPinned = data.isPinned ?? existingNotice.isPinned;
     const currentTargetSetting = this.normalizeTargetSetting(existingNotice.targetSetting);
     const removeAttachmentIds = Array.from(new Set(data.removeAttachmentIds || []));
@@ -180,7 +184,7 @@ class NoticeService {
       (attachment) => !removeAttachmentIds.includes(attachment.id),
     );
 
-    this.validateAttachmentCombination(keptAttachments, files);
+    this.validateAttachmentCombination(keptAttachments, normalizedFiles);
 
     const targetSetting = this.buildTargetSetting({
       targetType: data.targetType ?? currentTargetSetting.targetType,
@@ -218,7 +222,7 @@ class NoticeService {
         });
       }
 
-      await this.createAttachments(tx, id, files, nextIsPinned);
+      await this.createAttachments(tx, id, normalizedFiles, nextIsPinned);
       await noticeRepository.deleteReceipts(id, tx);
       await noticeRepository.createReceipts(id, userIds, tx);
     });
@@ -276,7 +280,7 @@ class NoticeService {
     const attachment = await this.getDownloadableAttachmentData(attachmentId, userId, isAdmin);
 
     return {
-      originalName: attachment.originalName,
+      originalName: normalizeNoticeAttachmentFilename(attachment.originalName),
       mimeType: attachment.mimeType,
       size: attachment.size,
       data: attachment.data,
@@ -439,6 +443,13 @@ class NoticeService {
     }
   }
 
+  private normalizeUploadedFiles(files: UploadedNoticeFile[]) {
+    return files.map((file) => ({
+      ...file,
+      originalname: normalizeNoticeAttachmentFilename(file.originalname),
+    }));
+  }
+
   private formatNotice(notice: NoticeWithOptionalReceipts) {
     const readAt = this.extractReadAt(notice);
 
@@ -477,7 +488,7 @@ class NoticeService {
 
     return {
       id: attachment.id,
-      originalName: attachment.originalName,
+      originalName: normalizeNoticeAttachmentFilename(attachment.originalName),
       mimeType: attachment.mimeType,
       size: attachment.size,
       createdAt: attachment.createdAt,
