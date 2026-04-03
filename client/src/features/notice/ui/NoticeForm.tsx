@@ -230,8 +230,8 @@ export const NoticeForm = ({
           className="mt-2 block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
         />
         <p className="mt-2 text-xs text-gray-500">
-          문서와 이미지 파일만 첨부할 수 있으며, 첨부파일 총 용량은 5MB까지 가능합니다.
-          상단 고정 중에는 첨부 만료가 유예됩니다.
+          문서와 이미지 파일만 첨부할 수 있으며, 첨부파일 총 용량은 5MB까지 가능합니다. 상단 고정
+          중에는 첨부 만료가 유예됩니다.
         </p>
 
         {(keptExistingAttachments.length > 0 || removedAttachmentIds.length > 0) && (

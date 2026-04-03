@@ -16,9 +16,7 @@ const debugToFile = process.env.DEBUG_TO_FILE === 'true';
 
 const logFormat = printf((info) => {
   const { level, message, timestamp, ...rest } = info;
-  const meta = Object.fromEntries(
-    Object.entries(rest).filter(([, value]) => value !== undefined),
-  );
+  const meta = Object.fromEntries(Object.entries(rest).filter(([, value]) => value !== undefined));
   const metaString =
     Object.keys(meta).length > 0
       ? ` ${inspect(meta, { depth: 5, breakLength: Infinity, colors: false })}`
