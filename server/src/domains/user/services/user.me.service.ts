@@ -11,11 +11,15 @@ interface UpdateProfileDto {
   phoneNumber?: string;
   email?: string;
   password?: string;
+  category?: string;
   restrictedArea?: string;
   hasCar?: boolean;
   virtueIds?: number[];
   locationDetail?: string;
 }
+
+const VALID_INSTRUCTOR_CATEGORIES = ['Main', 'Co', 'Assistant', 'Practicum'] as const;
+type InstructorCategory = (typeof VALID_INSTRUCTOR_CATEGORIES)[number];
 
 type UserUpdateData = Parameters<typeof userRepository.update>[1];
 type InstructorUpdateData = Exclude<Parameters<typeof userRepository.update>[2], undefined>;
@@ -68,6 +72,7 @@ class UserMeService {
       phoneNumber,
       email,
       password,
+      category,
       restrictedArea,
       hasCar,
       virtueIds,
@@ -90,11 +95,16 @@ class UserMeService {
       throw new AppError('password는 문자열이어야 합니다.', 400, 'INVALID_PASSWORD');
     }
 
+    if (category !== undefined && category !== null && typeof category !== 'string') {
+      throw new AppError('category는 문자열이어야 합니다.', 400, 'INVALID_CATEGORY');
+    }
+
     const hasAnyField =
       name !== undefined ||
       phoneNumber !== undefined ||
       email !== undefined ||
       password !== undefined ||
+      category !== undefined ||
       restrictedArea !== undefined ||
       hasCar !== undefined ||
       virtueIds !== undefined ||
@@ -135,6 +145,17 @@ class UserMeService {
     const isInstructor = !!user.instructor;
 
     if (isInstructor) {
+      if (category !== undefined) {
+        if (
+          category !== '' &&
+          !VALID_INSTRUCTOR_CATEGORIES.includes(category as InstructorCategory)
+        ) {
+          throw new AppError('유효하지 않은 직책 값입니다.', 400, 'INVALID_CATEGORY');
+        }
+
+        instructorData.category = category === '' ? null : (category as InstructorCategory);
+      }
+
       if (restrictedArea !== undefined) {
         instructorData.restrictedArea = restrictedArea === '' ? null : restrictedArea;
       }
@@ -157,7 +178,12 @@ class UserMeService {
       }
 
       const finalLocation = user.instructor?.location;
-      const finalCategory = user.instructor?.category;
+      const finalCategory =
+        category !== undefined
+          ? category === ''
+            ? null
+            : (category as InstructorCategory)
+          : user.instructor?.category;
       instructorData.profileCompleted = !!(finalLocation && finalCategory);
     }
 

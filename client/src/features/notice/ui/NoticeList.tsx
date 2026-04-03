@@ -87,37 +87,50 @@ export const NoticeList = ({
                 등록된 공지사항이 없습니다.
               </td>
             </tr>
-          ) : (
-            notices.map((notice, index) => (
-              <tr
-                key={notice.id}
-                onClick={() => onNoticeClick(notice.id)}
-                className={`hover:bg-gray-50 cursor-pointer transition-colors ${
-                  notice.isPinned ? 'bg-amber-50 hover:bg-amber-100' : ''
-                }`}
-              >
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {notice.isPinned ? (
-                    <span className="inline-flex items-center justify-center w-6 h-6 bg-amber-500 text-white rounded-full text-xs">
-                      📌
-                    </span>
-                  ) : (
-                    getNoticeNumber(index)
-                  )}
-                </td>
-                <td className="px-4 py-4 text-sm font-medium text-gray-900">
-                  <span className="truncate max-w-md block">{notice.title}</span>
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {notice.author.name || '관리자'}
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                  {new Date(notice.createdAt).toLocaleDateString()}
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                  {notice.viewCount}
-                </td>
-              </tr>
+        ) : (
+          notices.map((notice, index) => (
+            (() => {
+              const attachmentCount = notice.attachments?.length ?? 0;
+
+              return (
+                <tr
+                  key={notice.id}
+                  onClick={() => onNoticeClick(notice.id)}
+                  className={`hover:bg-gray-50 cursor-pointer transition-colors ${
+                    notice.isPinned ? 'bg-amber-50 hover:bg-amber-100' : ''
+                  }`}
+                >
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {notice.isPinned ? (
+                      <span className="inline-flex items-center justify-center w-6 h-6 bg-amber-500 text-white rounded-full text-xs">
+                        📌
+                      </span>
+                    ) : (
+                      getNoticeNumber(index)
+                    )}
+                  </td>
+                  <td className="px-4 py-4 text-sm font-medium text-gray-900">
+                    <div className="flex items-center gap-2">
+                      <span className="block max-w-md truncate">{notice.title}</span>
+                      {attachmentCount > 0 && (
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+                          첨부 {attachmentCount}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {notice.author.name || '관리자'}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                    {new Date(notice.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                    {notice.viewCount}
+                  </td>
+                </tr>
+              );
+            })()
             ))
           )}
         </tbody>
@@ -131,29 +144,42 @@ export const NoticeList = ({
           </div>
         ) : (
           notices.map((notice, index) => (
-            <div
-              key={notice.id}
-              onClick={() => onNoticeClick(notice.id)}
-              className={`p-4 cursor-pointer active:bg-gray-100 transition-colors ${
-                notice.isPinned ? 'bg-amber-50' : ''
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <span className="flex-shrink-0 text-gray-400 text-sm min-w-[24px]">
-                  {notice.isPinned ? '📌' : getNoticeNumber(index)}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-medium text-gray-900 truncate mb-1">
-                    {notice.title}
-                  </h3>
-                  <div className="flex items-center gap-3 text-xs text-gray-500">
-                    <span>{notice.author.name || '관리자'}</span>
-                    <span>{new Date(notice.createdAt).toLocaleDateString()}</span>
-                    <span>조회 {notice.viewCount}</span>
+            (() => {
+              const attachmentCount = notice.attachments?.length ?? 0;
+
+              return (
+                <div
+                  key={notice.id}
+                  onClick={() => onNoticeClick(notice.id)}
+                  className={`p-4 cursor-pointer active:bg-gray-100 transition-colors ${
+                    notice.isPinned ? 'bg-amber-50' : ''
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 text-gray-400 text-sm min-w-[24px]">
+                      {notice.isPinned ? '📌' : getNoticeNumber(index)}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="mb-1 flex items-center gap-2">
+                        <h3 className="truncate text-sm font-medium text-gray-900">
+                          {notice.title}
+                        </h3>
+                        {attachmentCount > 0 && (
+                          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+                            첨부 {attachmentCount}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                        <span>{notice.author.name || '관리자'}</span>
+                        <span>{new Date(notice.createdAt).toLocaleDateString()}</span>
+                        <span>조회 {notice.viewCount}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()
           ))
         )}
       </div>

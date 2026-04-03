@@ -58,6 +58,7 @@ export const ModelName = {
   DispatchAssignment: 'DispatchAssignment',
   MessageTemplate: 'MessageTemplate',
   Notice: 'Notice',
+  NoticeAttachment: 'NoticeAttachment',
   NoticeReceipt: 'NoticeReceipt',
   Inquiry: 'Inquiry',
   InstructorAvailability: 'InstructorAvailability',
@@ -177,6 +178,20 @@ export const NoticeScalarFieldEnum = {
 } as const
 
 export type NoticeScalarFieldEnum = (typeof NoticeScalarFieldEnum)[keyof typeof NoticeScalarFieldEnum]
+
+
+export const NoticeAttachmentScalarFieldEnum = {
+  id: 'id',
+  noticeId: 'noticeId',
+  originalName: 'originalName',
+  mimeType: 'mimeType',
+  size: 'size',
+  data: 'data',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+} as const
+
+export type NoticeAttachmentScalarFieldEnum = (typeof NoticeAttachmentScalarFieldEnum)[keyof typeof NoticeAttachmentScalarFieldEnum]
 
 
 export const NoticeReceiptScalarFieldEnum = {

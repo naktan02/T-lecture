@@ -391,6 +391,7 @@ export const ModelName = {
   DispatchAssignment: 'DispatchAssignment',
   MessageTemplate: 'MessageTemplate',
   Notice: 'Notice',
+  NoticeAttachment: 'NoticeAttachment',
   NoticeReceipt: 'NoticeReceipt',
   Inquiry: 'Inquiry',
   InstructorAvailability: 'InstructorAvailability',
@@ -426,7 +427,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "emailVerification" | "refreshToken" | "kakaoApiUsage" | "dispatch" | "dispatchAssignment" | "messageTemplate" | "notice" | "noticeReceipt" | "inquiry" | "instructorAvailability" | "instructorUnitAssignment" | "instructorUnitDistance" | "instructorPriorityCredit" | "systemConfig" | "instructorPenalty" | "unit" | "trainingPeriod" | "trainingLocation" | "unitSchedule" | "scheduleLocation" | "user" | "admin" | "instructor" | "team" | "virtue" | "instructorVirtue" | "instructorStats"
+    modelProps: "emailVerification" | "refreshToken" | "kakaoApiUsage" | "dispatch" | "dispatchAssignment" | "messageTemplate" | "notice" | "noticeAttachment" | "noticeReceipt" | "inquiry" | "instructorAvailability" | "instructorUnitAssignment" | "instructorUnitDistance" | "instructorPriorityCredit" | "systemConfig" | "instructorPenalty" | "unit" | "trainingPeriod" | "trainingLocation" | "unitSchedule" | "scheduleLocation" | "user" | "admin" | "instructor" | "team" | "virtue" | "instructorVirtue" | "instructorStats"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -945,6 +946,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.NoticeCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.NoticeCountAggregateOutputType> | number
+        }
+      }
+    }
+    NoticeAttachment: {
+      payload: Prisma.$NoticeAttachmentPayload<ExtArgs>
+      fields: Prisma.NoticeAttachmentFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.NoticeAttachmentFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NoticeAttachmentPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.NoticeAttachmentFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NoticeAttachmentPayload>
+        }
+        findFirst: {
+          args: Prisma.NoticeAttachmentFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NoticeAttachmentPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.NoticeAttachmentFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NoticeAttachmentPayload>
+        }
+        findMany: {
+          args: Prisma.NoticeAttachmentFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NoticeAttachmentPayload>[]
+        }
+        create: {
+          args: Prisma.NoticeAttachmentCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NoticeAttachmentPayload>
+        }
+        createMany: {
+          args: Prisma.NoticeAttachmentCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.NoticeAttachmentCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NoticeAttachmentPayload>[]
+        }
+        delete: {
+          args: Prisma.NoticeAttachmentDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NoticeAttachmentPayload>
+        }
+        update: {
+          args: Prisma.NoticeAttachmentUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NoticeAttachmentPayload>
+        }
+        deleteMany: {
+          args: Prisma.NoticeAttachmentDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.NoticeAttachmentUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.NoticeAttachmentUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NoticeAttachmentPayload>[]
+        }
+        upsert: {
+          args: Prisma.NoticeAttachmentUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NoticeAttachmentPayload>
+        }
+        aggregate: {
+          args: Prisma.NoticeAttachmentAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateNoticeAttachment>
+        }
+        groupBy: {
+          args: Prisma.NoticeAttachmentGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.NoticeAttachmentGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.NoticeAttachmentCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.NoticeAttachmentCountAggregateOutputType> | number
         }
       }
     }
@@ -2550,6 +2625,20 @@ export const NoticeScalarFieldEnum = {
 export type NoticeScalarFieldEnum = (typeof NoticeScalarFieldEnum)[keyof typeof NoticeScalarFieldEnum]
 
 
+export const NoticeAttachmentScalarFieldEnum = {
+  id: 'id',
+  noticeId: 'noticeId',
+  originalName: 'originalName',
+  mimeType: 'mimeType',
+  size: 'size',
+  data: 'data',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+} as const
+
+export type NoticeAttachmentScalarFieldEnum = (typeof NoticeAttachmentScalarFieldEnum)[keyof typeof NoticeAttachmentScalarFieldEnum]
+
+
 export const NoticeReceiptScalarFieldEnum = {
   noticeId: 'noticeId',
   userId: 'userId',
@@ -2938,6 +3027,20 @@ export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$Prisma
 
 
 /**
+ * Reference to a field of type 'Bytes'
+ */
+export type BytesFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Bytes'>
+    
+
+
+/**
+ * Reference to a field of type 'Bytes[]'
+ */
+export type ListBytesFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Bytes[]'>
+    
+
+
+/**
  * Reference to a field of type 'InquiryStatus'
  */
 export type EnumInquiryStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'InquiryStatus'>
@@ -3178,6 +3281,7 @@ export type GlobalOmitConfig = {
   dispatchAssignment?: Prisma.DispatchAssignmentOmit
   messageTemplate?: Prisma.MessageTemplateOmit
   notice?: Prisma.NoticeOmit
+  noticeAttachment?: Prisma.NoticeAttachmentOmit
   noticeReceipt?: Prisma.NoticeReceiptOmit
   inquiry?: Prisma.InquiryOmit
   instructorAvailability?: Prisma.InstructorAvailabilityOmit

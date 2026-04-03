@@ -1,11 +1,5 @@
 import prisma from '../../libs/prisma';
 
-type NoticeTargetSetting = {
-  targetType: 'ALL' | 'TEAM' | 'INDIVIDUAL';
-  targetTeamIds: number[];
-  targetUserIds: number[];
-};
-
 type SortOrder = 'asc' | 'desc';
 
 interface NoticeOrderBy {
@@ -21,14 +15,6 @@ interface NoticeWhere {
   receipts?: { some: { userId: number } };
 }
 
-interface NoticeCreateData {
-  title: string;
-  content: string;
-  authorId: number;
-  isPinned?: boolean;
-  targetSetting?: NoticeTargetSetting;
-}
-
 interface NoticeFindAllParams {
   skip: number;
   take: number;
@@ -37,19 +23,28 @@ interface NoticeFindAllParams {
   userId?: number;
 }
 
-class NoticeRepository {
-  async create(data: NoticeCreateData) {
-    return await prisma.notice.create({
-      data: {
-        title: data.title,
-        body: data.content,
-        authorId: data.authorId,
-        isPinned: data.isPinned ?? false,
-        targetSetting: data.targetSetting,
-      },
-    });
-  }
+type NoticeReceiptDbClient = Pick<typeof prisma, 'noticeReceipt'>;
 
+const noticeAttachmentSelect = {
+  id: true,
+  originalName: true,
+  mimeType: true,
+  size: true,
+  expiresAt: true,
+  createdAt: true,
+} as const;
+
+const noticeDetailInclude = {
+  author: {
+    select: { name: true },
+  },
+  attachments: {
+    select: noticeAttachmentSelect,
+    orderBy: { createdAt: 'asc' as const },
+  },
+} as const;
+
+class NoticeRepository {
   async findAll({ skip, take, search, orderBy, userId }: NoticeFindAllParams) {
     const where: NoticeWhere = {};
 
@@ -76,11 +71,7 @@ class NoticeRepository {
         skip,
         take,
         orderBy: sortRule,
-        include: {
-          author: {
-            select: { name: true },
-          },
-        },
+        include: noticeDetailInclude,
       }),
       prisma.notice.count({ where }),
     ]);
@@ -91,6 +82,7 @@ class NoticeRepository {
   async findById(id: number) {
     return await prisma.notice.findUnique({
       where: { id },
+      include: noticeDetailInclude,
     });
   }
 
@@ -102,31 +94,19 @@ class NoticeRepository {
           some: { userId },
         },
       },
+      include: noticeDetailInclude,
     });
   }
 
-  async update(
-    id: number,
-    data: {
-      title?: string;
-      content?: string;
-      isPinned?: boolean;
-      targetSetting?: NoticeTargetSetting;
-    },
-  ) {
-    return await prisma.notice.update({
+  async increaseViewCount(id: number) {
+    await prisma.notice.update({
       where: { id },
-      data: {
-        title: data.title,
-        body: data.content,
-        isPinned: data.isPinned,
-        targetSetting: data.targetSetting,
-      },
+      data: { viewCount: { increment: 1 } },
     });
   }
 
-  async deleteReceipts(noticeId: number) {
-    await prisma.noticeReceipt.deleteMany({
+  async deleteReceipts(noticeId: number, db: NoticeReceiptDbClient = prisma) {
+    await db.noticeReceipt.deleteMany({
       where: { noticeId },
     });
   }
@@ -137,38 +117,12 @@ class NoticeRepository {
     });
   }
 
-  async increaseViewCount(id: number) {
-    return await prisma.notice.update({
-      where: { id },
-      data: { viewCount: { increment: 1 } },
-    });
-  }
-
-  async togglePin(id: number) {
-    const notice = await prisma.notice.findUnique({ where: { id } });
-    if (!notice) {
-      return null;
-    }
-
-    return await prisma.notice.update({
-      where: { id },
-      data: { isPinned: !notice.isPinned },
-    });
-  }
-
-  async findAuthorById(authorId: number) {
-    return await prisma.user.findUnique({
-      where: { id: authorId },
-      select: { name: true },
-    });
-  }
-
-  async createReceipts(noticeId: number, userIds: number[]) {
+  async createReceipts(noticeId: number, userIds: number[], db: NoticeReceiptDbClient = prisma) {
     if (userIds.length === 0) {
       return;
     }
 
-    await prisma.noticeReceipt.createMany({
+    await db.noticeReceipt.createMany({
       data: userIds.map((userId) => ({
         noticeId,
         userId,
@@ -195,16 +149,6 @@ class NoticeRepository {
     return instructors.map((instructor) => instructor.userId);
   }
 
-  async findMyNotices(userId: number) {
-    return await prisma.noticeReceipt.findMany({
-      where: { userId },
-      include: {
-        notice: true,
-      },
-      orderBy: { notice: { createdAt: 'desc' } },
-    });
-  }
-
   async markAsRead(userId: number, noticeId: number) {
     return await prisma.noticeReceipt.updateMany({
       where: {
@@ -222,6 +166,64 @@ class NoticeRepository {
         readAt: null,
       },
     });
+  }
+
+  async findAttachmentMetadataByNoticeId(noticeId: number) {
+    return await prisma.noticeAttachment.findMany({
+      where: { noticeId },
+      select: noticeAttachmentSelect,
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async findAttachmentById(attachmentId: number) {
+    return await prisma.noticeAttachment.findUnique({
+      where: { id: attachmentId },
+      include: {
+        notice: {
+          select: {
+            id: true,
+            isPinned: true,
+          },
+        },
+      },
+    });
+  }
+
+  async findAttachmentByIdForUser(attachmentId: number, userId: number) {
+    return await prisma.noticeAttachment.findFirst({
+      where: {
+        id: attachmentId,
+        notice: {
+          receipts: {
+            some: { userId },
+          },
+        },
+      },
+      include: {
+        notice: {
+          select: {
+            id: true,
+            isPinned: true,
+          },
+        },
+      },
+    });
+  }
+
+  async deleteExpiredAttachments(now: Date) {
+    const result = await prisma.noticeAttachment.deleteMany({
+      where: {
+        expiresAt: {
+          lt: now,
+        },
+        notice: {
+          isPinned: false,
+        },
+      },
+    });
+
+    return result.count;
   }
 }
 

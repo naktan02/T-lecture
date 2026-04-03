@@ -75,6 +75,11 @@ export type MessageTemplate = Prisma.MessageTemplateModel
  */
 export type Notice = Prisma.NoticeModel
 /**
+ * Model NoticeAttachment
+ * 
+ */
+export type NoticeAttachment = Prisma.NoticeAttachmentModel
+/**
  * Model NoticeReceipt
  * 
  */

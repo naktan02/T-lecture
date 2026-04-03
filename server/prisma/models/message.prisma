@@ -75,10 +75,28 @@ model Notice {
 
   // 관계
   author   User            @relation("NoticeAuthor", fields: [authorId], references: [id])
-  receipts NoticeReceipt[]
+  receipts    NoticeReceipt[]
+  attachments NoticeAttachment[]
 
   @@index([createdAt], map: "공지_createdAt_idx")
   @@map("공지사항")
+}
+
+model NoticeAttachment {
+  id           Int       @id @default(autoincrement())
+  noticeId     Int
+  originalName String
+  mimeType     String
+  size         Int
+  data         Bytes
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  notice Notice @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+
+  @@index([noticeId], map: "notice_attachment_noticeId_idx")
+  @@index([expiresAt], map: "notice_attachment_expiresAt_idx")
+  @@map("notice_attachment")
 }
 
 model NoticeReceipt {

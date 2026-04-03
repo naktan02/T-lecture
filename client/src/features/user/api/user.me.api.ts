@@ -70,6 +70,7 @@ export interface UpdateProfilePayload {
   phoneNumber?: string;
   address?: string; // 강사 활동 지역
   locationDetail?: string; // 강사 상세 주소
+  category?: string;
   email?: string;
   password?: string;
   restrictedArea?: string; // 강사 제한 지역

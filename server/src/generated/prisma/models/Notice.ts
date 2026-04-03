@@ -254,6 +254,7 @@ export type NoticeWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"Notice"> | Date | string
   author?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   receipts?: Prisma.NoticeReceiptListRelationFilter
+  attachments?: Prisma.NoticeAttachmentListRelationFilter
 }
 
 export type NoticeOrderByWithRelationInput = {
@@ -268,6 +269,7 @@ export type NoticeOrderByWithRelationInput = {
   updatedAt?: Prisma.SortOrder
   author?: Prisma.UserOrderByWithRelationInput
   receipts?: Prisma.NoticeReceiptOrderByRelationAggregateInput
+  attachments?: Prisma.NoticeAttachmentOrderByRelationAggregateInput
 }
 
 export type NoticeWhereUniqueInput = Prisma.AtLeast<{
@@ -285,6 +287,7 @@ export type NoticeWhereUniqueInput = Prisma.AtLeast<{
   updatedAt?: Prisma.DateTimeFilter<"Notice"> | Date | string
   author?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   receipts?: Prisma.NoticeReceiptListRelationFilter
+  attachments?: Prisma.NoticeAttachmentListRelationFilter
 }, "id">
 
 export type NoticeOrderByWithAggregationInput = {
@@ -329,6 +332,7 @@ export type NoticeCreateInput = {
   updatedAt?: Date | string
   author: Prisma.UserCreateNestedOneWithoutAuthoredNoticesInput
   receipts?: Prisma.NoticeReceiptCreateNestedManyWithoutNoticeInput
+  attachments?: Prisma.NoticeAttachmentCreateNestedManyWithoutNoticeInput
 }
 
 export type NoticeUncheckedCreateInput = {
@@ -342,6 +346,7 @@ export type NoticeUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   receipts?: Prisma.NoticeReceiptUncheckedCreateNestedManyWithoutNoticeInput
+  attachments?: Prisma.NoticeAttachmentUncheckedCreateNestedManyWithoutNoticeInput
 }
 
 export type NoticeUpdateInput = {
@@ -354,6 +359,7 @@ export type NoticeUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   author?: Prisma.UserUpdateOneRequiredWithoutAuthoredNoticesNestedInput
   receipts?: Prisma.NoticeReceiptUpdateManyWithoutNoticeNestedInput
+  attachments?: Prisma.NoticeAttachmentUpdateManyWithoutNoticeNestedInput
 }
 
 export type NoticeUncheckedUpdateInput = {
@@ -367,6 +373,7 @@ export type NoticeUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   receipts?: Prisma.NoticeReceiptUncheckedUpdateManyWithoutNoticeNestedInput
+  attachments?: Prisma.NoticeAttachmentUncheckedUpdateManyWithoutNoticeNestedInput
 }
 
 export type NoticeCreateManyInput = {
@@ -464,6 +471,20 @@ export type NoticeOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
+export type NoticeCreateNestedOneWithoutAttachmentsInput = {
+  create?: Prisma.XOR<Prisma.NoticeCreateWithoutAttachmentsInput, Prisma.NoticeUncheckedCreateWithoutAttachmentsInput>
+  connectOrCreate?: Prisma.NoticeCreateOrConnectWithoutAttachmentsInput
+  connect?: Prisma.NoticeWhereUniqueInput
+}
+
+export type NoticeUpdateOneRequiredWithoutAttachmentsNestedInput = {
+  create?: Prisma.XOR<Prisma.NoticeCreateWithoutAttachmentsInput, Prisma.NoticeUncheckedCreateWithoutAttachmentsInput>
+  connectOrCreate?: Prisma.NoticeCreateOrConnectWithoutAttachmentsInput
+  upsert?: Prisma.NoticeUpsertWithoutAttachmentsInput
+  connect?: Prisma.NoticeWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.NoticeUpdateToOneWithWhereWithoutAttachmentsInput, Prisma.NoticeUpdateWithoutAttachmentsInput>, Prisma.NoticeUncheckedUpdateWithoutAttachmentsInput>
+}
+
 export type NoticeCreateNestedOneWithoutReceiptsInput = {
   create?: Prisma.XOR<Prisma.NoticeCreateWithoutReceiptsInput, Prisma.NoticeUncheckedCreateWithoutReceiptsInput>
   connectOrCreate?: Prisma.NoticeCreateOrConnectWithoutReceiptsInput
@@ -520,6 +541,72 @@ export type NoticeUncheckedUpdateManyWithoutAuthorNestedInput = {
   deleteMany?: Prisma.NoticeScalarWhereInput | Prisma.NoticeScalarWhereInput[]
 }
 
+export type NoticeCreateWithoutAttachmentsInput = {
+  title: string
+  body: string
+  viewCount?: number
+  isPinned?: boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  author: Prisma.UserCreateNestedOneWithoutAuthoredNoticesInput
+  receipts?: Prisma.NoticeReceiptCreateNestedManyWithoutNoticeInput
+}
+
+export type NoticeUncheckedCreateWithoutAttachmentsInput = {
+  id?: number
+  title: string
+  body: string
+  authorId: number
+  viewCount?: number
+  isPinned?: boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  receipts?: Prisma.NoticeReceiptUncheckedCreateNestedManyWithoutNoticeInput
+}
+
+export type NoticeCreateOrConnectWithoutAttachmentsInput = {
+  where: Prisma.NoticeWhereUniqueInput
+  create: Prisma.XOR<Prisma.NoticeCreateWithoutAttachmentsInput, Prisma.NoticeUncheckedCreateWithoutAttachmentsInput>
+}
+
+export type NoticeUpsertWithoutAttachmentsInput = {
+  update: Prisma.XOR<Prisma.NoticeUpdateWithoutAttachmentsInput, Prisma.NoticeUncheckedUpdateWithoutAttachmentsInput>
+  create: Prisma.XOR<Prisma.NoticeCreateWithoutAttachmentsInput, Prisma.NoticeUncheckedCreateWithoutAttachmentsInput>
+  where?: Prisma.NoticeWhereInput
+}
+
+export type NoticeUpdateToOneWithWhereWithoutAttachmentsInput = {
+  where?: Prisma.NoticeWhereInput
+  data: Prisma.XOR<Prisma.NoticeUpdateWithoutAttachmentsInput, Prisma.NoticeUncheckedUpdateWithoutAttachmentsInput>
+}
+
+export type NoticeUpdateWithoutAttachmentsInput = {
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  body?: Prisma.StringFieldUpdateOperationsInput | string
+  viewCount?: Prisma.IntFieldUpdateOperationsInput | number
+  isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  author?: Prisma.UserUpdateOneRequiredWithoutAuthoredNoticesNestedInput
+  receipts?: Prisma.NoticeReceiptUpdateManyWithoutNoticeNestedInput
+}
+
+export type NoticeUncheckedUpdateWithoutAttachmentsInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  body?: Prisma.StringFieldUpdateOperationsInput | string
+  authorId?: Prisma.IntFieldUpdateOperationsInput | number
+  viewCount?: Prisma.IntFieldUpdateOperationsInput | number
+  isPinned?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  receipts?: Prisma.NoticeReceiptUncheckedUpdateManyWithoutNoticeNestedInput
+}
+
 export type NoticeCreateWithoutReceiptsInput = {
   title: string
   body: string
@@ -529,6 +616,7 @@ export type NoticeCreateWithoutReceiptsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   author: Prisma.UserCreateNestedOneWithoutAuthoredNoticesInput
+  attachments?: Prisma.NoticeAttachmentCreateNestedManyWithoutNoticeInput
 }
 
 export type NoticeUncheckedCreateWithoutReceiptsInput = {
@@ -541,6 +629,7 @@ export type NoticeUncheckedCreateWithoutReceiptsInput = {
   targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
+  attachments?: Prisma.NoticeAttachmentUncheckedCreateNestedManyWithoutNoticeInput
 }
 
 export type NoticeCreateOrConnectWithoutReceiptsInput = {
@@ -568,6 +657,7 @@ export type NoticeUpdateWithoutReceiptsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   author?: Prisma.UserUpdateOneRequiredWithoutAuthoredNoticesNestedInput
+  attachments?: Prisma.NoticeAttachmentUpdateManyWithoutNoticeNestedInput
 }
 
 export type NoticeUncheckedUpdateWithoutReceiptsInput = {
@@ -580,6 +670,7 @@ export type NoticeUncheckedUpdateWithoutReceiptsInput = {
   targetSetting?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  attachments?: Prisma.NoticeAttachmentUncheckedUpdateManyWithoutNoticeNestedInput
 }
 
 export type NoticeCreateWithoutAuthorInput = {
@@ -591,6 +682,7 @@ export type NoticeCreateWithoutAuthorInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   receipts?: Prisma.NoticeReceiptCreateNestedManyWithoutNoticeInput
+  attachments?: Prisma.NoticeAttachmentCreateNestedManyWithoutNoticeInput
 }
 
 export type NoticeUncheckedCreateWithoutAuthorInput = {
@@ -603,6 +695,7 @@ export type NoticeUncheckedCreateWithoutAuthorInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   receipts?: Prisma.NoticeReceiptUncheckedCreateNestedManyWithoutNoticeInput
+  attachments?: Prisma.NoticeAttachmentUncheckedCreateNestedManyWithoutNoticeInput
 }
 
 export type NoticeCreateOrConnectWithoutAuthorInput = {
@@ -666,6 +759,7 @@ export type NoticeUpdateWithoutAuthorInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   receipts?: Prisma.NoticeReceiptUpdateManyWithoutNoticeNestedInput
+  attachments?: Prisma.NoticeAttachmentUpdateManyWithoutNoticeNestedInput
 }
 
 export type NoticeUncheckedUpdateWithoutAuthorInput = {
@@ -678,6 +772,7 @@ export type NoticeUncheckedUpdateWithoutAuthorInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   receipts?: Prisma.NoticeReceiptUncheckedUpdateManyWithoutNoticeNestedInput
+  attachments?: Prisma.NoticeAttachmentUncheckedUpdateManyWithoutNoticeNestedInput
 }
 
 export type NoticeUncheckedUpdateManyWithoutAuthorInput = {
@@ -698,10 +793,12 @@ export type NoticeUncheckedUpdateManyWithoutAuthorInput = {
 
 export type NoticeCountOutputType = {
   receipts: number
+  attachments: number
 }
 
 export type NoticeCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   receipts?: boolean | NoticeCountOutputTypeCountReceiptsArgs
+  attachments?: boolean | NoticeCountOutputTypeCountAttachmentsArgs
 }
 
 /**
@@ -721,6 +818,13 @@ export type NoticeCountOutputTypeCountReceiptsArgs<ExtArgs extends runtime.Types
   where?: Prisma.NoticeReceiptWhereInput
 }
 
+/**
+ * NoticeCountOutputType without action
+ */
+export type NoticeCountOutputTypeCountAttachmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.NoticeAttachmentWhereInput
+}
+
 
 export type NoticeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -734,6 +838,7 @@ export type NoticeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   updatedAt?: boolean
   author?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   receipts?: boolean | Prisma.Notice$receiptsArgs<ExtArgs>
+  attachments?: boolean | Prisma.Notice$attachmentsArgs<ExtArgs>
   _count?: boolean | Prisma.NoticeCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["notice"]>
 
@@ -779,6 +884,7 @@ export type NoticeOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
 export type NoticeInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   author?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   receipts?: boolean | Prisma.Notice$receiptsArgs<ExtArgs>
+  attachments?: boolean | Prisma.Notice$attachmentsArgs<ExtArgs>
   _count?: boolean | Prisma.NoticeCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type NoticeIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -793,6 +899,7 @@ export type $NoticePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
   objects: {
     author: Prisma.$UserPayload<ExtArgs>
     receipts: Prisma.$NoticeReceiptPayload<ExtArgs>[]
+    attachments: Prisma.$NoticeAttachmentPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
@@ -1200,6 +1307,7 @@ export interface Prisma__NoticeClient<T, Null = never, ExtArgs extends runtime.T
   readonly [Symbol.toStringTag]: "PrismaPromise"
   author<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   receipts<T extends Prisma.Notice$receiptsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Notice$receiptsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$NoticeReceiptPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  attachments<T extends Prisma.Notice$attachmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Notice$attachmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$NoticeAttachmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1655,6 +1763,30 @@ export type Notice$receiptsArgs<ExtArgs extends runtime.Types.Extensions.Interna
   take?: number
   skip?: number
   distinct?: Prisma.NoticeReceiptScalarFieldEnum | Prisma.NoticeReceiptScalarFieldEnum[]
+}
+
+/**
+ * Notice.attachments
+ */
+export type Notice$attachmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the NoticeAttachment
+   */
+  select?: Prisma.NoticeAttachmentSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the NoticeAttachment
+   */
+  omit?: Prisma.NoticeAttachmentOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.NoticeAttachmentInclude<ExtArgs> | null
+  where?: Prisma.NoticeAttachmentWhereInput
+  orderBy?: Prisma.NoticeAttachmentOrderByWithRelationInput | Prisma.NoticeAttachmentOrderByWithRelationInput[]
+  cursor?: Prisma.NoticeAttachmentWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.NoticeAttachmentScalarFieldEnum | Prisma.NoticeAttachmentScalarFieldEnum[]
 }
 
 /**

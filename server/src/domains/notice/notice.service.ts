@@ -1,4 +1,11 @@
 import AppError from '../../common/errors/AppError';
+import prisma from '../../libs/prisma';
+import {
+  NOTICE_ATTACHMENT_ALLOWED_EXTENSIONS,
+  NOTICE_ATTACHMENT_MAX_FILES,
+  NOTICE_ATTACHMENT_MAX_TOTAL_BYTES,
+  createNoticeAttachmentExpiry,
+} from './notice-attachment.constants';
 import noticeRepository from './notice.repository';
 
 type NoticeTargetSetting = {
@@ -16,13 +23,14 @@ interface NoticeOrderBy {
   author?: { name: SortOrder };
 }
 
-interface NoticeCreateData {
-  title: string;
-  content: string;
+interface NoticeUpsertData {
+  title?: string;
+  content?: string;
   isPinned?: boolean;
   targetType?: 'ALL' | 'TEAM' | 'INDIVIDUAL';
   targetTeamIds?: number[];
   targetUserIds?: number[];
+  removeAttachmentIds?: number[];
 }
 
 interface NoticeGetParams {
@@ -35,58 +43,52 @@ interface NoticeGetParams {
   isAdmin?: boolean;
 }
 
-interface NoticeFormatInput {
-  id: number;
-  title: string;
-  body: string;
-  createdAt: Date;
-  updatedAt: Date;
-  viewCount: number;
-  isPinned: boolean;
-  targetSetting: unknown;
-  authorId?: number | null;
-  author?: {
-    name: string | null;
-  };
+interface UploadedNoticeFile {
+  originalname: string;
+  mimetype: string;
+  size: number;
+  buffer: Buffer;
 }
 
+type NoticeRecord = NonNullable<Awaited<ReturnType<typeof noticeRepository.findById>>>;
+type NoticeAttachmentRecord = Awaited<
+  ReturnType<typeof noticeRepository.findAttachmentMetadataByNoticeId>
+>[number];
+type NoticeTransactionClient = Pick<typeof prisma, 'notice' | 'noticeAttachment' | 'noticeReceipt'>;
+
 class NoticeService {
-  async create(data: NoticeCreateData, authorId: number) {
+  async create(data: NoticeUpsertData, authorId: number, files: UploadedNoticeFile[] = []) {
     if (!data.title || !data.content) {
-      throw new AppError('제목과 내용은 모두 입력해 주세요.', 400, 'VALIDATION_ERROR');
+      throw new AppError('제목과 내용을 모두 입력해 주세요.', 400, 'VALIDATION_ERROR');
     }
 
-    const targetSetting: NoticeTargetSetting = {
-      targetType: data.targetType || 'ALL',
-      targetTeamIds: data.targetTeamIds || [],
-      targetUserIds: data.targetUserIds || [],
-    };
+    const title = data.title;
+    const content = data.content;
+    this.validateNewAttachments(files);
 
-    const notice = await noticeRepository.create({
-      title: data.title,
-      content: data.content,
-      authorId,
-      isPinned: data.isPinned,
-      targetSetting,
+    const targetSetting = this.buildTargetSetting(data);
+    const isPinned = data.isPinned === true;
+    const userIds = await this.resolveTargetUserIds(targetSetting);
+
+    const noticeId = await prisma.$transaction(async (tx) => {
+      const notice = await tx.notice.create({
+        data: {
+          title,
+          body: content,
+          authorId,
+          isPinned,
+          targetSetting,
+        },
+        select: { id: true },
+      });
+
+      await noticeRepository.createReceipts(notice.id, userIds, tx);
+      await this.createAttachments(tx, notice.id, files, isPinned);
+
+      return notice.id;
     });
 
-    const targetType = data.targetType || 'ALL';
-    let userIds: number[] = [];
-
-    if (targetType === 'ALL') {
-      userIds = await noticeRepository.findAllApprovedUserIds();
-    } else if (targetType === 'TEAM' && data.targetTeamIds?.length) {
-      userIds = await noticeRepository.findUserIdsByTeamIds(data.targetTeamIds);
-    } else if (targetType === 'INDIVIDUAL' && data.targetUserIds?.length) {
-      userIds = data.targetUserIds;
-    }
-
-    if (userIds.length > 0) {
-      await noticeRepository.createReceipts(notice.id, userIds);
-    }
-
-    const author = await noticeRepository.findAuthorById(authorId);
-    return this.formatNotice(notice, author?.name || null);
+    return await this.getFormattedNoticeOrThrow(noticeId);
   }
 
   async getAll(params: NoticeGetParams = {}) {
@@ -115,7 +117,7 @@ class NoticeService {
     });
 
     return {
-      notices: notices.map((notice) => this.formatNotice(notice, notice.author?.name || null)),
+      notices: notices.map((notice) => this.formatNotice(notice)),
       meta: {
         total,
         page,
@@ -136,87 +138,289 @@ class NoticeService {
       throw new AppError('공지사항을 찾을 수 없습니다.', 404, 'NOTICE_NOT_FOUND');
     }
 
-    const updatedNotice = await noticeRepository.increaseViewCount(id);
+    await noticeRepository.increaseViewCount(id);
 
     if (userId && !isAdmin) {
       await noticeRepository.markAsRead(userId, id);
     }
 
-    const author = updatedNotice.authorId
-      ? await noticeRepository.findAuthorById(updatedNotice.authorId)
-      : null;
+    const updatedNotice =
+      userId && !isAdmin
+        ? await noticeRepository.findByIdForUser(id, userId)
+        : await noticeRepository.findById(id);
 
-    return this.formatNotice(updatedNotice, author?.name || null);
-  }
-
-  async update(id: number, data: NoticeCreateData) {
-    await this.getNoticeHelper(id);
-
-    const targetSetting: NoticeTargetSetting = {
-      targetType: data.targetType || 'ALL',
-      targetTeamIds: data.targetTeamIds || [],
-      targetUserIds: data.targetUserIds || [],
-    };
-
-    const updated = await noticeRepository.update(id, {
-      title: data.title,
-      content: data.content,
-      isPinned: data.isPinned,
-      targetSetting,
-    });
-
-    await noticeRepository.deleteReceipts(id);
-
-    let userIds: number[] = [];
-    const targetType = data.targetType || 'ALL';
-
-    if (targetType === 'ALL') {
-      userIds = await noticeRepository.findAllApprovedUserIds();
-    } else if (targetType === 'TEAM' && data.targetTeamIds?.length) {
-      userIds = await noticeRepository.findUserIdsByTeamIds(data.targetTeamIds);
-    } else if (targetType === 'INDIVIDUAL' && data.targetUserIds?.length) {
-      userIds = data.targetUserIds;
-    }
-
-    if (userIds.length > 0) {
-      await noticeRepository.createReceipts(id, userIds);
-    }
-
-    const author = updated.authorId
-      ? await noticeRepository.findAuthorById(updated.authorId)
-      : null;
-    return this.formatNotice(updated, author?.name || null);
-  }
-
-  async delete(id: number) {
-    await this.getNoticeHelper(id);
-    return await noticeRepository.delete(id);
-  }
-
-  async togglePin(id: number) {
-    await this.getNoticeHelper(id);
-    const toggled = await noticeRepository.togglePin(id);
-
-    if (!toggled) {
+    if (!updatedNotice) {
       throw new AppError('공지사항을 찾을 수 없습니다.', 404, 'NOTICE_NOT_FOUND');
     }
 
-    const author = toggled.authorId
-      ? await noticeRepository.findAuthorById(toggled.authorId)
-      : null;
-    return this.formatNotice(toggled, author?.name || null);
+    return this.formatNotice(updatedNotice);
   }
 
-  private async getNoticeHelper(id: number) {
+  async update(id: number, data: NoticeUpsertData, files: UploadedNoticeFile[] = []) {
+    const existingNotice = await noticeRepository.findById(id);
+    if (!existingNotice) {
+      throw new AppError('공지사항을 찾을 수 없습니다.', 404, 'NOTICE_NOT_FOUND');
+    }
+
+    const nextIsPinned = data.isPinned ?? existingNotice.isPinned;
+    const currentTargetSetting = this.normalizeTargetSetting(existingNotice.targetSetting);
+    const removeAttachmentIds = Array.from(new Set(data.removeAttachmentIds || []));
+    const keptAttachments = existingNotice.attachments.filter(
+      (attachment) => !removeAttachmentIds.includes(attachment.id),
+    );
+
+    this.validateAttachmentCombination(keptAttachments, files);
+
+    const targetSetting = this.buildTargetSetting({
+      targetType: data.targetType ?? currentTargetSetting.targetType,
+      targetTeamIds: data.targetTeamIds ?? currentTargetSetting.targetTeamIds,
+      targetUserIds: data.targetUserIds ?? currentTargetSetting.targetUserIds,
+    });
+    const userIds = await this.resolveTargetUserIds(targetSetting);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.notice.update({
+        where: { id },
+        data: {
+          title: data.title ?? existingNotice.title,
+          body: data.content ?? existingNotice.body,
+          isPinned: nextIsPinned,
+          targetSetting,
+        },
+      });
+
+      if (removeAttachmentIds.length > 0) {
+        await tx.noticeAttachment.deleteMany({
+          where: {
+            noticeId: id,
+            id: { in: removeAttachmentIds },
+          },
+        });
+      }
+
+      if (existingNotice.isPinned !== nextIsPinned) {
+        await tx.noticeAttachment.updateMany({
+          where: { noticeId: id },
+          data: {
+            expiresAt: nextIsPinned ? null : createNoticeAttachmentExpiry(),
+          },
+        });
+      }
+
+      await this.createAttachments(tx, id, files, nextIsPinned);
+      await noticeRepository.deleteReceipts(id, tx);
+      await noticeRepository.createReceipts(id, userIds, tx);
+    });
+
+    return await this.getFormattedNoticeOrThrow(id);
+  }
+
+  async delete(id: number) {
     const notice = await noticeRepository.findById(id);
     if (!notice) {
       throw new AppError('공지사항을 찾을 수 없습니다.', 404, 'NOTICE_NOT_FOUND');
     }
 
-    return notice;
+    return await noticeRepository.delete(id);
   }
 
-  private formatNotice(notice: NoticeFormatInput, authorName: string | null) {
+  async togglePin(id: number) {
+    const notice = await noticeRepository.findById(id);
+    if (!notice) {
+      throw new AppError('공지사항을 찾을 수 없습니다.', 404, 'NOTICE_NOT_FOUND');
+    }
+
+    const nextIsPinned = !notice.isPinned;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.notice.update({
+        where: { id },
+        data: { isPinned: nextIsPinned },
+      });
+
+      await tx.noticeAttachment.updateMany({
+        where: { noticeId: id },
+        data: {
+          expiresAt: nextIsPinned ? null : createNoticeAttachmentExpiry(),
+        },
+      });
+    });
+
+    return await this.getFormattedNoticeOrThrow(id);
+  }
+
+  async downloadAttachment(attachmentId: number, userId?: number, isAdmin = false) {
+    const attachment =
+      userId && !isAdmin
+        ? await noticeRepository.findAttachmentByIdForUser(attachmentId, userId)
+        : await noticeRepository.findAttachmentById(attachmentId);
+
+    if (!attachment) {
+      throw new AppError('첨부파일을 찾을 수 없습니다.', 404, 'NOTICE_ATTACHMENT_NOT_FOUND');
+    }
+
+    if (this.isAttachmentExpired(attachment.notice.isPinned, attachment.expiresAt)) {
+      throw new AppError(
+        '첨부파일 다운로드 기간이 만료되었습니다.',
+        410,
+        'NOTICE_ATTACHMENT_EXPIRED',
+      );
+    }
+
+    return {
+      originalName: attachment.originalName,
+      mimeType: attachment.mimeType,
+      size: attachment.size,
+      data: attachment.data,
+    };
+  }
+
+  async cleanupExpiredAttachments() {
+    return await noticeRepository.deleteExpiredAttachments(new Date());
+  }
+
+  private async getFormattedNoticeOrThrow(id: number) {
+    const notice = await noticeRepository.findById(id);
+    if (!notice) {
+      throw new AppError('공지사항을 찾을 수 없습니다.', 404, 'NOTICE_NOT_FOUND');
+    }
+
+    return this.formatNotice(notice);
+  }
+
+  private buildTargetSetting(data: NoticeUpsertData): NoticeTargetSetting {
+    return {
+      targetType: data.targetType || 'ALL',
+      targetTeamIds: data.targetTeamIds || [],
+      targetUserIds: data.targetUserIds || [],
+    };
+  }
+
+  private normalizeTargetSetting(value: unknown): NoticeTargetSetting {
+    if (!value || typeof value !== 'object') {
+      return this.buildTargetSetting({});
+    }
+
+    const targetSetting = value as Partial<NoticeTargetSetting>;
+
+    return this.buildTargetSetting({
+      targetType:
+        targetSetting.targetType === 'ALL' ||
+        targetSetting.targetType === 'TEAM' ||
+        targetSetting.targetType === 'INDIVIDUAL'
+          ? targetSetting.targetType
+          : undefined,
+      targetTeamIds: Array.isArray(targetSetting.targetTeamIds)
+        ? targetSetting.targetTeamIds.filter((item): item is number => Number.isInteger(item))
+        : undefined,
+      targetUserIds: Array.isArray(targetSetting.targetUserIds)
+        ? targetSetting.targetUserIds.filter((item): item is number => Number.isInteger(item))
+        : undefined,
+    });
+  }
+
+  private async resolveTargetUserIds(targetSetting: NoticeTargetSetting) {
+    if (targetSetting.targetType === 'ALL') {
+      return await noticeRepository.findAllApprovedUserIds();
+    }
+
+    if (targetSetting.targetType === 'TEAM' && targetSetting.targetTeamIds.length > 0) {
+      return await noticeRepository.findUserIdsByTeamIds(targetSetting.targetTeamIds);
+    }
+
+    if (targetSetting.targetType === 'INDIVIDUAL' && targetSetting.targetUserIds.length > 0) {
+      return targetSetting.targetUserIds;
+    }
+
+    return [];
+  }
+
+  private validateNewAttachments(files: UploadedNoticeFile[]) {
+    if (files.length > NOTICE_ATTACHMENT_MAX_FILES) {
+      throw new AppError(
+        '첨부파일 수가 너무 많습니다. 파일 수를 줄여주세요.',
+        400,
+        'NOTICE_ATTACHMENT_TOO_MANY_FILES',
+      );
+    }
+
+    const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+    if (totalBytes > NOTICE_ATTACHMENT_MAX_TOTAL_BYTES) {
+      throw new AppError(
+        `첨부파일 총합은 ${this.formatBytes(NOTICE_ATTACHMENT_MAX_TOTAL_BYTES)} 이하만 가능합니다.`,
+        400,
+        'NOTICE_ATTACHMENT_TOTAL_TOO_LARGE',
+      );
+    }
+
+    for (const file of files) {
+      this.validateAttachmentType(file.originalname);
+    }
+  }
+
+  private validateAttachmentCombination(
+    existingAttachments: Array<Pick<NoticeAttachmentRecord, 'id' | 'size'>>,
+    newFiles: UploadedNoticeFile[],
+  ) {
+    this.validateNewAttachments(newFiles);
+
+    if (existingAttachments.length + newFiles.length > NOTICE_ATTACHMENT_MAX_FILES) {
+      throw new AppError(
+        '첨부파일 수가 너무 많습니다. 파일 수를 줄여주세요.',
+        400,
+        'NOTICE_ATTACHMENT_TOO_MANY_FILES',
+      );
+    }
+
+    const currentBytes =
+      existingAttachments.reduce((sum, attachment) => sum + attachment.size, 0) +
+      newFiles.reduce((sum, file) => sum + file.size, 0);
+
+    if (currentBytes > NOTICE_ATTACHMENT_MAX_TOTAL_BYTES) {
+      throw new AppError(
+        `첨부파일 총합은 ${this.formatBytes(NOTICE_ATTACHMENT_MAX_TOTAL_BYTES)} 이하만 가능합니다.`,
+        400,
+        'NOTICE_ATTACHMENT_TOTAL_TOO_LARGE',
+      );
+    }
+  }
+
+  private validateAttachmentType(fileName: string) {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    if (!extension || !NOTICE_ATTACHMENT_ALLOWED_EXTENSIONS.has(extension)) {
+      throw new AppError(
+        '허용되지 않은 첨부파일 형식입니다.',
+        400,
+        'NOTICE_ATTACHMENT_INVALID_TYPE',
+      );
+    }
+  }
+
+  private async createAttachments(
+    tx: NoticeTransactionClient,
+    noticeId: number,
+    files: UploadedNoticeFile[],
+    isPinned: boolean,
+  ) {
+    if (files.length === 0) {
+      return;
+    }
+
+    for (const file of files) {
+      await tx.noticeAttachment.create({
+        data: {
+          noticeId,
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+          data: Uint8Array.from(file.buffer),
+          expiresAt: isPinned ? null : createNoticeAttachmentExpiry(),
+        },
+      });
+    }
+  }
+
+  private formatNotice(notice: NoticeRecord) {
     return {
       id: notice.id,
       title: notice.title,
@@ -226,8 +430,39 @@ class NoticeService {
       viewCount: notice.viewCount,
       isPinned: notice.isPinned,
       targetSetting: notice.targetSetting,
-      author: { name: authorName },
+      author: { name: notice.author?.name || null },
+      attachments: notice.attachments.map((attachment) =>
+        this.formatAttachment(attachment, notice.isPinned),
+      ),
     };
+  }
+
+  private formatAttachment(attachment: NoticeAttachmentRecord, noticeIsPinned: boolean) {
+    const expiresAt = noticeIsPinned ? null : attachment.expiresAt;
+
+    return {
+      id: attachment.id,
+      originalName: attachment.originalName,
+      mimeType: attachment.mimeType,
+      size: attachment.size,
+      createdAt: attachment.createdAt,
+      expiresAt,
+      isExpired: this.isAttachmentExpired(false, expiresAt),
+      isImage: attachment.mimeType.startsWith('image/'),
+    };
+  }
+
+  private isAttachmentExpired(noticeIsPinned: boolean, expiresAt: Date | null) {
+    if (noticeIsPinned || !expiresAt) {
+      return false;
+    }
+
+    return expiresAt.getTime() <= Date.now();
+  }
+
+  private formatBytes(value: number) {
+    const mb = value / (1024 * 1024);
+    return `${mb.toFixed(mb % 1 === 0 ? 0 : 1)}MB`;
   }
 }
 

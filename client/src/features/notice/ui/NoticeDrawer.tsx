@@ -1,15 +1,15 @@
 import { Fragment, ReactElement } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { Notice } from '../api/noticeApi';
-import { NoticeForm } from './NoticeForm';
 import { showConfirm } from '../../../shared/utils/toast';
+import { Notice, NoticeUpsertPayload } from '../api/noticeApi';
+import { NoticeForm } from './NoticeForm';
 
 interface NoticeDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  notice?: Notice | null; // If null, mode is Create
-  onSave: (data: { title: string; content: string }) => Promise<void>;
+  notice?: Notice | null;
+  onSave: (data: NoticeUpsertPayload) => Promise<void>;
   onDelete?: (id: number) => Promise<void>;
 }
 
@@ -26,7 +26,6 @@ export const NoticeDrawer = ({
     <Transition.Root show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
         <div className="fixed inset-0 overflow-hidden">
-          {/* Backdrop with blur */}
           <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
           <div className="absolute inset-0 overflow-hidden">
             <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
@@ -61,6 +60,7 @@ export const NoticeDrawer = ({
                     </div>
                     <div className="relative flex-1 px-4 py-6 sm:px-6">
                       <NoticeForm
+                        key={notice?.id ?? 'new'}
                         initialData={
                           notice
                             ? {
@@ -73,21 +73,22 @@ export const NoticeDrawer = ({
                               }
                             : undefined
                         }
+                        existingAttachments={notice?.attachments || []}
                         onSubmit={onSave}
                         onCancel={onClose}
                         isEditMode={isEditMode}
                       />
 
-                      {isEditMode && onDelete && (
-                        <div className="mt-8 pt-6 border-t border-gray-200">
+                      {isEditMode && notice && onDelete && (
+                        <div className="mt-8 border-t border-gray-200 pt-6">
                           <button
                             onClick={async () => {
                               const confirmed = await showConfirm('정말 삭제하시겠습니까?');
                               if (confirmed) {
-                                onDelete(notice.id);
+                                await onDelete(notice.id);
                               }
                             }}
-                            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                            className="flex w-full justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                           >
                             삭제하기
                           </button>

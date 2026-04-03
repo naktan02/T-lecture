@@ -15,6 +15,10 @@ import { requestLogger, rateLimiter } from './common/middlewares';
 import v1Router from './api/v1';
 import errorHandler from './common/middlewares/errorHandler';
 import logger from './config/logger';
+import {
+  startNoticeAttachmentCleanup,
+  stopNoticeAttachmentCleanup,
+} from './domains/notice/notice-attachment-cleanup.service';
 import prisma, { startDatabaseHeartbeat, stopDatabaseHeartbeat } from './libs/prisma';
 
 const app = express();
@@ -119,6 +123,7 @@ server.on('listening', async () => {
 
     // Supavisor 5분 유휴 타임아웃 방지를 위한 heartbeat 시작
     startDatabaseHeartbeat();
+    startNoticeAttachmentCleanup();
 
     // 시작 시 메모리 로깅
     logMemoryUsage('startup');
@@ -126,7 +131,6 @@ server.on('listening', async () => {
     // 5분마다 메모리 사용량 체크 (무료 티어: 512MB 제한)
     setInterval(
       () => {
-        logMemoryUsage('periodic');
         const used = process.memoryUsage();
         const heapUsedMB = used.heapUsed / 1024 / 1024;
         if (heapUsedMB > 400) {
@@ -184,6 +188,7 @@ process.on('SIGTERM', () => {
 
   server.close(async () => {
     logger.info('HTTP server closed');
+    stopNoticeAttachmentCleanup();
     stopDatabaseHeartbeat();
     await prisma.$disconnect();
     logger.info('Database connection closed');

@@ -18,6 +18,13 @@ import { useAuthGuard } from '../../features/auth/model/useAuthGuard';
 const getErrorMessage = (error: unknown, fallbackMessage: string) =>
   error instanceof Error && error.message ? error.message : fallbackMessage;
 
+const CATEGORY_LABELS: Record<string, string> = {
+  Main: '주강사',
+  Co: '부강사',
+  Assistant: '보조강사',
+  Practicum: '실습강사',
+};
+
 const UserProfilePage: React.FC = () => {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
@@ -45,6 +52,7 @@ const UserProfilePage: React.FC = () => {
 
   // 메타데이터 상태 (덕목 목록)
   const [virtueOptions, setVirtueOptions] = useState<{ id: number; name: string }[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<{ id: string; label: string }[]>([]);
 
   const {
     data: user,
@@ -61,12 +69,12 @@ const UserProfilePage: React.FC = () => {
   useEffect(() => {
     if (user?.instructor) {
       getInstructorMeta().then((meta) => {
-        // null safe mapping
-        const options = meta.virtues.map((v) => ({
+        const virtueItems = meta.virtues.map((v) => ({
           id: v.id,
           name: v.name || '이름 없음',
         }));
-        setVirtueOptions(options);
+        setVirtueOptions(virtueItems);
+        setCategoryOptions(meta.categories);
       });
     }
   }, [user]);
@@ -88,6 +96,7 @@ const UserProfilePage: React.FC = () => {
           phoneNumber: user.userphoneNumber || '',
           address: user.instructor?.location || '',
           locationDetail: user.instructor?.locationDetail || '',
+          category: user.instructor?.category || '',
           email: user.userEmail,
           password: '',
           restrictedArea: user.instructor?.restrictedArea || '',
@@ -105,7 +114,7 @@ const UserProfilePage: React.FC = () => {
 
   const updateMutation = useMutation({
     mutationFn: updateMyProfile,
-    onSuccess: () => {
+    onSuccess: (updatedProfile) => {
       showSuccess('프로필이 수정되었습니다.');
       queryClient.invalidateQueries({ queryKey: ['myProfile'] });
       setIsEditing(false);
@@ -115,10 +124,12 @@ const UserProfilePage: React.FC = () => {
       setEmailCode('');
       setIsEmailVerified(false);
       setEmailVerificationMsg('');
-      // 프로필 완성 상태 업데이트 (강사인 경우)
-      if (isProfileIncomplete) {
-        localStorage.setItem('instructorProfileCompleted', 'true');
-        setIsProfileIncomplete(false);
+
+      const isInstructorProfileComplete = updatedProfile.instructor?.profileCompleted !== false;
+      localStorage.setItem('instructorProfileCompleted', String(isInstructorProfileComplete));
+      setIsProfileIncomplete(!isInstructorProfileComplete);
+
+      if (isProfileIncomplete && isInstructorProfileComplete) {
         showSuccess('강사 프로필이 완성되었습니다!');
       }
     },
@@ -134,6 +145,7 @@ const UserProfilePage: React.FC = () => {
         phoneNumber: user.userphoneNumber || '',
         address: user.instructor?.location || '',
         locationDetail: user.instructor?.locationDetail || '',
+        category: user.instructor?.category || '',
         email: user.userEmail,
         password: '',
         restrictedArea: user.instructor?.restrictedArea || '',
@@ -178,6 +190,11 @@ const UserProfilePage: React.FC = () => {
     // 이메일 변경 시 인증 확인
     if (formData.email !== user?.userEmail && !isEmailVerified) {
       showWarning('이메일 변경 시 인증이 필요합니다.');
+      return;
+    }
+
+    if (isInstructor && isProfileIncomplete && !formData.category) {
+      showWarning('직책을 선택해주세요.');
       return;
     }
 
@@ -388,7 +405,9 @@ const UserProfilePage: React.FC = () => {
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">강사 유형</label>
                     <span className="text-sm font-medium text-gray-800">
-                      {user.instructor?.category || '미지정'}
+                      {user.instructor?.category
+                        ? CATEGORY_LABELS[user.instructor.category] || user.instructor.category
+                        : '미지정'}
                     </span>
                   </div>
                 )}
@@ -614,6 +633,31 @@ const UserProfilePage: React.FC = () => {
                           {user.instructor?.locationDetail
                             ? ` ${user.instructor.locationDetail}`
                             : ''}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <label className="block text-sm font-medium text-gray-700">직책</label>
+                      {isEditing ? (
+                        <select
+                          name="category"
+                          value={formData.category || ''}
+                          onChange={handleInputChange}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                        >
+                          <option value="">직책 선택</option>
+                          {categoryOptions.map((option) => (
+                            <option key={option.id} value={option.id}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div className="mt-1 text-sm text-gray-900">
+                          {user.instructor?.category
+                            ? CATEGORY_LABELS[user.instructor.category] || user.instructor.category
+                            : '미지정'}
                         </div>
                       )}
                     </div>
