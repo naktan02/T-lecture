@@ -163,8 +163,8 @@ const buildNoticeFormData = (data: NoticeUpsertPayload) => {
   return formData;
 };
 
-const triggerBrowserDownload = (downloadUrl: string, fallbackName: string) => {
-  void downloadBinaryFile(downloadUrl, fallbackName);
+const triggerBrowserDownload = async (downloadUrl: string, fallbackName: string) => {
+  await downloadBinaryFile(downloadUrl, fallbackName);
 };
 
 const readDownloadError = async (response: Response) => {
@@ -284,6 +284,6 @@ export const noticeApi = {
   downloadAttachment: async (attachmentId: number, fallbackName: string) => {
     const response = await apiClient(`${BASE_PATH}/attachments/${attachmentId}/download-ticket`);
     const { downloadPath } = (await response.json()) as { downloadPath: string };
-    triggerBrowserDownload(resolveApiUrl(downloadPath), fallbackName);
+    await triggerBrowserDownload(resolveApiUrl(downloadPath), fallbackName);
   },
 };
