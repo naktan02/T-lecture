@@ -17,6 +17,15 @@ const upload = multer({
 });
 
 router.get('/', auth, noticeController.getNotices);
+router.get(
+  '/attachments/:attachmentId/download-ticket',
+  auth,
+  noticeController.getNoticeAttachmentDownloadTicket,
+);
+router.get(
+  '/attachments/:attachmentId/direct-download',
+  noticeController.directDownloadNoticeAttachment,
+);
 router.get('/attachments/:attachmentId/download', auth, noticeController.downloadNoticeAttachment);
 router.get('/:id', auth, noticeController.getNotice);
 

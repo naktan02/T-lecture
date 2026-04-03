@@ -1,4 +1,5 @@
 import { apiClient } from '../../../shared/apiClient';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export interface NoticeAttachment {
   id: number;
@@ -62,6 +63,8 @@ export interface NoticeUpsertPayload {
 }
 
 const BASE_PATH = '/api/v1/notices';
+const resolveApiUrl = (path: string) =>
+  `${API_BASE_URL.replace(/\/$/, '')}${path.startsWith('/') ? path : `/${path}`}`;
 
 const normalizeNotice = (notice: unknown): Notice => {
   const value =
@@ -160,19 +163,15 @@ const buildNoticeFormData = (data: NoticeUpsertPayload) => {
   return formData;
 };
 
-const triggerBrowserDownload = async (response: Response, fallbackName: string) => {
-  const blob = await response.blob();
-  const objectUrl = window.URL.createObjectURL(blob);
+const triggerBrowserDownload = (downloadUrl: string, fallbackName: string) => {
   const anchor = document.createElement('a');
-  const contentDisposition = response.headers.get('Content-Disposition');
-  const matchedName = contentDisposition?.match(/filename\*=UTF-8''(.+)/);
-
-  anchor.href = objectUrl;
-  anchor.download = matchedName ? decodeURIComponent(matchedName[1]) : fallbackName;
+  anchor.href = downloadUrl;
+  anchor.download = fallbackName;
+  anchor.target = '_blank';
+  anchor.rel = 'noopener noreferrer';
   document.body.appendChild(anchor);
   anchor.click();
   document.body.removeChild(anchor);
-  window.URL.revokeObjectURL(objectUrl);
 };
 
 export const noticeApi = {
@@ -250,7 +249,8 @@ export const noticeApi = {
   },
 
   downloadAttachment: async (attachmentId: number, fallbackName: string) => {
-    const response = await apiClient(`${BASE_PATH}/attachments/${attachmentId}/download`);
-    await triggerBrowserDownload(response, fallbackName);
+    const response = await apiClient(`${BASE_PATH}/attachments/${attachmentId}/download-ticket`);
+    const { downloadPath } = (await response.json()) as { downloadPath: string };
+    triggerBrowserDownload(resolveApiUrl(downloadPath), fallbackName);
   },
 };

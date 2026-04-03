@@ -34,6 +34,15 @@ const noticeAttachmentSelect = {
   createdAt: true,
 } as const;
 
+const noticeAttachmentAccessInclude = {
+  notice: {
+    select: {
+      id: true,
+      isPinned: true,
+    },
+  },
+} as const;
+
 const baseNoticeDetailInclude = {
   author: {
     select: { name: true },
@@ -191,13 +200,16 @@ class NoticeRepository {
   async findAttachmentById(attachmentId: number) {
     return await prisma.noticeAttachment.findUnique({
       where: { id: attachmentId },
-      include: {
-        notice: {
-          select: {
-            id: true,
-            isPinned: true,
-          },
-        },
+      include: noticeAttachmentAccessInclude,
+    });
+  }
+
+  async findAttachmentAccessById(attachmentId: number) {
+    return await prisma.noticeAttachment.findUnique({
+      where: { id: attachmentId },
+      select: {
+        ...noticeAttachmentSelect,
+        notice: noticeAttachmentAccessInclude.notice,
       },
     });
   }
@@ -212,13 +224,23 @@ class NoticeRepository {
           },
         },
       },
-      include: {
+      include: noticeAttachmentAccessInclude,
+    });
+  }
+
+  async findAttachmentAccessByIdForUser(attachmentId: number, userId: number) {
+    return await prisma.noticeAttachment.findFirst({
+      where: {
+        id: attachmentId,
         notice: {
-          select: {
-            id: true,
-            isPinned: true,
+          receipts: {
+            some: { userId },
           },
         },
+      },
+      select: {
+        ...noticeAttachmentSelect,
+        notice: noticeAttachmentAccessInclude.notice,
       },
     });
   }

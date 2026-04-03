@@ -6,6 +6,10 @@ import {
   NOTICE_ATTACHMENT_MAX_TOTAL_BYTES,
   createNoticeAttachmentExpiry,
 } from './notice-attachment.constants';
+import {
+  createNoticeAttachmentDownloadToken,
+  verifyNoticeAttachmentDownloadToken,
+} from './notice-download-token';
 import noticeRepository from './notice.repository';
 
 type NoticeTargetSetting = {
@@ -54,6 +58,12 @@ type NoticeRecord = NonNullable<Awaited<ReturnType<typeof noticeRepository.findB
 type NoticeAttachmentRecord = Awaited<
   ReturnType<typeof noticeRepository.findAttachmentMetadataByNoticeId>
 >[number];
+type NoticeAttachmentAccessRecord = NonNullable<
+  Awaited<ReturnType<typeof noticeRepository.findAttachmentAccessById>>
+>;
+type NoticeAttachmentDownloadRecord = NonNullable<
+  Awaited<ReturnType<typeof noticeRepository.findAttachmentById>>
+>;
 type NoticeWithOptionalReceipts = NoticeRecord & {
   receipts?: Array<{ readAt: Date | null }>;
 };
@@ -65,8 +75,6 @@ class NoticeService {
       throw new AppError('제목과 내용을 모두 입력해 주세요.', 400, 'VALIDATION_ERROR');
     }
 
-    const title = data.title;
-    const content = data.content;
     this.validateNewAttachments(files);
 
     const targetSetting = this.buildTargetSetting(data);
@@ -76,8 +84,8 @@ class NoticeService {
     const noticeId = await prisma.$transaction(async (tx) => {
       const notice = await tx.notice.create({
         data: {
-          title,
-          body: content,
+          title: data.title!,
+          body: data.content!,
           authorId,
           isPinned,
           targetSetting,
@@ -252,23 +260,20 @@ class NoticeService {
     return await this.getFormattedNoticeOrThrow(id);
   }
 
+  async issueAttachmentDownloadTicket(attachmentId: number, userId: number, isAdmin = false) {
+    await this.getDownloadableAttachmentMetadata(attachmentId, userId, isAdmin);
+
+    const { token, expiresAt } = createNoticeAttachmentDownloadToken({
+      attachmentId,
+      userId,
+      isAdmin,
+    });
+
+    return { token, expiresAt };
+  }
+
   async downloadAttachment(attachmentId: number, userId?: number, isAdmin = false) {
-    const attachment =
-      userId && !isAdmin
-        ? await noticeRepository.findAttachmentByIdForUser(attachmentId, userId)
-        : await noticeRepository.findAttachmentById(attachmentId);
-
-    if (!attachment) {
-      throw new AppError('첨부파일을 찾을 수 없습니다.', 404, 'NOTICE_ATTACHMENT_NOT_FOUND');
-    }
-
-    if (this.isAttachmentExpired(attachment.notice.isPinned, attachment.expiresAt)) {
-      throw new AppError(
-        '첨부파일 다운로드 기간이 만료되었습니다.',
-        410,
-        'NOTICE_ATTACHMENT_EXPIRED',
-      );
-    }
+    const attachment = await this.getDownloadableAttachmentData(attachmentId, userId, isAdmin);
 
     return {
       originalName: attachment.originalName,
@@ -276,6 +281,16 @@ class NoticeService {
       size: attachment.size,
       data: attachment.data,
     };
+  }
+
+  async downloadAttachmentByToken(attachmentId: number, token: string) {
+    const payload = verifyNoticeAttachmentDownloadToken(token);
+
+    if (payload.attachmentId !== attachmentId) {
+      throw new AppError('다운로드 토큰 대상이 올바르지 않습니다.', 400, 'INVALID_DOWNLOAD_TOKEN');
+    }
+
+    return await this.downloadAttachment(payload.attachmentId, payload.userId, payload.isAdmin);
   }
 
   async cleanupExpiredAttachments() {
@@ -350,7 +365,7 @@ class NoticeService {
     const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
     if (totalBytes > NOTICE_ATTACHMENT_MAX_TOTAL_BYTES) {
       throw new AppError(
-        `첨부파일 총합은 ${this.formatBytes(NOTICE_ATTACHMENT_MAX_TOTAL_BYTES)} 이하만 가능합니다.`,
+        `첨부파일 총합은 ${this.formatBytes(NOTICE_ATTACHMENT_MAX_TOTAL_BYTES)} 이하여야 합니다.`,
         400,
         'NOTICE_ATTACHMENT_TOTAL_TOO_LARGE',
       );
@@ -381,7 +396,7 @@ class NoticeService {
 
     if (currentBytes > NOTICE_ATTACHMENT_MAX_TOTAL_BYTES) {
       throw new AppError(
-        `첨부파일 총합은 ${this.formatBytes(NOTICE_ATTACHMENT_MAX_TOTAL_BYTES)} 이하만 가능합니다.`,
+        `첨부파일 총합은 ${this.formatBytes(NOTICE_ATTACHMENT_MAX_TOTAL_BYTES)} 이하여야 합니다.`,
         400,
         'NOTICE_ATTACHMENT_TOTAL_TOO_LARGE',
       );
@@ -390,6 +405,7 @@ class NoticeService {
 
   private validateAttachmentType(fileName: string) {
     const extension = fileName.split('.').pop()?.toLowerCase();
+
     if (!extension || !NOTICE_ATTACHMENT_ALLOWED_EXTENSIONS.has(extension)) {
       throw new AppError(
         '허용되지 않은 첨부파일 형식입니다.',
@@ -482,6 +498,50 @@ class NoticeService {
   private formatBytes(value: number) {
     const mb = value / (1024 * 1024);
     return `${mb.toFixed(mb % 1 === 0 ? 0 : 1)}MB`;
+  }
+
+  private async getDownloadableAttachmentMetadata(
+    attachmentId: number,
+    userId?: number,
+    isAdmin = false,
+  ): Promise<NoticeAttachmentAccessRecord> {
+    const attachment =
+      userId && !isAdmin
+        ? await noticeRepository.findAttachmentAccessByIdForUser(attachmentId, userId)
+        : await noticeRepository.findAttachmentAccessById(attachmentId);
+
+    if (!attachment) {
+      throw new AppError('첨부파일을 찾을 수 없습니다.', 404, 'NOTICE_ATTACHMENT_NOT_FOUND');
+    }
+
+    if (this.isAttachmentExpired(attachment.notice.isPinned, attachment.expiresAt)) {
+      throw new AppError(
+        '첨부파일 다운로드 기간이 만료되었습니다.',
+        410,
+        'NOTICE_ATTACHMENT_EXPIRED',
+      );
+    }
+
+    return attachment;
+  }
+
+  private async getDownloadableAttachmentData(
+    attachmentId: number,
+    userId?: number,
+    isAdmin = false,
+  ): Promise<NoticeAttachmentDownloadRecord> {
+    await this.getDownloadableAttachmentMetadata(attachmentId, userId, isAdmin);
+
+    const attachment =
+      userId && !isAdmin
+        ? await noticeRepository.findAttachmentByIdForUser(attachmentId, userId)
+        : await noticeRepository.findAttachmentById(attachmentId);
+
+    if (!attachment) {
+      throw new AppError('첨부파일을 찾을 수 없습니다.', 404, 'NOTICE_ATTACHMENT_NOT_FOUND');
+    }
+
+    return attachment;
   }
 }
 

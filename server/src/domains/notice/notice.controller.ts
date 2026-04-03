@@ -56,6 +56,19 @@ const parseTargetType = (value: unknown) => {
 const getUploadedFiles = (req: Request) =>
   Array.isArray(req.files) ? req.files : ([] as Express.Multer.File[]);
 
+const sendNoticeAttachment = (
+  res: Response,
+  attachment: { mimeType: string; originalName: string; size: number; data: Uint8Array | Buffer },
+) => {
+  res.setHeader('Content-Type', attachment.mimeType || 'application/octet-stream');
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename*=UTF-8''${encodeURIComponent(attachment.originalName)}`,
+  );
+  res.setHeader('Content-Length', String(attachment.size));
+  res.send(attachment.data);
+};
+
 export const getNotices = asyncHandler(async (req: Request, res: Response) => {
   const { page, limit, search, sortField, sortOrder, viewAs } = req.query;
   const isInstructorView = viewAs === 'instructor';
@@ -95,13 +108,33 @@ export const downloadNoticeAttachment = asyncHandler(async (req: Request, res: R
     req.user?.isAdmin === true,
   );
 
-  res.setHeader('Content-Type', attachment.mimeType || 'application/octet-stream');
-  res.setHeader(
-    'Content-Disposition',
-    `attachment; filename*=UTF-8''${encodeURIComponent(attachment.originalName)}`,
-  );
-  res.setHeader('Content-Length', String(attachment.size));
-  res.send(attachment.data);
+  sendNoticeAttachment(res, attachment);
+});
+
+export const getNoticeAttachmentDownloadTicket = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { attachmentId } = req.params;
+    const ticket = await noticeService.issueAttachmentDownloadTicket(
+      Number(attachmentId),
+      req.user!.id,
+      req.user?.isAdmin === true,
+    );
+
+    const downloadPath = `/api/v1/notices/attachments/${attachmentId}/direct-download?token=${encodeURIComponent(ticket.token)}`;
+
+    res.json({
+      downloadPath,
+      expiresAt: ticket.expiresAt,
+    });
+  },
+);
+
+export const directDownloadNoticeAttachment = asyncHandler(async (req: Request, res: Response) => {
+  const { attachmentId } = req.params;
+  const token = typeof req.query.token === 'string' ? req.query.token : '';
+  const attachment = await noticeService.downloadAttachmentByToken(Number(attachmentId), token);
+
+  sendNoticeAttachment(res, attachment);
 });
 
 export const createNotice = asyncHandler(async (req: Request, res: Response) => {
