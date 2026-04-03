@@ -1,27 +1,12 @@
 // client/src/features/userManagement/ui/UserDetailDrawer.tsx
 import { useEffect, useState, ChangeEvent, FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, InputField } from '../../../shared/ui';
+import { AddressSearchInput, Button, InputField } from '../../../shared/ui';
 import { showWarning, showSuccess, showError } from '../../../shared/utils/toast';
 import { userManagementApi, User, UpdateUserDto } from '../api/userManagementApi';
 import { getTeams, getVirtues, Team, Virtue } from '../../settings/settingsApi';
 import { AvailabilityCalendar } from './AvailabilityCalendar';
 import { formatPhoneNumber } from '../../../shared/utils';
-
-// Daum 우편번호 서비스 타입 정의
-declare global {
-  interface Window {
-    daum: any;
-  }
-}
-
-interface DaumPostcodeData {
-  roadAddress: string;
-  jibunAddress: string;
-  bname: string;
-  buildingName: string;
-  zonecode: string;
-}
 
 interface UserDetailDrawerProps {
   isOpen: boolean;
@@ -215,6 +200,11 @@ export const UserDetailDrawer = ({
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
+  };
+
+  const handlePhoneNumberChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setFormData((prev) => ({ ...prev, phoneNumber: formatted }));
   };
 
   const handleVirtueToggle = (virtueId: number) => {
@@ -429,12 +419,7 @@ export const UserDetailDrawer = ({
                       label="연락처"
                       name="phoneNumber"
                       value={formData.phoneNumber}
-                      onChange={(e) => {
-                        const formatted = formatPhoneNumber(e.target.value);
-                        handleChange({
-                          target: { name: 'phoneNumber', value: formatted },
-                        } as any);
-                      }}
+                      onChange={handlePhoneNumberChange}
                     />
                     <div className="col-span-2">
                       <label className="text-sm font-medium">이메일</label>
@@ -498,76 +483,15 @@ export const UserDetailDrawer = ({
                     <div>
                       <label className="text-sm font-medium">주소</label>
                       <div className="flex flex-col sm:flex-row gap-2">
-                        <input
-                          type="text"
-                          name="address"
+                        <AddressSearchInput
                           value={formData.address}
-                          readOnly
-                          className="flex-1 min-w-0 mt-1 p-2 border rounded-lg bg-gray-50 cursor-pointer text-sm"
-                          placeholder="주소 검색 버튼을 눌러주세요"
-                          onClick={() => {
-                            // 스크립트 로드 확인 후 실행
-                            if (!window.daum?.Postcode) {
-                              const script = document.createElement('script');
-                              script.src =
-                                '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
-                              script.onload = () => {
-                                new window.daum.Postcode({
-                                  oncomplete: function (data: DaumPostcodeData) {
-                                    setFormData((prev) => ({
-                                      ...prev,
-                                      address: data.roadAddress || data.jibunAddress,
-                                    }));
-                                  },
-                                }).open();
-                              };
-                              document.head.appendChild(script);
-                            } else {
-                              new window.daum.Postcode({
-                                oncomplete: function (data: DaumPostcodeData) {
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    address: data.roadAddress || data.jibunAddress,
-                                  }));
-                                },
-                              }).open();
-                            }
-                          }}
+                          onChange={(value) => setFormData((prev) => ({ ...prev, address: value }))}
+                          className="mt-1 flex-1 min-w-0"
+                          inputClassName="rounded-lg border p-2 text-sm bg-gray-50"
+                          buttonClassName="bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap"
+                          buttonLabel="검색"
                         />
                         <div className="flex gap-2 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (!window.daum?.Postcode) {
-                                const script = document.createElement('script');
-                                script.src =
-                                  '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
-                                script.onload = () => {
-                                  new window.daum.Postcode({
-                                    oncomplete: function (data: DaumPostcodeData) {
-                                      setFormData((prev) => ({
-                                        ...prev,
-                                        address: data.roadAddress || data.jibunAddress,
-                                      }));
-                                    },
-                                  }).open();
-                                };
-                                document.head.appendChild(script);
-                              } else {
-                                new window.daum.Postcode({
-                                  oncomplete: function (data: DaumPostcodeData) {
-                                    setFormData((prev) => ({
-                                      ...prev,
-                                      address: data.roadAddress || data.jibunAddress,
-                                    }));
-                                  },
-                                }).open();
-                              }
-                            }}
-                            className="sm:mt-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-xs sm:text-sm font-medium whitespace-nowrap"
-                          >
-                            검색
-                          </button>
                           <button
                             type="button"
                             onClick={handleSaveAddress}
