@@ -13,9 +13,18 @@ interface NoticeListProps {
   onSort?: (field: string) => void;
 }
 
+const NoticeUnreadMarker = (): ReactElement => (
+  <span
+    className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-rose-500"
+    aria-label="Unread notice"
+    title="읽지 않은 공지"
+  />
+);
+
 export const NoticeList = ({
   notices,
   onNoticeClick,
+  isAdmin = false,
   currentPage = 1,
   totalCount = 0,
   pageSize = 10,
@@ -87,51 +96,53 @@ export const NoticeList = ({
                 등록된 공지사항이 없습니다.
               </td>
             </tr>
-        ) : (
-          notices.map((notice, index) => (
-            (() => {
-              const attachmentCount = notice.attachments?.length ?? 0;
+          ) : (
+            notices.map((notice, index) =>
+              (() => {
+                const attachmentCount = notice.attachments?.length ?? 0;
+                const showUnreadMarker = !isAdmin && notice.isRead === false;
 
-              return (
-                <tr
-                  key={notice.id}
-                  onClick={() => onNoticeClick(notice.id)}
-                  className={`hover:bg-gray-50 cursor-pointer transition-colors ${
-                    notice.isPinned ? 'bg-amber-50 hover:bg-amber-100' : ''
-                  }`}
-                >
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {notice.isPinned ? (
-                      <span className="inline-flex items-center justify-center w-6 h-6 bg-amber-500 text-white rounded-full text-xs">
-                        📌
-                      </span>
-                    ) : (
-                      getNoticeNumber(index)
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-sm font-medium text-gray-900">
-                    <div className="flex items-center gap-2">
-                      <span className="block max-w-md truncate">{notice.title}</span>
-                      {attachmentCount > 0 && (
-                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-                          첨부 {attachmentCount}
+                return (
+                  <tr
+                    key={notice.id}
+                    onClick={() => onNoticeClick(notice.id)}
+                    className={`hover:bg-gray-50 cursor-pointer transition-colors ${
+                      notice.isPinned ? 'bg-amber-50 hover:bg-amber-100' : ''
+                    }`}
+                  >
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {notice.isPinned ? (
+                        <span className="inline-flex items-center justify-center w-6 h-6 bg-amber-500 text-white rounded-full text-xs">
+                          📌
                         </span>
+                      ) : (
+                        getNoticeNumber(index)
                       )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {notice.author.name || '관리자'}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                    {new Date(notice.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                    {notice.viewCount}
-                  </td>
-                </tr>
-              );
-            })()
-            ))
+                    </td>
+                    <td className="px-4 py-4 text-sm font-medium text-gray-900">
+                      <div className="flex items-center gap-2">
+                        {showUnreadMarker && <NoticeUnreadMarker />}
+                        <span className="block max-w-md truncate">{notice.title}</span>
+                        {attachmentCount > 0 && (
+                          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+                            첨부 {attachmentCount}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {notice.author.name || '관리자'}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                      {new Date(notice.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                      {notice.viewCount}
+                    </td>
+                  </tr>
+                );
+              })(),
+            )
           )}
         </tbody>
       </table>
@@ -143,9 +154,10 @@ export const NoticeList = ({
             등록된 공지사항이 없습니다.
           </div>
         ) : (
-          notices.map((notice, index) => (
+          notices.map((notice, index) =>
             (() => {
               const attachmentCount = notice.attachments?.length ?? 0;
+              const showUnreadMarker = !isAdmin && notice.isRead === false;
 
               return (
                 <div
@@ -161,6 +173,7 @@ export const NoticeList = ({
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="mb-1 flex items-center gap-2">
+                        {showUnreadMarker && <NoticeUnreadMarker />}
                         <h3 className="truncate text-sm font-medium text-gray-900">
                           {notice.title}
                         </h3>
@@ -179,8 +192,8 @@ export const NoticeList = ({
                   </div>
                 </div>
               );
-            })()
-          ))
+            })(),
+          )
         )}
       </div>
     </div>

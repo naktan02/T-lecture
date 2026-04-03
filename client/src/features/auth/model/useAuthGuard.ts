@@ -1,14 +1,16 @@
-// client/src/features/auth/model/useAuthGuard.ts
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
-import { showWarning, showError } from '../../../shared/utils';
 import {
   clearAuthStorage,
   getAccessToken,
+  getStoredInstructorProfileCompleted,
+  getStoredIsInstructor,
+  getStoredUserRole,
   redirectToLogin,
   refreshAccessToken,
 } from '../../../shared/auth/session';
+import { showError, showWarning } from '../../../shared/utils';
 
 type RequiredRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN' | 'GUEST' | 'INSTRUCTOR';
 
@@ -22,18 +24,15 @@ interface AuthGuardResult {
   shouldRender: boolean;
 }
 
-/**
- * 페이지 접근 권한을 검사하는 Hook입니다.
- */
 export const useAuthGuard = (requiredRole: RequiredRole): AuthGuardResult => {
   const navigate = useNavigate();
   const toastShownRef = useRef(false);
   const [shouldRender, setShouldRender] = useState(false);
 
   const getAuthorizedPath = (): string => {
-    const userRole = localStorage.getItem('userRole');
-    const isInstructor = localStorage.getItem('isInstructor') === 'true';
-    const isProfileCompleted = localStorage.getItem('instructorProfileCompleted') !== 'false';
+    const userRole = getStoredUserRole();
+    const isInstructor = getStoredIsInstructor();
+    const isProfileCompleted = getStoredInstructorProfileCompleted();
 
     if (userRole === 'SUPER_ADMIN') return '/admin/super';
     if (userRole === 'ADMIN') return '/admin/assignments';
@@ -41,16 +40,14 @@ export const useAuthGuard = (requiredRole: RequiredRole): AuthGuardResult => {
     return '/user-main';
   };
 
-  // [Helper] 토큰 만료 여부 확인 함수
   const isTokenExpired = (token: string | null): boolean => {
     if (!token) return true;
+
     try {
       const decoded = jwtDecode<JwtPayload>(token);
       const currentTime = Date.now() / 1000;
-      // 만료 시간(exp)이 현재 시간보다 이전이면 만료됨
       return decoded.exp < currentTime;
     } catch {
-      // 토큰 형식이 잘못되었으면 만료된 것으로 간주
       return true;
     }
   };
@@ -88,21 +85,23 @@ export const useAuthGuard = (requiredRole: RequiredRole): AuthGuardResult => {
         } else {
           finish(true);
         }
+
         return;
       }
 
       if (!(await ensureValidToken())) {
         if (!toastShownRef.current) {
           toastShownRef.current = true;
-          showError('세션이 만료되었습니다. 다시 로그인해주세요.');
+          showError('세션이 만료되었습니다. 다시 로그인해 주세요.');
         }
+
         redirectToLogin(100);
         finish(false);
         return;
       }
 
-      const userRole = localStorage.getItem('userRole');
-      const isInstructor = localStorage.getItem('isInstructor') === 'true';
+      const userRole = getStoredUserRole();
+      const isInstructor = getStoredIsInstructor();
 
       let hasPermission = true;
 
@@ -122,6 +121,7 @@ export const useAuthGuard = (requiredRole: RequiredRole): AuthGuardResult => {
           toastShownRef.current = true;
           showWarning('접근 권한이 없습니다.');
         }
+
         navigate('/user-main', { replace: true });
         finish(false);
         return;

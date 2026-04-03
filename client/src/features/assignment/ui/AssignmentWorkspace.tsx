@@ -980,7 +980,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
       {/* 표 모달 (펼치기) */}
       {tableModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-4xl h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden animate-fadeInScale">
+          <div className="bg-white w-full max-w-4xl h-[90dvh] md:h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden animate-fadeInScale">
             {/* 표 모달 헤더 */}
             <div className="bg-white px-6 py-5 border-b border-gray-200 flex justify-between items-center">
               <h2 className="text-2xl font-bold text-gray-800">

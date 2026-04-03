@@ -120,7 +120,7 @@ export const InstructorSelectionPopup: React.FC<InstructorSelectionPopupProps> =
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
       {/* 팝업 본체 */}
-      <div className="bg-white w-full max-w-[420px] max-h-[80vh] rounded-lg shadow-2xl border border-gray-300 flex flex-col overflow-hidden">
+      <div className="bg-white w-full max-w-[420px] max-h-[80dvh] sm:max-h-[80vh] rounded-lg shadow-2xl border border-gray-300 flex flex-col overflow-hidden">
         <div className="bg-gray-800 text-white px-4 py-3 flex justify-between items-center">
           <h3 className="font-bold text-sm">강사 추가 ({target.date})</h3>
           <Button

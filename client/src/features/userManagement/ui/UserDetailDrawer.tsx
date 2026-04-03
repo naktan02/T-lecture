@@ -1,6 +1,7 @@
 // client/src/features/userManagement/ui/UserDetailDrawer.tsx
 import { useEffect, useState, ChangeEvent, FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getStoredCurrentUser } from '../../../shared/auth/session';
 import { AddressSearchInput, Button, InputField } from '../../../shared/ui';
 import { showWarning, showSuccess, showError } from '../../../shared/utils/toast';
 import { userManagementApi, User, UpdateUserDto } from '../api/userManagementApi';
@@ -93,18 +94,7 @@ export const UserDetailDrawer = ({
   const userId = initialUser?.id;
 
   // 현재 로그인한 사용자 ID 가져오기 (같은 관리자인지 체크용)
-  const getCurrentUserId = (): number | null => {
-    try {
-      const userStr = localStorage.getItem('currentUser');
-      if (userStr) {
-        const parsed = JSON.parse(userStr);
-        return parsed.id ?? null;
-      }
-    } catch {
-      // ignore
-    }
-    return null;
-  };
+  const getCurrentUserId = (): number | null => getStoredCurrentUser<{ id?: number }>()?.id ?? null;
   const currentUserId = getCurrentUserId();
 
   // 같은 관리자인지 확인 (둘 다 admin이고 같은 ID)

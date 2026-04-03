@@ -34,7 +34,7 @@ const noticeAttachmentSelect = {
   createdAt: true,
 } as const;
 
-const noticeDetailInclude = {
+const baseNoticeDetailInclude = {
   author: {
     select: { name: true },
   },
@@ -43,6 +43,18 @@ const noticeDetailInclude = {
     orderBy: { createdAt: 'asc' as const },
   },
 } as const;
+
+const buildNoticeDetailInclude = (userId?: number) =>
+  userId
+    ? {
+        ...baseNoticeDetailInclude,
+        receipts: {
+          where: { userId },
+          select: { readAt: true },
+          take: 1,
+        },
+      }
+    : baseNoticeDetailInclude;
 
 class NoticeRepository {
   async findAll({ skip, take, search, orderBy, userId }: NoticeFindAllParams) {
@@ -71,7 +83,7 @@ class NoticeRepository {
         skip,
         take,
         orderBy: sortRule,
-        include: noticeDetailInclude,
+        include: buildNoticeDetailInclude(userId),
       }),
       prisma.notice.count({ where }),
     ]);
@@ -82,7 +94,7 @@ class NoticeRepository {
   async findById(id: number) {
     return await prisma.notice.findUnique({
       where: { id },
-      include: noticeDetailInclude,
+      include: baseNoticeDetailInclude,
     });
   }
 
@@ -94,7 +106,7 @@ class NoticeRepository {
           some: { userId },
         },
       },
-      include: noticeDetailInclude,
+      include: buildNoticeDetailInclude(userId),
     });
   }
 

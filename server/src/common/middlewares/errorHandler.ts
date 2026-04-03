@@ -88,6 +88,9 @@ function normalizeError(err: unknown): {
 export const errorHandler = (err: unknown, req: Request, res: Response, _next: NextFunction) => {
   const mapped = mapPrismaError(err);
   const normalized = normalizeError(mapped ?? err);
+  const requestUrl = req.originalUrl || req.url || '';
+  const isExpectedRefreshFailure =
+    requestUrl.startsWith('/api/v1/auth/refresh') && normalized.statusCode === 401;
 
   const safeMessage =
     normalized.statusCode >= 500 || !normalized.isAppError
@@ -124,6 +127,8 @@ export const errorHandler = (err: unknown, req: Request, res: Response, _next: N
       });
       Sentry.captureException(err);
     });
+  } else if (isExpectedRefreshFailure) {
+    logger.debug('[API ERROR]', logPayload);
   } else {
     logger.warn('[API ERROR]', logPayload);
   }

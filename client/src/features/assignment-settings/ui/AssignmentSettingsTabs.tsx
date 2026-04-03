@@ -47,7 +47,7 @@ export const AssignmentSettingsTabs = (): ReactElement => {
       </div>
 
       {/* 탭 컨텐츠 */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-4 md:p-6">
         {activeTab === 'settings' && <AssignmentSettingsSection />}
         {activeTab === 'penalty' && <PenaltyManagementSection />}
         {activeTab === 'priority' && <PriorityCreditSection />}

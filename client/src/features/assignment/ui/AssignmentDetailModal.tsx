@@ -552,7 +552,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white w-full max-w-4xl h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden animate-fadeInScale">
+      <div className="bg-white w-full max-w-4xl h-[90dvh] md:h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden animate-fadeInScale">
         {/* 1. Header */}
         <div className="bg-white px-6 py-5 border-b border-gray-200 flex justify-between items-start">
           <div>

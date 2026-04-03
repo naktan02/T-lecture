@@ -18,6 +18,7 @@ export interface RegisterDto {
 
 export interface JwtPayload {
   userId: number;
+  rememberMe?: boolean;
 }
 
 export interface LoginResponse {

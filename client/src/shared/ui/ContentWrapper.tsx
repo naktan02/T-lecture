@@ -23,8 +23,8 @@ export const ContentWrapper: React.FC<ContentWrapperProps> = ({
     <div
       className={`flex flex-col bg-gray-50 ${
         scrollable
-          ? 'min-h-[calc(100vh-var(--header-height))]'
-          : 'h-[calc(100vh-var(--header-height))]'
+          ? 'min-h-[calc(100dvh-var(--header-height))]'
+          : 'h-[calc(100dvh-var(--header-height))]'
       }`}
     >
       <main

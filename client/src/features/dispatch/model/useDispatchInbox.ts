@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getStoredCurrentUser } from '../../../shared/auth/session';
 import {
   getMyDispatchesApi,
   markDispatchAsReadApi,
@@ -27,17 +28,8 @@ interface UseDispatchInboxReturn {
 }
 
 const getCurrentUserId = (): number | null => {
-  try {
-    const userStr = localStorage.getItem('currentUser');
-    if (userStr) {
-      const user = JSON.parse(userStr);
-      return user.id || null;
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
+  const user = getStoredCurrentUser<{ id?: number }>();
+  return user?.id ?? null;
 };
 
 const useDispatchSection = (type: 'Temporary' | 'Confirmed'): UseDispatchSectionReturn => {

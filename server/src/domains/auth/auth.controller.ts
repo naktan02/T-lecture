@@ -1,23 +1,32 @@
-// server/src/domains/auth/auth.controller.ts
-import { Request, Response } from 'express';
-import authService from './auth.service';
-import { asyncHandler } from '../../common/middlewares/asyncHandler';
+import { CookieOptions, Request, Response } from 'express';
 import AppError from '../../common/errors/AppError';
+import { asyncHandler } from '../../common/middlewares/asyncHandler';
 import logger from '../../config/logger';
+import authService from './auth.service';
 
-// 쿠키 옵션
-function getRefreshCookieOptions() {
+const REFRESH_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+function getRefreshCookieBaseOptions(): CookieOptions {
   const isProd = process.env.NODE_ENV === 'production';
+
   return {
     httpOnly: true,
     secure: isProd,
-    sameSite: isProd ? ('none' as const) : ('strict' as const), // Cross-domain 쿠키 허용
-    partitioned: isProd, // Chrome 118+ 제3자 쿠키 차단 대비
+    sameSite: isProd ? 'none' : 'strict',
+    partitioned: isProd,
     path: '/',
   };
 }
 
-// 이메일 인증 코드를 발송합니다.
+function getRefreshCookieOptions(rememberMe: boolean): CookieOptions {
+  return rememberMe
+    ? {
+        ...getRefreshCookieBaseOptions(),
+        maxAge: REFRESH_COOKIE_MAX_AGE_MS,
+      }
+    : getRefreshCookieBaseOptions();
+}
+
 export const sendCode = asyncHandler(async (req: Request, res: Response) => {
   const { email } = req.body || {};
   if (!email) throw new AppError('email이 필요합니다.', 400, 'VALIDATION_ERROR');
@@ -26,38 +35,38 @@ export const sendCode = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json(result);
 });
 
-// 이메일 인증 코드를 검증합니다.
 export const verifyCode = asyncHandler(async (req: Request, res: Response) => {
   const { email, code } = req.body || {};
-  if (!email || !code) throw new AppError('email, code가 필요합니다.', 400, 'VALIDATION_ERROR');
+  if (!email || !code) {
+    throw new AppError('email, code가 필요합니다.', 400, 'VALIDATION_ERROR');
+  }
 
   const result = await authService.verifyCode(email, code);
   res.status(200).json(result);
 });
 
-// 회원가입
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const result = await authService.register(req.body);
   res.status(201).json(result);
 });
 
-// 로그인
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const { email, password, loginType, deviceId } = req.body || {};
-  if (!email || !password)
+  const rememberMe = req.body?.rememberMe !== false;
+
+  if (!email || !password) {
     throw new AppError('email/password가 필요합니다.', 400, 'VALIDATION_ERROR');
+  }
 
-  const result = await authService.login(email, password, loginType, deviceId);
+  const result = await authService.login(email, password, deviceId, rememberMe);
 
-  logger.info('[auth.login]', {
+  logger.debug('[auth.login]', {
     userId: result.user?.id ?? null,
     loginType: loginType ?? null,
+    rememberMe,
   });
 
-  res.cookie('refreshToken', result.refreshToken, {
-    ...getRefreshCookieOptions(),
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  res.cookie('refreshToken', result.refreshToken, getRefreshCookieOptions(result.rememberMe));
 
   res.status(200).json({
     accessToken: result.accessToken,
@@ -65,8 +74,6 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   });
 });
 
-// 토큰 재발급
-// 토큰 재발급 (Rotation: 리프레시 토큰도 갱신됨)
 export const refresh = asyncHandler(async (req: Request, res: Response) => {
   try {
     const refreshToken = req.cookies?.refreshToken;
@@ -74,33 +81,25 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
 
     const result = await authService.refreshAccessToken(refreshToken);
 
-    // Rotation된 새 리프레시 토큰을 쿠키에 설정
-    res.cookie('refreshToken', result.refreshToken, {
-      ...getRefreshCookieOptions(),
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
+    res.cookie('refreshToken', result.refreshToken, getRefreshCookieOptions(result.rememberMe));
     res.status(200).json({ accessToken: result.accessToken });
   } catch (err) {
-    // 실패 시 쿠키 삭제
-    res.clearCookie('refreshToken', getRefreshCookieOptions());
+    res.clearCookie('refreshToken', getRefreshCookieBaseOptions());
     throw err;
   }
 });
 
-// 사용자 로그아웃 처리
 export const logout = asyncHandler(async (req: Request, res: Response) => {
   const { deviceId } = req.body || {};
   const userId = req.user?.id ?? null;
 
-  logger.info('[auth.logout]', { userId, hasDeviceId: Boolean(deviceId) });
+  logger.debug('[auth.logout]', { userId, hasDeviceId: Boolean(deviceId) });
 
   await authService.logout(userId, deviceId);
-  res.clearCookie('refreshToken', getRefreshCookieOptions());
+  res.clearCookie('refreshToken', getRefreshCookieBaseOptions());
   res.status(200).json({ message: '로그아웃되었습니다.' });
 });
 
-// 비밀번호 재설정용 인증 코드 발송
 export const sendPasswordResetCode = asyncHandler(async (req: Request, res: Response) => {
   const { email } = req.body || {};
   if (!email) throw new AppError('email이 필요합니다.', 400, 'VALIDATION_ERROR');
@@ -109,9 +108,9 @@ export const sendPasswordResetCode = asyncHandler(async (req: Request, res: Resp
   res.status(200).json(result);
 });
 
-// 사용자 비밀번호 재설정
 export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
   const { email, code, newPassword } = req.body || {};
+
   if (!email || !code || !newPassword) {
     throw new AppError('email, code, newPassword가 필요합니다.', 400, 'VALIDATION_ERROR');
   }

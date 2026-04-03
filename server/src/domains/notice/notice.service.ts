@@ -54,6 +54,9 @@ type NoticeRecord = NonNullable<Awaited<ReturnType<typeof noticeRepository.findB
 type NoticeAttachmentRecord = Awaited<
   ReturnType<typeof noticeRepository.findAttachmentMetadataByNoticeId>
 >[number];
+type NoticeWithOptionalReceipts = NoticeRecord & {
+  receipts?: Array<{ readAt: Date | null }>;
+};
 type NoticeTransactionClient = Pick<typeof prisma, 'notice' | 'noticeAttachment' | 'noticeReceipt'>;
 
 class NoticeService {
@@ -420,7 +423,9 @@ class NoticeService {
     }
   }
 
-  private formatNotice(notice: NoticeRecord) {
+  private formatNotice(notice: NoticeWithOptionalReceipts) {
+    const readAt = this.extractReadAt(notice);
+
     return {
       id: notice.id,
       title: notice.title,
@@ -434,7 +439,21 @@ class NoticeService {
       attachments: notice.attachments.map((attachment) =>
         this.formatAttachment(attachment, notice.isPinned),
       ),
+      ...(typeof readAt !== 'undefined'
+        ? {
+            readAt,
+            isRead: readAt !== null,
+          }
+        : {}),
     };
+  }
+
+  private extractReadAt(notice: NoticeWithOptionalReceipts) {
+    if (!Array.isArray(notice.receipts) || notice.receipts.length === 0) {
+      return undefined;
+    }
+
+    return notice.receipts[0]?.readAt ?? null;
   }
 
   private formatAttachment(attachment: NoticeAttachmentRecord, noticeIsPinned: boolean) {

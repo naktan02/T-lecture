@@ -19,6 +19,8 @@ export interface Notice {
   updatedAt: string;
   viewCount: number;
   isPinned: boolean;
+  isRead?: boolean;
+  readAt?: string | null;
   author: {
     name: string | null;
   };
@@ -66,6 +68,8 @@ const normalizeNotice = (notice: unknown): Notice => {
     typeof notice === 'object' && notice
       ? (notice as Partial<Notice> & Record<string, unknown>)
       : {};
+  const readAt =
+    typeof value.readAt === 'string' ? value.readAt : value.readAt === null ? null : undefined;
 
   return {
     id: Number(value.id),
@@ -75,6 +79,12 @@ const normalizeNotice = (notice: unknown): Notice => {
     updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : new Date().toISOString(),
     viewCount: typeof value.viewCount === 'number' ? value.viewCount : 0,
     isPinned: Boolean(value.isPinned),
+    ...(typeof readAt !== 'undefined'
+      ? {
+          readAt,
+          isRead: typeof value.isRead === 'boolean' ? value.isRead : readAt !== null,
+        }
+      : {}),
     author: {
       name:
         typeof value.author === 'object' &&
@@ -88,16 +98,16 @@ const normalizeNotice = (notice: unknown): Notice => {
       typeof value.targetSetting === 'object' && value.targetSetting
         ? (value.targetSetting as Notice['targetSetting'])
         : undefined,
-    attachments: Array.isArray(value.attachments)
-      ? (value.attachments as NoticeAttachment[])
-      : [],
+    attachments: Array.isArray(value.attachments) ? (value.attachments as NoticeAttachment[]) : [],
   };
 };
 
 const normalizeNoticeListResponse = (
   payload: Partial<NoticeListResponse> & Record<string, unknown>,
 ): NoticeListResponse => ({
-  notices: Array.isArray(payload.notices) ? payload.notices.map((notice) => normalizeNotice(notice)) : [],
+  notices: Array.isArray(payload.notices)
+    ? payload.notices.map((notice) => normalizeNotice(notice))
+    : [],
   meta: {
     total:
       typeof payload.meta === 'object' &&
@@ -187,7 +197,8 @@ export const noticeApi = {
     }
 
     const response = await apiClient(`${BASE_PATH}?${urlParams.toString()}`);
-    const payload = (await response.json()) as Partial<NoticeListResponse> & Record<string, unknown>;
+    const payload = (await response.json()) as Partial<NoticeListResponse> &
+      Record<string, unknown>;
     return normalizeNoticeListResponse(payload);
   },
 

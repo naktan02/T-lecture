@@ -14,6 +14,10 @@ import {
   getInstructorMeta,
 } from '../../features/auth/authApi';
 import { useAuthGuard } from '../../features/auth/model/useAuthGuard';
+import {
+  setStoredInstructorProfileCompleted,
+  updateStoredCurrentUser,
+} from '../../shared/auth/session';
 
 const getErrorMessage = (error: unknown, fallbackMessage: string) =>
   error instanceof Error && error.message ? error.message : fallbackMessage;
@@ -126,7 +130,16 @@ const UserProfilePage: React.FC = () => {
       setEmailVerificationMsg('');
 
       const isInstructorProfileComplete = updatedProfile.instructor?.profileCompleted !== false;
-      localStorage.setItem('instructorProfileCompleted', String(isInstructorProfileComplete));
+      setStoredInstructorProfileCompleted(isInstructorProfileComplete);
+      updateStoredCurrentUser((currentUser) =>
+        currentUser
+          ? {
+              ...currentUser,
+              name: updatedProfile.name,
+              email: updatedProfile.userEmail,
+            }
+          : currentUser,
+      );
       setIsProfileIncomplete(!isInstructorProfileComplete);
 
       if (isProfileIncomplete && isInstructorProfileComplete) {

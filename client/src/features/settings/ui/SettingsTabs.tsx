@@ -47,7 +47,7 @@ export const SettingsTabs = (): ReactElement => {
       </div>
 
       {/* 탭 컨텐츠 */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-4 md:p-6">
         {activeTab === 'teams' && <TeamsSection />}
         {activeTab === 'virtues' && <VirtuesSection />}
         {activeTab === 'backup' && <DataBackupSection />}

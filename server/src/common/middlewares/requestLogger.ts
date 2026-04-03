@@ -1,29 +1,28 @@
-// server/src/common/middlewares/requestLogger.ts
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import logger from '../../config/logger';
 
-const SLOW_GET_THRESHOLD_MS = 500;
+const SLOW_REQUEST_THRESHOLD_MS = 1000;
 
-/**
- * 로그 기록에서 제외할 요청인지 확인합니다.
- */
 function shouldSkip(req: Request): boolean {
   const url = req.originalUrl || req.url || '';
+
   if (req.method === 'OPTIONS') return true;
   if (url.startsWith('/health') || url.startsWith('/metrics')) return true;
   if (url === '/favicon.ico') return true;
+
   return false;
 }
 
-function shouldLogSuccessRequest(req: Request, statusCode: number, durationMs: number): boolean {
-  if (statusCode >= 400) return true;
-
+function shouldLogRequest(req: Request, statusCode: number, durationMs: number): boolean {
   const url = req.originalUrl || req.url || '';
 
-  if (url.startsWith('/api/v1/auth/refresh')) return false;
-  if (req.method === 'GET' || req.method === 'HEAD') return durationMs >= SLOW_GET_THRESHOLD_MS;
+  if (url.startsWith('/api/v1/auth/refresh')) {
+    return statusCode >= 500 || durationMs >= SLOW_REQUEST_THRESHOLD_MS;
+  }
 
-  return true;
+  if (statusCode >= 400) return true;
+
+  return durationMs >= SLOW_REQUEST_THRESHOLD_MS;
 }
 
 export const requestLogger = (req: Request, res: Response, next: NextFunction) => {
@@ -35,9 +34,13 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
     const statusCode = res.statusCode;
     const durationMs = Date.now() - start;
 
-    // ✅ 5xx는 errorHandler 로깅에 맡김 (기존 로직 유지)
-    if (statusCode >= 500) return;
-    if (statusCode === 304) return;
+    if (statusCode >= 500 || statusCode === 304) {
+      return;
+    }
+
+    if (!shouldLogRequest(req, statusCode, durationMs)) {
+      return;
+    }
 
     const payload = {
       method: req.method,
@@ -48,16 +51,14 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
       queryKeys: Object.keys(req.query || {}),
     };
 
-    if (!shouldLogSuccessRequest(req, statusCode, durationMs)) return;
-
-    // 로그 메시지를 더 읽기 쉽게 개선
-    const logMessage = `${req.method} ${req.originalUrl || req.url} - ${statusCode} (${durationMs}ms)`;
+    const message = `${req.method} ${req.originalUrl || req.url} - ${statusCode} (${durationMs}ms)`;
 
     if (statusCode >= 400) {
-      logger.warn(logMessage, payload);
-    } else {
-      logger.info(logMessage, payload);
+      logger.warn(message, payload);
+      return;
     }
+
+    logger.info(message, payload);
   });
 
   next();
