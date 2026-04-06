@@ -26,16 +26,18 @@ export const LoginForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-2 md:px-4">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-lg px-12 py-16 md:p-10 text-center">
-        <div className="mb-12 md:mb-8">
-          <div className="w-20 h-20 md:w-16 md:h-16 bg-green-600 rounded-full mx-auto mb-6 md:mb-4 flex items-center justify-center text-white font-bold text-3xl md:text-2xl">
+    <div className="min-h-screen flex items-center justify-center bg-white md:bg-gray-100 px-2 md:px-4">
+      <div className="w-full max-w-md bg-white rounded-none shadow-none md:rounded-xl md:shadow-lg px-6 py-8 md:p-10 text-center">
+        <div className="mb-6 md:mb-8 flex items-center gap-3 md:block">
+          <div className="w-12 h-12 md:w-16 md:h-16 bg-green-600 rounded-full md:mx-auto md:mb-4 flex items-center justify-center text-white font-bold text-lg md:text-2xl shrink-0">
             BTF
           </div>
-          <h1 className="text-2xl md:text-xl font-bold text-gray-800 mb-2 md:mb-1">T-lecture</h1>
-          <p className="text-base md:text-sm text-gray-500">
-            Instructor Dispatch Automation System
-          </p>
+          <div className="text-left md:text-center">
+            <h1 className="text-xl md:text-xl font-bold text-gray-800 mb-0 md:mb-1">T-lecture</h1>
+            <p className="text-xs md:text-sm text-gray-500">
+              Instructor Dispatch Automation System
+            </p>
+          </div>
         </div>
 
         {error && (
