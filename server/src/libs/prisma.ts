@@ -82,6 +82,58 @@ function getPoolSnapshot(): Record<string, number> {
   };
 }
 
+export type DatabaseHeartbeatHealth = 'unknown' | 'healthy' | 'unhealthy';
+
+type DatabaseHeartbeatState = {
+  status: DatabaseHeartbeatHealth;
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  lastError: string | null;
+  consecutiveFailures: number;
+};
+
+const HEARTBEAT_INTERVAL_MS = 2 * 60 * 1000; // 2분 (무료 티어 안정성 강화)
+let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+
+const databaseHeartbeatState: DatabaseHeartbeatState = {
+  status: 'unknown',
+  lastSuccessAt: null,
+  lastFailureAt: null,
+  lastError: null,
+  consecutiveFailures: 0,
+};
+
+function updateDatabaseHeartbeatSuccess(): void {
+  databaseHeartbeatState.status = 'healthy';
+  databaseHeartbeatState.lastSuccessAt = new Date().toISOString();
+  databaseHeartbeatState.lastError = null;
+  databaseHeartbeatState.consecutiveFailures = 0;
+}
+
+function updateDatabaseHeartbeatFailure(error: unknown): void {
+  databaseHeartbeatState.status = 'unhealthy';
+  databaseHeartbeatState.lastFailureAt = new Date().toISOString();
+  databaseHeartbeatState.lastError = error instanceof Error ? error.message : String(error);
+  databaseHeartbeatState.consecutiveFailures += 1;
+}
+
+export function recordDatabaseConnectivitySuccess(): void {
+  updateDatabaseHeartbeatSuccess();
+}
+
+export function getDatabaseHeartbeatStatus(): DatabaseHeartbeatState & {
+  intervalMs: number;
+  running: boolean;
+  pool: Record<string, number>;
+} {
+  return {
+    ...databaseHeartbeatState,
+    intervalMs: HEARTBEAT_INTERVAL_MS,
+    running: heartbeatInterval !== null,
+    pool: getPoolSnapshot(),
+  };
+}
+
 function formatDbOperationName(model: string | undefined, operation: string): string {
   return model ? `${model}.${operation}` : operation;
 }
@@ -223,24 +275,25 @@ export function logPoolStatus(): void {
 // ============================================
 // Supavisor Heartbeat (5분 유휴 타임아웃 방지)
 // ============================================
-const HEARTBEAT_INTERVAL_MS = 2 * 60 * 1000; // 2분 (무료 티어 안정성 강화)
-let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
-
 export function startDatabaseHeartbeat(): void {
   if (heartbeatInterval) return;
 
   heartbeatInterval = setInterval(async () => {
     try {
       await basePrisma.$queryRaw`SELECT 1`;
+      updateDatabaseHeartbeatSuccess();
       // eslint-disable-next-line no-console
       console.log('[DB Heartbeat] OK -', {
         total: pool.totalCount,
         idle: pool.idleCount,
         waiting: pool.waitingCount,
       });
-    } catch {
+    } catch (error) {
+      updateDatabaseHeartbeatFailure(error);
       // eslint-disable-next-line no-console
-      console.warn('[DB Heartbeat] Connection check failed, will auto-recover');
+      console.warn('[DB Heartbeat] Connection check failed, will auto-recover', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }, HEARTBEAT_INTERVAL_MS);
 
