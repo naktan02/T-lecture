@@ -365,6 +365,44 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
         .base-calendar-root .react-calendar__month-view__weekdays__weekday:nth-child(7) abbr { 
           color: #2563eb !important;
         }
+        @media (max-height: 1120px) {
+          .base-calendar-root.base-calendar-small {
+            --base-calendar-nav-height: 28px;
+            --base-calendar-nav-min-width: 22px;
+            --base-calendar-nav-radius: 7px;
+            --base-calendar-nav-gap: 3px;
+            --base-calendar-nav-margin: 6px;
+            --base-calendar-weekday-margin: 1px;
+            --base-calendar-weekday-font-size: 0.69em;
+            --base-calendar-weekday-padding: 0.22rem;
+            --base-calendar-tile-min-height: 20px;
+            --base-calendar-tile-font-size: 10px;
+          }
+          .base-calendar-root.base-calendar-medium {
+            --base-calendar-nav-height: 34px;
+            --base-calendar-nav-min-width: 28px;
+            --base-calendar-nav-radius: 8px;
+            --base-calendar-nav-gap: 5px;
+            --base-calendar-nav-margin: 7px;
+            --base-calendar-weekday-margin: 2px;
+            --base-calendar-weekday-font-size: 0.72em;
+            --base-calendar-weekday-padding: 0.28rem;
+            --base-calendar-tile-min-height: 21px;
+            --base-calendar-tile-font-size: 11px;
+          }
+          .base-calendar-root.base-calendar-large {
+            --base-calendar-nav-height: 38px;
+            --base-calendar-nav-min-width: 34px;
+            --base-calendar-nav-radius: 9px;
+            --base-calendar-nav-gap: 5px;
+            --base-calendar-nav-margin: 7px;
+            --base-calendar-weekday-margin: 2px;
+            --base-calendar-weekday-font-size: 0.71em;
+            --base-calendar-weekday-padding: 0.28rem;
+            --base-calendar-tile-min-height: 21px;
+            --base-calendar-tile-font-size: 11px;
+          }
+        }
         @media (max-height: 980px) {
           .base-calendar-root.base-calendar-small {
             --base-calendar-nav-height: 28px;

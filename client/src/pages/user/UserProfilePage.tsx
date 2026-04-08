@@ -18,6 +18,7 @@ import {
   setStoredInstructorProfileCompleted,
   updateStoredCurrentUser,
 } from '../../shared/auth/session';
+import { LoadingSpinner } from '../../shared/ui';
 
 const getErrorMessage = (error: unknown, fallbackMessage: string) =>
   error instanceof Error && error.message ? error.message : fallbackMessage;
@@ -330,7 +331,9 @@ const UserProfilePage: React.FC = () => {
   const isInstructor = !!user.instructor;
   const isAdmin = !!user.admin;
 
-  if (!shouldRender) return null;
+  if (!shouldRender) {
+    return <LoadingSpinner fullScreen message="접속 권한을 확인하는 중입니다." />;
+  }
 
   return (
     <ContentWrapper>

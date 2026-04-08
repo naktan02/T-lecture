@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import AppError from '../../common/errors/AppError';
 
@@ -12,8 +13,15 @@ interface NoticeAttachmentDownloadTokenPayload {
 }
 
 const getNoticeAttachmentDownloadSecret = () => {
-  const secret =
-    process.env.NOTICE_ATTACHMENT_DOWNLOAD_SECRET || process.env.JWT_SECRET || undefined;
+  const dedicatedSecret = process.env.NOTICE_ATTACHMENT_DOWNLOAD_SECRET;
+  if (dedicatedSecret) {
+    return dedicatedSecret;
+  }
+
+  const baseSecret = process.env.JWT_SECRET;
+  const secret = baseSecret
+    ? crypto.createHmac('sha256', baseSecret).update(NOTICE_ATTACHMENT_DOWNLOAD_SCOPE).digest('hex')
+    : undefined;
 
   if (!secret) {
     throw new AppError('서버 설정 오류: 다운로드 토큰 시크릿이 없습니다.', 500, 'CONFIG_ERROR');
