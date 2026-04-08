@@ -11,7 +11,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import config from './config';
-import { requestLogger, rateLimiter } from './common/middlewares';
+import { requestContext, requestLogger, rateLimiter } from './common/middlewares';
 import v1Router from './api/v1';
 import errorHandler from './common/middlewares/errorHandler';
 import logger from './config/logger';
@@ -56,6 +56,7 @@ if (!isProd && allowedOrigins.length === 0) {
 
 // 🛡️ 보안 헤더 설정 (Helmet) - API 서버용 간소화
 // CSP는 HTML을 직접 제공하는 서버에만 필요하므로 비활성화
+app.use(requestContext);
 app.use(helmet({ contentSecurityPolicy: false }));
 
 app.use(
@@ -71,7 +72,8 @@ app.use(
       return callback(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
+    exposedHeaders: ['X-Request-Id'],
     credentials: true,
   }),
 );

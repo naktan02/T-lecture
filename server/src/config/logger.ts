@@ -5,14 +5,39 @@ import Transport from 'winston-transport';
 import path from 'path';
 import { inspect } from 'util';
 import * as Sentry from '@sentry/node';
+import { getRequestId } from '../common/middlewares/requestContext';
 
 const logDir = 'logs';
-const { combine, timestamp, printf, colorize } = winston.format;
+const { combine, timestamp, printf, colorize, json } = winston.format;
 
 // NODE_ENV 기반 로그 레벨 자동 설정
 const isProd = process.env.NODE_ENV === 'production';
-const consoleLogLevel = isProd ? 'warn' : 'info'; // 프로덕션: warn, 개발: info
+const consoleLogLevel = process.env.LOG_LEVEL || (isProd ? 'info' : 'debug');
 const debugToFile = process.env.DEBUG_TO_FILE === 'true';
+
+const injectRequestContext = winston.format((info) => {
+  if (info.requestId === undefined) {
+    const requestId = getRequestId();
+    if (requestId) {
+      info.requestId = requestId;
+    }
+  }
+
+  info.service = info.service || 't-lecture-server';
+  info.environment = info.environment || (process.env.NODE_ENV || 'development');
+  return info;
+});
+
+const normalizeError = winston.format((info) => {
+  if (info.error instanceof Error) {
+    info.errorName = info.error.name;
+    info.errorMessage = info.error.message;
+    info.errorStack = info.error.stack;
+    delete info.error;
+  }
+
+  return info;
+});
 
 const logFormat = printf((info) => {
   const { level, message, timestamp, ...rest } = info;
@@ -103,8 +128,14 @@ transports.push(
   new winston.transports.Console({
     level: consoleLogLevel,
     format: isProd
-      ? combine(timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), logFormat)
-      : combine(colorize(), timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), logFormat),
+      ? combine(injectRequestContext(), normalizeError(), timestamp(), json())
+      : combine(
+          injectRequestContext(),
+          normalizeError(),
+          colorize(),
+          timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+          logFormat,
+        ),
   }),
 );
 
@@ -114,7 +145,14 @@ if (process.env.SENTRY_DSN) {
 }
 
 const logger = winston.createLogger({
-  format: combine(timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), logFormat),
+  format: isProd
+    ? combine(injectRequestContext(), normalizeError(), timestamp(), json())
+    : combine(
+        injectRequestContext(),
+        normalizeError(),
+        timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        logFormat,
+      ),
   transports,
 });
 
