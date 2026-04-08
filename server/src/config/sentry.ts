@@ -1,8 +1,7 @@
 // server/src/config/sentry.ts
 import * as Sentry from '@sentry/node';
 import type { Application } from 'express';
-
-const isProd = process.env.NODE_ENV === 'production';
+import { buildSentryInitOptions, getSentryTracesSampleRate } from './sentryOptions';
 
 // 일일 에러 전송 제한 (무료 티어: 월 5000개 ≈ 일 166개, 안전하게 100개로 제한)
 const DAILY_ERROR_LIMIT = 100;
@@ -79,27 +78,17 @@ export function initSentry(): boolean {
   }
 
   Sentry.init({
-    dsn,
-    environment: process.env.NODE_ENV || 'development',
-    // 개발에서만 성능 추적 (프로덕션에서는 불필요)
-    tracesSampleRate: isProd ? 0 : 0.5,
-    // 성능 프로파일링 (Pro 플랜 이상 필요, 무료는 꺼둠)
-    profilesSampleRate: 0,
-    // 에러 샘플링 (100% 전송)
-    sampleRate: 1.0,
-    // Prisma 쿼리 성능 추적 (개발 환경에서만 유용)
-    integrations: isProd ? [] : [Sentry.prismaIntegration()],
-    // 일일 한도 체크
+    ...buildSentryInitOptions(dsn),
     beforeSend(event) {
       if (!canSendError()) {
         log('warn', '[Sentry] Daily error limit reached. Event dropped.');
-        return null; // 이벤트 전송 안 함
+        return null;
       }
       return event;
     },
   });
 
-  log('info', '[Sentry] Initialized successfully with Prisma integration.');
+  log('info', `[Sentry] Initialized successfully (traces=${getSentryTracesSampleRate()}).`);
   return true;
 }
 
