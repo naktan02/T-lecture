@@ -11,12 +11,19 @@ export function getRoutePattern(req: Request): string | null {
   return req.baseUrl || null;
 }
 
+export function getLoggableUrl(req: Request): string {
+  const fullUrl = req.originalUrl || req.url || '';
+  const queryIndex = fullUrl.indexOf('?');
+
+  return queryIndex >= 0 ? fullUrl.slice(0, queryIndex) : fullUrl;
+}
+
 export function getRequestMeta(req: Request): Record<string, unknown> {
   return {
     requestId: req.requestId ?? null,
     userId: req.user?.id ?? null,
     method: req.method,
-    url: req.originalUrl || req.url,
+    url: getLoggableUrl(req),
     route: getRoutePattern(req),
   };
 }

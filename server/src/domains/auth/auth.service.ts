@@ -14,6 +14,15 @@ const SALT_ROUNDS = 10;
 const ACCESS_TOKEN_EXPIRES_IN = '1h';
 const REFRESH_TOKEN_EXPIRES_IN = '7d';
 const REFRESH_TOKEN_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000;
+const DUMMY_PASSWORD_HASH = '$2b$10$sgrlGCi/OCnQGgwZ/X9pXuvOyk2vhDC9hNf/X0yPTLqrV8ahaijfO';
+
+function createInvalidLoginError(): AppError {
+  return new AppError(
+    '이메일 또는 비밀번호가 올바르지 않습니다.',
+    401,
+    'INVALID_CREDENTIALS',
+  );
+}
 
 class AuthService {
   async sendVerificationCode(email: string) {
@@ -146,18 +155,11 @@ class AuthService {
 
   async login(email: string, password: string, deviceId: string | null, rememberMe = true) {
     const user = await userRepository.findByEmail(email);
+    const passwordHash = user?.password || DUMMY_PASSWORD_HASH;
+    const ok = await bcrypt.compare(password, passwordHash);
 
-    if (!user) {
-      throw new AppError('가입되지 않은 이메일입니다.', 404, 'USER_NOT_FOUND');
-    }
-
-    const ok = await bcrypt.compare(password, user.password || '');
-    if (!ok) {
-      throw new AppError('비밀번호가 일치하지 않습니다.', 401, 'INVALID_PASSWORD');
-    }
-
-    if (user.status !== 'APPROVED') {
-      throw new AppError('승인되지 않은 사용자입니다.', 403, 'USER_NOT_APPROVED');
+    if (!user || !ok || user.status !== 'APPROVED') {
+      throw createInvalidLoginError();
     }
 
     const { accessSecret, refreshSecret } = this.getJwtSecrets();

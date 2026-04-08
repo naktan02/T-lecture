@@ -163,8 +163,12 @@ const buildNoticeFormData = (data: NoticeUpsertPayload) => {
   return formData;
 };
 
-const triggerBrowserDownload = async (downloadUrl: string, fallbackName: string) => {
-  await downloadBinaryFile(downloadUrl, fallbackName);
+const triggerBrowserDownload = async (
+  downloadUrl: string,
+  fallbackName: string,
+  downloadToken: string,
+) => {
+  await downloadBinaryFile(downloadUrl, fallbackName, downloadToken);
 };
 
 const readDownloadError = async (response: Response) => {
@@ -193,10 +197,17 @@ const saveBlobAsFile = (blob: Blob, fallbackName: string) => {
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 };
 
-const downloadBinaryFile = async (downloadUrl: string, fallbackName: string) => {
+const downloadBinaryFile = async (
+  downloadUrl: string,
+  fallbackName: string,
+  downloadToken: string,
+) => {
   const response = await fetch(downloadUrl, {
     method: 'GET',
     credentials: 'include',
+    headers: {
+      'X-Notice-Download-Token': downloadToken,
+    },
   });
 
   if (!response.ok) {
@@ -283,7 +294,10 @@ export const noticeApi = {
 
   downloadAttachment: async (attachmentId: number, fallbackName: string) => {
     const response = await apiClient(`${BASE_PATH}/attachments/${attachmentId}/download-ticket`);
-    const { downloadPath } = (await response.json()) as { downloadPath: string };
-    await triggerBrowserDownload(resolveApiUrl(downloadPath), fallbackName);
+    const { downloadPath, token } = (await response.json()) as {
+      downloadPath: string;
+      token: string;
+    };
+    await triggerBrowserDownload(resolveApiUrl(downloadPath), fallbackName, token);
   },
 };
