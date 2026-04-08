@@ -203,7 +203,7 @@ export const AdminDashboard: React.FC = () => {
     setModalStack(['unitList']);
     setUnitListModal({ open: true, status, data: [], loading: true });
     try {
-      const data = await fetchUnitsByStatus(status);
+      const data = await fetchUnitsByStatus(status, dashboardParams);
       setUnitListModal((prev) => ({ ...prev, data, loading: false }));
     } catch {
       setUnitListModal((prev) => ({ ...prev, data: [], loading: false }));

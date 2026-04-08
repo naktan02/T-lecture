@@ -1,11 +1,11 @@
 import { NextFunction, Request, Response } from 'express';
 import logger from '../../config/logger';
-import { getRoutePattern } from '../utils/requestMeta';
+import { getLoggableUrl, getRoutePattern } from '../utils/requestMeta';
 
 const SLOW_REQUEST_THRESHOLD_MS = 1000;
 
 function shouldSkip(req: Request): boolean {
-  const url = req.originalUrl || req.url || '';
+  const url = getLoggableUrl(req);
 
   if (req.method === 'OPTIONS') return true;
   if (url.startsWith('/health') || url.startsWith('/metrics')) return true;
@@ -15,7 +15,7 @@ function shouldSkip(req: Request): boolean {
 }
 
 function shouldLogRequest(req: Request, statusCode: number, durationMs: number): boolean {
-  const url = req.originalUrl || req.url || '';
+  const url = getLoggableUrl(req);
 
   if (url.startsWith('/api/v1/auth/refresh')) {
     return statusCode >= 500 || durationMs >= SLOW_REQUEST_THRESHOLD_MS;
@@ -48,7 +48,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
     const payload = {
       requestId: req.requestId ?? null,
       method: req.method,
-      url: req.originalUrl || req.url,
+      url: getLoggableUrl(req),
       route: getRoutePattern(req),
       statusCode,
       durationMs: roundedDurationMs,
@@ -58,7 +58,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
       userAgent: req.get('user-agent') || null,
     };
 
-    const message = `${req.method} ${req.originalUrl || req.url} - ${statusCode} (${roundedDurationMs}ms)`;
+    const message = `${req.method} ${getLoggableUrl(req)} - ${statusCode} (${roundedDurationMs}ms)`;
 
     if (statusCode >= 500) {
       logger.error(message, payload);

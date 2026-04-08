@@ -231,6 +231,7 @@ DIRECT_URL="postgresql://root:1234@localhost:5432/Project"
 # JWT 설정
 JWT_SECRET="your-jwt-secret-key"
 JWT_REFRESH_SECRET="your-jwt-refresh-secret-key"
+NOTICE_ATTACHMENT_DOWNLOAD_SECRET="your-notice-download-secret"
 
 # Kakao Maps API (거리 계산용)
 KAKAO_REST_API_KEY="your-kakao-api-key"
