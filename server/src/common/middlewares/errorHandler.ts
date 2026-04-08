@@ -137,6 +137,7 @@ export const errorHandler = (err: unknown, req: Request, res: Response, _next: N
     error: safeMessage,
     code: normalized.code,
     statusCode: normalized.statusCode,
+    requestId: req.requestId ?? null,
   });
 };
 

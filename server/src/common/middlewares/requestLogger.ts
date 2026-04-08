@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import logger from '../../config/logger';
+import { getRoutePattern } from '../utils/requestMeta';
 
 const SLOW_REQUEST_THRESHOLD_MS = 1000;
 
@@ -28,32 +29,43 @@ function shouldLogRequest(req: Request, statusCode: number, durationMs: number):
 export const requestLogger = (req: Request, res: Response, next: NextFunction) => {
   if (shouldSkip(req)) return next();
 
-  const start = Date.now();
+  const start = process.hrtime.bigint();
 
   res.on('finish', () => {
     const statusCode = res.statusCode;
-    const durationMs = Date.now() - start;
+    const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000;
 
-    if (statusCode >= 500 || statusCode === 304) {
+    if (statusCode === 304) {
       return;
     }
 
-    if (!shouldLogRequest(req, statusCode, durationMs)) {
+    const roundedDurationMs = Math.round(durationMs * 10) / 10;
+
+    if (statusCode < 500 && !shouldLogRequest(req, statusCode, roundedDurationMs)) {
       return;
     }
 
     const payload = {
+      requestId: req.requestId ?? null,
       method: req.method,
       url: req.originalUrl || req.url,
+      route: getRoutePattern(req),
       statusCode,
-      durationMs,
+      durationMs: roundedDurationMs,
       userId: req.user?.id ?? null,
       queryKeys: Object.keys(req.query || {}),
+      ip: req.ip,
+      userAgent: req.get('user-agent') || null,
     };
 
-    const message = `${req.method} ${req.originalUrl || req.url} - ${statusCode} (${durationMs}ms)`;
+    const message = `${req.method} ${req.originalUrl || req.url} - ${statusCode} (${roundedDurationMs}ms)`;
 
-    if (statusCode >= 400) {
+    if (statusCode >= 500) {
+      logger.error(message, payload);
+      return;
+    }
+
+    if (statusCode >= 400 || roundedDurationMs >= SLOW_REQUEST_THRESHOLD_MS) {
       logger.warn(message, payload);
       return;
     }

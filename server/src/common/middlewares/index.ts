@@ -1,5 +1,6 @@
 // server/src/common/middlewares/index.ts
 import requestLogger from './requestLogger';
+import requestContext from './requestContext';
 import errorHandler from './errorHandler';
 import asyncHandler from './asyncHandler';
 import auth from './auth';
@@ -8,6 +9,7 @@ import requireRole from './requireRole';
 import * as rateLimiter from './rateLimiter';
 
 export {
+  requestContext,
   requestLogger,
   errorHandler,
   asyncHandler,

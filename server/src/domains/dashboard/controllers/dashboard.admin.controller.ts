@@ -1,6 +1,8 @@
 import { NextFunction, Request, Response } from 'express';
 import dashboardAdminService from '../services/dashboard.admin.service';
 import dashboardUserService from '../services/dashboard.user.service';
+import { measureOperation } from '../../../common/utils/operationMonitor';
+import { getRequestMeta } from '../../../common/utils/requestMeta';
 
 type PeriodFilter = '1m' | '3m' | '6m' | '12m';
 type ScheduleStatus = 'completed' | 'inProgress' | 'scheduled' | 'unassigned';
@@ -59,7 +61,18 @@ class DashboardAdminController {
     try {
       // 기간 필터 추출
       const { start, end } = this.getDatesFromQuery(req.query);
-      const stats = await dashboardAdminService.getDashboardStats(start, end);
+      const stats = await measureOperation(
+        'dashboard.admin.stats',
+        () => dashboardAdminService.getDashboardStats(start, end),
+        {
+          warnThresholdMs: 1500,
+          meta: {
+            ...getRequestMeta(req),
+            startDate: start.toISOString(),
+            endDate: end.toISOString(),
+          },
+        },
+      );
       res.status(200).json(stats);
     } catch (error) {
       next(error);
@@ -73,7 +86,20 @@ class DashboardAdminController {
         res.status(400).json({ message: 'Invalid status parameter' });
         return;
       }
-      const data = await dashboardAdminService.getSchedulesByStatus(status);
+      const data = await measureOperation(
+        'dashboard.admin.schedules',
+        () => dashboardAdminService.getSchedulesByStatus(status),
+        {
+          warnThresholdMs: 1500,
+          meta: {
+            ...getRequestMeta(req),
+            status,
+          },
+          summarizeResult: (value) => ({
+            count: value.length,
+          }),
+        },
+      );
       res.status(200).json(data);
     } catch (error) {
       next(error);
@@ -98,7 +124,21 @@ class DashboardAdminController {
   getInstructors = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { start, end } = this.getDatesFromQuery(req.query);
-      const data = await dashboardAdminService.getInstructorAnalysis(start, end);
+      const data = await measureOperation(
+        'dashboard.admin.instructors',
+        () => dashboardAdminService.getInstructorAnalysis(start, end),
+        {
+          warnThresholdMs: 2000,
+          meta: {
+            ...getRequestMeta(req),
+            startDate: start.toISOString(),
+            endDate: end.toISOString(),
+          },
+          summarizeResult: (value) => ({
+            count: value.length,
+          }),
+        },
+      );
       res.status(200).json(data);
     } catch (error) {
       next(error);
@@ -108,7 +148,21 @@ class DashboardAdminController {
   getTeams = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { start, end } = this.getDatesFromQuery(req.query);
-      const data = await dashboardAdminService.getTeamAnalysis(start, end);
+      const data = await measureOperation(
+        'dashboard.admin.teams',
+        () => dashboardAdminService.getTeamAnalysis(start, end),
+        {
+          warnThresholdMs: 2000,
+          meta: {
+            ...getRequestMeta(req),
+            startDate: start.toISOString(),
+            endDate: end.toISOString(),
+          },
+          summarizeResult: (value) => ({
+            count: value.length,
+          }),
+        },
+      );
       res.status(200).json(data);
     } catch (error) {
       next(error);
@@ -124,7 +178,19 @@ class DashboardAdminController {
       }
 
       const { start, end } = this.getDatesFromQuery(req.query);
-      const data = await dashboardAdminService.getTeamDetail(teamId, start, end);
+      const data = await measureOperation(
+        'dashboard.admin.teamDetail',
+        () => dashboardAdminService.getTeamDetail(teamId, start, end),
+        {
+          warnThresholdMs: 2000,
+          meta: {
+            ...getRequestMeta(req),
+            teamId,
+            startDate: start.toISOString(),
+            endDate: end.toISOString(),
+          },
+        },
+      );
 
       if (!data) {
         res.status(404).json({ message: 'Team not found' });
@@ -152,10 +218,18 @@ class DashboardAdminController {
       const startDate = start.toISOString().split('T')[0];
       const endDate = end.toISOString().split('T')[0];
 
-      const data = await dashboardUserService.getUserDashboardStats(
-        instructorId,
-        startDate,
-        endDate,
+      const data = await measureOperation(
+        'dashboard.admin.instructorDashboard',
+        () => dashboardUserService.getUserDashboardStats(instructorId, startDate, endDate),
+        {
+          warnThresholdMs: 1500,
+          meta: {
+            ...getRequestMeta(req),
+            instructorId,
+            startDate,
+            endDate,
+          },
+        },
       );
       res.status(200).json(data);
     } catch (error) {
@@ -172,7 +246,22 @@ class DashboardAdminController {
         return;
       }
       const { start, end } = this.getDatesFromQuery(req.query);
-      const data = await dashboardAdminService.getUnitsByStatus(status, start, end);
+      const data = await measureOperation(
+        'dashboard.admin.units',
+        () => dashboardAdminService.getUnitsByStatus(status, start, end),
+        {
+          warnThresholdMs: 2500,
+          meta: {
+            ...getRequestMeta(req),
+            status,
+            startDate: start.toISOString(),
+            endDate: end.toISOString(),
+          },
+          summarizeResult: (value) => ({
+            count: value.length,
+          }),
+        },
+      );
       res.status(200).json(data);
     } catch (error) {
       next(error);
@@ -188,7 +277,17 @@ class DashboardAdminController {
         return;
       }
 
-      const data = await dashboardAdminService.getUnitDetail(unitId);
+      const data = await measureOperation(
+        'dashboard.admin.unitDetail',
+        () => dashboardAdminService.getUnitDetail(unitId),
+        {
+          warnThresholdMs: 1500,
+          meta: {
+            ...getRequestMeta(req),
+            unitId,
+          },
+        },
+      );
 
       if (!data) {
         res.status(404).json({ message: 'Unit not found' });
