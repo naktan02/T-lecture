@@ -60,6 +60,8 @@ interface UnitListItem {
   scheduleCount: number;
   instructorCount: number;
   dateRange: string;
+  validationStatus: 'Valid' | 'Invalid';
+  validationMessage: string | null;
 }
 
 interface UnitDetail {
@@ -70,6 +72,8 @@ interface UnitDetail {
   addressDetail: string | null;
   officerName: string | null;
   officerPhone: string | null;
+  validationStatus: 'Valid' | 'Invalid';
+  validationMessage: string | null;
   schedules: {
     id: number;
     date: string;
@@ -414,99 +418,99 @@ class DashboardAdminService {
     end?: Date,
   ): Promise<UnitListItem[]> {
     const today = getTodayUTC();
-    const dateFilter = start && end ? { date: { gte: start, lte: end } } : undefined;
+    const startDate = start || new Date('2020-01-01T00:00:00.000Z');
+    const endDate = end || new Date('2099-12-31T23:59:59.999Z');
 
-    // 최적화: 필요한 필드만 select
-    const units = (await prisma.unit.findMany({
-      select: {
-        id: true,
-        name: true,
-        trainingPeriods: {
-          select: {
-            schedules: {
-              where: dateFilter, // 기간 필터 적용
-              select: {
-                date: true,
-                assignments: {
-                  where: { state: 'Accepted', classification: 'Confirmed' },
-                  select: { User: { select: { id: true } } }, // 강사 ID만 (카운트용)
-                },
-              },
-            },
-          },
-        },
-      },
-    })) as any;
+    const rows = await prisma.$queryRaw<
+      Array<{
+        id: number;
+        name: string | null;
+        status: ScheduleStatus;
+        scheduleCount: bigint;
+        instructorCount: bigint;
+        dateRange: string;
+        validationStatus: 'Valid' | 'Invalid' | null;
+        validationMessage: string | null;
+      }>
+    >`
+      WITH unit_summary AS (
+        SELECT
+          u.id,
+          u."부대명" AS name,
+          u."검증상태" AS "validationStatus",
+          u."검증메시지" AS "validationMessage",
+          COUNT(DISTINCT s.id) AS total_schedule_count,
+          COUNT(DISTINCT CASE WHEN a."userId" IS NOT NULL THEN s.id END) AS assigned_schedule_count,
+          COUNT(DISTINCT a."userId") AS instructor_count,
+          MIN(CASE WHEN a."userId" IS NOT NULL THEN s."교육일" END) AS first_assigned_date,
+          MAX(CASE WHEN a."userId" IS NOT NULL THEN s."교육일" END) AS last_assigned_date,
+          BOOL_OR(
+            CASE
+              WHEN a."userId" IS NOT NULL AND s."교육일" = ${today}::date THEN true
+              ELSE false
+            END
+          ) AS has_today_assigned
+        FROM "부대" u
+        JOIN "교육기간" tp ON tp."부대id" = u.id
+        JOIN "부대일정" s ON s."교육기간id" = tp.id
+        LEFT JOIN "강사_부대_배정" a
+          ON a."unitScheduleId" = s.id
+          AND a."배정상태" = 'Accepted'
+          AND a."배치분류" = 'Confirmed'
+        WHERE s."교육일" >= ${startDate}
+          AND s."교육일" <= ${endDate}
+        GROUP BY u.id, u."부대명", u."검증상태", u."검증메시지"
+        HAVING COUNT(DISTINCT s.id) > 0
+      ),
+      classified AS (
+        SELECT
+          id,
+          name,
+          "validationStatus",
+          "validationMessage",
+          assigned_schedule_count,
+          instructor_count,
+          first_assigned_date,
+          last_assigned_date,
+          CASE
+            WHEN assigned_schedule_count = 0 THEN 'unassigned'
+            WHEN has_today_assigned THEN 'inProgress'
+            WHEN last_assigned_date < ${today}::date THEN 'completed'
+            WHEN first_assigned_date > ${today}::date THEN 'scheduled'
+            ELSE 'inProgress'
+          END AS status
+        FROM unit_summary
+      )
+      SELECT
+        id,
+        name,
+        status,
+        assigned_schedule_count AS "scheduleCount",
+        instructor_count AS "instructorCount",
+        CASE
+          WHEN assigned_schedule_count = 0
+            OR first_assigned_date IS NULL
+            OR last_assigned_date IS NULL THEN '-'
+          WHEN first_assigned_date = last_assigned_date THEN TO_CHAR(first_assigned_date, 'YYYY-MM-DD')
+          ELSE TO_CHAR(first_assigned_date, 'YYYY-MM-DD') || ' ~ ' || TO_CHAR(last_assigned_date, 'YYYY-MM-DD')
+        END AS "dateRange",
+        "validationStatus",
+        "validationMessage"
+      FROM classified
+      WHERE status = ${status}
+      ORDER BY name ASC
+    `;
 
-    const result: UnitListItem[] = [];
-
-    for (const unit of units) {
-      // 모든 trainingPeriods의 schedules를 평탄화
-      const allSchedules = unit.trainingPeriods.flatMap((p) => p.schedules);
-      if (allSchedules.length === 0) continue; // 기간 내 일정 없으면 제외
-
-      // 배정이 있는 일정만 필터링
-      const assignedSchedules = allSchedules.filter((s) => s.date && s.assignments.length > 0);
-      const assignedScheduleDates = assignedSchedules.map((s) => toUTCMidnight(new Date(s.date!)));
-
-      let unitStatus: ScheduleStatus;
-
-      if (assignedScheduleDates.length === 0) {
-        unitStatus = 'unassigned';
-      } else {
-        // 날짜 정렬
-        assignedScheduleDates.sort((a, b) => a.getTime() - b.getTime());
-        const firstDate = assignedScheduleDates[0];
-        const lastDate = assignedScheduleDates[assignedScheduleDates.length - 1];
-
-        // 오늘이 일정에 포함되는지 확인
-        const todayIsScheduled = assignedScheduleDates.some((d) => d.getTime() === today.getTime());
-
-        if (todayIsScheduled) {
-          unitStatus = 'inProgress';
-        } else if (lastDate < today) {
-          unitStatus = 'completed';
-        } else if (firstDate > today) {
-          unitStatus = 'scheduled';
-        } else {
-          unitStatus = 'inProgress';
-        }
-      }
-
-      // 요청한 상태와 일치하는 부대만 추가
-      if (unitStatus !== status) continue;
-
-      // 배정된 고유 강사 수 계산
-      const instructorIds = new Set<number>();
-      for (const schedule of assignedSchedules) {
-        for (const assignment of schedule.assignments) {
-          if (assignment.User?.id) {
-            instructorIds.add(assignment.User.id);
-          }
-        }
-      }
-
-      // 날짜 범위 계산
-      let dateRange = '-';
-      if (assignedScheduleDates.length > 0) {
-        const sortedDates = [...assignedScheduleDates].sort((a, b) => a.getTime() - b.getTime());
-        const first = sortedDates[0].toISOString().split('T')[0];
-        const last = sortedDates[sortedDates.length - 1].toISOString().split('T')[0];
-        dateRange = first === last ? first : `${first} ~ ${last}`;
-      }
-
-      result.push({
-        id: unit.id,
-        name: unit.name || 'Unknown',
-        status: unitStatus,
-        scheduleCount: assignedSchedules.length,
-        instructorCount: instructorIds.size,
-        dateRange,
-      });
-    }
-
-    // 이름순 정렬
-    return result.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name || 'Unknown',
+      status: row.status,
+      scheduleCount: Number(row.scheduleCount),
+      instructorCount: Number(row.instructorCount),
+      dateRange: row.dateRange,
+      validationStatus: row.validationStatus === 'Invalid' ? 'Invalid' : 'Valid',
+      validationMessage: row.validationMessage,
+    }));
   }
 
   /**
@@ -589,6 +593,8 @@ class DashboardAdminService {
       addressDetail: unit.detailAddress,
       officerName: firstPeriod?.officerName || null,
       officerPhone: firstPeriod?.officerPhone || null,
+      validationStatus: unit.validationStatus === 'Invalid' ? 'Invalid' : 'Valid',
+      validationMessage: unit.validationMessage,
       schedules,
     };
   }
