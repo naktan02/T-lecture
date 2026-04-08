@@ -1,9 +1,11 @@
 // src/pages/user/UserMainPage.tsx
+import { Suspense, lazy } from 'react';
 import { UserHeader } from '../../features/user/ui/headers/UserHeader';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import UserProfilePage from './UserProfilePage';
 import { useAuthGuard } from '../../features/auth/model/useAuthGuard';
 import { LoadingSpinner } from '../../shared/ui';
+
+const UserProfilePage = lazy(() => import('./UserProfilePage'));
 
 const UserMainPage: React.FC = () => {
   const { shouldRender } = useAuthGuard('USER');
@@ -14,10 +16,12 @@ const UserMainPage: React.FC = () => {
   return (
     <>
       <UserHeader />
-      <Routes>
-        <Route path="/" element={<Navigate to="/user-main/dispatches" replace />} />
-        <Route path="profile" element={<UserProfilePage />} />
-      </Routes>
+      <Suspense fallback={<LoadingSpinner fullScreen message="페이지를 불러오는 중입니다." />}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/user-main/dispatches" replace />} />
+          <Route path="profile" element={<UserProfilePage />} />
+        </Routes>
+      </Suspense>
     </>
   );
 };
