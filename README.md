@@ -240,6 +240,12 @@ BREVO_API_KEY="your-brevo-api-key"
 
 # Sentry 에러 모니터링 (선택)
 SENTRY_DSN="your-sentry-dsn"
+
+# Grafana Cloud Logs (선택)
+GRAFANA_LOGS_ENABLED="true"
+GRAFANA_LOKI_URL="https://logs-prod-xxx.grafana.net/loki/api/v1/push"
+GRAFANA_LOKI_USERNAME="your-loki-username"
+GRAFANA_LOKI_TOKEN="your-access-policy-token"
 ```
 
 ### 3. 데이터베이스 설정

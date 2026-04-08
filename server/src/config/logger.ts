@@ -6,14 +6,16 @@ import path from 'path';
 import { inspect } from 'util';
 import * as Sentry from '@sentry/node';
 import { getRequestId } from '../common/middlewares/requestContext';
+import { createGrafanaLokiTransportFromEnv, GrafanaLokiTransport } from './grafanaLoki.transport';
 
 const logDir = 'logs';
 const { combine, timestamp, printf, colorize, json } = winston.format;
 
 // NODE_ENV 기반 로그 레벨 자동 설정
 const isProd = process.env.NODE_ENV === 'production';
-const consoleLogLevel = process.env.LOG_LEVEL || (isProd ? 'info' : 'debug');
+const loggerLevel = process.env.LOG_LEVEL || (isProd ? 'info' : 'debug');
 const debugToFile = process.env.DEBUG_TO_FILE === 'true';
+const grafanaLokiTransport = createGrafanaLokiTransportFromEnv();
 
 const injectRequestContext = winston.format((info) => {
   if (info.requestId === undefined) {
@@ -30,6 +32,11 @@ const injectRequestContext = winston.format((info) => {
 
 const normalizeError = winston.format((info) => {
   if (info.error instanceof Error) {
+    Object.defineProperty(info, '__error', {
+      value: info.error,
+      enumerable: false,
+      configurable: true,
+    });
     info.errorName = info.error.name;
     info.errorMessage = info.error.message;
     info.errorStack = info.error.stack;
@@ -67,8 +74,8 @@ class SentryTransport extends Transport {
     // error 레벨일 때만 Sentry에 전송
     if (info.level === 'error') {
       // 메시지가 Error 객체인 경우 그대로 전송, 아니면 문자열로 전송
-      if (info.error instanceof Error) {
-        Sentry.captureException(info.error, {
+      if (info.__error instanceof Error) {
+        Sentry.captureException(info.__error, {
           extra: { ...info },
         });
       } else {
@@ -126,7 +133,7 @@ if (!isProd) {
 // 콘솔 출력 (개발/프로덕션 모두 - Render 로그 확인용)
 transports.push(
   new winston.transports.Console({
-    level: consoleLogLevel,
+    level: loggerLevel,
     format: isProd
       ? combine(injectRequestContext(), normalizeError(), timestamp(), json())
       : combine(
@@ -144,7 +151,12 @@ if (process.env.SENTRY_DSN) {
   transports.push(new SentryTransport({ level: 'error' }));
 }
 
+if (grafanaLokiTransport) {
+  transports.push(grafanaLokiTransport);
+}
+
 const logger = winston.createLogger({
+  level: loggerLevel,
   format: isProd
     ? combine(injectRequestContext(), normalizeError(), timestamp(), json())
     : combine(
@@ -155,5 +167,17 @@ const logger = winston.createLogger({
       ),
   transports,
 });
+
+export async function drainLogger(timeoutMs = 3000): Promise<void> {
+  if (grafanaLokiTransport instanceof GrafanaLokiTransport) {
+    await grafanaLokiTransport.drain(timeoutMs);
+  }
+}
+
+export function closeLogger(): void {
+  if (grafanaLokiTransport instanceof GrafanaLokiTransport) {
+    grafanaLokiTransport.close();
+  }
+}
 
 export default logger;

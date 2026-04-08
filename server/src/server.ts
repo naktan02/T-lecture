@@ -14,7 +14,7 @@ import config from './config';
 import { requestContext, requestLogger, rateLimiter } from './common/middlewares';
 import v1Router from './api/v1';
 import errorHandler from './common/middlewares/errorHandler';
-import logger from './config/logger';
+import logger, { closeLogger, drainLogger } from './config/logger';
 import {
   startNoticeAttachmentCleanup,
   stopNoticeAttachmentCleanup,
@@ -177,7 +177,8 @@ process.on('uncaughtException', (error) => {
   });
 
   // Sentry 전송 완료 대기 후 종료 (최대 2초)
-  Sentry.close(2000).finally(() => {
+  Promise.allSettled([drainLogger(1500), Sentry.close(2000)]).finally(() => {
+    closeLogger();
     process.exit(1);
   });
 });
@@ -194,7 +195,9 @@ process.on('SIGTERM', () => {
     stopDatabaseHeartbeat();
     await prisma.$disconnect();
     logger.info('Database connection closed');
+    await drainLogger(2000);
     await Sentry.close(2000);
+    closeLogger();
     process.exit(0);
   });
 
