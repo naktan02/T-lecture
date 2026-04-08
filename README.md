@@ -55,6 +55,7 @@
 ![Kakao](https://img.shields.io/badge/Kakao_Maps_API-FFCD00?style=flat-square&logo=kakao&logoColor=black)
 ![Brevo](https://img.shields.io/badge/Brevo-0B996E?style=flat-square&logo=sendinblue&logoColor=white)
 ![Sentry](https://img.shields.io/badge/Sentry-362D59?style=flat-square&logo=sentry&logoColor=white)
+![Grafana](https://img.shields.io/badge/Grafana_Cloud-F46800?style=flat-square&logo=grafana&logoColor=white)
 
 ---
 

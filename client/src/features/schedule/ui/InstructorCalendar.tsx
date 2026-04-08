@@ -23,11 +23,11 @@ export const InstructorCalendar: React.FC = () => {
   };
 
   return (
-    <div className="w-full h-full bg-gray-50 p-3 md:p-6 flex flex-col">
+    <div className="w-full flex-1 min-h-0 bg-gray-50 p-2 md:p-4 lg:p-6 flex flex-col">
       {/* 전체 카드 컨테이너 */}
-      <div className="w-full max-w-5xl mx-auto bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col lg:flex-1 lg:overflow-hidden">
+      <div className="w-full max-w-5xl mx-auto bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col flex-1 min-h-0 overflow-hidden">
         {/* 헤더 영역 - 모바일에서 더 압축 */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 md:p-6 border-b border-gray-200 gap-2 flex-shrink-0">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 md:p-5 border-b border-gray-200 gap-2 flex-shrink-0">
           <div>
             <h1 className="text-lg md:text-2xl font-bold text-gray-900">근무 일정 관리</h1>
             <p className="text-gray-500 mt-0.5 text-xs md:text-sm">
@@ -68,10 +68,10 @@ export const InstructorCalendar: React.FC = () => {
           </div>
         </div>
 
-        {/* 컨텐츠 영역 - 모바일에서는 overflow 없이 페이지 스크롤, 데스크톱에서만 내부 스크롤 */}
-        <div className="lg:flex-1 lg:overflow-auto p-3 md:p-6 space-y-3 md:space-y-4">
+        {/* 컨텐츠 영역 - 남는 높이를 캘린더가 모두 사용 */}
+        <div className="flex-1 min-h-0 p-3 md:p-5 flex flex-col gap-3 md:gap-4 overflow-hidden">
           {/* 월별 통계 패널 - 모바일에서 더 압축 */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-2 md:p-3 border border-blue-100">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-2 md:p-3 border border-blue-100 flex-shrink-0">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 md:gap-3">
                 <div className="bg-white rounded-lg p-1.5 md:p-2.5 shadow-sm text-center min-w-[48px] md:min-w-[56px]">
@@ -110,7 +110,7 @@ export const InstructorCalendar: React.FC = () => {
           </div>
 
           {/* 범례 - 모바일에서 더 압축 */}
-          <div className="flex flex-wrap gap-3 md:gap-6 text-xs md:text-sm text-gray-600">
+          <div className="flex flex-wrap gap-3 md:gap-6 text-xs md:text-sm text-gray-600 flex-shrink-0">
             <div className="flex items-center gap-1.5">
               <div className="w-4 h-4 md:w-6 md:h-6 border-2 border-blue-500 rounded-full"></div>
               <span>선택됨</span>
@@ -130,7 +130,7 @@ export const InstructorCalendar: React.FC = () => {
 
           {/* 잠금 안내 배너 */}
           {cutoffDate && (
-            <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-xs text-orange-700">
+            <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-xs text-orange-700 flex-shrink-0">
               <span>🔒</span>
               <span>
                 관리자가 <strong>{cutoffDate}</strong> 이전 날짜를 수정 불가로 설정했습니다.
@@ -139,7 +139,7 @@ export const InstructorCalendar: React.FC = () => {
           )}
 
           {/* 캘린더 */}
-          <div className="bg-gray-50 rounded-xl p-3 md:p-6 border border-gray-100">
+          <div className="bg-gray-50 rounded-xl p-2 md:p-4 border border-gray-100 flex-1 min-h-0 flex overflow-hidden">
             <BaseCalendar
               year={year}
               month={month}
@@ -148,6 +148,7 @@ export const InstructorCalendar: React.FC = () => {
               onMonthChange={handleMonthChange}
               size="large"
               cutoffDate={cutoffDate}
+              fitHeight={true}
             />
           </div>
         </div>
