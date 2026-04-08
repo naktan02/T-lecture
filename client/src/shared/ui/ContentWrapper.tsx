@@ -20,19 +20,23 @@ export const ContentWrapper: React.FC<ContentWrapperProps> = ({
   noPadding = false,
   scrollable = true,
 }) => {
-  const { isShortViewport, isVeryShortViewport } = useViewportHeightTier();
+  const { isCompactViewport, isShortViewport, isVeryShortViewport } = useViewportHeightTier();
   const horizontalPaddingClass = isVeryShortViewport
     ? 'px-2 sm:px-3'
     : isShortViewport
       ? 'px-3 md:px-4'
-      : 'px-4';
+      : isCompactViewport
+        ? 'px-3 md:px-4 lg:px-5'
+        : 'px-4';
   const verticalPaddingClass = noPadding
     ? ''
     : isVeryShortViewport
       ? 'py-3 md:py-4'
       : isShortViewport
         ? 'py-4 md:py-5'
-        : 'py-6';
+        : isCompactViewport
+          ? 'py-4 md:py-5'
+          : 'py-6';
 
   return (
     <div

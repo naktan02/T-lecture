@@ -8,7 +8,7 @@ export const InstructorCalendar: React.FC = () => {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
-  const { isShortViewport, isVeryShortViewport } = useViewportHeightTier();
+  const { isCompactViewport, isShortViewport, isVeryShortViewport } = useViewportHeightTier();
 
   const { selectedDays, toggleDay, saveSchedule, refresh, loading, fetching, cutoffDate } =
     useSchedule(year, month);
@@ -16,43 +16,72 @@ export const InstructorCalendar: React.FC = () => {
   const shouldUseScrollLayout = isVeryShortViewport;
   const rootLayoutClass = shouldUseScrollLayout ? 'min-h-full' : 'flex-1 min-h-0';
   const shellPaddingClass = shouldUseScrollLayout
-    ? 'p-2 sm:p-3'
+    ? 'p-1.5 sm:p-2'
     : isShortViewport
-      ? 'p-2 md:p-3 lg:p-4'
-      : 'p-2 md:p-4 lg:p-6';
+      ? 'p-1.5 md:p-2.5 lg:p-3'
+      : isCompactViewport
+        ? 'p-2 md:p-3 lg:p-4'
+        : 'p-2 md:p-4 lg:p-6';
   const cardLayoutClass = shouldUseScrollLayout ? '' : 'flex-1 min-h-0';
   const cardOverflowClass = shouldUseScrollLayout ? '' : 'overflow-hidden';
   const contentLayoutClass = shouldUseScrollLayout ? '' : 'flex-1 min-h-0 overflow-hidden';
+  const contentPaddingClass = isVeryShortViewport
+    ? 'p-2.5 md:p-3'
+    : isShortViewport
+      ? 'p-2.5 md:p-3.5'
+      : isCompactViewport
+        ? 'p-3 md:p-4'
+        : 'p-3 md:p-5';
   const headerPaddingClass = isVeryShortViewport
     ? 'p-2.5'
     : isShortViewport
-      ? 'p-3 md:p-4'
-      : 'p-3 md:p-5';
+      ? 'p-2.5 md:p-3.5'
+      : isCompactViewport
+        ? 'p-3 md:p-4'
+        : 'p-3 md:p-5';
   const titleClass = isVeryShortViewport
     ? 'text-base sm:text-lg md:text-xl'
     : isShortViewport
       ? 'text-lg md:text-xl'
-      : 'text-lg md:text-2xl';
+      : isCompactViewport
+        ? 'text-lg md:text-xl'
+        : 'text-lg md:text-2xl';
   const subtitleClass = isVeryShortViewport
     ? 'mt-0 text-[10px] md:text-xs'
     : isShortViewport
       ? 'mt-0 text-[11px] md:text-xs'
-      : 'mt-0.5 text-xs md:text-sm';
+      : isCompactViewport
+        ? 'mt-0 text-[11px] md:text-xs'
+        : 'mt-0.5 text-xs md:text-sm';
   const panelPaddingClass = isVeryShortViewport
     ? 'p-2'
     : isShortViewport
-      ? 'p-2.5 md:p-3'
-      : 'p-2 md:p-3';
+      ? 'p-2 md:p-2.5'
+      : isCompactViewport
+        ? 'p-2 md:p-2.5'
+        : 'p-2 md:p-3';
   const countCardClass = isVeryShortViewport
     ? 'min-w-[44px] p-1.5'
     : isShortViewport
-      ? 'min-w-[48px] p-2'
-      : 'min-w-[48px] md:min-w-[56px] p-1.5 md:p-2.5';
+      ? 'min-w-[46px] p-1.5'
+      : isCompactViewport
+        ? 'min-w-[48px] p-1.5 md:p-2'
+        : 'min-w-[48px] md:min-w-[56px] p-1.5 md:p-2.5';
   const calendarPanelClass = shouldUseScrollLayout
-    ? 'min-h-[32rem] overflow-x-auto overflow-y-visible p-2 sm:p-3'
+    ? 'min-h-[30rem] overflow-x-auto overflow-y-visible p-1.5 sm:p-2'
     : isShortViewport
-      ? 'flex-1 min-h-0 overflow-hidden p-2 md:p-3'
-      : 'flex-1 min-h-0 overflow-hidden p-2 md:p-4';
+      ? 'flex-1 min-h-0 overflow-hidden p-1.5 md:p-2'
+      : isCompactViewport
+        ? 'flex-1 min-h-0 overflow-hidden p-2 md:p-2.5'
+        : 'flex-1 min-h-0 overflow-hidden p-2 md:p-4';
+  const summaryCardsClass = isCompactViewport
+    ? 'hidden lg:flex gap-2 text-center'
+    : 'hidden md:flex gap-2 text-center';
+  const helperTextClass = isVeryShortViewport
+    ? 'hidden'
+    : isShortViewport || isCompactViewport
+      ? 'hidden sm:block text-[10px]'
+      : 'hidden sm:block text-[10px] md:text-xs';
 
   const handleMonthChange = (newYear: number, newMonth: number) => {
     setYear(newYear);
@@ -85,7 +114,9 @@ export const InstructorCalendar: React.FC = () => {
                   ? 'px-2 py-1.5 text-[11px]'
                   : isShortViewport
                     ? 'px-2.5 py-1.5 text-xs'
-                    : 'px-2.5 py-1.5 md:px-3 md:py-2 text-xs md:text-sm'
+                    : isCompactViewport
+                      ? 'px-2.5 py-1.5 text-xs md:text-sm'
+                      : 'px-2.5 py-1.5 md:px-3 md:py-2 text-xs md:text-sm'
               }`}
               title="서버에서 최신 데이터 가져오기"
             >
@@ -113,7 +144,9 @@ export const InstructorCalendar: React.FC = () => {
                   ? 'px-2.5 py-1.5 text-[11px]'
                   : isShortViewport
                     ? 'px-3 py-1.5 text-xs'
-                    : 'px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm'
+                    : isCompactViewport
+                      ? 'px-3 py-1.5 text-xs md:text-sm'
+                      : 'px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm'
               }`}
             >
               {loading ? '저장...' : '저장'}
@@ -122,8 +155,8 @@ export const InstructorCalendar: React.FC = () => {
         </div>
 
         <div
-          className={`p-3 md:p-5 flex flex-col ${contentLayoutClass} ${
-            isVeryShortViewport ? 'gap-2.5' : 'gap-3 md:gap-4'
+          className={`${contentPaddingClass} flex flex-col ${contentLayoutClass} ${
+            isVeryShortViewport ? 'gap-2.5' : isCompactViewport ? 'gap-3' : 'gap-3 md:gap-4'
           }`}
         >
           <div
@@ -138,7 +171,9 @@ export const InstructorCalendar: React.FC = () => {
                         ? 'text-base'
                         : isShortViewport
                           ? 'text-lg'
-                          : 'text-lg md:text-2xl'
+                          : isCompactViewport
+                            ? 'text-lg md:text-xl'
+                            : 'text-lg md:text-2xl'
                     }`}
                   >
                     {selectedDays.length}
@@ -162,39 +197,37 @@ export const InstructorCalendar: React.FC = () => {
                           ? 'text-xs sm:text-sm'
                           : isShortViewport
                             ? 'text-sm md:text-base'
-                            : 'text-xs md:text-sm'
+                            : isCompactViewport
+                              ? 'text-sm'
+                              : 'text-xs md:text-sm'
                       }`}
                     >
                       {year}년 {month}월
                     </span>
                   </div>
-                  <div
-                    className={`text-gray-500 ${
-                      isVeryShortViewport
-                        ? 'hidden'
-                        : isShortViewport
-                          ? 'hidden sm:block text-[10px]'
-                          : 'hidden sm:block text-[10px] md:text-xs'
-                    }`}
-                  >
+                  <div className={`text-gray-500 ${helperTextClass}`}>
                     근무 가능일을 선택하여 저장하세요
                   </div>
                 </div>
               </div>
-              <div className="hidden md:flex gap-2 text-center">
+              <div className={summaryCardsClass}>
                 <div
                   className={`bg-white/70 rounded-lg ${
-                    isShortViewport ? 'px-2.5 py-1.5' : 'px-3 py-1.5'
+                    isCompactViewport || isShortViewport ? 'px-2.5 py-1.5' : 'px-3 py-1.5'
                   }`}
                 >
                   <div
-                    className={`font-bold text-gray-700 ${isShortViewport ? 'text-sm' : 'text-base'}`}
+                    className={`font-bold text-gray-700 ${
+                      isCompactViewport || isShortViewport ? 'text-sm' : 'text-base'
+                    }`}
                   >
                     {new Date(year, month, 0).getDate()}
                   </div>
                   <div
                     className={
-                      isShortViewport ? 'text-[10px] text-gray-500' : 'text-xs text-gray-500'
+                      isCompactViewport || isShortViewport
+                        ? 'text-[10px] text-gray-500'
+                        : 'text-xs text-gray-500'
                     }
                   >
                     총 일수
@@ -202,17 +235,21 @@ export const InstructorCalendar: React.FC = () => {
                 </div>
                 <div
                   className={`bg-white/70 rounded-lg ${
-                    isShortViewport ? 'px-2.5 py-1.5' : 'px-3 py-1.5'
+                    isCompactViewport || isShortViewport ? 'px-2.5 py-1.5' : 'px-3 py-1.5'
                   }`}
                 >
                   <div
-                    className={`font-bold text-green-600 ${isShortViewport ? 'text-sm' : 'text-base'}`}
+                    className={`font-bold text-green-600 ${
+                      isCompactViewport || isShortViewport ? 'text-sm' : 'text-base'
+                    }`}
                   >
                     {Math.round((selectedDays.length / new Date(year, month, 0).getDate()) * 100)}%
                   </div>
                   <div
                     className={
-                      isShortViewport ? 'text-[10px] text-gray-500' : 'text-xs text-gray-500'
+                      isCompactViewport || isShortViewport
+                        ? 'text-[10px] text-gray-500'
+                        : 'text-xs text-gray-500'
                     }
                   >
                     가용률

@@ -33,7 +33,7 @@ export const MiniCalendar: React.FC<MiniCalendarProps> = ({
   month,
 }) => {
   const today = new Date();
-  const { isShortViewport, isVeryShortViewport } = useViewportHeightTier();
+  const { isCompactViewport, isShortViewport, isVeryShortViewport } = useViewportHeightTier();
 
   // 월 전환을 위한 상태 관리
   const [displayYear, setDisplayYear] = useState(year ?? today.getFullYear());
@@ -60,7 +60,13 @@ export const MiniCalendar: React.FC<MiniCalendarProps> = ({
       .filter((day): day is number => day !== null);
   }, [availableDates, displayYear, displayMonth]);
 
-  const wrapperPaddingClass = isVeryShortViewport ? 'p-1.5' : isShortViewport ? 'p-2' : 'p-2';
+  const wrapperPaddingClass = isVeryShortViewport
+    ? 'p-1'
+    : isShortViewport
+      ? 'p-1.5'
+      : isCompactViewport
+        ? 'p-2'
+        : 'p-2.5';
 
   return (
     <div

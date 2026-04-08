@@ -12,7 +12,7 @@ export const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
   onDateChange,
 }) => {
   const today = new Date();
-  const { isShortViewport, isVeryShortViewport } = useViewportHeightTier();
+  const { isCompactViewport, isShortViewport, isVeryShortViewport } = useViewportHeightTier();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
 
@@ -40,8 +40,20 @@ export const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
     }
   };
 
-  const wrapperPaddingClass = isVeryShortViewport ? 'p-1.5' : isShortViewport ? 'p-2' : 'p-2';
-  const footerClass = isVeryShortViewport ? 'mt-1.5 text-[11px]' : 'mt-2 text-xs';
+  const wrapperPaddingClass = isVeryShortViewport
+    ? 'p-1'
+    : isShortViewport
+      ? 'p-1.5'
+      : isCompactViewport
+        ? 'p-2'
+        : 'p-2.5';
+  const footerClass = isVeryShortViewport
+    ? 'mt-1.5 text-[11px]'
+    : isShortViewport
+      ? 'mt-1.5 text-[11px]'
+      : isCompactViewport
+        ? 'mt-2 text-[11px] md:text-xs'
+        : 'mt-2 text-xs';
 
   return (
     <div
