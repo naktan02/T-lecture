@@ -11,11 +11,15 @@ export class ReportController {
    */
   async getAvailableYears(req: Request, res: Response, next: NextFunction) {
     try {
-      const years = await measureOperation('report.availableYears', () => reportService.getAvailableYears(), {
-        warnThresholdMs: 1000,
-        meta: getRequestMeta(req),
-        summarizeResult: (value) => ({ count: value.length }),
-      });
+      const years = await measureOperation(
+        'report.availableYears',
+        () => reportService.getAvailableYears(),
+        {
+          warnThresholdMs: 1000,
+          meta: getRequestMeta(req),
+          summarizeResult: (value) => ({ count: value.length }),
+        },
+      );
       res.json(years);
     } catch (error) {
       next(error);

@@ -58,8 +58,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
       userAgent: req.get('user-agent') || null,
     };
 
-    const message =
-      `${req.method} ${req.originalUrl || req.url} - ${statusCode} (${roundedDurationMs}ms)`;
+    const message = `${req.method} ${req.originalUrl || req.url} - ${statusCode} (${roundedDurationMs}ms)`;
 
     if (statusCode >= 500) {
       logger.error(message, payload);

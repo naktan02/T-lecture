@@ -26,7 +26,7 @@ const injectRequestContext = winston.format((info) => {
   }
 
   info.service = info.service || 't-lecture-server';
-  info.environment = info.environment || (process.env.NODE_ENV || 'development');
+  info.environment = info.environment || process.env.NODE_ENV || 'development';
   return info;
 });
 
