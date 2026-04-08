@@ -1,11 +1,10 @@
 import { NextFunction, Request, Response } from 'express';
 import logger from '../../config/logger';
-import { getLoggableUrl, getRoutePattern } from '../utils/requestMeta';
 
 const SLOW_REQUEST_THRESHOLD_MS = 1000;
 
 function shouldSkip(req: Request): boolean {
-  const url = getLoggableUrl(req);
+  const url = req.originalUrl || req.url || '';
 
   if (req.method === 'OPTIONS') return true;
   if (url.startsWith('/health') || url.startsWith('/metrics')) return true;
@@ -15,7 +14,7 @@ function shouldSkip(req: Request): boolean {
 }
 
 function shouldLogRequest(req: Request, statusCode: number, durationMs: number): boolean {
-  const url = getLoggableUrl(req);
+  const url = req.originalUrl || req.url || '';
 
   if (url.startsWith('/api/v1/auth/refresh')) {
     return statusCode >= 500 || durationMs >= SLOW_REQUEST_THRESHOLD_MS;
@@ -29,53 +28,32 @@ function shouldLogRequest(req: Request, statusCode: number, durationMs: number):
 export const requestLogger = (req: Request, res: Response, next: NextFunction) => {
   if (shouldSkip(req)) return next();
 
-  const start = process.hrtime.bigint();
+  const start = Date.now();
 
   res.on('finish', () => {
     const statusCode = res.statusCode;
-    const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000;
+    const durationMs = Date.now() - start;
 
-    if (statusCode === 304) {
+    if (statusCode >= 500 || statusCode === 304) {
       return;
     }
 
-    const roundedDurationMs = Math.round(durationMs * 10) / 10;
-    const dbMetrics = req.dbMetrics || {
-      dbQueryCount: 0,
-      totalDbMs: 0,
-      maxDbQueryMs: 0,
-      slowDbQueryCount: 0,
-    };
-
-    if (statusCode < 500 && !shouldLogRequest(req, statusCode, roundedDurationMs)) {
+    if (!shouldLogRequest(req, statusCode, durationMs)) {
       return;
     }
 
     const payload = {
-      requestId: req.requestId ?? null,
       method: req.method,
-      url: getLoggableUrl(req),
-      route: getRoutePattern(req),
+      url: req.originalUrl || req.url,
       statusCode,
-      durationMs: roundedDurationMs,
+      durationMs,
       userId: req.user?.id ?? null,
       queryKeys: Object.keys(req.query || {}),
-      ip: req.ip,
-      userAgent: req.get('user-agent') || null,
-      dbQueryCount: dbMetrics.dbQueryCount,
-      totalDbMs: Math.round(dbMetrics.totalDbMs * 10) / 10,
-      maxDbQueryMs: Math.round(dbMetrics.maxDbQueryMs * 10) / 10,
-      slowDbQueryCount: dbMetrics.slowDbQueryCount,
     };
 
-    const message = `${req.method} ${getLoggableUrl(req)} - ${statusCode} (${roundedDurationMs}ms)`;
+    const message = `${req.method} ${req.originalUrl || req.url} - ${statusCode} (${durationMs}ms)`;
 
-    if (statusCode >= 500) {
-      logger.error(message, payload);
-      return;
-    }
-
-    if (statusCode >= 400 || roundedDurationMs >= SLOW_REQUEST_THRESHOLD_MS) {
+    if (statusCode >= 400) {
       logger.warn(message, payload);
       return;
     }

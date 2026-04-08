@@ -1,7 +1,7 @@
 // src/pages/admin/AssignmentPage.tsx
 import { useState, useCallback } from 'react';
 import { AdminHeader } from '../../features/admin/ui/headers/AdminHeader';
-import { ContentWrapper, LoadingSpinner } from '../../shared/ui';
+import { ContentWrapper } from '../../shared/ui';
 import { AssignmentWorkspace } from '../../features/assignment/ui/AssignmentWorkspace';
 import { useAuthGuard } from '../../features/auth/model/useAuthGuard';
 
@@ -13,9 +13,7 @@ const AssignmentPage: React.FC = () => {
     setRefresh(() => fn);
   }, []);
 
-  if (!shouldRender) {
-    return <LoadingSpinner fullScreen message="관리자 권한을 확인하는 중입니다." />;
-  }
+  if (!shouldRender) return null;
 
   return (
     <>

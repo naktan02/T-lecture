@@ -1,8 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import dashboardService from '../services/dashboard.user.service';
 import AppError from '../../../common/errors/AppError';
-import { measureOperation } from '../../../common/utils/operationMonitor';
-import { getRequestMeta } from '../../../common/utils/requestMeta';
 
 type PeriodFilter = '1m' | '3m' | '6m' | '12m';
 
@@ -63,18 +61,7 @@ class DashboardController {
         endStr = end.toISOString().split('T')[0];
       }
 
-      const stats = await measureOperation(
-        'dashboard.user.stats',
-        () => dashboardService.getUserDashboardStats(Number(userId), startStr, endStr),
-        {
-          warnThresholdMs: 1500,
-          meta: {
-            ...getRequestMeta(req),
-            startDate: startStr ?? null,
-            endDate: endStr ?? null,
-          },
-        },
-      );
+      const stats = await dashboardService.getUserDashboardStats(Number(userId), startStr, endStr);
       res.status(200).json(stats);
     } catch (error) {
       next(error);
@@ -109,23 +96,12 @@ class DashboardController {
         endStr = end.toISOString().split('T')[0];
       }
 
-      const result = await measureOperation(
-        'dashboard.user.activities',
-        () =>
-          dashboardService.getUserActivities(Number(userId), pageNum, limitNum, startStr, endStr),
-        {
-          warnThresholdMs: 2000,
-          meta: {
-            ...getRequestMeta(req),
-            page: pageNum,
-            limit: limitNum,
-            startDate: startStr ?? null,
-            endDate: endStr ?? null,
-          },
-          summarizeResult: (value) => ({
-            total: value.pagination?.total ?? null,
-          }),
-        },
+      const result = await dashboardService.getUserActivities(
+        Number(userId),
+        pageNum,
+        limitNum,
+        startStr,
+        endStr,
       );
       res.status(200).json(result);
     } catch (error) {

@@ -7,11 +7,6 @@ import AppError from '../../common/errors/AppError';
 import logger from '../../config/logger';
 import { measureOperation } from '../../common/utils/operationMonitor';
 import { runExclusiveOperation } from '../../common/utils/operationLock';
-import { getRequestMeta } from '../../common/utils/requestMeta';
-
-function invalidateCandidateCache(reason: string): void {
-  assignmentService.clearAssignmentCandidateCache(reason);
-}
 
 // [근무 이력 조회] (Confirmed + Past)
 export const getWorkHistory = asyncHandler(async (req: Request, res: Response) => {
@@ -45,13 +40,12 @@ export const respondAssignment = asyncHandler(async (req: Request, res: Response
     unitScheduleId,
     response,
   );
-  invalidateCandidateCache('assignment.respond');
 
   res.json(result);
 });
 
 // [배정 후보 데이터 조회] (부대 + 강사 + 기존 배정)
-// TTL 메모리 캐시로 동일 기간 재조회 비용을 줄입니다.
+// ✅ Redis 캐시에 저장하여 나중에 배정 시 재사용
 export const getCandidates = asyncHandler(async (req: Request, res: Response) => {
   // 304 캐시 방지 - 매번 최신 데이터 반환
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -65,29 +59,6 @@ export const getCandidates = asyncHandler(async (req: Request, res: Response) =>
   }
 
   // 캐시 저장 버전 사용 (userId로 캐시 키 구분)
-  const candidatePayload = await measureOperation(
-    'assignment.getCandidates',
-    () =>
-      assignmentService.getAssignmentCandidatesWithCache(
-        startDate as string,
-        endDate as string,
-        req.user!.id,
-      ),
-    {
-      warnThresholdMs: 3000,
-      meta: {
-        ...getRequestMeta(req),
-        startDate,
-        endDate,
-      },
-      summarizeResult: (value) => ({
-        cacheStatus: value.cacheStatus,
-        unitCount: value.unitsRaw.length,
-        instructorCount: value.instructorsRaw.length,
-      }),
-    },
-  );
-
   const {
     unitsRaw,
     instructorsRaw,
@@ -95,7 +66,11 @@ export const getCandidates = asyncHandler(async (req: Request, res: Response) =>
     actualDateRange,
     distanceMap,
     distanceLimits,
-  } = candidatePayload;
+  } = await assignmentService.getAssignmentCandidatesWithCache(
+    startDate as string,
+    endDate as string,
+    req.user!.id,
+  );
 
   // 설정에서 강사당 교육생 수 조회
   const traineesPerInstructor = await assignmentService.getTraineesPerInstructor();
@@ -176,7 +151,6 @@ export const autoAssign = asyncHandler(async (req: Request, res: Response) => {
       conflictMessage: '자동배정 작업이 이미 실행 중입니다. 잠시 후 다시 시도해주세요.',
     },
   );
-  invalidateCandidateCache('assignment.autoAssign');
 
   res.status(200).json(result);
 });
@@ -195,7 +169,6 @@ export const cancelAssignmentByAdmin = asyncHandler(async (req: Request, res: Re
     instructorId,
     unitScheduleId,
   );
-  invalidateCandidateCache('assignment.cancelByAdmin');
 
   res.json(result);
 });
@@ -259,7 +232,6 @@ export const bulkSaveAssignments = asyncHandler(async (req: Request, res: Respon
   });
 
   const result = await assignmentService.bulkSaveAssignments(assignments);
-  invalidateCandidateCache('assignment.bulkSave');
   res.status(200).json(result);
 });
 
@@ -277,7 +249,6 @@ export const toggleStaffLock = asyncHandler(async (req: Request, res: Response) 
   }
 
   const result = await assignmentService.toggleStaffLock(trainingPeriodId, isStaffLocked);
-  invalidateCandidateCache('assignment.toggleStaffLock');
   res.status(200).json({
     message: isStaffLocked ? '인원고정 설정 완료' : '인원고정 해제',
     result,
@@ -321,7 +292,6 @@ export const batchUpdate = asyncHandler(async (req: Request, res: Response) => {
     staffLockChanges,
     stateChanges,
   });
-  invalidateCandidateCache('assignment.batchUpdate');
 
   res.status(200).json({
     message: '일괄 저장 완료',
@@ -347,7 +317,6 @@ export const updateRole = asyncHandler(async (req: Request, res: Response) => {
     Number(instructorId),
     role || null,
   );
-  invalidateCandidateCache('assignment.updateRole');
 
   res.status(200).json({
     message: role

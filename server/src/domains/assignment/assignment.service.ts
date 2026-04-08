@@ -24,10 +24,6 @@ class AssignmentService {
     return assignmentQueryService.getAssignmentCandidatesWithCache(startDate, endDate, userId);
   }
 
-  clearAssignmentCandidateCache(reason?: string) {
-    return assignmentQueryService.clearAssignmentCandidateCache(reason);
-  }
-
   getWorkHistory(instructorId: number) {
     return assignmentQueryService.getWorkHistory(instructorId);
   }

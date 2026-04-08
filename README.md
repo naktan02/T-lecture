@@ -55,7 +55,6 @@
 ![Kakao](https://img.shields.io/badge/Kakao_Maps_API-FFCD00?style=flat-square&logo=kakao&logoColor=black)
 ![Brevo](https://img.shields.io/badge/Brevo-0B996E?style=flat-square&logo=sendinblue&logoColor=white)
 ![Sentry](https://img.shields.io/badge/Sentry-362D59?style=flat-square&logo=sentry&logoColor=white)
-![Grafana](https://img.shields.io/badge/Grafana_Cloud-F46800?style=flat-square&logo=grafana&logoColor=white)
 
 ---
 
@@ -232,7 +231,6 @@ DIRECT_URL="postgresql://root:1234@localhost:5432/Project"
 # JWT 설정
 JWT_SECRET="your-jwt-secret-key"
 JWT_REFRESH_SECRET="your-jwt-refresh-secret-key"
-NOTICE_ATTACHMENT_DOWNLOAD_SECRET="your-notice-download-secret"
 
 # Kakao Maps API (거리 계산용)
 KAKAO_REST_API_KEY="your-kakao-api-key"
@@ -242,12 +240,6 @@ BREVO_API_KEY="your-brevo-api-key"
 
 # Sentry 에러 모니터링 (선택)
 SENTRY_DSN="your-sentry-dsn"
-
-# Grafana Cloud Logs (선택)
-GRAFANA_LOGS_ENABLED="true"
-GRAFANA_LOKI_URL="https://logs-prod-xxx.grafana.net/loki/api/v1/push"
-GRAFANA_LOKI_USERNAME="your-loki-username"
-GRAFANA_LOKI_TOKEN="your-access-policy-token"
 ```
 
 ### 3. 데이터베이스 설정

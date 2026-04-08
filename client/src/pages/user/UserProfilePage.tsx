@@ -6,7 +6,7 @@ import {
   updateMyAddress,
   UpdateProfilePayload,
 } from '../../features/user/api/user.me.api';
-import { AddressSearchInput, ContentWrapper, LoadingSpinner } from '../../shared/ui';
+import { AddressSearchInput, ContentWrapper } from '../../shared/ui';
 import { showSuccess, showError, showWarning } from '../../shared/utils';
 import {
   sendVerificationCode,
@@ -330,9 +330,7 @@ const UserProfilePage: React.FC = () => {
   const isInstructor = !!user.instructor;
   const isAdmin = !!user.admin;
 
-  if (!shouldRender) {
-    return <LoadingSpinner fullScreen message="접속 권한을 확인하는 중입니다." />;
-  }
+  if (!shouldRender) return null;
 
   return (
     <ContentWrapper>
