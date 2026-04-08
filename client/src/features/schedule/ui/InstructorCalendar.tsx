@@ -78,9 +78,7 @@ export const InstructorCalendar: React.FC = () => {
         >
           <div>
             <h1 className={`${titleClass} font-bold text-gray-900`}>근무 일정 관리</h1>
-            <p className={`text-gray-500 ${subtitleClass}`}>
-              근무 가능한 날짜를 선택해 주세요
-            </p>
+            <p className={`text-gray-500 ${subtitleClass}`}>근무 가능한 날짜를 선택해 주세요</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
@@ -97,9 +95,7 @@ export const InstructorCalendar: React.FC = () => {
               title="서버에서 최신 데이터 가져오기"
             >
               <svg
-                className={`${
-                  isVeryShortViewport ? 'w-3 h-3' : 'w-3.5 h-3.5 md:w-4 md:h-4'
-                }`}
+                className={`${isVeryShortViewport ? 'w-3 h-3' : 'w-3.5 h-3.5 md:w-4 md:h-4'}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -198,10 +194,16 @@ export const InstructorCalendar: React.FC = () => {
                     isShortViewport ? 'px-2.5 py-1.5' : 'px-3 py-1.5'
                   }`}
                 >
-                  <div className={`font-bold text-gray-700 ${isShortViewport ? 'text-sm' : 'text-base'}`}>
+                  <div
+                    className={`font-bold text-gray-700 ${isShortViewport ? 'text-sm' : 'text-base'}`}
+                  >
                     {new Date(year, month, 0).getDate()}
                   </div>
-                  <div className={isShortViewport ? 'text-[10px] text-gray-500' : 'text-xs text-gray-500'}>
+                  <div
+                    className={
+                      isShortViewport ? 'text-[10px] text-gray-500' : 'text-xs text-gray-500'
+                    }
+                  >
                     총 일수
                   </div>
                 </div>
@@ -210,10 +212,16 @@ export const InstructorCalendar: React.FC = () => {
                     isShortViewport ? 'px-2.5 py-1.5' : 'px-3 py-1.5'
                   }`}
                 >
-                  <div className={`font-bold text-green-600 ${isShortViewport ? 'text-sm' : 'text-base'}`}>
+                  <div
+                    className={`font-bold text-green-600 ${isShortViewport ? 'text-sm' : 'text-base'}`}
+                  >
                     {Math.round((selectedDays.length / new Date(year, month, 0).getDate()) * 100)}%
                   </div>
-                  <div className={isShortViewport ? 'text-[10px] text-gray-500' : 'text-xs text-gray-500'}>
+                  <div
+                    className={
+                      isShortViewport ? 'text-[10px] text-gray-500' : 'text-xs text-gray-500'
+                    }
+                  >
                     가용률
                   </div>
                 </div>
@@ -224,7 +232,9 @@ export const InstructorCalendar: React.FC = () => {
           {/* 범례 - 모바일에서 더 압축 */}
           <div
             className={`flex flex-wrap text-gray-600 flex-shrink-0 ${
-              isVeryShortViewport ? 'gap-x-3 gap-y-2 text-[11px]' : 'gap-3 md:gap-6 text-xs md:text-sm'
+              isVeryShortViewport
+                ? 'gap-x-3 gap-y-2 text-[11px]'
+                : 'gap-3 md:gap-6 text-xs md:text-sm'
             }`}
           >
             <div className="flex items-center gap-1.5">
