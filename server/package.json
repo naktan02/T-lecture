@@ -19,7 +19,7 @@
     "dev": "tsx watch --import ./src/config/instrument.ts src/server.ts",
     "build": "tsc && npm run copy:assets",
     "copy:assets": "xcopy /E /I /Y src\\infra\\report dist\\infra\\report 2>nul || cp -r src/infra/report dist/infra/report 2>/dev/null || true",
-    "start": "node dist/server.js",
+    "start": "node --import ./dist/config/instrument.js dist/server.js",
     "prisma:format": "prisma format",
     "prisma:validate": "prisma validate",
     "db:push": "npm run prisma:format && npm run prisma:validate && prisma db push",
