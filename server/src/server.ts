@@ -19,7 +19,12 @@ import {
   startNoticeAttachmentCleanup,
   stopNoticeAttachmentCleanup,
 } from './domains/notice/notice-attachment-cleanup.service';
-import prisma, { startDatabaseHeartbeat, stopDatabaseHeartbeat } from './libs/prisma';
+import prisma, {
+  getDatabaseHeartbeatStatus,
+  recordDatabaseConnectivitySuccess,
+  startDatabaseHeartbeat,
+  stopDatabaseHeartbeat,
+} from './libs/prisma';
 
 const app = express();
 
@@ -87,6 +92,38 @@ app.use(express.json());
 app.use(requestLogger);
 app.use(cookieParser());
 
+const roundMetric = (value: number): number => Math.round(value * 10) / 10;
+
+function getMemorySnapshot(): Record<string, number> {
+  const used = process.memoryUsage();
+
+  return {
+    rssMb: roundMetric(used.rss / 1024 / 1024),
+    heapUsedMb: roundMetric(used.heapUsed / 1024 / 1024),
+    heapTotalMb: roundMetric(used.heapTotal / 1024 / 1024),
+    externalMb: roundMetric(used.external / 1024 / 1024),
+  };
+}
+
+function getProcessDiagnostics(): Record<string, unknown> {
+  return {
+    pid: process.pid,
+    uptimeSec: roundMetric(process.uptime()),
+    memory: getMemorySnapshot(),
+    dbHeartbeat: getDatabaseHeartbeatStatus(),
+  };
+}
+
+// Render health check path는 /api 바깥으로 두어 rate limit과 분리한다.
+app.get('/healthz', (_req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    ...getProcessDiagnostics(),
+  });
+});
+
 // 전역 Rate Limit 적용 (15분당 IP당 100회)
 app.use('/api', rateLimiter.apiLimiter);
 
@@ -121,6 +158,7 @@ function logMemoryUsage(label: string): void {
 server.on('listening', async () => {
   try {
     await prisma.$connect();
+    recordDatabaseConnectivitySuccess();
     logger.info('Database connection established');
 
     // Supavisor 5분 유휴 타임아웃 방지를 위한 heartbeat 시작
@@ -185,16 +223,16 @@ process.on('uncaughtException', (error) => {
 
 // SIGTERM 핸들링 (Render가 종료 시그널 보낼 때)
 process.on('SIGTERM', () => {
-  logger.info('SIGTERM received. Graceful shutdown...');
+  logger.info('SIGTERM received. Graceful shutdown...', getProcessDiagnostics());
 
   Sentry.captureMessage('Server received SIGTERM - shutting down', 'info');
 
   server.close(async () => {
-    logger.info('HTTP server closed');
+    logger.info('HTTP server closed', getProcessDiagnostics());
     stopNoticeAttachmentCleanup();
     stopDatabaseHeartbeat();
     await prisma.$disconnect();
-    logger.info('Database connection closed');
+    logger.info('Database connection closed', getProcessDiagnostics());
     await drainLogger(2000);
     await Sentry.close(2000);
     closeLogger();
@@ -203,7 +241,7 @@ process.on('SIGTERM', () => {
 
   // 10초 내 종료 안 되면 강제 종료
   setTimeout(() => {
-    logger.error('Graceful shutdown timeout. Force exit.');
+    logger.error('Graceful shutdown timeout. Force exit.', getProcessDiagnostics());
     process.exit(1);
   }, 10000);
 });

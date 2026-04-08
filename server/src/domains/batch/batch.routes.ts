@@ -73,7 +73,8 @@ router.get(
 
 /**
  * GET /api/v1/batch/ping
- * 서버 상태 확인 (Render 깨우기용)
+ * 외부 keepalive용 ping
+ * Render health check는 /healthz 사용
  * Rate Limit: 1분당 30회 (관대하게)
  */
 router.get('/ping', rateLimiter.pingLimiter, (_req: Request, res: Response) => {

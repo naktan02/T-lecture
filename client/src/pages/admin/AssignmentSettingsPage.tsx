@@ -1,13 +1,15 @@
 // client/src/pages/admin/AssignmentSettingsPage.tsx
 import { ReactElement } from 'react';
 import { AdminHeader } from '../../features/admin/ui/headers/AdminHeader';
-import { ContentWrapper } from '../../shared/ui';
+import { ContentWrapper, LoadingSpinner } from '../../shared/ui';
 import { AssignmentSettingsTabs } from '../../features/assignment-settings/ui';
 import { useAuthGuard } from '../../features/auth/model/useAuthGuard';
 
 const AssignmentSettingsPage = (): ReactElement => {
   const { shouldRender } = useAuthGuard('ADMIN');
-  if (!shouldRender) return <></>;
+  if (!shouldRender) {
+    return <LoadingSpinner fullScreen message="관리자 권한을 확인하는 중입니다." />;
+  }
 
   return (
     <div className="min-h-[100dvh] bg-gray-50 flex flex-col overflow-hidden">

@@ -1,5 +1,6 @@
 // client/src/features/auth/authApi.ts
 import { apiClient } from '../../shared/apiClient';
+import { warmUpApi } from '../../shared/apiWarmup';
 import { getDeviceId } from '../../shared/utils';
 
 // 타입 정의
@@ -68,6 +69,7 @@ export async function login({
   rememberMe,
 }: LoginPayload): Promise<LoginResponse> {
   const deviceId = getDeviceId();
+  await warmUpApi();
   const res = await apiClient('/api/v1/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password, loginType, deviceId, rememberMe }),
