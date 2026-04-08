@@ -15,7 +15,7 @@ const InstructorSchedulePage: React.FC = () => {
   return (
     <>
       <UserHeader onRefresh={refresh} />
-      <ContentWrapper scrollable={true}>
+      <ContentWrapper noPadding={true} scrollable={false}>
         <InstructorCalendar />
       </ContentWrapper>
     </>

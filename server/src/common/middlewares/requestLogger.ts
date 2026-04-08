@@ -40,6 +40,12 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
     }
 
     const roundedDurationMs = Math.round(durationMs * 10) / 10;
+    const dbMetrics = req.dbMetrics || {
+      dbQueryCount: 0,
+      totalDbMs: 0,
+      maxDbQueryMs: 0,
+      slowDbQueryCount: 0,
+    };
 
     if (statusCode < 500 && !shouldLogRequest(req, statusCode, roundedDurationMs)) {
       return;
@@ -56,6 +62,10 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
       queryKeys: Object.keys(req.query || {}),
       ip: req.ip,
       userAgent: req.get('user-agent') || null,
+      dbQueryCount: dbMetrics.dbQueryCount,
+      totalDbMs: Math.round(dbMetrics.totalDbMs * 10) / 10,
+      maxDbQueryMs: Math.round(dbMetrics.maxDbQueryMs * 10) / 10,
+      slowDbQueryCount: dbMetrics.slowDbQueryCount,
     };
 
     const message = `${req.method} ${getLoggableUrl(req)} - ${statusCode} (${roundedDurationMs}ms)`;

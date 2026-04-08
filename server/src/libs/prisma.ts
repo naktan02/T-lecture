@@ -4,6 +4,8 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/client.js';
 import fs from 'fs';
 import path from 'path';
+import logger from '../config/logger';
+import { getRequestDbMetrics, getRequestId } from '../common/middlewares/requestContext';
 
 // ============================================
 // pg Pool 직접 생성 (연결 풀 옵션 제어)
@@ -33,6 +35,10 @@ pool.on('error', (err) => {
 
 // Prisma 7 PrismaPg 어댑터
 const adapter = new PrismaPg(pool);
+const SLOW_DB_QUERY_THRESHOLD_MS = parsePositiveNumberEnv(
+  process.env.DB_SLOW_QUERY_THRESHOLD_MS,
+  300,
+);
 
 // 기본 Prisma Client (extension 적용 전)
 const basePrisma = new PrismaClient({
@@ -58,6 +64,28 @@ function isTransientError(error: unknown): boolean {
   return TRANSIENT_ERROR_PATTERNS.some((p) => message.includes(p));
 }
 
+function parsePositiveNumberEnv(value: string | undefined, fallback: number): number {
+  if (!value) return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function roundDurationMs(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function getPoolSnapshot(): Record<string, number> {
+  return {
+    totalCount: pool.totalCount,
+    idleCount: pool.idleCount,
+    waitingCount: pool.waitingCount,
+  };
+}
+
+function formatDbOperationName(model: string | undefined, operation: string): string {
+  return model ? `${model}.${operation}` : operation;
+}
+
 // ============================================
 // 재시도 Extension (무료 티어 대응: 3회 + 지수 백오프)
 // ============================================
@@ -67,7 +95,7 @@ const RETRY_DELAYS = [500, 1000, 2000]; // 500ms, 1s, 2s
 const prismaWithRetry = basePrisma.$extends({
   name: 'robustRetry',
   query: {
-    $allOperations: async ({ operation, args, query }) => {
+    $allOperations: async ({ model, operation, args, query }) => {
       // Write 작업은 재시도 안 함 (중복 방지)
       const WRITE_OPS = [
         'create',
@@ -79,13 +107,65 @@ const prismaWithRetry = basePrisma.$extends({
         'upsert',
       ];
       const isWriteOp = WRITE_OPS.includes(operation);
+      const dbOperation = formatDbOperationName(model, operation);
 
       let lastError: unknown;
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        const startedAt = process.hrtime.bigint();
         try {
-          return await query(args);
+          const result = await query(args);
+          const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+          const roundedDurationMs = roundDurationMs(durationMs);
+          const dbMetrics = getRequestDbMetrics();
+
+          if (dbMetrics) {
+            dbMetrics.dbQueryCount += 1;
+            dbMetrics.totalDbMs += durationMs;
+            dbMetrics.maxDbQueryMs = Math.max(dbMetrics.maxDbQueryMs, durationMs);
+            if (durationMs >= SLOW_DB_QUERY_THRESHOLD_MS) {
+              dbMetrics.slowDbQueryCount += 1;
+            }
+          }
+
+          if (durationMs >= SLOW_DB_QUERY_THRESHOLD_MS) {
+            logger.warn('[DB QUERY SLOW]', {
+              requestId: getRequestId() ?? null,
+              dbOperation,
+              durationMs: roundedDurationMs,
+              attempt: attempt + 1,
+              isWriteOp,
+              pool: getPoolSnapshot(),
+            });
+          }
+
+          return result;
         } catch (error) {
           lastError = error;
+          const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+          const roundedDurationMs = roundDurationMs(durationMs);
+          const dbMetrics = getRequestDbMetrics();
+
+          if (dbMetrics) {
+            dbMetrics.dbQueryCount += 1;
+            dbMetrics.totalDbMs += durationMs;
+            dbMetrics.maxDbQueryMs = Math.max(dbMetrics.maxDbQueryMs, durationMs);
+            if (durationMs >= SLOW_DB_QUERY_THRESHOLD_MS) {
+              dbMetrics.slowDbQueryCount += 1;
+            }
+          }
+
+          if (durationMs >= SLOW_DB_QUERY_THRESHOLD_MS) {
+            logger.warn('[DB QUERY SLOW]', {
+              requestId: getRequestId() ?? null,
+              dbOperation,
+              durationMs: roundedDurationMs,
+              attempt: attempt + 1,
+              isWriteOp,
+              outcome: 'error',
+              error: error instanceof Error ? error.message : String(error),
+              pool: getPoolSnapshot(),
+            });
+          }
 
           // Write 작업이거나 일시적 에러가 아니면 즉시 throw
           if (isWriteOp || !isTransientError(error)) {
