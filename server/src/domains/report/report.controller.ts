@@ -1,8 +1,6 @@
 // server/src/domains/report/report.controller.ts
 import { Request, Response, NextFunction } from 'express';
 import reportService from './report.service';
-import { measureOperation } from '../../common/utils/operationMonitor';
-import { getRequestMeta } from '../../common/utils/requestMeta';
 
 export class ReportController {
   /**
@@ -11,15 +9,7 @@ export class ReportController {
    */
   async getAvailableYears(req: Request, res: Response, next: NextFunction) {
     try {
-      const years = await measureOperation(
-        'report.availableYears',
-        () => reportService.getAvailableYears(),
-        {
-          warnThresholdMs: 1000,
-          meta: getRequestMeta(req),
-          summarizeResult: (value) => ({ count: value.length }),
-        },
-      );
+      const years = await reportService.getAvailableYears();
       res.json(years);
     } catch (error) {
       next(error);
@@ -39,18 +29,7 @@ export class ReportController {
         return;
       }
 
-      const months = await measureOperation(
-        'report.availableMonths',
-        () => reportService.getAvailableMonths(year),
-        {
-          warnThresholdMs: 1000,
-          meta: {
-            ...getRequestMeta(req),
-            year,
-          },
-          summarizeResult: (value) => ({ count: value.length }),
-        },
-      );
+      const months = await reportService.getAvailableMonths(year);
       res.json(months);
     } catch (error) {
       next(error);
@@ -71,19 +50,7 @@ export class ReportController {
         return;
       }
 
-      const weeks = await measureOperation(
-        'report.availableWeeks',
-        () => reportService.getAvailableWeeks(year, month),
-        {
-          warnThresholdMs: 1000,
-          meta: {
-            ...getRequestMeta(req),
-            year,
-            month,
-          },
-          summarizeResult: (value) => ({ count: value.length }),
-        },
-      );
+      const weeks = await reportService.getAvailableWeeks(year, month);
       res.json(weeks);
     } catch (error) {
       next(error);
@@ -104,20 +71,7 @@ export class ReportController {
         return;
       }
 
-      const buffer = await measureOperation(
-        'report.downloadWeekly',
-        () => reportService.generateWeeklyReport({ year, month, week }),
-        {
-          warnThresholdMs: 4000,
-          meta: {
-            ...getRequestMeta(req),
-            year,
-            month,
-            week,
-          },
-          summarizeResult: (value) => ({ sizeBytes: value.length }),
-        },
-      );
+      const buffer = await reportService.generateWeeklyReport({ year, month, week });
 
       res.setHeader(
         'Content-Type',
@@ -152,19 +106,7 @@ export class ReportController {
         return;
       }
 
-      const buffer = await measureOperation(
-        'report.downloadMonthly',
-        () => reportService.generateMonthlyReport({ year, month }),
-        {
-          warnThresholdMs: 4000,
-          meta: {
-            ...getRequestMeta(req),
-            year,
-            month,
-          },
-          summarizeResult: (value) => ({ sizeBytes: value.length }),
-        },
-      );
+      const buffer = await reportService.generateMonthlyReport({ year, month });
 
       res.setHeader(
         'Content-Type',

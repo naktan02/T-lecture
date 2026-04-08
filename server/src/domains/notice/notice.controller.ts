@@ -127,11 +127,10 @@ export const getNoticeAttachmentDownloadTicket = asyncHandler(
       req.user?.isAdmin === true,
     );
 
-    const downloadPath = `/api/v1/notices/attachments/${attachmentId}/direct-download`;
+    const downloadPath = `/api/v1/notices/attachments/${attachmentId}/direct-download?token=${encodeURIComponent(ticket.token)}`;
 
     res.json({
       downloadPath,
-      token: ticket.token,
       expiresAt: ticket.expiresAt,
     });
   },
@@ -139,8 +138,7 @@ export const getNoticeAttachmentDownloadTicket = asyncHandler(
 
 export const directDownloadNoticeAttachment = asyncHandler(async (req: Request, res: Response) => {
   const { attachmentId } = req.params;
-  const tokenFromHeader = req.get('x-notice-download-token');
-  const token = tokenFromHeader || (typeof req.query.token === 'string' ? req.query.token : '');
+  const token = typeof req.query.token === 'string' ? req.query.token : '';
   const attachment = await noticeService.downloadAttachmentByToken(Number(attachmentId), token);
 
   sendNoticeAttachment(res, attachment);

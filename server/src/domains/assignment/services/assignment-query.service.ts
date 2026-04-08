@@ -5,87 +5,11 @@ import { assignmentQueryRepository, assignmentConfigRepository } from '../reposi
 import instructorRepository from '../../instructor/instructor.repository';
 import distanceRepository from '../../distance/distance.repository';
 import type { UnitRaw, InstructorRaw } from '../../../types/assignment.types';
-import logger from '../../../config/logger';
 
 // Helper: 오늘 UTC 자정 생성
 function getTodayUTC(): Date {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
-}
-
-interface AssignmentCandidateSnapshot {
-  unitsRaw: UnitRaw[];
-  instructorsRaw: InstructorRaw[];
-  allInstructorsRaw: InstructorRaw[];
-  actualDateRange: {
-    startDate: string;
-    endDate: string;
-  };
-  distanceMap: Record<string, number>;
-  distanceLimits: {
-    internMaxDistanceKm: number;
-    subMaxDistanceKm: number | null;
-  };
-}
-
-interface AssignmentCandidateResult extends AssignmentCandidateSnapshot {
-  cacheStatus: 'hit' | 'miss';
-}
-
-interface CandidateCacheEntry {
-  createdAt: number;
-  expiresAt: number;
-  value: AssignmentCandidateSnapshot;
-}
-
-const CANDIDATE_CACHE_TTL_MS = Number(process.env.ASSIGNMENT_CANDIDATE_CACHE_TTL_MS || 60_000);
-const CANDIDATE_CACHE_MAX_ENTRIES = Number(process.env.ASSIGNMENT_CANDIDATE_CACHE_MAX_ENTRIES || 8);
-const candidateCache = new Map<string, CandidateCacheEntry>();
-
-function cloneValue<T>(value: T): T {
-  return structuredClone(value);
-}
-
-function buildCandidateCacheKey(startDate: string, endDate: string): string {
-  return `${startDate}:${endDate}`;
-}
-
-function pruneExpiredCandidateCacheEntries(now = Date.now()): void {
-  for (const [key, entry] of candidateCache.entries()) {
-    if (entry.expiresAt <= now) {
-      candidateCache.delete(key);
-    }
-  }
-}
-
-function getCachedCandidateSnapshot(key: string): AssignmentCandidateSnapshot | null {
-  const now = Date.now();
-  pruneExpiredCandidateCacheEntries(now);
-
-  const entry = candidateCache.get(key);
-  if (!entry) return null;
-
-  return cloneValue(entry.value);
-}
-
-function setCachedCandidateSnapshot(key: string, value: AssignmentCandidateSnapshot): void {
-  const now = Date.now();
-  pruneExpiredCandidateCacheEntries(now);
-
-  if (!candidateCache.has(key) && candidateCache.size >= CANDIDATE_CACHE_MAX_ENTRIES) {
-    const oldestKey = [...candidateCache.entries()].sort(
-      (a, b) => a[1].createdAt - b[1].createdAt,
-    )[0]?.[0];
-    if (oldestKey) {
-      candidateCache.delete(oldestKey);
-    }
-  }
-
-  candidateCache.set(key, {
-    createdAt: now,
-    expiresAt: now + CANDIDATE_CACHE_TTL_MS,
-    value: cloneValue(value),
-  });
 }
 
 class AssignmentQueryService {
@@ -109,21 +33,7 @@ class AssignmentQueryService {
   /**
    * 배정 후보 데이터 조회 (DB 직접 조회 - 간소화)
    */
-  async getAssignmentCandidatesWithCache(
-    startDate: string,
-    endDate: string,
-    _userId: number,
-  ): Promise<AssignmentCandidateResult> {
-    const cacheKey = buildCandidateCacheKey(startDate, endDate);
-    const cached = getCachedCandidateSnapshot(cacheKey);
-
-    if (cached) {
-      return {
-        ...cached,
-        cacheStatus: 'hit',
-      };
-    }
-
+  async getAssignmentCandidatesWithCache(startDate: string, endDate: string, _userId: number) {
     // 1) DB에서 부대 + 배정 데이터 한 번에 조회
     const unitsRaw = await assignmentQueryRepository.findScheduleCandidates(startDate, endDate);
 
@@ -189,7 +99,7 @@ class AssignmentQueryService {
         ? Number(subMaxDistanceKmValue)
         : null;
 
-    const result = {
+    return {
       unitsRaw: unitsRaw as unknown as UnitRaw[],
       instructorsRaw: instructorsRaw as unknown as InstructorRaw[],
       allInstructorsRaw: allInstructorsRaw as unknown as InstructorRaw[],
@@ -200,25 +110,6 @@ class AssignmentQueryService {
         subMaxDistanceKm,
       },
     };
-
-    setCachedCandidateSnapshot(cacheKey, result);
-
-    return {
-      ...cloneValue(result),
-      cacheStatus: 'miss',
-    };
-  }
-
-  clearAssignmentCandidateCache(reason?: string): void {
-    if (candidateCache.size === 0) return;
-
-    const clearedEntries = candidateCache.size;
-    candidateCache.clear();
-
-    logger.info('[assignment.candidateCache.clear]', {
-      reason: reason || 'manual',
-      clearedEntries,
-    });
   }
 
   /**

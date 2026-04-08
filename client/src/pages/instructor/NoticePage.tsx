@@ -5,7 +5,7 @@ import { showError } from '../../shared/utils/toast';
 import { NoticeList } from '../../features/notice/ui/NoticeList';
 import { NoticeDetailModal } from '../../features/notice/ui/NoticeDetailModal';
 import { noticeApi, Notice } from '../../features/notice/api/noticeApi';
-import { Pagination, ContentWrapper, LoadingSpinner } from '../../shared/ui';
+import { Pagination, ContentWrapper } from '../../shared/ui';
 import { UserHeader } from '../../features/user/ui/headers/UserHeader';
 import { useAuthGuard } from '../../features/auth/model/useAuthGuard';
 
@@ -86,7 +86,7 @@ const NoticePage = (): ReactElement => {
   };
 
   if (!shouldRender) {
-    return <LoadingSpinner fullScreen message="접속 권한을 확인하는 중입니다." />;
+    return <></>;
   }
 
   return (

@@ -31,22 +31,6 @@ interface ActivityGroup {
   dates: ActivityDate[];
 }
 
-interface ActivityGroupAccumulator {
-  unitName: string;
-  unitType: string | null;
-  region: string | null;
-  trainingPeriodName: string;
-  unitId: number;
-  dates: { date: string; workHours: number }[];
-  totalWorkHours: number;
-  latestDate: string;
-}
-
-interface ActivityPageRow {
-  trainingPeriodId: number;
-  latestDate: Date;
-}
-
 interface DashboardStats {
   summary: {
     totalWorkHours: number;
@@ -370,71 +354,13 @@ class DashboardService {
       queryEnd = new Date(today.getTime() - 1);
     }
 
-    const skip = (page - 1) * limit;
-
-    const [pagedTrainingPeriods, totalResult, distanceMap] = await Promise.all([
-      prisma.$queryRaw<ActivityPageRow[]>`
-        SELECT
-          s."교육기간id" AS "trainingPeriodId",
-          MAX(s."교육일") AS "latestDate"
-        FROM "강사_부대_배정" a
-        JOIN "부대일정" s ON s.id = a."unitScheduleId"
-        WHERE a."userId" = ${userId}
-          AND a."배정상태" = 'Accepted'
-          AND a."배치분류" = 'Confirmed'
-          AND s."교육일" >= ${queryStart}
-          AND s."교육일" <= ${queryEnd}
-        GROUP BY s."교육기간id"
-        ORDER BY MAX(s."교육일") DESC
-        LIMIT ${limit}
-        OFFSET ${skip}
-      `,
-      prisma.$queryRaw<{ total: bigint }[]>`
-        SELECT COUNT(*) AS total
-        FROM (
-          SELECT s."교육기간id"
-          FROM "강사_부대_배정" a
-          JOIN "부대일정" s ON s.id = a."unitScheduleId"
-          WHERE a."userId" = ${userId}
-            AND a."배정상태" = 'Accepted'
-            AND a."배치분류" = 'Confirmed'
-            AND s."교육일" >= ${queryStart}
-            AND s."교육일" <= ${queryEnd}
-          GROUP BY s."교육기간id"
-        ) grouped_periods
-      `,
-      getDistanceMap(userId),
-    ]);
-
-    const total = Number(totalResult[0]?.total || 0n);
-    const trainingPeriodIds = pagedTrainingPeriods.map((row) => row.trainingPeriodId);
-
-    if (trainingPeriodIds.length === 0) {
-      return {
-        activities: [],
-        pagination: {
-          total,
-          page,
-          limit,
-          totalPages: Math.ceil(total / limit),
-        },
-      };
-    }
-
-    const latestDateByTrainingPeriod = new Map(
-      pagedTrainingPeriods.map((row) => [
-        row.trainingPeriodId,
-        new Date(row.latestDate).toISOString().split('T')[0],
-      ]),
-    );
-
-    const assignments = await prisma.instructorUnitAssignment.findMany({
+    // 교육 기간별로 그룹화된 데이터 조회
+    const allAssignments = await prisma.instructorUnitAssignment.findMany({
       where: {
         userId,
         state: 'Accepted',
         classification: 'Confirmed',
         UnitSchedule: {
-          trainingPeriodId: { in: trainingPeriodIds },
           date: {
             gte: queryStart,
             lte: queryEnd,
@@ -455,10 +381,24 @@ class DashboardService {
       },
     });
 
-    // 교육 기간별 그룹화
-    const trainingPeriodMap = new Map<number, ActivityGroupAccumulator>();
+    const distanceMap = await getDistanceMap(userId);
 
-    for (const assignment of assignments) {
+    // 교육 기간별 그룹화
+    const trainingPeriodMap = new Map<
+      number,
+      {
+        unitName: string;
+        unitType: string | null;
+        region: string | null;
+        trainingPeriodName: string;
+        unitId: number;
+        dates: { date: string; workHours: number }[];
+        totalWorkHours: number;
+        latestDate: string;
+      }
+    >();
+
+    for (const assignment of allAssignments) {
       const tp = assignment.UnitSchedule?.trainingPeriod;
       const u = tp?.unit;
       if (!tp || !u || !assignment.UnitSchedule?.date) continue;
@@ -476,7 +416,7 @@ class DashboardService {
           unitId: u.id,
           dates: [],
           totalWorkHours: 0,
-          latestDate: latestDateByTrainingPeriod.get(trainingPeriodId) || dateStr,
+          latestDate: dateStr,
         });
       }
       const group = trainingPeriodMap.get(trainingPeriodId)!;
@@ -487,7 +427,8 @@ class DashboardService {
       }
     }
 
-    const activities = Array.from(trainingPeriodMap.entries())
+    // 배열로 변환 후 정렬 및 페이징
+    const allGroups = Array.from(trainingPeriodMap.entries())
       .map(([trainingPeriodId, group]) => {
         const dist = distanceMap.get(group.unitId) || 0;
         // 날짜 정렬 (최신순)
@@ -504,11 +445,16 @@ class DashboardService {
           latestDate: group.latestDate,
         };
       })
-      .sort((a, b) => b.latestDate.localeCompare(a.latestDate))
-      .map(({ latestDate: _latestDate, ...rest }) => rest);
+      .sort((a, b) => b.latestDate.localeCompare(a.latestDate));
+
+    const total = allGroups.length;
+    const skip = (page - 1) * limit;
+    const paginatedActivities = allGroups
+      .slice(skip, skip + limit)
+      .map(({ latestDate, ...rest }) => rest);
 
     return {
-      activities,
+      activities: paginatedActivities,
       pagination: {
         total,
         page,

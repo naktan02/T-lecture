@@ -4,8 +4,6 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/client.js';
 import fs from 'fs';
 import path from 'path';
-import logger from '../config/logger';
-import { getRequestDbMetrics, getRequestId } from '../common/middlewares/requestContext';
 
 // ============================================
 // pg Pool 직접 생성 (연결 풀 옵션 제어)
@@ -35,10 +33,6 @@ pool.on('error', (err) => {
 
 // Prisma 7 PrismaPg 어댑터
 const adapter = new PrismaPg(pool);
-const SLOW_DB_QUERY_THRESHOLD_MS = parsePositiveNumberEnv(
-  process.env.DB_SLOW_QUERY_THRESHOLD_MS,
-  300,
-);
 
 // 기본 Prisma Client (extension 적용 전)
 const basePrisma = new PrismaClient({
@@ -64,80 +58,6 @@ function isTransientError(error: unknown): boolean {
   return TRANSIENT_ERROR_PATTERNS.some((p) => message.includes(p));
 }
 
-function parsePositiveNumberEnv(value: string | undefined, fallback: number): number {
-  if (!value) return fallback;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function roundDurationMs(value: number): number {
-  return Math.round(value * 10) / 10;
-}
-
-function getPoolSnapshot(): Record<string, number> {
-  return {
-    totalCount: pool.totalCount,
-    idleCount: pool.idleCount,
-    waitingCount: pool.waitingCount,
-  };
-}
-
-export type DatabaseHeartbeatHealth = 'unknown' | 'healthy' | 'unhealthy';
-
-type DatabaseHeartbeatState = {
-  status: DatabaseHeartbeatHealth;
-  lastSuccessAt: string | null;
-  lastFailureAt: string | null;
-  lastError: string | null;
-  consecutiveFailures: number;
-};
-
-const HEARTBEAT_INTERVAL_MS = 2 * 60 * 1000; // 2분 (무료 티어 안정성 강화)
-let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
-
-const databaseHeartbeatState: DatabaseHeartbeatState = {
-  status: 'unknown',
-  lastSuccessAt: null,
-  lastFailureAt: null,
-  lastError: null,
-  consecutiveFailures: 0,
-};
-
-function updateDatabaseHeartbeatSuccess(): void {
-  databaseHeartbeatState.status = 'healthy';
-  databaseHeartbeatState.lastSuccessAt = new Date().toISOString();
-  databaseHeartbeatState.lastError = null;
-  databaseHeartbeatState.consecutiveFailures = 0;
-}
-
-function updateDatabaseHeartbeatFailure(error: unknown): void {
-  databaseHeartbeatState.status = 'unhealthy';
-  databaseHeartbeatState.lastFailureAt = new Date().toISOString();
-  databaseHeartbeatState.lastError = error instanceof Error ? error.message : String(error);
-  databaseHeartbeatState.consecutiveFailures += 1;
-}
-
-export function recordDatabaseConnectivitySuccess(): void {
-  updateDatabaseHeartbeatSuccess();
-}
-
-export function getDatabaseHeartbeatStatus(): DatabaseHeartbeatState & {
-  intervalMs: number;
-  running: boolean;
-  pool: Record<string, number>;
-} {
-  return {
-    ...databaseHeartbeatState,
-    intervalMs: HEARTBEAT_INTERVAL_MS,
-    running: heartbeatInterval !== null,
-    pool: getPoolSnapshot(),
-  };
-}
-
-function formatDbOperationName(model: string | undefined, operation: string): string {
-  return model ? `${model}.${operation}` : operation;
-}
-
 // ============================================
 // 재시도 Extension (무료 티어 대응: 3회 + 지수 백오프)
 // ============================================
@@ -147,7 +67,7 @@ const RETRY_DELAYS = [500, 1000, 2000]; // 500ms, 1s, 2s
 const prismaWithRetry = basePrisma.$extends({
   name: 'robustRetry',
   query: {
-    $allOperations: async ({ model, operation, args, query }) => {
+    $allOperations: async ({ operation, args, query }) => {
       // Write 작업은 재시도 안 함 (중복 방지)
       const WRITE_OPS = [
         'create',
@@ -159,65 +79,13 @@ const prismaWithRetry = basePrisma.$extends({
         'upsert',
       ];
       const isWriteOp = WRITE_OPS.includes(operation);
-      const dbOperation = formatDbOperationName(model, operation);
 
       let lastError: unknown;
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-        const startedAt = process.hrtime.bigint();
         try {
-          const result = await query(args);
-          const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
-          const roundedDurationMs = roundDurationMs(durationMs);
-          const dbMetrics = getRequestDbMetrics();
-
-          if (dbMetrics) {
-            dbMetrics.dbQueryCount += 1;
-            dbMetrics.totalDbMs += durationMs;
-            dbMetrics.maxDbQueryMs = Math.max(dbMetrics.maxDbQueryMs, durationMs);
-            if (durationMs >= SLOW_DB_QUERY_THRESHOLD_MS) {
-              dbMetrics.slowDbQueryCount += 1;
-            }
-          }
-
-          if (durationMs >= SLOW_DB_QUERY_THRESHOLD_MS) {
-            logger.warn('[DB QUERY SLOW]', {
-              requestId: getRequestId() ?? null,
-              dbOperation,
-              durationMs: roundedDurationMs,
-              attempt: attempt + 1,
-              isWriteOp,
-              pool: getPoolSnapshot(),
-            });
-          }
-
-          return result;
+          return await query(args);
         } catch (error) {
           lastError = error;
-          const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
-          const roundedDurationMs = roundDurationMs(durationMs);
-          const dbMetrics = getRequestDbMetrics();
-
-          if (dbMetrics) {
-            dbMetrics.dbQueryCount += 1;
-            dbMetrics.totalDbMs += durationMs;
-            dbMetrics.maxDbQueryMs = Math.max(dbMetrics.maxDbQueryMs, durationMs);
-            if (durationMs >= SLOW_DB_QUERY_THRESHOLD_MS) {
-              dbMetrics.slowDbQueryCount += 1;
-            }
-          }
-
-          if (durationMs >= SLOW_DB_QUERY_THRESHOLD_MS) {
-            logger.warn('[DB QUERY SLOW]', {
-              requestId: getRequestId() ?? null,
-              dbOperation,
-              durationMs: roundedDurationMs,
-              attempt: attempt + 1,
-              isWriteOp,
-              outcome: 'error',
-              error: error instanceof Error ? error.message : String(error),
-              pool: getPoolSnapshot(),
-            });
-          }
 
           // Write 작업이거나 일시적 에러가 아니면 즉시 throw
           if (isWriteOp || !isTransientError(error)) {
@@ -275,25 +143,24 @@ export function logPoolStatus(): void {
 // ============================================
 // Supavisor Heartbeat (5분 유휴 타임아웃 방지)
 // ============================================
+const HEARTBEAT_INTERVAL_MS = 2 * 60 * 1000; // 2분 (무료 티어 안정성 강화)
+let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+
 export function startDatabaseHeartbeat(): void {
   if (heartbeatInterval) return;
 
   heartbeatInterval = setInterval(async () => {
     try {
       await basePrisma.$queryRaw`SELECT 1`;
-      updateDatabaseHeartbeatSuccess();
       // eslint-disable-next-line no-console
       console.log('[DB Heartbeat] OK -', {
         total: pool.totalCount,
         idle: pool.idleCount,
         waiting: pool.waitingCount,
       });
-    } catch (error) {
-      updateDatabaseHeartbeatFailure(error);
+    } catch {
       // eslint-disable-next-line no-console
-      console.warn('[DB Heartbeat] Connection check failed, will auto-recover', {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      console.warn('[DB Heartbeat] Connection check failed, will auto-recover');
     }
   }, HEARTBEAT_INTERVAL_MS);
 

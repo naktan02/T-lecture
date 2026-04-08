@@ -152,13 +152,9 @@ export interface UnitDetail {
 
 export const fetchUnitsByStatus = async (
   status: ScheduleStatus,
-  params?: DashboardParams,
   signal?: AbortSignal,
 ): Promise<UnitListItem[]> => {
-  const query = buildQuery(params);
-  const res = await apiClient(`/api/v1/dashboard/admin/units?status=${status}&${query}`, {
-    signal,
-  });
+  const res = await apiClient(`/api/v1/dashboard/admin/units?status=${status}`, { signal });
   if (!res.ok) throw new Error('부대 목록 조회 실패');
   return res.json();
 };

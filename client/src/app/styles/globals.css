@@ -9,27 +9,11 @@ body,
   overflow: auto; /* 브라우저 스크롤 허용 */
 }
 
-html {
-  font-size: clamp(13.5px, calc(10.75px + 0.62vh), 16px);
-  font-size: clamp(13.5px, calc(10.75px + 0.62dvh), 16px);
-}
-
 body {
   background-color: #f3f4f6;
 }
 
 /* [추가] 헤더 높이를 변수로 관리 (나중에 바꾸기 쉬움) */
 :root {
-  --header-height: clamp(52px, calc(34px + 3.1vh), 64px);
-  --header-height: clamp(52px, calc(34px + 3.1dvh), 64px);
-}
-
-.min-h-screen {
-  min-height: 100vh !important;
-  min-height: 100dvh !important;
-}
-
-.h-screen {
-  height: 100vh !important;
-  height: 100dvh !important;
+  --header-height: 64px; /* 예: CommonHeader의 대략적 높이 */
 }

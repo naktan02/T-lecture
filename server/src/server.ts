@@ -11,20 +11,15 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import config from './config';
-import { requestContext, requestLogger, rateLimiter } from './common/middlewares';
+import { requestLogger, rateLimiter } from './common/middlewares';
 import v1Router from './api/v1';
 import errorHandler from './common/middlewares/errorHandler';
-import logger, { closeLogger, drainLogger } from './config/logger';
+import logger from './config/logger';
 import {
   startNoticeAttachmentCleanup,
   stopNoticeAttachmentCleanup,
 } from './domains/notice/notice-attachment-cleanup.service';
-import prisma, {
-  getDatabaseHeartbeatStatus,
-  recordDatabaseConnectivitySuccess,
-  startDatabaseHeartbeat,
-  stopDatabaseHeartbeat,
-} from './libs/prisma';
+import prisma, { startDatabaseHeartbeat, stopDatabaseHeartbeat } from './libs/prisma';
 
 const app = express();
 
@@ -61,7 +56,6 @@ if (!isProd && allowedOrigins.length === 0) {
 
 // 🛡️ 보안 헤더 설정 (Helmet) - API 서버용 간소화
 // CSP는 HTML을 직접 제공하는 서버에만 필요하므로 비활성화
-app.use(requestContext);
 app.use(helmet({ contentSecurityPolicy: false }));
 
 app.use(
@@ -77,8 +71,7 @@ app.use(
       return callback(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'X-Notice-Download-Token'],
-    exposedHeaders: ['X-Request-Id'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   }),
 );
@@ -91,38 +84,6 @@ app.options('*', (_req: Request, res: Response) => {
 app.use(express.json());
 app.use(requestLogger);
 app.use(cookieParser());
-
-const roundMetric = (value: number): number => Math.round(value * 10) / 10;
-
-function getMemorySnapshot(): Record<string, number> {
-  const used = process.memoryUsage();
-
-  return {
-    rssMb: roundMetric(used.rss / 1024 / 1024),
-    heapUsedMb: roundMetric(used.heapUsed / 1024 / 1024),
-    heapTotalMb: roundMetric(used.heapTotal / 1024 / 1024),
-    externalMb: roundMetric(used.external / 1024 / 1024),
-  };
-}
-
-function getProcessDiagnostics(): Record<string, unknown> {
-  return {
-    pid: process.pid,
-    uptimeSec: roundMetric(process.uptime()),
-    memory: getMemorySnapshot(),
-    dbHeartbeat: getDatabaseHeartbeatStatus(),
-  };
-}
-
-// Render health check path는 /api 바깥으로 두어 rate limit과 분리한다.
-app.get('/healthz', (_req: Request, res: Response) => {
-  res.setHeader('Cache-Control', 'no-store');
-  res.status(200).json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    ...getProcessDiagnostics(),
-  });
-});
 
 // 전역 Rate Limit 적용 (15분당 IP당 100회)
 app.use('/api', rateLimiter.apiLimiter);
@@ -158,7 +119,6 @@ function logMemoryUsage(label: string): void {
 server.on('listening', async () => {
   try {
     await prisma.$connect();
-    recordDatabaseConnectivitySuccess();
     logger.info('Database connection established');
 
     // Supavisor 5분 유휴 타임아웃 방지를 위한 heartbeat 시작
@@ -215,33 +175,30 @@ process.on('uncaughtException', (error) => {
   });
 
   // Sentry 전송 완료 대기 후 종료 (최대 2초)
-  Promise.allSettled([drainLogger(1500), Sentry.close(2000)]).finally(() => {
-    closeLogger();
+  Sentry.close(2000).finally(() => {
     process.exit(1);
   });
 });
 
 // SIGTERM 핸들링 (Render가 종료 시그널 보낼 때)
 process.on('SIGTERM', () => {
-  logger.info('SIGTERM received. Graceful shutdown...', getProcessDiagnostics());
+  logger.info('SIGTERM received. Graceful shutdown...');
 
   Sentry.captureMessage('Server received SIGTERM - shutting down', 'info');
 
   server.close(async () => {
-    logger.info('HTTP server closed', getProcessDiagnostics());
+    logger.info('HTTP server closed');
     stopNoticeAttachmentCleanup();
     stopDatabaseHeartbeat();
     await prisma.$disconnect();
-    logger.info('Database connection closed', getProcessDiagnostics());
-    await drainLogger(2000);
+    logger.info('Database connection closed');
     await Sentry.close(2000);
-    closeLogger();
     process.exit(0);
   });
 
   // 10초 내 종료 안 되면 강제 종료
   setTimeout(() => {
-    logger.error('Graceful shutdown timeout. Force exit.', getProcessDiagnostics());
+    logger.error('Graceful shutdown timeout. Force exit.');
     process.exit(1);
   }, 10000);
 });
