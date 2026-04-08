@@ -4,6 +4,7 @@ import multer from 'multer';
 import logger from '../../config/logger';
 import AppError from '../errors/AppError';
 import { mapPrismaError } from '../errors/prismaErrorMapper';
+import { getLoggableUrl } from '../utils/requestMeta';
 
 const defaultCodeByStatus = (statusCode: number): string => {
   const statusMap: Record<number, string> = {
@@ -88,7 +89,7 @@ function normalizeError(err: unknown): {
 export const errorHandler = (err: unknown, req: Request, res: Response, _next: NextFunction) => {
   const mapped = mapPrismaError(err);
   const normalized = normalizeError(mapped ?? err);
-  const requestUrl = req.originalUrl || req.url || '';
+  const requestUrl = getLoggableUrl(req);
   const isExpectedRefreshFailure =
     requestUrl.startsWith('/api/v1/auth/refresh') && normalized.statusCode === 401;
 
@@ -103,7 +104,7 @@ export const errorHandler = (err: unknown, req: Request, res: Response, _next: N
     message: normalized.message,
     userId: req.user?.id ?? null,
     method: req.method,
-    url: req.originalUrl || req.url,
+    url: requestUrl,
     meta: normalized.meta ?? null,
     ...(normalized.statusCode >= 500 ? { stack: normalized.stack } : {}),
   };
@@ -117,7 +118,7 @@ export const errorHandler = (err: unknown, req: Request, res: Response, _next: N
       scope.setTag('errorCode', normalized.code);
       scope.setContext('request', {
         method: req.method,
-        url: req.originalUrl || req.url,
+        url: requestUrl,
         userId: req.user?.id ?? null,
       });
       scope.setContext('error', {
