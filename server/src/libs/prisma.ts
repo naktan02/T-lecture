@@ -35,7 +35,10 @@ pool.on('error', (err) => {
 
 // Prisma 7 PrismaPg 어댑터
 const adapter = new PrismaPg(pool);
-const SLOW_DB_QUERY_THRESHOLD_MS = parsePositiveNumberEnv(process.env.DB_SLOW_QUERY_THRESHOLD_MS, 300);
+const SLOW_DB_QUERY_THRESHOLD_MS = parsePositiveNumberEnv(
+  process.env.DB_SLOW_QUERY_THRESHOLD_MS,
+  300,
+);
 
 // 기본 Prisma Client (extension 적용 전)
 const basePrisma = new PrismaClient({
