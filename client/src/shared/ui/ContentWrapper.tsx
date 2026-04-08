@@ -1,5 +1,6 @@
 // client/src/shared/ui/ContentWrapper.tsx
 import React from 'react';
+import { useViewportHeightTier } from '../hooks/useViewportHeightTier';
 
 interface ContentWrapperProps {
   children: React.ReactNode;
@@ -19,6 +20,20 @@ export const ContentWrapper: React.FC<ContentWrapperProps> = ({
   noPadding = false,
   scrollable = true,
 }) => {
+  const { isShortViewport, isVeryShortViewport } = useViewportHeightTier();
+  const horizontalPaddingClass = isVeryShortViewport
+    ? 'px-2 sm:px-3'
+    : isShortViewport
+      ? 'px-3 md:px-4'
+      : 'px-4';
+  const verticalPaddingClass = noPadding
+    ? ''
+    : isVeryShortViewport
+      ? 'py-3 md:py-4'
+      : isShortViewport
+        ? 'py-4 md:py-5'
+        : 'py-6';
+
   return (
     <div
       className={`flex flex-col bg-gray-50 ${
@@ -29,8 +44,9 @@ export const ContentWrapper: React.FC<ContentWrapperProps> = ({
     >
       <main
         className={`
-                    flex-1 w-full max-w-7xl mx-auto px-4 flex flex-col
-                    ${noPadding ? '' : 'py-6'}
+                    flex-1 min-h-0 w-full max-w-7xl mx-auto flex flex-col
+                    ${horizontalPaddingClass}
+                    ${verticalPaddingClass}
                     ${scrollable ? '' : 'overflow-hidden'}
                 `}
       >

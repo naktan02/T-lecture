@@ -1,5 +1,6 @@
 // client/src/shared/ui/MiniCalendar.tsx
 import React, { useMemo, useState } from 'react';
+import { useViewportHeightTier } from '../hooks/useViewportHeightTier';
 import { BaseCalendar } from './BaseCalendar';
 
 interface MiniCalendarProps {
@@ -32,6 +33,7 @@ export const MiniCalendar: React.FC<MiniCalendarProps> = ({
   month,
 }) => {
   const today = new Date();
+  const { isShortViewport, isVeryShortViewport } = useViewportHeightTier();
 
   // 월 전환을 위한 상태 관리
   const [displayYear, setDisplayYear] = useState(year ?? today.getFullYear());
@@ -58,31 +60,13 @@ export const MiniCalendar: React.FC<MiniCalendarProps> = ({
       .filter((day): day is number => day !== null);
   }, [availableDates, displayYear, displayMonth]);
 
+  const wrapperPaddingClass = isVeryShortViewport ? 'p-1.5' : isShortViewport ? 'p-2' : 'p-2';
+
   return (
     <div
-      className={`mini-calendar-wrapper bg-white rounded-lg shadow-xl border border-gray-200 p-2 ${className}`}
+      className={`mini-calendar-wrapper bg-white rounded-lg shadow-xl border border-gray-200 ${wrapperPaddingClass} ${className}`}
       style={{ width: width, maxWidth: '100%' }}
     >
-      <style>{`
-        /* MiniCalendar 전용 크기 조정 */
-        .mini-calendar-wrapper .react-calendar__navigation {
-          height: 30px;
-          margin-bottom: 8px;
-        }
-        .mini-calendar-wrapper .react-calendar__navigation button {
-          font-size: 13px;
-          min-width: 24px;
-        }
-        .mini-calendar-wrapper .react-calendar__tile {
-          padding: 4px 2px;
-          font-size: 11px;
-          height: 34px;
-        }
-        .mini-calendar-wrapper .react-calendar__month-view__weekdays {
-          font-size: 10px;
-        }
-      `}</style>
-
       <BaseCalendar
         year={displayYear}
         month={displayMonth}
