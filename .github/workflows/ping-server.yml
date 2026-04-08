@@ -18,7 +18,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          code=$(curl -sS --max-time 15 -o /dev/null -w "%{http_code}" "$SERVER_URL/api/v1/batch/ping" || echo "000")
+          code=$(curl -sS --max-time 15 -o /dev/null -w "%{http_code}" "$SERVER_URL/healthz" || echo "000")
           echo "Response: $code"
           if [ "$code" != "200" ]; then
             echo "Warning: Server responded with $code"
