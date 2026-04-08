@@ -20,10 +20,7 @@ const getNoticeAttachmentDownloadSecret = () => {
 
   const baseSecret = process.env.JWT_SECRET;
   const secret = baseSecret
-    ? crypto
-        .createHmac('sha256', baseSecret)
-        .update(NOTICE_ATTACHMENT_DOWNLOAD_SCOPE)
-        .digest('hex')
+    ? crypto.createHmac('sha256', baseSecret).update(NOTICE_ATTACHMENT_DOWNLOAD_SCOPE).digest('hex')
     : undefined;
 
   if (!secret) {

@@ -17,11 +17,7 @@ const REFRESH_TOKEN_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000;
 const DUMMY_PASSWORD_HASH = '$2b$10$sgrlGCi/OCnQGgwZ/X9pXuvOyk2vhDC9hNf/X0yPTLqrV8ahaijfO';
 
 function createInvalidLoginError(): AppError {
-  return new AppError(
-    '이메일 또는 비밀번호가 올바르지 않습니다.',
-    401,
-    'INVALID_CREDENTIALS',
-  );
+  return new AppError('이메일 또는 비밀번호가 올바르지 않습니다.', 401, 'INVALID_CREDENTIALS');
 }
 
 class AuthService {
