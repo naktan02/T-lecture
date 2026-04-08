@@ -189,7 +189,7 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
       : 1;
 
   const frameStyle: CSSProperties = {
-    width: fitHeight && contentSize.width > 0 ? `${contentSize.width * scale}px` : '100%',
+    width: '100%',
     maxWidth: '100%',
     flexShrink: 0,
   };
@@ -200,6 +200,8 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
 
   const contentStyle: CSSProperties = {
     width: fitHeight && containerSize.width > 0 ? `${containerSize.width}px` : '100%',
+    maxWidth: '100%',
+    margin: '0 auto',
   };
 
   if (fitHeight) {
@@ -216,6 +218,39 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
           width: 100% !important; 
           border: none !important; 
           background: transparent !important; 
+        }
+        .base-calendar-root .react-calendar__navigation {
+          display: flex !important;
+          align-items: center !important;
+          gap: 6px !important;
+          height: 48px !important;
+          margin-bottom: 12px !important;
+        }
+        .base-calendar-root .react-calendar__navigation button {
+          min-width: 44px !important;
+          border-radius: 10px !important;
+          font-size: 1em !important;
+          font-weight: 600 !important;
+          color: #111827 !important;
+        }
+        .base-calendar-root .react-calendar__navigation button:enabled:hover,
+        .base-calendar-root .react-calendar__navigation button:enabled:focus {
+          background: #e5e7eb !important;
+        }
+        .base-calendar-root .react-calendar__navigation__label {
+          font-weight: 700 !important;
+        }
+        .base-calendar-root .react-calendar__month-view__weekdays {
+          margin-bottom: 6px !important;
+          font-size: 0.82em !important;
+          font-weight: 700 !important;
+          text-transform: none !important;
+        }
+        .base-calendar-root .react-calendar__month-view__weekdays__weekday {
+          padding: 0.55rem 0 !important;
+        }
+        .base-calendar-root .react-calendar__month-view__weekdays__weekday abbr {
+          text-decoration: none !important;
         }
         .base-calendar-root .react-calendar__tile { 
           position: relative !important; 
@@ -287,11 +322,54 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
         .base-calendar-root .react-calendar__month-view__weekdays__weekday:nth-child(7) abbr { 
           color: #2563eb !important; /* 토요일 */
         }
+
+        @media (max-height: 980px) {
+          .base-calendar-root.base-calendar-large .react-calendar__navigation {
+            height: 42px !important;
+            margin-bottom: 8px !important;
+          }
+          .base-calendar-root.base-calendar-large .react-calendar__navigation button {
+            min-width: 38px !important;
+            font-size: 0.95em !important;
+          }
+          .base-calendar-root.base-calendar-large .react-calendar__month-view__weekdays {
+            margin-bottom: 4px !important;
+            font-size: 0.76em !important;
+          }
+          .base-calendar-root.base-calendar-large .react-calendar__month-view__weekdays__weekday {
+            padding: 0.4rem 0 !important;
+          }
+          .base-calendar-root.base-calendar-large .react-calendar__tile {
+            min-height: 24px !important;
+            font-size: 13px !important;
+          }
+        }
+
+        @media (max-height: 860px) {
+          .base-calendar-root.base-calendar-large .react-calendar__navigation {
+            height: 38px !important;
+            margin-bottom: 6px !important;
+          }
+          .base-calendar-root.base-calendar-large .react-calendar__navigation button {
+            min-width: 34px !important;
+            font-size: 0.9em !important;
+          }
+          .base-calendar-root.base-calendar-large .react-calendar__month-view__weekdays {
+            font-size: 0.72em !important;
+          }
+          .base-calendar-root.base-calendar-large .react-calendar__month-view__weekdays__weekday {
+            padding: 0.3rem 0 !important;
+          }
+          .base-calendar-root.base-calendar-large .react-calendar__tile {
+            min-height: 22px !important;
+            font-size: 12px !important;
+          }
+        }
       `}</style>
 
       <div
         ref={containerRef}
-        className="base-calendar-root"
+        className={`base-calendar-root ${size === 'large' ? 'base-calendar-large' : ''}`}
         style={{
           ...calendarStyles.container,
           ...sizeStyles[size],
