@@ -72,7 +72,9 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
 
     const updateContainerSize = () => {
       const nextSize = getElementSize(containerElement);
-      setContainerSize((currentSize) => (isSameSize(currentSize, nextSize) ? currentSize : nextSize));
+      setContainerSize((currentSize) =>
+        isSameSize(currentSize, nextSize) ? currentSize : nextSize,
+      );
     };
 
     const updateContentSize = () => {
