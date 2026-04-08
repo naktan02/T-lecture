@@ -415,7 +415,7 @@ class DashboardAdminService {
   async getUnitsByStatus(
     status: ScheduleStatus,
     start?: Date,
-  end?: Date,
+    end?: Date,
   ): Promise<UnitListItem[]> {
     const today = getTodayUTC();
     const startDate = start || new Date('2020-01-01T00:00:00.000Z');

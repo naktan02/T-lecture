@@ -140,8 +140,7 @@ export const getNoticeAttachmentDownloadTicket = asyncHandler(
 export const directDownloadNoticeAttachment = asyncHandler(async (req: Request, res: Response) => {
   const { attachmentId } = req.params;
   const tokenFromHeader = req.get('x-notice-download-token');
-  const token =
-    tokenFromHeader || (typeof req.query.token === 'string' ? req.query.token : '');
+  const token = tokenFromHeader || (typeof req.query.token === 'string' ? req.query.token : '');
   const attachment = await noticeService.downloadAttachmentByToken(Number(attachmentId), token);
 
   sendNoticeAttachment(res, attachment);
