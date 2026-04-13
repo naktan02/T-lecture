@@ -484,6 +484,12 @@ class DispatchService {
 
     // 저장
     const count = await dispatchRepository.createDispatchesBulk(dispatchesToCreate);
+
+    // 확정 알림 생성 성공 후, 관련 임시 배정 알림 일괄 삭제
+    for (const d of dispatchesToCreate) {
+      await dispatchRepository.deleteTemporaryDispatchesByAssignments(d.userId, d.assignmentIds);
+    }
+
     return { createdCount: count, message: `${count}건의 확정 발송이 완료되었습니다.` };
   }
 

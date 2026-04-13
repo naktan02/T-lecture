@@ -154,7 +154,15 @@ class AuthService {
     const passwordHash = user?.password || DUMMY_PASSWORD_HASH;
     const ok = await bcrypt.compare(password, passwordHash);
 
-    if (!user || !ok || user.status !== 'APPROVED') {
+    if (!user || !ok) {
+      throw createInvalidLoginError();
+    }
+
+    if (user.status === UserStatus.PENDING) {
+      throw new AppError('관리자의 승인 후 로그인 가능합니다.', 401, 'PENDING_APPROVAL');
+    }
+
+    if (user.status !== UserStatus.APPROVED) {
       throw createInvalidLoginError();
     }
 
