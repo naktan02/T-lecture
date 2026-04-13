@@ -118,10 +118,10 @@ const InquiryPage = (): ReactElement => {
             <p className="text-sm text-blue-800">
               시스템 이용 중 오류가 발생하거나 불편한 점이 있으시다면 언제든 개발팀(
               <a
-                href="mailto:tlecture82@gmail.com"
+                href="mailto:beauty7@btf.or.kr"
                 className="font-semibold underline hover:text-blue-900"
               >
-                tlecture82@gmail.com
+                beauty7@btf.or.kr
               </a>
               )으로 문의해 주세요.
             </p>
