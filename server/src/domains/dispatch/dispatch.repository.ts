@@ -375,6 +375,34 @@ class DispatchRepository {
       },
     });
   }
+
+  // 특정 사용자와 배정 일정들과 연결된 임시(Temporary) 발송들을 삭제
+  async deleteTemporaryDispatchesByAssignments(userId: number, assignmentIds: number[]) {
+    if (assignmentIds.length === 0) return;
+
+    // 1. 해당 유저의 해당 배정들과 연결된 'Temporary' 유형의 Dispatch ID 조회
+    const dispatches = await prisma.dispatch.findMany({
+      where: {
+        userId: Number(userId),
+        type: 'Temporary',
+        assignments: {
+          some: {
+            unitScheduleId: { in: assignmentIds },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    const idsToDelete = dispatches.map((d) => d.id);
+
+    if (idsToDelete.length > 0) {
+      // 2. Dispatch 삭제 (Cascade 설정으로 인해 DispatchAssignment도 자동 삭제됨)
+      await prisma.dispatch.deleteMany({
+        where: { id: { in: idsToDelete } },
+      });
+    }
+  }
 }
 
 export default new DispatchRepository();
