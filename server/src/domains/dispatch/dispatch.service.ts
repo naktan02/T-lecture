@@ -59,10 +59,12 @@ class DispatchService {
     });
 
     // N+1 문제 해결: 루프 전에 모든 유저-교육기간 조합의 배정을 일괄 조회
-    const userTrainingPeriodPairs = Array.from(groupMap.values()).map(({ user, trainingPeriod }) => ({
-      userId: user.id,
-      trainingPeriodId: trainingPeriod.id,
-    }));
+    const userTrainingPeriodPairs = Array.from(groupMap.values()).map(
+      ({ user, trainingPeriod }) => ({
+        userId: user.id,
+        trainingPeriodId: trainingPeriod.id,
+      }),
+    );
     const allUserAssignmentsBatch =
       await dispatchRepository.findAllAssignmentsForUserTrainingPeriods(userTrainingPeriodPairs);
 
@@ -155,8 +157,7 @@ class DispatchService {
 
       // 본인 일정 (self.mySchedules) - 해당 부대의 모든 배정 일정 (배치 조회 결과에서 필터링)
       const userTrainingPeriodKey = `${user.id}-${trainingPeriod.id}`;
-      const allUserAssignments =
-        assignmentsByUserTrainingPeriod.get(userTrainingPeriodKey) || [];
+      const allUserAssignments = assignmentsByUserTrainingPeriod.get(userTrainingPeriodKey) || [];
       const mySchedulesList = buildMySchedulesFormat(
         allUserAssignments.map((a) => ({ date: a.UnitSchedule.date ?? new Date() })),
         user.name || '',
@@ -526,7 +527,9 @@ class DispatchService {
     ).length;
   }
 
-  private serializeDispatches(dispatchList: Awaited<ReturnType<typeof dispatchRepository.findMyDispatches>>) {
+  private serializeDispatches(
+    dispatchList: Awaited<ReturnType<typeof dispatchRepository.findMyDispatches>>,
+  ) {
     return dispatchList.map((d) => ({
       dispatchId: d.id,
       type: d.type,
