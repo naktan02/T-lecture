@@ -252,49 +252,37 @@ class DispatchRepository {
     userId: number,
     options: {
       type?: 'Temporary' | 'Confirmed';
-      page?: number;
-      limit?: number;
     } = {},
   ) {
-    const { type, page = 1, limit = 10 } = options;
-    const skip = (page - 1) * limit;
+    const { type } = options;
 
     const where = {
       userId: Number(userId),
       ...(type && { type }),
     };
 
-    const [dispatches, total] = await Promise.all([
-      prisma.dispatch.findMany({
-        where,
-        include: {
-          assignments: {
-            where: { userId: Number(userId) },
-            include: {
-              assignment: {
-                select: {
-                  unitScheduleId: true,
-                  state: true,
-                  UnitSchedule: {
-                    select: {
-                      trainingPeriod: {
-                        select: { unitId: true },
-                      },
-                    },
+    return await prisma.dispatch.findMany({
+      where,
+      include: {
+        assignments: {
+          where: { userId: Number(userId) },
+          include: {
+            assignment: {
+              select: {
+                unitScheduleId: true,
+                state: true,
+                UnitSchedule: {
+                  select: {
+                    trainingPeriodId: true,
                   },
                 },
               },
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-      prisma.dispatch.count({ where }),
-    ]);
-
-    return { dispatches, total, page, limit };
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   // 발송 읽음 처리 (단순화: Dispatch 직접 업데이트)
@@ -318,14 +306,12 @@ class DispatchRepository {
     });
   }
 
-  async findAllAssignmentsForUserInUnit(userId: number, unitId: number) {
+  async findAllAssignmentsForUserInTrainingPeriod(userId: number, trainingPeriodId: number) {
     return await prisma.instructorUnitAssignment.findMany({
       where: {
         userId,
         UnitSchedule: {
-          trainingPeriod: {
-            unitId,
-          },
+          trainingPeriodId,
         },
         state: 'Pending', // Pending 상태만
       },
@@ -342,21 +328,20 @@ class DispatchRepository {
     });
   }
 
-  // 여러 유저-유닛 조합의 배정을 일괄 조회 (N+1 문제 해결용)
-  async findAllAssignmentsForUserUnits(userUnitPairs: { userId: number; unitId: number }[]) {
-    if (userUnitPairs.length === 0) return [];
+  // 여러 유저-교육기간 조합의 배정을 일괄 조회 (N+1 문제 해결용)
+  async findAllAssignmentsForUserTrainingPeriods(
+    userTrainingPeriodPairs: { userId: number; trainingPeriodId: number }[],
+  ) {
+    if (userTrainingPeriodPairs.length === 0) return [];
 
-    // 유니크 unitIds 추출
-    const unitIds = [...new Set(userUnitPairs.map((p) => p.unitId))];
-    const userIds = [...new Set(userUnitPairs.map((p) => p.userId))];
+    const trainingPeriodIds = [...new Set(userTrainingPeriodPairs.map((p) => p.trainingPeriodId))];
+    const userIds = [...new Set(userTrainingPeriodPairs.map((p) => p.userId))];
 
     return await prisma.instructorUnitAssignment.findMany({
       where: {
         userId: { in: userIds },
         UnitSchedule: {
-          trainingPeriod: {
-            unitId: { in: unitIds },
-          },
+          trainingPeriodId: { in: trainingPeriodIds },
         },
         state: { in: ['Pending', 'Accepted'] },
       },
@@ -364,9 +349,7 @@ class DispatchRepository {
         UnitSchedule: {
           select: {
             date: true,
-            trainingPeriod: {
-              select: { unitId: true },
-            },
+            trainingPeriodId: true,
           },
         },
       },

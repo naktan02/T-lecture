@@ -1,7 +1,7 @@
 import AppError from '../../../common/errors/AppError';
 import kakaoService from '../../../infra/kakao.service';
 import distanceService from '../../distance/distance.service';
-import dispatchRepository from '../../dispatch/dispatch.repository';
+import dispatchService from '../../dispatch/dispatch.service';
 import inquiryRepository from '../../inquiry/inquiry.repository';
 import noticeRepository from '../../notice/notice.repository';
 import userRepository from '../repositories/user.repository';
@@ -50,7 +50,7 @@ class UserMeService {
 
     const numericUserId = Number(userId);
     const [dispatchUnreadCount, noticeUnreadCount, inquiryUnreadAnswerCount] = await Promise.all([
-      dispatchRepository.countUnread(numericUserId),
+      dispatchService.countVisibleUnreadDispatches(numericUserId),
       noticeRepository.countUnread(numericUserId),
       inquiryRepository.countUnreadAnswers(numericUserId),
     ]);

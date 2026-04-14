@@ -34,9 +34,8 @@ class DispatchService {
       throw new AppError('발송할 대상(임시 배정 미수신자)이 없습니다.', 404, 'NO_TARGETS');
     }
 
-    // 그룹화 로직 (User ID + Unit ID 기준 - 부대별로 별도 발송)
-    // key: "userId-unitId"
-    // NOTE: unit은 이제 trainingPeriod를 통해 접근
+    // 그룹화 로직 (User ID + TrainingPeriod ID 기준 - 교육기간별 별도 발송)
+    // key: "userId-trainingPeriodId"
     const groupMap = new Map<
       string,
       {
@@ -48,8 +47,7 @@ class DispatchService {
 
     targets.forEach((assign) => {
       const trainingPeriod = assign.UnitSchedule.trainingPeriod;
-      const unit = trainingPeriod.unit;
-      const key = `${assign.userId}-${unit.id}`;
+      const key = `${assign.userId}-${trainingPeriod.id}`;
       if (!groupMap.has(key)) {
         groupMap.set(key, {
           user: assign.User,
@@ -60,24 +58,24 @@ class DispatchService {
       groupMap.get(key)!.assignments.push(assign);
     });
 
-    // N+1 문제 해결: 루프 전에 모든 유저-유닛 조합의 배정을 일괄 조회
-    const userUnitPairs = Array.from(groupMap.values()).map(({ user, trainingPeriod }) => ({
+    // N+1 문제 해결: 루프 전에 모든 유저-교육기간 조합의 배정을 일괄 조회
+    const userTrainingPeriodPairs = Array.from(groupMap.values()).map(({ user, trainingPeriod }) => ({
       userId: user.id,
-      unitId: trainingPeriod.unit.id,
+      trainingPeriodId: trainingPeriod.id,
     }));
     const allUserAssignmentsBatch =
-      await dispatchRepository.findAllAssignmentsForUserUnits(userUnitPairs);
+      await dispatchRepository.findAllAssignmentsForUserTrainingPeriods(userTrainingPeriodPairs);
 
-    // userId-unitId 키로 배정 그룹화 (메모리 내 필터링용)
-    const assignmentsByUserUnit = new Map<string, typeof allUserAssignmentsBatch>();
+    // userId-trainingPeriodId 키로 배정 그룹화 (메모리 내 필터링용)
+    const assignmentsByUserTrainingPeriod = new Map<string, typeof allUserAssignmentsBatch>();
     for (const assign of allUserAssignmentsBatch) {
-      const unitId = assign.UnitSchedule.trainingPeriod?.unitId;
-      if (!unitId) continue;
-      const key = `${assign.userId}-${unitId}`;
-      if (!assignmentsByUserUnit.has(key)) {
-        assignmentsByUserUnit.set(key, []);
+      const trainingPeriodId = assign.UnitSchedule.trainingPeriodId;
+      if (!trainingPeriodId) continue;
+      const key = `${assign.userId}-${trainingPeriodId}`;
+      if (!assignmentsByUserTrainingPeriod.has(key)) {
+        assignmentsByUserTrainingPeriod.set(key, []);
       }
-      assignmentsByUserUnit.get(key)!.push(assign);
+      assignmentsByUserTrainingPeriod.get(key)!.push(assign);
     }
 
     const dispatchesToCreate: Array<{
@@ -156,8 +154,9 @@ class DispatchService {
       const locationsList = buildLocationsFormat(trainingPeriod.locations || []);
 
       // 본인 일정 (self.mySchedules) - 해당 부대의 모든 배정 일정 (배치 조회 결과에서 필터링)
-      const userUnitKey = `${user.id}-${unit.id}`;
-      const allUserAssignments = assignmentsByUserUnit.get(userUnitKey) || [];
+      const userTrainingPeriodKey = `${user.id}-${trainingPeriod.id}`;
+      const allUserAssignments =
+        assignmentsByUserTrainingPeriod.get(userTrainingPeriodKey) || [];
       const mySchedulesList = buildMySchedulesFormat(
         allUserAssignments.map((a) => ({ date: a.UnitSchedule.date ?? new Date() })),
         user.name || '',
@@ -289,8 +288,7 @@ class DispatchService {
       throw new AppError('발송할 대상(확정 배정 미수신자)이 없습니다.', 404, 'NO_TARGETS');
     }
 
-    // 그룹화 (User ID + Unit ID 기준 - 부대별로 별도 발송)
-    // NOTE: unit은 이제 trainingPeriod를 통해 접근
+    // 그룹화 (User ID + TrainingPeriod ID 기준 - 교육기간별 별도 발송)
     const groupMap = new Map<
       string,
       {
@@ -302,8 +300,7 @@ class DispatchService {
 
     targets.forEach((assign) => {
       const trainingPeriod = assign.UnitSchedule.trainingPeriod;
-      const unit = trainingPeriod.unit;
-      const key = `${assign.userId}-${unit.id}`;
+      const key = `${assign.userId}-${trainingPeriod.id}`;
       if (!groupMap.has(key)) {
         groupMap.set(key, {
           user: assign.User,
@@ -502,14 +499,35 @@ class DispatchService {
       limit?: number;
     } = {},
   ) {
-    const {
-      dispatches: dispatchList,
-      total,
-      page,
-      limit,
-    } = await dispatchRepository.findMyDispatches(userId, options);
+    const { type, page = 1, limit = 10 } = options;
+    const dispatchList = await dispatchRepository.findMyDispatches(userId, { type });
+    const deduped = this.deduplicateTemporaryDispatches(this.serializeDispatches(dispatchList));
+    const total = deduped.length;
+    const paged = deduped.slice((page - 1) * limit, page * limit);
 
-    const dispatches = dispatchList.map((d) => ({
+    // 내부 grouping key 필드 제거 후 반환
+    const result = paged.map(({ _trainingPeriodId, ...rest }) => rest);
+
+    return {
+      dispatches: result,
+      meta: {
+        total,
+        page,
+        limit,
+        lastPage: Math.max(1, Math.ceil(total / limit)),
+      },
+    };
+  }
+
+  async countVisibleUnreadDispatches(userId: number) {
+    const dispatchList = await dispatchRepository.findMyDispatches(userId);
+    return this.deduplicateTemporaryDispatches(this.serializeDispatches(dispatchList)).filter(
+      (dispatch) => !dispatch.isRead,
+    ).length;
+  }
+
+  private serializeDispatches(dispatchList: Awaited<ReturnType<typeof dispatchRepository.findMyDispatches>>) {
+    return dispatchList.map((d) => ({
       dispatchId: d.id,
       type: d.type,
       title: d.title,
@@ -518,77 +536,54 @@ class DispatchService {
       receivedAt: d.createdAt,
       readAt: d.readAt,
       isRead: !!d.readAt,
-      // 연결된 배정 정보 (응답용)
       assignments:
         d.assignments?.map((da) => ({
           unitScheduleId: da.assignment.unitScheduleId,
           state: da.assignment.state,
         })) || [],
-      // 내부 사용: 부대 ID (그룹핑용, 프론트에 전달하지 않아도 됨)
-      _unitId: this.extractUnitIdFromDispatch(d),
+      _trainingPeriodId: this.extractTrainingPeriodIdFromDispatch(d),
     }));
-
-    // 임시 배정(Temporary) 메시지를 부대(unitId)별로 최신 1건만 유지
-    const deduped = this.deduplicateTemporaryDispatches(dispatches);
-
-    // _unitId 필드 제거 후 반환
-    const result = deduped.map(({ _unitId, ...rest }) => rest);
-
-    return {
-      dispatches: result,
-      meta: {
-        total: result.length, // 그룹핑 후 실제 건수 반영
-        page,
-        limit,
-        lastPage: Math.ceil(result.length / limit),
-      },
-    };
   }
 
   /**
-   * Dispatch에서 unitId를 추출 (assignments → UnitSchedule → trainingPeriod → unitId)
+   * Dispatch에서 trainingPeriodId를 추출
    */
-  private extractUnitIdFromDispatch(dispatch: any): number | null {
+  private extractTrainingPeriodIdFromDispatch(dispatch: any): number | null {
     const firstAssignment = dispatch.assignments?.[0];
     if (!firstAssignment) return null;
-    return firstAssignment.assignment?.UnitSchedule?.trainingPeriod?.unitId ?? null;
+    return firstAssignment.assignment?.UnitSchedule?.trainingPeriodId ?? null;
   }
 
   /**
-   * Temporary 메시지를 unitId별로 최신 1건만 유지
+   * Temporary 메시지를 trainingPeriodId별로 최신 1건만 유지
    * - Confirmed 메시지는 그대로 유지 (중복 문제 없음)
-   * - unitId가 없는 메시지도 그대로 유지
+   * - trainingPeriodId가 없는 메시지도 그대로 유지
    */
   private deduplicateTemporaryDispatches<
-    T extends { type: string | null; receivedAt: Date | null; _unitId: number | null },
+    T extends { type: string | null; receivedAt: Date | null; _trainingPeriodId: number | null },
   >(dispatches: T[]): T[] {
-    // unitId별 최신 Temporary dispatch만 유지하는 Map
-    const latestByUnit = new Map<number, T>();
+    const latestByTrainingPeriod = new Map<number, T>();
     const result: T[] = [];
 
     for (const d of dispatches) {
-      // Confirmed 또는 unitId가 없는 경우: 그대로 유지
-      if (d.type !== 'Temporary' || d._unitId === null) {
+      if (d.type !== 'Temporary' || d._trainingPeriodId === null) {
         result.push(d);
         continue;
       }
 
-      // Temporary: unitId별로 최신 것만 유지
-      const existing = latestByUnit.get(d._unitId);
+      const existing = latestByTrainingPeriod.get(d._trainingPeriodId);
       if (!existing) {
-        latestByUnit.set(d._unitId, d);
+        latestByTrainingPeriod.set(d._trainingPeriodId, d);
       } else {
-        // 더 최근(receivedAt이 큰) 것을 유지
         const existingTime = existing.receivedAt ? new Date(existing.receivedAt).getTime() : 0;
         const currentTime = d.receivedAt ? new Date(d.receivedAt).getTime() : 0;
         if (currentTime > existingTime) {
-          latestByUnit.set(d._unitId, d);
+          latestByTrainingPeriod.set(d._trainingPeriodId, d);
         }
       }
     }
 
-    // Confirmed + 그룹핑된 Temporary를 합침
-    result.push(...latestByUnit.values());
+    result.push(...latestByTrainingPeriod.values());
 
     // 날짜 내림차순 정렬 유지
     result.sort((a, b) => {
