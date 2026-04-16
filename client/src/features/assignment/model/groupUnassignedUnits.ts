@@ -1,5 +1,5 @@
 // src/features/assignment/model/groupUnassignedUnits.ts
-// 미배정 부대 그룹화 로직 - 부대별 + 장소별 + 날짜 중복 제거
+// 미배정 교육기간 카드 구성 로직 - 교육기간별 + 장소별 + 날짜 중복 제거
 
 import { UnitSchedule, UnitScheduleDetail } from '../assignmentApi';
 
@@ -20,7 +20,7 @@ export interface LocationSchedule {
   schedules: ScheduleLocationInfo[];
 }
 
-// 부대별 그룹화된 미배정 데이터
+// 교육기간별 그룹화된 미배정 데이터
 export interface GroupedUnassignedUnit {
   groupKey: string;
   unitId: number;
@@ -31,18 +31,18 @@ export interface GroupedUnassignedUnit {
   totalRequired: number;
   uniqueDates: string[]; // 중복 제거된 날짜 목록
   locations: LocationSchedule[];
-  detail: UnitScheduleDetail; // 부대 상세 정보
+  detail: UnitScheduleDetail; // 부대/교육기간 상세 정보
 }
 
 /**
- * 미배정 부대 데이터를 부대별로 그룹화
- * - 같은 부대의 여러 장소/스케줄을 하나로 묶음
+ * 미배정 교육기간 데이터를 교육기간별로 그룹화
+ * - 같은 교육기간의 여러 장소/스케줄을 하나로 묶음
  * - 날짜 중복 제거
  * - 장소별 필요 인원 합산
  * - 각 일정별 plannedCount/actualCount 보존
  *
- * @param units - API에서 받은 미배정 부대 목록
- * @returns 부대별 그룹화된 데이터
+ * @param units - API에서 받은 미배정 교육기간 목록
+ * @returns 교육기간별 그룹화된 데이터
  */
 export const groupUnassignedUnits = (units: UnitSchedule[]): GroupedUnassignedUnit[] => {
   const unitMap = new Map<string, GroupedUnassignedUnit>();
@@ -55,7 +55,7 @@ export const groupUnassignedUnits = (units: UnitSchedule[]): GroupedUnassignedUn
     const locationId = parts[7];
     const groupKey = unit.groupKey || `${unitId}:${unit.trainingPeriodId}`;
 
-    // 부대 초기화
+    // 교육기간 카드 초기화
     if (!unitMap.has(groupKey)) {
       unitMap.set(groupKey, {
         groupKey,
@@ -116,7 +116,7 @@ export const groupUnassignedUnits = (units: UnitSchedule[]): GroupedUnassignedUn
     }
   }
 
-  // 첫 날짜 기준으로 부대 정렬 (서버에서 정렬되어 왔지만 Map 순서 보장을 위해)
+  // 첫 날짜 기준으로 교육기간 정렬 (서버에서 정렬되어 왔지만 Map 순서 보장을 위해)
   return Array.from(unitMap.values()).sort((a, b) => {
     const aFirstDate = a.uniqueDates[0] || '';
     const bFirstDate = b.uniqueDates[0] || '';

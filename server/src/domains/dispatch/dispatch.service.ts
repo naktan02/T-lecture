@@ -15,7 +15,7 @@ import {
 } from './dispatch.templateHelper';
 
 class DispatchService {
-  // 임시 배정 발송 일괄 발송 (부대별로 별도 발송, 날짜 범위 필터링)
+  // 임시 배정 발송 일괄 발송 (교육기간별로 별도 발송, 날짜 범위 필터링)
   // 클라이언트가 actualDateRange를 전달하므로 서버는 그대로 사용
   async sendTemporaryDispatches(startDate?: string, endDate?: string) {
     // 템플릿 조회
@@ -155,7 +155,7 @@ class DispatchService {
       // 장소 목록 (locations 포맷 변수) - 이제 trainingPeriod.locations
       const locationsList = buildLocationsFormat(trainingPeriod.locations || []);
 
-      // 본인 일정 (self.mySchedules) - 해당 부대의 모든 배정 일정 (배치 조회 결과에서 필터링)
+      // 본인 일정 (self.mySchedules) - 해당 교육기간의 모든 배정 일정 (배치 조회 결과에서 필터링)
       const userTrainingPeriodKey = `${user.id}-${trainingPeriod.id}`;
       const allUserAssignments = assignmentsByUserTrainingPeriod.get(userTrainingPeriodKey) || [];
       const mySchedulesList = buildMySchedulesFormat(
@@ -214,7 +214,7 @@ class DispatchService {
         title,
         body,
         userId: user.id,
-        // 해당 부대의 모든 배정 ID 포함 (수락/거절 시 부대 단위로 처리)
+        // 해당 교육기간의 모든 배정 ID 포함 (수락/거절 시 교육기간 단위로 처리)
         assignmentIds: allUserAssignments.map((a) => a.unitScheduleId),
       });
     }

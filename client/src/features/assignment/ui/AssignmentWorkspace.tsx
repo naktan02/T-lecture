@@ -464,15 +464,15 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
       <div className="flex-1 p-4 grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-min md:auto-rows-fr overflow-y-auto md:overflow-hidden bg-gray-100">
         {/* Left Column */}
         <div className="flex flex-col gap-4 h-fit md:h-auto md:overflow-hidden">
-          {/* Panel 1: 미배정 부대 (교육기간별 그룹화) */}
+          {/* Panel 1: 미배정 부대 */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden h-fit max-h-[35vh] md:flex-1 md:h-auto md:max-h-none">
             <div className="p-3 bg-red-50 border-b border-red-100 border-l-4 border-l-red-500 font-bold text-gray-700 flex justify-between items-center gap-2">
               <span className="flex items-center gap-2 shrink-0">
-                📋 배정 대상 부대 (교육기간별)
+                📋 배정 대상 부대
               </span>
               <input
                 type="text"
-                placeholder="부대 검색..."
+                placeholder="부대/교육기간 검색..."
                 value={unitSearch}
                 onChange={(e) => setUnitSearch(e.target.value)}
                 className="flex-1 max-w-48 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-red-400"
@@ -482,7 +482,8 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
                   groupedUnassignedUnits.filter(
                     (u) =>
                       u.unitName?.toLowerCase().includes(unitSearch.toLowerCase()) ||
-                      u.region?.toLowerCase().includes(unitSearch.toLowerCase()),
+                      u.region?.toLowerCase().includes(unitSearch.toLowerCase()) ||
+                      u.trainingPeriodName?.toLowerCase().includes(unitSearch.toLowerCase()),
                   ).length
                 }
                 개 부대
@@ -494,7 +495,8 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
                   .filter(
                     (unit) =>
                       unit.unitName?.toLowerCase().includes(unitSearch.toLowerCase()) ||
-                      unit.region?.toLowerCase().includes(unitSearch.toLowerCase()),
+                      unit.region?.toLowerCase().includes(unitSearch.toLowerCase()) ||
+                      unit.trainingPeriodName?.toLowerCase().includes(unitSearch.toLowerCase()),
                   )
                   .map((unit) => (
                     <div
@@ -644,10 +646,10 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden h-fit max-h-[40vh] md:flex-1 md:h-auto md:max-h-none">
             <div className="p-3 bg-orange-50 border-b border-orange-100 border-l-4 border-l-orange-500 flex justify-between items-start">
               <div className="flex flex-col gap-2">
-                <span className="font-bold text-gray-700 mt-1">⚖️ 배정 작업 공간 (부대별)</span>
+                <span className="font-bold text-gray-700 mt-1">⚖️ 배정 작업 공간</span>
                 <input
                   type="text"
-                  placeholder="부대/지역/기간 검색..."
+                  placeholder="부대/교육기간/지역 검색..."
                   value={assignmentSearch}
                   onChange={(e) => setAssignmentSearch(e.target.value)}
                   className="w-full max-w-48 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-400"
@@ -817,7 +819,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
                 <span className="font-bold text-gray-700 mt-1">✅ 확정 배정 완료</span>
                 <input
                   type="text"
-                  placeholder="부대/지역/기간 검색..."
+                  placeholder="부대/교육기간/지역 검색..."
                   value={confirmedSearch}
                   onChange={(e) => setConfirmedSearch(e.target.value)}
                   className="w-full max-w-48 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"

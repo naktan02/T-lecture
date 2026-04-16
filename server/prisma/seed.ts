@@ -133,7 +133,7 @@ async function main() {
   };
 
   // 공통 제목 (모든 템플릿에서 동일)
-  const commonTitle = '{{unit.name}} : {{period.startDate}} ~ {{period.endDate}}';
+  const commonTitle = '{{unit.name}} / {{period.name}} : {{period.startDate}} ~ {{period.endDate}}';
 
   // 임시 배정 템플릿
   const temporaryBody = {
@@ -145,6 +145,9 @@ async function main() {
       { type: 'newline' },
       { text: '- 부대명: ', type: 'text' },
       { key: 'unit.name', type: 'var' },
+      { type: 'newline' },
+      { text: '- 교육기간명: ', type: 'text' },
+      { key: 'period.name', type: 'var' },
       { type: 'newline' },
       { text: '- 광역: ', type: 'text' },
       { key: 'unit.wideArea', type: 'var' },
@@ -187,6 +190,9 @@ async function main() {
       { type: 'newline' },
       { text: '- 부대: ', type: 'text' },
       { key: 'unit.name', type: 'var' },
+      { type: 'newline' },
+      { text: '- 교육기간명: ', type: 'text' },
+      { key: 'period.name', type: 'var' },
       { type: 'newline' },
       { text: '- 광역: ', type: 'text' },
       { key: 'unit.wideArea', type: 'var' },
@@ -241,6 +247,9 @@ async function main() {
       { text: '- 부대: ', type: 'text' },
       { key: 'unit.name', type: 'var' },
       { type: 'newline' },
+      { text: '- 교육기간명: ', type: 'text' },
+      { key: 'period.name', type: 'var' },
+      { type: 'newline' },
 
       { text: '- 지역: ', type: 'text' },
       { key: 'unit.region', type: 'var' },
@@ -276,7 +285,7 @@ async function main() {
 
       { type: 'newline' },
 
-      { text: '부대 담당자: ', type: 'text' },
+      { text: '교육기간 담당자: ', type: 'text' },
       { key: 'period.officerName', type: 'var' },
       { text: '  담당자 전화번호:  ', type: 'text' },
       { key: 'period.officerPhone', type: 'var' },
