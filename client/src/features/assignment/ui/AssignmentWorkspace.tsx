@@ -467,9 +467,7 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
           {/* Panel 1: 미배정 부대 */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden h-fit max-h-[35vh] md:flex-1 md:h-auto md:max-h-none">
             <div className="p-3 bg-red-50 border-b border-red-100 border-l-4 border-l-red-500 font-bold text-gray-700 flex justify-between items-center gap-2">
-              <span className="flex items-center gap-2 shrink-0">
-                📋 배정 대상 부대
-              </span>
+              <span className="flex items-center gap-2 shrink-0">📋 배정 대상 부대</span>
               <input
                 type="text"
                 placeholder="부대/교육기간 검색..."
