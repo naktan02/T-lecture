@@ -71,7 +71,7 @@ class AssignmentQueryRepository {
       recentConfirmedCompletedCountByInstructorId.set(r.userId, r._count._all);
     }
 
-    // 2) 최근 거절(Rejected) - 부대별 카운트 (+1 per unit, not per schedule)
+    // 2) 최근 거절(Rejected) - 교육기간별 카운트 (+1 per training period, not per schedule)
     const rejectedRows = await prisma.instructorUnitAssignment.findMany({
       where: {
         userId: { in: instructorIds },
@@ -83,25 +83,25 @@ class AssignmentQueryRepository {
       select: {
         userId: true,
         UnitSchedule: {
-          select: { trainingPeriod: { select: { unitId: true } } },
+          select: { trainingPeriod: { select: { id: true } } },
         },
       },
       distinct: ['userId', 'unitScheduleId'],
     });
 
-    // 부대별로 중복 제거하여 카운트
-    const userUnitSet = new Map<number, Set<number>>();
+    // 교육기간별로 중복 제거하여 카운트
+    const userTrainingPeriodSet = new Map<number, Set<number>>();
     for (const row of rejectedRows) {
-      const unitId = row.UnitSchedule?.trainingPeriod?.unitId;
-      if (!unitId) continue;
-      if (!userUnitSet.has(row.userId)) {
-        userUnitSet.set(row.userId, new Set());
+      const trainingPeriodId = row.UnitSchedule?.trainingPeriod?.id;
+      if (!trainingPeriodId) continue;
+      if (!userTrainingPeriodSet.has(row.userId)) {
+        userTrainingPeriodSet.set(row.userId, new Set());
       }
-      userUnitSet.get(row.userId)!.add(unitId);
+      userTrainingPeriodSet.get(row.userId)!.add(trainingPeriodId);
     }
 
-    for (const [userId, unitIds] of userUnitSet) {
-      recentRejectionCountByInstructorId.set(userId, unitIds.size);
+    for (const [userId, trainingPeriodIds] of userTrainingPeriodSet) {
+      recentRejectionCountByInstructorId.set(userId, trainingPeriodIds.size);
     }
 
     return {

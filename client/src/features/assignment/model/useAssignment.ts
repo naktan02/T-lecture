@@ -54,7 +54,7 @@ interface UseAssignmentReturn {
   loading: boolean;
   error: string | null;
   unassignedUnits: UnitSchedule[]; // raw data (하위 호환성)
-  groupedUnassignedUnits: GroupedUnassignedUnit[]; // 부대별 그룹화
+  groupedUnassignedUnits: GroupedUnassignedUnit[]; // 교육기간별 그룹화
   availableInstructors: Instructor[];
   allInstructors: Instructor[]; // 전체 강사 목록 (전체 검색용)
   assignments: AssignmentData[]; // 임시 배정 (Pending)
@@ -65,7 +65,7 @@ interface UseAssignmentReturn {
     internMaxDistanceKm: number;
     subMaxDistanceKm: number | null;
   } | null;
-  // 전체 부대 스케줄 범위
+  // 조회 결과의 실제 스케줄 범위
   actualDateRange: { startDate: string; endDate: string } | null;
   addAssignment: (
     unitScheduleId: number,
@@ -100,7 +100,7 @@ export const useAssignment = (): UseAssignmentReturn => {
   // 전체 강사 목록 (전체 검색용)
   const [allInstructors, setAllInstructors] = useState<Instructor[]>([]);
 
-  // 서버에서 계산된 실제 날짜 범위 (부대 전체 일정 커버)
+  // 서버에서 계산된 실제 날짜 범위 (조회된 교육기간 전체 일정 커버)
   const [actualDateRange, setActualDateRange] = useState<{
     startDate: string;
     endDate: string;
@@ -223,7 +223,7 @@ export const useAssignment = (): UseAssignmentReturn => {
     }
   };
 
-  // 3. 임시 배정 메시지 일괄 발송 (부대 전체 일정 범위 사용)
+  // 3. 임시 배정 메시지 일괄 발송 (조회된 실제 일정 범위 사용)
   const sendTemporaryMessages = async (): Promise<void> => {
     setLoading(true);
     try {
@@ -239,7 +239,7 @@ export const useAssignment = (): UseAssignmentReturn => {
     }
   };
 
-  // 4. 확정 배정 메시지 일괄 발송 (부대 전체 일정 범위 사용)
+  // 4. 확정 배정 메시지 일괄 발송 (조회된 실제 일정 범위 사용)
   const sendConfirmedMessages = async (): Promise<void> => {
     setLoading(true);
     try {
@@ -288,7 +288,7 @@ export const useAssignment = (): UseAssignmentReturn => {
     }
   };
 
-  // 부대 인원고정 설정/해제
+  // 교육기간 인원고정 설정/해제
   const toggleStaffLock = async (
     trainingPeriodId: number,
     isStaffLocked: boolean,
@@ -305,7 +305,7 @@ export const useAssignment = (): UseAssignmentReturn => {
     }
   };
 
-  // 부대별 그룹화 (유틸 함수 사용)
+  // 교육기간별 그룹화 (유틸 함수 사용)
   const groupedUnassignedUnits = groupUnassignedUnits(sourceData.units);
 
   return {
@@ -321,7 +321,7 @@ export const useAssignment = (): UseAssignmentReturn => {
     confirmedAssignments,
     distanceMap,
     distanceLimits,
-    actualDateRange, // 전체 부대 스케줄 범위
+    actualDateRange, // 조회 결과의 실제 스케줄 범위
     fetchData,
     executeAutoAssign,
     sendTemporaryMessages,
