@@ -60,6 +60,8 @@ export interface TrainingPeriod {
   startDate?: string | null;
   endDate?: string | null;
   name: string; // "정규교육", "추가교육 1차" 등
+  locationCount?: number;
+  scheduleCount?: number;
 
   // 근무시간
   workStartTime?: string | null;

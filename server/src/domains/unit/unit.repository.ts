@@ -64,11 +64,31 @@ class UnitRepository {
         skip,
         take,
         orderBy: orderBy || { id: 'desc' },
-        include: {
+        select: {
+          id: true,
+          name: true,
+          unitType: true,
+          wideArea: true,
+          region: true,
+          addressDetail: true,
+          lat: true,
+          validationStatus: true,
+          validationMessage: true,
           trainingPeriods: {
-            include: {
-              locations: true,
-              schedules: true,
+            orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+            select: {
+              id: true,
+              unitId: true,
+              name: true,
+              lectureYear: true,
+              startDate: true,
+              endDate: true,
+              _count: {
+                select: {
+                  locations: true,
+                  schedules: true,
+                },
+              },
             },
           },
         },

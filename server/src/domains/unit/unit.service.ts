@@ -541,8 +541,22 @@ class UnitService {
       orderBy,
     });
 
+    const summarizedUnits = units.map((unit) => ({
+      ...unit,
+      trainingPeriods: unit.trainingPeriods.map((period) => ({
+        id: period.id,
+        unitId: period.unitId,
+        name: period.name,
+        lectureYear: period.lectureYear,
+        startDate: period.startDate,
+        endDate: period.endDate,
+        locationCount: period._count.locations,
+        scheduleCount: period._count.schedules,
+      })),
+    }));
+
     return {
-      data: units,
+      data: summarizedUnits,
       meta: {
         total,
         page: paging.page,

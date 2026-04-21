@@ -1,7 +1,7 @@
 // client/src/features/unit/model/useUnit.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { unitApi, UnitData } from '../api/unitApi';
-import { UpdateUnitWithPeriodsPayload } from '../../../shared/types/unit.types';
+import { Unit, UpdateUnitWithPeriodsPayload, getPeriodDateRange } from '../../../shared/types/unit.types';
 import { useState, Dispatch, SetStateAction } from 'react';
 import { showSuccess, showError } from '../../../shared/utils';
 
@@ -18,32 +18,6 @@ interface UnitMeta {
   lastPage: number;
   page?: number;
   limit?: number;
-}
-
-interface UnitSchedule {
-  date?: string | null;
-}
-
-interface TrainingPeriod {
-  schedules?: UnitSchedule[];
-  locations?: unknown[];
-}
-
-interface Unit {
-  id: number;
-  name: string;
-  unitType?: string;
-  wideArea?: string;
-  region?: string;
-  addressDetail?: string;
-  officerName?: string;
-  officerPhone?: string;
-  officerEmail?: string;
-  lat?: number | null;
-  validationStatus?: 'Valid' | 'Invalid';
-  validationMessage?: string;
-  trainingPeriods?: TrainingPeriod[];
-  [key: string]: unknown;
 }
 
 interface UseUnitReturn {
@@ -108,23 +82,19 @@ export const useUnit = (searchParams: SearchParams = {}): UseUnitReturn => {
   // 모든 교육기간 중: 오름차순=가장 이른 날짜, 내림차순=가장 늦은 날짜 기준
   if (sortField === 'educationStart' && sortOrder) {
     units = [...units].sort((a, b) => {
-      // 모든 TrainingPeriod의 모든 일정에서 날짜 추출
-      const getAllDates = (unit: Unit): string[] => {
-        const dates: string[] = [];
-        for (const period of unit.trainingPeriods || []) {
-          for (const schedule of period.schedules || []) {
-            if (schedule.date) dates.push(schedule.date);
-          }
-        }
-        return dates.sort(); // 날짜순 정렬
+      const getBoundaryDate = (unit: Unit): string | null => {
+        const periodDates = (unit.trainingPeriods || [])
+          .map((period) => getPeriodDateRange(period))
+          .flatMap(({ start, end }) => [start, end])
+          .filter((date): date is string => Boolean(date))
+          .sort();
+
+        if (periodDates.length === 0) return null;
+        return sortOrder === 'asc' ? periodDates[0] : periodDates[periodDates.length - 1];
       };
 
-      const aDates = getAllDates(a);
-      const bDates = getAllDates(b);
-
-      // 오름차순: 가장 이른 날짜 비교, 내림차순: 가장 늦은 날짜 비교
-      const aDate = sortOrder === 'asc' ? aDates[0] : aDates[aDates.length - 1];
-      const bDate = sortOrder === 'asc' ? bDates[0] : bDates[bDates.length - 1];
+      const aDate = getBoundaryDate(a);
+      const bDate = getBoundaryDate(b);
 
       if (!aDate && !bDate) return 0;
       if (!aDate) return sortOrder === 'asc' ? 1 : -1;
