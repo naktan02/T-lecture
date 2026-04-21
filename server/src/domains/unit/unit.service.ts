@@ -30,12 +30,44 @@ type ScheduleData = ScheduleInput;
  */
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-const toDateOnlyString = (value: string): string | null => {
+const toDateOnlyString = (value: string | Date): string | null => {
   if (!value) return null;
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) return null;
+    return value.toISOString().split('T')[0];
+  }
   if (DATE_ONLY_RE.test(value)) return value;
   const d = new Date(value);
   if (isNaN(d.getTime())) return null;
   return d.toISOString().split('T')[0];
+};
+
+const toUTCDateOnly = (value: string | null): Date | null =>
+  value ? new Date(`${value}T00:00:00.000Z`) : null;
+
+const getLectureYearFromDateOnly = (value: string | null): number | null =>
+  value ? Number(value.slice(0, 4)) : null;
+
+const normalizeExcludedDates = (dates: string[] = []): string[] =>
+  [...new Set(dates.map((d) => toDateOnlyString(d)).filter((d): d is string => Boolean(d)))].sort();
+
+const toStoredTime = (value: string | Date | null | undefined): Date | null => {
+  if (!value) return null;
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) return null;
+    return new Date(
+      Date.UTC(2000, 0, 1, value.getUTCHours(), value.getUTCMinutes(), value.getUTCSeconds()),
+    );
+  }
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(value)) {
+    const normalizedTime = value.length === 5 ? `${value}:00` : value;
+    return new Date(`2000-01-01T${normalizedTime}.000Z`);
+  }
+  const parsed = new Date(value);
+  if (isNaN(parsed.getTime())) return null;
+  return new Date(
+    Date.UTC(2000, 0, 1, parsed.getUTCHours(), parsed.getUTCMinutes(), parsed.getUTCSeconds()),
+  );
 };
 
 interface UnitBasicInfoInput {
@@ -54,6 +86,95 @@ interface UnitContactInput {
 }
 
 class UnitService {
+  private _buildPeriodWindow(
+    start: string | Date | undefined,
+    end: string | Date | undefined,
+    excludedDates: string[] = [],
+    fallbackLectureYear?: number,
+  ) {
+    const normalizedStart = start ? toDateOnlyString(start) : null;
+    const normalizedEnd = end ? toDateOnlyString(end) : null;
+    const normalizedExcludedDates = normalizeExcludedDates(excludedDates);
+
+    return {
+      normalizedStart,
+      normalizedEnd,
+      normalizedExcludedDates,
+      startDate: toUTCDateOnly(normalizedStart),
+      endDate: toUTCDateOnly(normalizedEnd),
+      lectureYear: getLectureYearFromDateOnly(normalizedStart) ?? fallbackLectureYear ?? null,
+    };
+  }
+
+  private _findExistingTrainingPeriodByRange<
+    T extends {
+      id: number;
+      startDate: Date | string | null;
+      endDate: Date | string | null;
+    },
+  >(periods: T[], startDate: string | null, endDate: string | null) {
+    return periods.find((period) => {
+      const existingStart = period.startDate ? toDateOnlyString(period.startDate) : null;
+      const existingEnd = period.endDate ? toDateOnlyString(period.endDate) : null;
+      return existingStart === startDate && existingEnd === endDate;
+    });
+  }
+
+  private async _createTrainingPeriodFromRawData(
+    unitId: number,
+    rawData: RawUnitInput,
+    lectureYear?: number,
+  ) {
+    const periodWindow = this._buildPeriodWindow(
+      rawData.educationStart,
+      rawData.educationEnd,
+      rawData.excludedDates || [],
+      lectureYear,
+    );
+
+    const schedules =
+      periodWindow.normalizedStart && periodWindow.normalizedEnd
+        ? this._calculateSchedules(
+            periodWindow.normalizedStart,
+            periodWindow.normalizedEnd,
+            periodWindow.normalizedExcludedDates,
+          )
+        : undefined;
+    const locations = rawData.trainingLocations?.map((location) => ({
+      originalPlace: location.originalPlace,
+      changedPlace: location.changedPlace || null,
+      hasInstructorLounge: location.hasInstructorLounge === true,
+      hasWomenRestroom: location.hasWomenRestroom === true,
+      note: location.note || null,
+      plannedCount:
+        location.plannedCount !== undefined && location.plannedCount !== null
+          ? Number(location.plannedCount)
+          : null,
+    }));
+
+    return unitRepository.createTrainingPeriod(unitId, {
+      name: '정규교육',
+      lectureYear: periodWindow.lectureYear,
+      startDate: periodWindow.startDate,
+      endDate: periodWindow.endDate,
+      workStartTime: toStoredTime(rawData.workStartTime),
+      workEndTime: toStoredTime(rawData.workEndTime),
+      lunchStartTime: toStoredTime(rawData.lunchStartTime),
+      lunchEndTime: toStoredTime(rawData.lunchEndTime),
+      officerName: rawData.officerName || null,
+      officerPhone: normalizePhone(rawData.officerPhone) || null,
+      officerEmail: rawData.officerEmail || null,
+      excludedDates: periodWindow.normalizedExcludedDates,
+      hasCateredMeals: (rawData as Record<string, unknown>).hasCateredMeals === true,
+      hasHallLodging: (rawData as Record<string, unknown>).hasHallLodging === true,
+      allowsPhoneBeforeAfter: (rawData as Record<string, unknown>).allowsPhoneBeforeAfter === true,
+      locations,
+      schedules,
+      initialPeriodDays: schedules?.length || 0,
+      initialLocationCount: rawData.trainingLocations?.length || 0,
+    });
+  }
+
   // --- 등록 ---
 
   /**
@@ -77,12 +198,17 @@ class UnitService {
       // 2. 날짜 형식 및 논리성 검증
       let startDate: Date | null = null;
       let endDate: Date | null = null;
+      let normalizedStartDate: string | null = null;
+      let normalizedEndDate: string | null = null;
+      const normalizedExcludedDates = normalizeExcludedDates(rawData.excludedDates || []);
 
       if (rawData.educationStart) {
         startDate = new Date(rawData.educationStart);
         if (isNaN(startDate.getTime())) {
           errorMessages.push(`교육 시작일 형식이 유효하지 않습니다: ${rawData.educationStart}`);
           startDate = null;
+        } else {
+          normalizedStartDate = toDateOnlyString(startDate);
         }
       }
       if (rawData.educationEnd) {
@@ -90,6 +216,8 @@ class UnitService {
         if (isNaN(endDate.getTime())) {
           errorMessages.push(`교육 종료일 형식이 유효하지 않습니다: ${rawData.educationEnd}`);
           endDate = null;
+        } else {
+          normalizedEndDate = toDateOnlyString(endDate);
         }
       }
 
@@ -117,11 +245,11 @@ class UnitService {
 
       // 4. 스케줄 계산
       let schedules: ScheduleData[] = [];
-      if (startDate && endDate) {
+      if (normalizedStartDate && normalizedEndDate) {
         schedules = this._calculateSchedules(
-          rawData.educationStart,
-          rawData.educationEnd,
-          rawData.excludedDates || [],
+          normalizedStartDate,
+          normalizedEndDate,
+          normalizedExcludedDates,
         );
       }
 
@@ -150,6 +278,9 @@ class UnitService {
       // 부대 + 교육기간(모든 필드) + 일정 한 번에 생성
       const unit = await unitRepository.createUnitWithTrainingPeriod(unitDataToSave, {
         name: '정규교육',
+        lectureYear: getLectureYearFromDateOnly(normalizedStartDate) ?? lectureYear ?? null,
+        startDate: toUTCDateOnly(normalizedStartDate),
+        endDate: toUTCDateOnly(normalizedEndDate),
         // 근무 시간
         workStartTime: rawData.workStartTime,
         workEndTime: rawData.workEndTime,
@@ -159,6 +290,7 @@ class UnitService {
         officerName: rawData.officerName,
         officerPhone: normalizePhone(rawData.officerPhone),
         officerEmail: rawData.officerEmail,
+        excludedDates: normalizedExcludedDates,
         // 시설 정보 (RawUnitInput에서 가져옴 - 확장 필요)
         hasCateredMeals: (rawData as Record<string, unknown>).hasCateredMeals === true,
         hasHallLodging: (rawData as Record<string, unknown>).hasHallLodging === true,
@@ -191,8 +323,8 @@ class UnitService {
 
   /**
    * 엑셀 파일 처리 및 일괄 등록 (Upsert 로직)
-   * - 부대명이 DB에 없으면: 새 부대 생성
-   * - 부대명이 DB에 있으면: 기존 부대에 새 교육장소만 추가 (중복 제외)
+   * - 부대명이 DB에 없으면: 새 부대 + 교육기간 생성
+   * - 부대명이 DB에 있으면: 날짜 범위가 같은 교육기간에 장소를 추가하거나, 새 교육기간 생성
    * @param lectureYear 메타데이터에서 추출한 강의년도 (모든 부대에 적용)
    */
   async processExcelDataAndRegisterUnits(rawRows: Record<string, unknown>[], lectureYear?: number) {
@@ -226,6 +358,7 @@ class UnitService {
     let locationsSkipped = 0;
 
     const newUnitsToCreate: RawUnitInput[] = [];
+    const newPeriodsToCreate: { unitId: number; rawData: RawUnitInput }[] = [];
     const trainingLocationsToCreate: {
       trainingPeriodId: number;
       location: TrainingLocationData;
@@ -239,20 +372,25 @@ class UnitService {
       const existingUnit = existingUnitMap.get(unitName);
 
       if (existingUnit) {
-        // [기존 부대] -> 첫 번째 TrainingPeriod의 교육장소에 중복 체크 후 추가
+        // [기존 부대] -> 날짜 범위가 같으면 해당 기간에 장소 추가, 없으면 새 TrainingPeriod 생성
         updated++;
 
-        // 첫 번째 TrainingPeriod 가져오기
-        const firstPeriod = existingUnit.trainingPeriods[0];
-        if (!firstPeriod) {
-          // TrainingPeriod가 없으면 스킵 (나중에 별도로 생성 필요)
-          continue;
-        }
+        const periodWindow = this._buildPeriodWindow(
+          rawData.educationStart,
+          rawData.educationEnd,
+          rawData.excludedDates || [],
+          lectureYear,
+        );
+        const existingPeriod = this._findExistingTrainingPeriodByRange(
+          existingUnit.trainingPeriods,
+          periodWindow.normalizedStart,
+          periodWindow.normalizedEnd,
+        );
 
-        if (rawData.trainingLocations && rawData.trainingLocations.length > 0) {
+        if (existingPeriod && rawData.trainingLocations && rawData.trainingLocations.length > 0) {
           // 기존 장소 이름 Set (TrainingPeriod 내 모든 locations)
           const existingPlaceNames = new Set(
-            firstPeriod.locations.map((l: { originalPlace: string | null }) => l.originalPlace),
+            existingPeriod.locations.map((l: { originalPlace: string | null }) => l.originalPlace),
           );
 
           for (const loc of rawData.trainingLocations) {
@@ -264,12 +402,17 @@ class UnitService {
               // 신규 장소 매핑 대기 (엑셀 내 중복 방지 위해 Set에도 추가)
               if (placeName) existingPlaceNames.add(placeName);
               trainingLocationsToCreate.push({
-                trainingPeriodId: firstPeriod.id,
+                trainingPeriodId: existingPeriod.id,
                 location: loc,
               });
               locationsAdded++;
             }
           }
+        } else if (!existingPeriod) {
+          newPeriodsToCreate.push({
+            unitId: existingUnit.id,
+            rawData,
+          });
         }
       } else {
         // [신규 부대] -> 리스트에 추가 (나중에 청크 처리)
@@ -299,6 +442,23 @@ class UnitService {
     // 4-2. 기존 부대 장소 일괄 추가 (Bulk Insert)
     if (trainingLocationsToCreate.length > 0) {
       await unitRepository.bulkAddTrainingLocations(trainingLocationsToCreate);
+    }
+
+    // 4-3. 기존 부대에 새 교육기간 생성
+    for (let i = 0; i < newPeriodsToCreate.length; i += CHUNK_SIZE) {
+      const chunk = newPeriodsToCreate.slice(i, i + CHUNK_SIZE);
+      await Promise.all(
+        chunk.map(async ({ unitId, rawData }) => {
+          try {
+            await this._createTrainingPeriodFromRawData(unitId, rawData, lectureYear);
+            locationsAdded += rawData.trainingLocations?.length || 0;
+          } catch (e) {
+            logger.error(
+              `[UnitService] Failed to create training period for existing unit ${rawData.name}: ${e}`,
+            );
+          }
+        }),
+      );
     }
 
     // 5. 비동기 좌표 변환 (백그라운드)
@@ -623,24 +783,34 @@ class UnitService {
       throw new AppError('해당 부대를 찾을 수 없습니다.', 404, 'UNIT_NOT_FOUND');
     }
 
+    if (!data.startDate || !data.endDate) {
+      throw new AppError(
+        '교육기간 생성 시 시작일과 종료일은 필수입니다.',
+        400,
+        'INVALID_TRAINING_PERIOD_RANGE',
+      );
+    }
+
+    const periodWindow = this._buildPeriodWindow(
+      data.startDate,
+      data.endDate,
+      data.excludedDates || [],
+    );
+
     let schedules: ScheduleData[] | undefined;
     if (data.startDate && data.endDate) {
-      const normalizedStart = toDateOnlyString(data.startDate);
-      const normalizedEnd = toDateOnlyString(data.endDate);
-      if (!normalizedStart || !normalizedEnd) {
+      if (!periodWindow.normalizedStart || !periodWindow.normalizedEnd) {
         throw new AppError('날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)', 400, 'INVALID_DATE');
       }
-      if (normalizedStart > normalizedEnd) {
+      if (periodWindow.normalizedStart > periodWindow.normalizedEnd) {
         throw new AppError('시작일이 종료일보다 늦습니다.', 400, 'INVALID_DATE_RANGE');
       }
 
-      const normalizedExcludedDates = [
-        ...new Set(
-          (data.excludedDates || []).map((d) => toDateOnlyString(d)).filter(Boolean) as string[],
-        ),
-      ].sort();
-
-      schedules = this._calculateSchedules(normalizedStart, normalizedEnd, normalizedExcludedDates);
+      schedules = this._calculateSchedules(
+        periodWindow.normalizedStart,
+        periodWindow.normalizedEnd,
+        periodWindow.normalizedExcludedDates,
+      );
     }
 
     // 최초계획 데이터 계산 (보고서용)
@@ -649,17 +819,17 @@ class UnitService {
 
     const created = await unitRepository.createTrainingPeriod(unitId, {
       name: data.name,
-      workStartTime: data.workStartTime
-        ? new Date(`2000-01-01T${data.workStartTime}:00.000Z`)
-        : null,
-      workEndTime: data.workEndTime ? new Date(`2000-01-01T${data.workEndTime}:00.000Z`) : null,
-      lunchStartTime: data.lunchStartTime
-        ? new Date(`2000-01-01T${data.lunchStartTime}:00.000Z`)
-        : null,
-      lunchEndTime: data.lunchEndTime ? new Date(`2000-01-01T${data.lunchEndTime}:00.000Z`) : null,
+      lectureYear: periodWindow.lectureYear,
+      startDate: periodWindow.startDate,
+      endDate: periodWindow.endDate,
+      workStartTime: toStoredTime(data.workStartTime),
+      workEndTime: toStoredTime(data.workEndTime),
+      lunchStartTime: toStoredTime(data.lunchStartTime),
+      lunchEndTime: toStoredTime(data.lunchEndTime),
       officerName: data.officerName || null,
       officerPhone: normalizePhone(data.officerPhone) || null,
       officerEmail: data.officerEmail || null,
+      excludedDates: periodWindow.normalizedExcludedDates,
       hasCateredMeals: data.hasCateredMeals ?? false,
       hasHallLodging: data.hasHallLodging ?? false,
       allowsPhoneBeforeAfter: data.allowsPhoneBeforeAfter ?? false,
@@ -1000,20 +1170,14 @@ class UnitService {
       throw new AppError('교육기간을 찾을 수 없습니다.', 404, 'TRAINING_PERIOD_NOT_FOUND');
     }
 
-    const normalizedStart = toDateOnlyString(data.startDate);
-    const normalizedEnd = toDateOnlyString(data.endDate);
-    if (!normalizedStart || !normalizedEnd) {
+    const periodWindow = this._buildPeriodWindow(data.startDate, data.endDate, data.excludedDates);
+
+    if (!periodWindow.normalizedStart || !periodWindow.normalizedEnd) {
       throw new AppError('날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)', 400, 'INVALID_DATE');
     }
-    if (normalizedStart > normalizedEnd) {
+    if (periodWindow.normalizedStart > periodWindow.normalizedEnd) {
       throw new AppError('시작일이 종료일보다 늦습니다.', 400, 'INVALID_DATE_RANGE');
     }
-
-    const normalizedExcludedDates = [
-      ...new Set(
-        (data.excludedDates || []).map((d) => toDateOnlyString(d)).filter(Boolean) as string[],
-      ),
-    ].sort();
 
     // 1. 기존 일정 조회
     const existingSchedules = await unitRepository.findSchedulesByPeriodId(trainingPeriodId);
@@ -1023,9 +1187,9 @@ class UnitService {
 
     // 2. 새 일정 범위 계산
     const newSchedules = this._calculateSchedules(
-      normalizedStart,
-      normalizedEnd,
-      normalizedExcludedDates,
+      periodWindow.normalizedStart,
+      periodWindow.normalizedEnd,
+      periodWindow.normalizedExcludedDates,
     );
     const newDates = new Set(
       newSchedules.map((s) => (s.date ? new Date(s.date).toISOString().split('T')[0] : '')),
@@ -1034,11 +1198,13 @@ class UnitService {
     const datesToDelete = [...existingDates].filter((d) => d && !newDates.has(d));
     const datesToAdd = [...newDates].filter((d) => d && !existingDates.has(d));
 
-    // 3.5 교육불가일자를 TrainingPeriod에 저장
-    await unitRepository.updateTrainingPeriodExcludedDates(
-      trainingPeriodId,
-      normalizedExcludedDates,
-    );
+    // 3.5 교육기간 원본 정의를 저장
+    await unitRepository.updateTrainingPeriod(trainingPeriodId, {
+      lectureYear: periodWindow.lectureYear,
+      startDate: periodWindow.startDate,
+      endDate: periodWindow.endDate,
+      excludedDates: periodWindow.normalizedExcludedDates,
+    });
 
     // 4. 삭제 처리 (크레딧 부여 + 자동 재배정)
     let deleteResult = { deleted: 0, creditsGiven: 0, reassigned: 0 };

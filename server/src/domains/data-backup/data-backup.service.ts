@@ -31,16 +31,53 @@ interface PeriodReportData {
 }
 
 export class DataBackupService {
+  private async getUnitIdsToDeleteByYear(
+    db: {
+      unit: {
+        findMany: (
+          ...args: Parameters<typeof prisma.unit.findMany>
+        ) => ReturnType<typeof prisma.unit.findMany>;
+      };
+    },
+    year: number,
+  ): Promise<number[]> {
+    const units = (await db.unit.findMany({
+      where: {
+        trainingPeriods: {
+          some: { lectureYear: year },
+        },
+      },
+      select: {
+        id: true,
+        trainingPeriods: {
+          select: { lectureYear: true },
+        },
+      },
+    })) as unknown as Array<{
+      id: number;
+      trainingPeriods: Array<{ lectureYear: number | null }>;
+    }>;
+
+    return units
+      .filter(
+        (unit) =>
+          unit.trainingPeriods.length > 0 &&
+          unit.trainingPeriods.every((period) => period.lectureYear === year),
+      )
+      .map((unit) => unit.id);
+  }
+
   /**
    * 사용 가능한 연도 목록 조회
    */
   async getAvailableYears(): Promise<number[]> {
-    const result = await prisma.unit.findMany({
+    const result = await prisma.trainingPeriod.findMany({
+      where: { lectureYear: { not: null } },
       select: { lectureYear: true },
       distinct: ['lectureYear'],
       orderBy: { lectureYear: 'desc' },
     });
-    return result.map((r) => r.lectureYear);
+    return result.map((r) => r.lectureYear).filter((year): year is number => year !== null);
   }
 
   /**
@@ -78,7 +115,7 @@ export class DataBackupService {
    * 교육기간별 보고 데이터 조회
    */
   private async getReportData(year: number | null): Promise<PeriodReportData[]> {
-    const whereCondition = year ? { unit: { lectureYear: year } } : {};
+    const whereCondition = year ? { lectureYear: year } : {};
 
     const periods = await prisma.trainingPeriod.findMany({
       where: whereCondition,
@@ -95,7 +132,7 @@ export class DataBackupService {
           },
         },
       },
-      orderBy: [{ unit: { lectureYear: 'asc' } }, { id: 'asc' }],
+      orderBy: [{ lectureYear: 'asc' }, { id: 'asc' }],
     });
 
     // 교육기간별로 정렬 (첫 번째 스케줄 날짜 기준)
@@ -442,18 +479,18 @@ export class DataBackupService {
   async getDeletePreview(year: number | null) {
     const currentYear = new Date().getFullYear();
 
+    const unitIdsToDelete = year ? await this.getUnitIdsToDeleteByYear(prisma, year) : null;
+
     // 연도별 필터 조건
-    const unitWhere = year ? { lectureYear: year } : {};
-    const periodWhere = year ? { unit: { lectureYear: year } } : {};
-    const locationWhere = year ? { trainingPeriod: { unit: { lectureYear: year } } } : {};
-    const scheduleWhere = year ? { trainingPeriod: { unit: { lectureYear: year } } } : {};
+    const unitWhere = year ? { id: { in: unitIdsToDelete || [] } } : {};
+    const periodWhere = year ? { lectureYear: year } : {};
+    const locationWhere = year ? { trainingPeriod: { lectureYear: year } } : {};
+    const scheduleWhere = year ? { trainingPeriod: { lectureYear: year } } : {};
     const scheduleLocationWhere = year
-      ? { schedule: { trainingPeriod: { unit: { lectureYear: year } } } }
+      ? { schedule: { trainingPeriod: { lectureYear: year } } }
       : {};
-    const assignmentWhere = year
-      ? { UnitSchedule: { trainingPeriod: { unit: { lectureYear: year } } } }
-      : {};
-    const distanceWhere = year ? { unit: { lectureYear: year } } : {};
+    const assignmentWhere = year ? { UnitSchedule: { trainingPeriod: { lectureYear: year } } } : {};
+    const distanceWhere = year ? { unitId: { in: unitIdsToDelete || [] } } : {};
 
     // 날짜 기반 필터 (가용일, 메시지)
     let availabilityWhere = {};
@@ -504,7 +541,7 @@ export class DataBackupService {
 
   /**
    * 해당 연도 데이터 삭제
-   * 기준: Unit.lectureYear === year (year < currentYear만 허용)
+   * 기준: TrainingPeriod.lectureYear === year (year < currentYear만 허용)
    */
   async deleteDataByYear(year: number) {
     const currentYear = new Date().getFullYear();
@@ -522,6 +559,7 @@ export class DataBackupService {
         const endDateAvail = new Date(`${year + 1}-01-01T00:00:00.000Z`);
         const startDateDispatch = new Date(`${year}-01-01T00:00:00.000Z`);
         const endDateDispatch = new Date(`${year + 1}-01-01T00:00:00.000Z`);
+        const unitIdsToDelete = await this.getUnitIdsToDeleteByYear(tx, year);
 
         // 1. 강사 가용일 삭제 (날짜 기준)
         const availabilities = await tx.instructorAvailability.deleteMany({
@@ -533,19 +571,29 @@ export class DataBackupService {
           where: { createdAt: { gte: startDateDispatch, lt: endDateDispatch } },
         });
 
-        // 3. 강사-부대 거리 삭제
-        const distances = await tx.instructorUnitDistance.deleteMany({
-          where: { unit: { lectureYear: year } },
-        });
+        // 3. 삭제될 부대의 거리 수 집계
+        const deletedDistances = unitIdsToDelete.length
+          ? await tx.instructorUnitDistance.count({
+              where: { unitId: { in: unitIdsToDelete } },
+            })
+          : 0;
 
-        // 4. Unit 삭제 (Cascade로 나머지 자동 삭제)
-        const units = await tx.unit.deleteMany({
+        // 4. 해당 연도 교육기간 삭제
+        const trainingPeriods = await tx.trainingPeriod.deleteMany({
           where: { lectureYear: year },
         });
 
+        // 5. 교육기간이 남지 않은 Unit 삭제
+        const units = unitIdsToDelete.length
+          ? await tx.unit.deleteMany({
+              where: { id: { in: unitIdsToDelete } },
+            })
+          : { count: 0 };
+
         return {
+          deletedTrainingPeriods: trainingPeriods.count,
           deletedUnits: units.count,
-          deletedDistances: distances.count,
+          deletedDistances,
           deletedAvailabilities: availabilities.count,
           deletedDispatches: dispatches.count,
         };

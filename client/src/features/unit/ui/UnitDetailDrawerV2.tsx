@@ -159,7 +159,11 @@ export const UnitDetailDrawerV2 = ({
                 trainingPeriods={periodSummaries}
                 fullPeriodData={trainingPeriods.map((p) => ({
                   id: p.id,
+                  lectureYear: p.lectureYear,
                   name: p.name,
+                  startDate: p.startDate,
+                  endDate: p.endDate,
+                  excludedDates: p.excludedDates || [],
                   schedules: p.schedules,
                 }))}
                 onFormChange={handleBasicFormChange}

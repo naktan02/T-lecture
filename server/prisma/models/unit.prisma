@@ -11,7 +11,7 @@ enum MilitaryType {
 // 부대 (시설 기본 정보)
 model Unit {
   id            Int           @id @default(autoincrement())
-  lectureYear   Int           @map("강의년도") // 2025, 2026 등 - 년도별 백업/삭제용
+  lectureYear   Int           @map("강의년도") // 기존 호환용 메타데이터 (운영 기준은 TrainingPeriod.lectureYear)
   name          String        @unique @map("부대명")
   unitType      MilitaryType? @map("군구분")
   wideArea      String?       @map("광역")
@@ -34,9 +34,12 @@ model Unit {
 
 // 교육기간 (정규교육, 추가교육 등)
 model TrainingPeriod {
-  id     Int    @id @default(autoincrement())
-  unitId Int    @map("부대id")
-  name   String @map("교육기간명") // "정규교육", "추가교육 1차" 등
+  id          Int       @id @default(autoincrement())
+  unitId      Int       @map("부대id")
+  lectureYear Int?      @map("강의년도") // 시작일 기준 연도
+  startDate   DateTime? @map("교육시작일") @db.Date
+  endDate     DateTime? @map("교육종료일") @db.Date
+  name        String    @map("교육기간명") // "정규교육", "추가교육 1차" 등
 
   // 근무시간
   workStartTime  DateTime? @map("근무시작시간")
@@ -67,6 +70,8 @@ model TrainingPeriod {
   schedules UnitSchedule[]
 
   @@index([unitId], map: "교육기간_unitId_idx")
+  @@index([lectureYear], map: "교육기간_lectureYear_idx")
+  @@index([unitId, lectureYear], map: "교육기간_unitId_lectureYear_idx")
   @@map("교육기간")
 }
 
