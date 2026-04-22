@@ -46,7 +46,7 @@ function toMilitaryType(value: unknown): MilitaryType | undefined {
 // 부대 생성용 데이터 변환 (CreateUnitDto 역할)
 // 주의: trainingPeriods는 createUnitWithTrainingPeriod에서 별도로 처리하므로 여기서는 제외
 // Unit은 기본 정보만 저장. 시간/날짜 필드들은 TrainingPeriod에 있음
-// @param overrideLectureYear 엑셀 메타데이터에서 추출한 강의년도 (우선 적용)
+// @param overrideLectureYear 엑셀 메타데이터에서 추출한 강의년도 (Unit 호환용 메타데이터)
 export function toCreateUnitDto(
   rawData: RawUnitData = {},
   overrideLectureYear?: number,

@@ -583,7 +583,7 @@ export class ReportService {
     // 총 진행 목표: 해당 연도의 전체 일정(UnitSchedule) 수
     const totalYearPlanned = await prisma.unitSchedule.count({
       where: {
-        trainingPeriod: { unit: { lectureYear: year } },
+        trainingPeriod: { lectureYear: year },
       },
     });
 
@@ -594,7 +594,7 @@ export class ReportService {
     const cumulativeActual = await prisma.unitSchedule.count({
       where: {
         date: { lt: today },
-        trainingPeriod: { unit: { lectureYear: year } },
+        trainingPeriod: { lectureYear: year },
       },
     });
 

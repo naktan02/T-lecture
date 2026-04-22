@@ -409,6 +409,13 @@ async function createUnit(
     const trainingPeriod = await prisma.trainingPeriod.create({
       data: {
         unitId: unit.id,
+        lectureYear: startDate.getUTCFullYear(),
+        startDate: new Date(
+          Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()),
+        ),
+        endDate: new Date(
+          Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate()),
+        ),
         name,
         workStartTime: new Date('1970-01-01T09:00:00Z'),
         workEndTime: new Date('1970-01-01T18:00:00Z'),

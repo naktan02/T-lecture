@@ -297,8 +297,8 @@ export interface CreateTrainingPeriodInput {
   hasCateredMeals?: boolean;
   hasHallLodging?: boolean;
   allowsPhoneBeforeAfter?: boolean;
-  startDate?: string;
-  endDate?: string;
+  startDate: string;
+  endDate: string;
   excludedDates?: string[];
   locations?: Array<{
     originalPlace?: string;

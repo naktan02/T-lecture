@@ -56,7 +56,12 @@ export interface UnitSchedule {
 export interface TrainingPeriod {
   id?: number;
   unitId: number;
+  lectureYear?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
   name: string; // "정규교육", "추가교육 1차" 등
+  locationCount?: number;
+  scheduleCount?: number;
 
   // 근무시간
   workStartTime?: string | null;
@@ -153,8 +158,8 @@ export interface CreateTrainingPeriodPayload {
   hasCateredMeals?: boolean;
   hasHallLodging?: boolean;
   allowsPhoneBeforeAfter?: boolean;
-  startDate?: string;
-  endDate?: string;
+  startDate: string;
+  endDate: string;
   excludedDates?: string[];
 }
 
@@ -167,6 +172,13 @@ export function getPeriodDateRange(period: TrainingPeriod): {
   start: string | null;
   end: string | null;
 } {
+  if (period.startDate || period.endDate) {
+    return {
+      start: period.startDate || null,
+      end: period.endDate || null,
+    };
+  }
+
   const dates = (period.schedules || [])
     .map((s) => s.date)
     .filter((d): d is string => !!d)
