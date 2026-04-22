@@ -29,6 +29,7 @@ export type AggregateTrainingPeriod = {
 export type TrainingPeriodAvgAggregateOutputType = {
   id: number | null
   unitId: number | null
+  lectureYear: number | null
   initialPeriodDays: number | null
   initialLocationCount: number | null
 }
@@ -36,6 +37,7 @@ export type TrainingPeriodAvgAggregateOutputType = {
 export type TrainingPeriodSumAggregateOutputType = {
   id: number | null
   unitId: number | null
+  lectureYear: number | null
   initialPeriodDays: number | null
   initialLocationCount: number | null
 }
@@ -43,6 +45,9 @@ export type TrainingPeriodSumAggregateOutputType = {
 export type TrainingPeriodMinAggregateOutputType = {
   id: number | null
   unitId: number | null
+  lectureYear: number | null
+  startDate: Date | null
+  endDate: Date | null
   name: string | null
   workStartTime: Date | null
   workEndTime: Date | null
@@ -62,6 +67,9 @@ export type TrainingPeriodMinAggregateOutputType = {
 export type TrainingPeriodMaxAggregateOutputType = {
   id: number | null
   unitId: number | null
+  lectureYear: number | null
+  startDate: Date | null
+  endDate: Date | null
   name: string | null
   workStartTime: Date | null
   workEndTime: Date | null
@@ -81,6 +89,9 @@ export type TrainingPeriodMaxAggregateOutputType = {
 export type TrainingPeriodCountAggregateOutputType = {
   id: number
   unitId: number
+  lectureYear: number
+  startDate: number
+  endDate: number
   name: number
   workStartTime: number
   workEndTime: number
@@ -103,6 +114,7 @@ export type TrainingPeriodCountAggregateOutputType = {
 export type TrainingPeriodAvgAggregateInputType = {
   id?: true
   unitId?: true
+  lectureYear?: true
   initialPeriodDays?: true
   initialLocationCount?: true
 }
@@ -110,6 +122,7 @@ export type TrainingPeriodAvgAggregateInputType = {
 export type TrainingPeriodSumAggregateInputType = {
   id?: true
   unitId?: true
+  lectureYear?: true
   initialPeriodDays?: true
   initialLocationCount?: true
 }
@@ -117,6 +130,9 @@ export type TrainingPeriodSumAggregateInputType = {
 export type TrainingPeriodMinAggregateInputType = {
   id?: true
   unitId?: true
+  lectureYear?: true
+  startDate?: true
+  endDate?: true
   name?: true
   workStartTime?: true
   workEndTime?: true
@@ -136,6 +152,9 @@ export type TrainingPeriodMinAggregateInputType = {
 export type TrainingPeriodMaxAggregateInputType = {
   id?: true
   unitId?: true
+  lectureYear?: true
+  startDate?: true
+  endDate?: true
   name?: true
   workStartTime?: true
   workEndTime?: true
@@ -155,6 +174,9 @@ export type TrainingPeriodMaxAggregateInputType = {
 export type TrainingPeriodCountAggregateInputType = {
   id?: true
   unitId?: true
+  lectureYear?: true
+  startDate?: true
+  endDate?: true
   name?: true
   workStartTime?: true
   workEndTime?: true
@@ -262,6 +284,9 @@ export type TrainingPeriodGroupByArgs<ExtArgs extends runtime.Types.Extensions.I
 export type TrainingPeriodGroupByOutputType = {
   id: number
   unitId: number
+  lectureYear: number | null
+  startDate: Date | null
+  endDate: Date | null
   name: string
   workStartTime: Date | null
   workEndTime: Date | null
@@ -305,6 +330,9 @@ export type TrainingPeriodWhereInput = {
   NOT?: Prisma.TrainingPeriodWhereInput | Prisma.TrainingPeriodWhereInput[]
   id?: Prisma.IntFilter<"TrainingPeriod"> | number
   unitId?: Prisma.IntFilter<"TrainingPeriod"> | number
+  lectureYear?: Prisma.IntNullableFilter<"TrainingPeriod"> | number | null
+  startDate?: Prisma.DateTimeNullableFilter<"TrainingPeriod"> | Date | string | null
+  endDate?: Prisma.DateTimeNullableFilter<"TrainingPeriod"> | Date | string | null
   name?: Prisma.StringFilter<"TrainingPeriod"> | string
   workStartTime?: Prisma.DateTimeNullableFilter<"TrainingPeriod"> | Date | string | null
   workEndTime?: Prisma.DateTimeNullableFilter<"TrainingPeriod"> | Date | string | null
@@ -328,6 +356,9 @@ export type TrainingPeriodWhereInput = {
 export type TrainingPeriodOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   unitId?: Prisma.SortOrder
+  lectureYear?: Prisma.SortOrderInput | Prisma.SortOrder
+  startDate?: Prisma.SortOrderInput | Prisma.SortOrder
+  endDate?: Prisma.SortOrderInput | Prisma.SortOrder
   name?: Prisma.SortOrder
   workStartTime?: Prisma.SortOrderInput | Prisma.SortOrder
   workEndTime?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -354,6 +385,9 @@ export type TrainingPeriodWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.TrainingPeriodWhereInput[]
   NOT?: Prisma.TrainingPeriodWhereInput | Prisma.TrainingPeriodWhereInput[]
   unitId?: Prisma.IntFilter<"TrainingPeriod"> | number
+  lectureYear?: Prisma.IntNullableFilter<"TrainingPeriod"> | number | null
+  startDate?: Prisma.DateTimeNullableFilter<"TrainingPeriod"> | Date | string | null
+  endDate?: Prisma.DateTimeNullableFilter<"TrainingPeriod"> | Date | string | null
   name?: Prisma.StringFilter<"TrainingPeriod"> | string
   workStartTime?: Prisma.DateTimeNullableFilter<"TrainingPeriod"> | Date | string | null
   workEndTime?: Prisma.DateTimeNullableFilter<"TrainingPeriod"> | Date | string | null
@@ -377,6 +411,9 @@ export type TrainingPeriodWhereUniqueInput = Prisma.AtLeast<{
 export type TrainingPeriodOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   unitId?: Prisma.SortOrder
+  lectureYear?: Prisma.SortOrderInput | Prisma.SortOrder
+  startDate?: Prisma.SortOrderInput | Prisma.SortOrder
+  endDate?: Prisma.SortOrderInput | Prisma.SortOrder
   name?: Prisma.SortOrder
   workStartTime?: Prisma.SortOrderInput | Prisma.SortOrder
   workEndTime?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -405,6 +442,9 @@ export type TrainingPeriodScalarWhereWithAggregatesInput = {
   NOT?: Prisma.TrainingPeriodScalarWhereWithAggregatesInput | Prisma.TrainingPeriodScalarWhereWithAggregatesInput[]
   id?: Prisma.IntWithAggregatesFilter<"TrainingPeriod"> | number
   unitId?: Prisma.IntWithAggregatesFilter<"TrainingPeriod"> | number
+  lectureYear?: Prisma.IntNullableWithAggregatesFilter<"TrainingPeriod"> | number | null
+  startDate?: Prisma.DateTimeNullableWithAggregatesFilter<"TrainingPeriod"> | Date | string | null
+  endDate?: Prisma.DateTimeNullableWithAggregatesFilter<"TrainingPeriod"> | Date | string | null
   name?: Prisma.StringWithAggregatesFilter<"TrainingPeriod"> | string
   workStartTime?: Prisma.DateTimeNullableWithAggregatesFilter<"TrainingPeriod"> | Date | string | null
   workEndTime?: Prisma.DateTimeNullableWithAggregatesFilter<"TrainingPeriod"> | Date | string | null
@@ -423,6 +463,9 @@ export type TrainingPeriodScalarWhereWithAggregatesInput = {
 }
 
 export type TrainingPeriodCreateInput = {
+  lectureYear?: number | null
+  startDate?: Date | string | null
+  endDate?: Date | string | null
   name: string
   workStartTime?: Date | string | null
   workEndTime?: Date | string | null
@@ -446,6 +489,9 @@ export type TrainingPeriodCreateInput = {
 export type TrainingPeriodUncheckedCreateInput = {
   id?: number
   unitId: number
+  lectureYear?: number | null
+  startDate?: Date | string | null
+  endDate?: Date | string | null
   name: string
   workStartTime?: Date | string | null
   workEndTime?: Date | string | null
@@ -466,6 +512,9 @@ export type TrainingPeriodUncheckedCreateInput = {
 }
 
 export type TrainingPeriodUpdateInput = {
+  lectureYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -489,6 +538,9 @@ export type TrainingPeriodUpdateInput = {
 export type TrainingPeriodUncheckedUpdateInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   unitId?: Prisma.IntFieldUpdateOperationsInput | number
+  lectureYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -511,6 +563,9 @@ export type TrainingPeriodUncheckedUpdateInput = {
 export type TrainingPeriodCreateManyInput = {
   id?: number
   unitId: number
+  lectureYear?: number | null
+  startDate?: Date | string | null
+  endDate?: Date | string | null
   name: string
   workStartTime?: Date | string | null
   workEndTime?: Date | string | null
@@ -529,6 +584,9 @@ export type TrainingPeriodCreateManyInput = {
 }
 
 export type TrainingPeriodUpdateManyMutationInput = {
+  lectureYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -549,6 +607,9 @@ export type TrainingPeriodUpdateManyMutationInput = {
 export type TrainingPeriodUncheckedUpdateManyInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   unitId?: Prisma.IntFieldUpdateOperationsInput | number
+  lectureYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -587,6 +648,9 @@ export type StringNullableListFilter<$PrismaModel = never> = {
 export type TrainingPeriodCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   unitId?: Prisma.SortOrder
+  lectureYear?: Prisma.SortOrder
+  startDate?: Prisma.SortOrder
+  endDate?: Prisma.SortOrder
   name?: Prisma.SortOrder
   workStartTime?: Prisma.SortOrder
   workEndTime?: Prisma.SortOrder
@@ -607,6 +671,7 @@ export type TrainingPeriodCountOrderByAggregateInput = {
 export type TrainingPeriodAvgOrderByAggregateInput = {
   id?: Prisma.SortOrder
   unitId?: Prisma.SortOrder
+  lectureYear?: Prisma.SortOrder
   initialPeriodDays?: Prisma.SortOrder
   initialLocationCount?: Prisma.SortOrder
 }
@@ -614,6 +679,9 @@ export type TrainingPeriodAvgOrderByAggregateInput = {
 export type TrainingPeriodMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   unitId?: Prisma.SortOrder
+  lectureYear?: Prisma.SortOrder
+  startDate?: Prisma.SortOrder
+  endDate?: Prisma.SortOrder
   name?: Prisma.SortOrder
   workStartTime?: Prisma.SortOrder
   workEndTime?: Prisma.SortOrder
@@ -633,6 +701,9 @@ export type TrainingPeriodMaxOrderByAggregateInput = {
 export type TrainingPeriodMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   unitId?: Prisma.SortOrder
+  lectureYear?: Prisma.SortOrder
+  startDate?: Prisma.SortOrder
+  endDate?: Prisma.SortOrder
   name?: Prisma.SortOrder
   workStartTime?: Prisma.SortOrder
   workEndTime?: Prisma.SortOrder
@@ -652,6 +723,7 @@ export type TrainingPeriodMinOrderByAggregateInput = {
 export type TrainingPeriodSumOrderByAggregateInput = {
   id?: Prisma.SortOrder
   unitId?: Prisma.SortOrder
+  lectureYear?: Prisma.SortOrder
   initialPeriodDays?: Prisma.SortOrder
   initialLocationCount?: Prisma.SortOrder
 }
@@ -745,6 +817,9 @@ export type TrainingPeriodUpdateOneRequiredWithoutSchedulesNestedInput = {
 }
 
 export type TrainingPeriodCreateWithoutUnitInput = {
+  lectureYear?: number | null
+  startDate?: Date | string | null
+  endDate?: Date | string | null
   name: string
   workStartTime?: Date | string | null
   workEndTime?: Date | string | null
@@ -766,6 +841,9 @@ export type TrainingPeriodCreateWithoutUnitInput = {
 
 export type TrainingPeriodUncheckedCreateWithoutUnitInput = {
   id?: number
+  lectureYear?: number | null
+  startDate?: Date | string | null
+  endDate?: Date | string | null
   name: string
   workStartTime?: Date | string | null
   workEndTime?: Date | string | null
@@ -817,6 +895,9 @@ export type TrainingPeriodScalarWhereInput = {
   NOT?: Prisma.TrainingPeriodScalarWhereInput | Prisma.TrainingPeriodScalarWhereInput[]
   id?: Prisma.IntFilter<"TrainingPeriod"> | number
   unitId?: Prisma.IntFilter<"TrainingPeriod"> | number
+  lectureYear?: Prisma.IntNullableFilter<"TrainingPeriod"> | number | null
+  startDate?: Prisma.DateTimeNullableFilter<"TrainingPeriod"> | Date | string | null
+  endDate?: Prisma.DateTimeNullableFilter<"TrainingPeriod"> | Date | string | null
   name?: Prisma.StringFilter<"TrainingPeriod"> | string
   workStartTime?: Prisma.DateTimeNullableFilter<"TrainingPeriod"> | Date | string | null
   workEndTime?: Prisma.DateTimeNullableFilter<"TrainingPeriod"> | Date | string | null
@@ -835,6 +916,9 @@ export type TrainingPeriodScalarWhereInput = {
 }
 
 export type TrainingPeriodCreateWithoutLocationsInput = {
+  lectureYear?: number | null
+  startDate?: Date | string | null
+  endDate?: Date | string | null
   name: string
   workStartTime?: Date | string | null
   workEndTime?: Date | string | null
@@ -857,6 +941,9 @@ export type TrainingPeriodCreateWithoutLocationsInput = {
 export type TrainingPeriodUncheckedCreateWithoutLocationsInput = {
   id?: number
   unitId: number
+  lectureYear?: number | null
+  startDate?: Date | string | null
+  endDate?: Date | string | null
   name: string
   workStartTime?: Date | string | null
   workEndTime?: Date | string | null
@@ -892,6 +979,9 @@ export type TrainingPeriodUpdateToOneWithWhereWithoutLocationsInput = {
 }
 
 export type TrainingPeriodUpdateWithoutLocationsInput = {
+  lectureYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -914,6 +1004,9 @@ export type TrainingPeriodUpdateWithoutLocationsInput = {
 export type TrainingPeriodUncheckedUpdateWithoutLocationsInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   unitId?: Prisma.IntFieldUpdateOperationsInput | number
+  lectureYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -933,6 +1026,9 @@ export type TrainingPeriodUncheckedUpdateWithoutLocationsInput = {
 }
 
 export type TrainingPeriodCreateWithoutSchedulesInput = {
+  lectureYear?: number | null
+  startDate?: Date | string | null
+  endDate?: Date | string | null
   name: string
   workStartTime?: Date | string | null
   workEndTime?: Date | string | null
@@ -955,6 +1051,9 @@ export type TrainingPeriodCreateWithoutSchedulesInput = {
 export type TrainingPeriodUncheckedCreateWithoutSchedulesInput = {
   id?: number
   unitId: number
+  lectureYear?: number | null
+  startDate?: Date | string | null
+  endDate?: Date | string | null
   name: string
   workStartTime?: Date | string | null
   workEndTime?: Date | string | null
@@ -990,6 +1089,9 @@ export type TrainingPeriodUpdateToOneWithWhereWithoutSchedulesInput = {
 }
 
 export type TrainingPeriodUpdateWithoutSchedulesInput = {
+  lectureYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1012,6 +1114,9 @@ export type TrainingPeriodUpdateWithoutSchedulesInput = {
 export type TrainingPeriodUncheckedUpdateWithoutSchedulesInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   unitId?: Prisma.IntFieldUpdateOperationsInput | number
+  lectureYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1032,6 +1137,9 @@ export type TrainingPeriodUncheckedUpdateWithoutSchedulesInput = {
 
 export type TrainingPeriodCreateManyUnitInput = {
   id?: number
+  lectureYear?: number | null
+  startDate?: Date | string | null
+  endDate?: Date | string | null
   name: string
   workStartTime?: Date | string | null
   workEndTime?: Date | string | null
@@ -1050,6 +1158,9 @@ export type TrainingPeriodCreateManyUnitInput = {
 }
 
 export type TrainingPeriodUpdateWithoutUnitInput = {
+  lectureYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1071,6 +1182,9 @@ export type TrainingPeriodUpdateWithoutUnitInput = {
 
 export type TrainingPeriodUncheckedUpdateWithoutUnitInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  lectureYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1092,6 +1206,9 @@ export type TrainingPeriodUncheckedUpdateWithoutUnitInput = {
 
 export type TrainingPeriodUncheckedUpdateManyWithoutUnitInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  lectureYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  startDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  endDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   workStartTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   workEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1152,6 +1269,9 @@ export type TrainingPeriodCountOutputTypeCountSchedulesArgs<ExtArgs extends runt
 export type TrainingPeriodSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   unitId?: boolean
+  lectureYear?: boolean
+  startDate?: boolean
+  endDate?: boolean
   name?: boolean
   workStartTime?: boolean
   workEndTime?: boolean
@@ -1176,6 +1296,9 @@ export type TrainingPeriodSelect<ExtArgs extends runtime.Types.Extensions.Intern
 export type TrainingPeriodSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   unitId?: boolean
+  lectureYear?: boolean
+  startDate?: boolean
+  endDate?: boolean
   name?: boolean
   workStartTime?: boolean
   workEndTime?: boolean
@@ -1197,6 +1320,9 @@ export type TrainingPeriodSelectCreateManyAndReturn<ExtArgs extends runtime.Type
 export type TrainingPeriodSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   unitId?: boolean
+  lectureYear?: boolean
+  startDate?: boolean
+  endDate?: boolean
   name?: boolean
   workStartTime?: boolean
   workEndTime?: boolean
@@ -1218,6 +1344,9 @@ export type TrainingPeriodSelectUpdateManyAndReturn<ExtArgs extends runtime.Type
 export type TrainingPeriodSelectScalar = {
   id?: boolean
   unitId?: boolean
+  lectureYear?: boolean
+  startDate?: boolean
+  endDate?: boolean
   name?: boolean
   workStartTime?: boolean
   workEndTime?: boolean
@@ -1235,7 +1364,7 @@ export type TrainingPeriodSelectScalar = {
   initialLocationCount?: boolean
 }
 
-export type TrainingPeriodOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "unitId" | "name" | "workStartTime" | "workEndTime" | "lunchStartTime" | "lunchEndTime" | "officerName" | "officerPhone" | "officerEmail" | "isStaffLocked" | "excludedDates" | "hasCateredMeals" | "hasHallLodging" | "allowsPhoneBeforeAfter" | "initialPeriodDays" | "initialLocationCount", ExtArgs["result"]["trainingPeriod"]>
+export type TrainingPeriodOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "unitId" | "lectureYear" | "startDate" | "endDate" | "name" | "workStartTime" | "workEndTime" | "lunchStartTime" | "lunchEndTime" | "officerName" | "officerPhone" | "officerEmail" | "isStaffLocked" | "excludedDates" | "hasCateredMeals" | "hasHallLodging" | "allowsPhoneBeforeAfter" | "initialPeriodDays" | "initialLocationCount", ExtArgs["result"]["trainingPeriod"]>
 export type TrainingPeriodInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   unit?: boolean | Prisma.UnitDefaultArgs<ExtArgs>
   locations?: boolean | Prisma.TrainingPeriod$locationsArgs<ExtArgs>
@@ -1259,6 +1388,9 @@ export type $TrainingPeriodPayload<ExtArgs extends runtime.Types.Extensions.Inte
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
     unitId: number
+    lectureYear: number | null
+    startDate: Date | null
+    endDate: Date | null
     name: string
     workStartTime: Date | null
     workEndTime: Date | null
@@ -1702,6 +1834,9 @@ export interface Prisma__TrainingPeriodClient<T, Null = never, ExtArgs extends r
 export interface TrainingPeriodFieldRefs {
   readonly id: Prisma.FieldRef<"TrainingPeriod", 'Int'>
   readonly unitId: Prisma.FieldRef<"TrainingPeriod", 'Int'>
+  readonly lectureYear: Prisma.FieldRef<"TrainingPeriod", 'Int'>
+  readonly startDate: Prisma.FieldRef<"TrainingPeriod", 'DateTime'>
+  readonly endDate: Prisma.FieldRef<"TrainingPeriod", 'DateTime'>
   readonly name: Prisma.FieldRef<"TrainingPeriod", 'String'>
   readonly workStartTime: Prisma.FieldRef<"TrainingPeriod", 'DateTime'>
   readonly workEndTime: Prisma.FieldRef<"TrainingPeriod", 'DateTime'>

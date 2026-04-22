@@ -64,11 +64,31 @@ class UnitRepository {
         skip,
         take,
         orderBy: orderBy || { id: 'desc' },
-        include: {
+        select: {
+          id: true,
+          name: true,
+          unitType: true,
+          wideArea: true,
+          region: true,
+          addressDetail: true,
+          lat: true,
+          validationStatus: true,
+          validationMessage: true,
           trainingPeriods: {
-            include: {
-              locations: true,
-              schedules: true,
+            orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+            select: {
+              id: true,
+              unitId: true,
+              name: true,
+              lectureYear: true,
+              startDate: true,
+              endDate: true,
+              _count: {
+                select: {
+                  locations: true,
+                  schedules: true,
+                },
+              },
             },
           },
         },
@@ -230,6 +250,9 @@ class UnitRepository {
     unitData: Prisma.UnitCreateInput,
     periodData: {
       name: string;
+      lectureYear?: number | null;
+      startDate?: Date | null;
+      endDate?: Date | null;
       workStartTime?: Date | string | null;
       workEndTime?: Date | string | null;
       lunchStartTime?: Date | string | null;
@@ -237,6 +260,7 @@ class UnitRepository {
       officerName?: string | null;
       officerPhone?: string | null;
       officerEmail?: string | null;
+      excludedDates?: string[];
       hasCateredMeals?: boolean;
       hasHallLodging?: boolean;
       allowsPhoneBeforeAfter?: boolean;
@@ -271,6 +295,9 @@ class UnitRepository {
         trainingPeriods: {
           create: {
             name: periodData.name,
+            lectureYear: periodData.lectureYear ?? null,
+            startDate: periodData.startDate ?? null,
+            endDate: periodData.endDate ?? null,
             workStartTime: parseTime(periodData.workStartTime),
             workEndTime: parseTime(periodData.workEndTime),
             lunchStartTime: parseTime(periodData.lunchStartTime),
@@ -278,6 +305,7 @@ class UnitRepository {
             officerName: periodData.officerName || null,
             officerPhone: periodData.officerPhone || null,
             officerEmail: periodData.officerEmail || null,
+            excludedDates: periodData.excludedDates ?? [],
             hasCateredMeals: periodData.hasCateredMeals ?? false,
             hasHallLodging: periodData.hasHallLodging ?? false,
             allowsPhoneBeforeAfter: periodData.allowsPhoneBeforeAfter ?? false,
@@ -854,6 +882,9 @@ class UnitRepository {
     unitId: number,
     data: {
       name: string;
+      lectureYear?: number | null;
+      startDate?: Date | null;
+      endDate?: Date | null;
       workStartTime?: Date | null;
       workEndTime?: Date | null;
       lunchStartTime?: Date | null;
@@ -861,6 +892,7 @@ class UnitRepository {
       officerName?: string | null;
       officerPhone?: string | null;
       officerEmail?: string | null;
+      excludedDates?: string[];
       hasCateredMeals?: boolean;
       hasHallLodging?: boolean;
       allowsPhoneBeforeAfter?: boolean;
@@ -882,6 +914,9 @@ class UnitRepository {
       data: {
         unitId,
         name: data.name,
+        lectureYear: data.lectureYear ?? null,
+        startDate: data.startDate ?? null,
+        endDate: data.endDate ?? null,
         workStartTime: data.workStartTime,
         workEndTime: data.workEndTime,
         lunchStartTime: data.lunchStartTime,
@@ -889,6 +924,7 @@ class UnitRepository {
         officerName: data.officerName,
         officerPhone: data.officerPhone,
         officerEmail: data.officerEmail,
+        excludedDates: data.excludedDates ?? [],
         hasCateredMeals: data.hasCateredMeals ?? false,
         hasHallLodging: data.hasHallLodging ?? false,
         allowsPhoneBeforeAfter: data.allowsPhoneBeforeAfter ?? false,

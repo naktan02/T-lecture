@@ -46,19 +46,18 @@ interface UnitBasicInfoTabProps {
   // 전체 교육기간 데이터 (인라인 수정용)
   fullPeriodData?: {
     id?: number;
+    lectureYear?: number | null;
     name: string;
+    startDate?: string | null;
+    endDate?: string | null;
+    excludedDates?: string[];
     // 일정 데이터
     schedules: { id?: number; date: string }[];
   }[];
   onFormChange: (field: keyof UnitBasicFormData, value: string) => void;
   onAddressSave?: () => void;
   onBasicInfoSave?: () => Promise<void>;
-  onPeriodAdd: (
-    name: string,
-    startDate?: string,
-    endDate?: string,
-    excludedDates?: string[],
-  ) => void;
+  onPeriodAdd: (name: string, startDate: string, endDate: string, excludedDates?: string[]) => void;
   onPeriodRemove: (index: number) => void;
   onPeriodClick: (index: number) => void;
   // 인라인 수정 - 이름 변경
@@ -140,23 +139,36 @@ export const UnitBasicInfoTab = ({
     }
   };
 
-  const hydrateEditStateFromSchedules = (schedules: { date: string }[] = []) => {
-    const dates = schedules
+  const hydrateEditStateFromPeriod = (periodData?: {
+    startDate?: string | null;
+    endDate?: string | null;
+    excludedDates?: string[];
+    schedules?: { date: string }[];
+  }) => {
+    const dates = (periodData?.schedules || [])
       .map((s) => toDateInputValue(s.date))
       .filter(Boolean)
       .sort();
 
-    if (dates.length === 0) {
+    const start = periodData?.startDate ? toDateInputValue(periodData.startDate) : dates[0] || '';
+    const end = periodData?.endDate
+      ? toDateInputValue(periodData.endDate)
+      : dates[dates.length - 1] || '';
+
+    if (!start || !end) {
       setEditStartDate('');
       setEditEndDate('');
       setEditExcludedDates([]);
       return;
     }
 
-    const start = dates[0];
-    const end = dates[dates.length - 1];
     setEditStartDate(start);
     setEditEndDate(end);
+
+    if (periodData?.excludedDates && periodData.excludedDates.length > 0) {
+      setEditExcludedDates([...periodData.excludedDates].sort());
+      return;
+    }
 
     const scheduleDates = new Set(dates);
     const excluded: string[] = [];
@@ -208,11 +220,11 @@ export const UnitBasicInfoTab = ({
   };
 
   const handleSubmitPeriod = () => {
-    if (!newPeriodForm.name.trim()) return;
+    if (!newPeriodForm.name.trim() || !newPeriodForm.startDate || !newPeriodForm.endDate) return;
     onPeriodAdd(
       newPeriodForm.name.trim(),
-      newPeriodForm.startDate || undefined,
-      newPeriodForm.endDate || undefined,
+      newPeriodForm.startDate,
+      newPeriodForm.endDate,
       newPeriodForm.excludedDates.length > 0 ? newPeriodForm.excludedDates : undefined,
     );
     setNewPeriodForm(EMPTY_PERIOD_FORM);
@@ -406,7 +418,9 @@ export const UnitBasicInfoTab = ({
               </div>
               {/* 시작일 */}
               <div>
-                <label className="block text-xs text-gray-600 mb-1">시작일</label>
+                <label className="block text-xs text-gray-600 mb-1">
+                  시작일 <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="date"
                   value={newPeriodForm.startDate}
@@ -417,7 +431,9 @@ export const UnitBasicInfoTab = ({
               </div>
               {/* 종료일 */}
               <div>
-                <label className="block text-xs text-gray-600 mb-1">종료일</label>
+                <label className="block text-xs text-gray-600 mb-1">
+                  종료일 <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="date"
                   value={newPeriodForm.endDate}
@@ -480,7 +496,9 @@ export const UnitBasicInfoTab = ({
               <button
                 type="button"
                 onClick={handleSubmitPeriod}
-                disabled={!newPeriodForm.name.trim()}
+                disabled={
+                  !newPeriodForm.name.trim() || !newPeriodForm.startDate || !newPeriodForm.endDate
+                }
                 className="px-3 py-1.5 text-xs bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
               >
                 추가
@@ -515,7 +533,7 @@ export const UnitBasicInfoTab = ({
                         setExpandedPeriodIndex(null);
                       } else {
                         if (periodData) {
-                          hydrateEditStateFromSchedules(periodData.schedules);
+                          hydrateEditStateFromPeriod(periodData);
                         }
                         setExpandedPeriodIndex(index);
                       }
@@ -543,7 +561,7 @@ export const UnitBasicInfoTab = ({
                               setExpandedPeriodIndex(null);
                             } else {
                               if (periodData) {
-                                hydrateEditStateFromSchedules(periodData.schedules);
+                                hydrateEditStateFromPeriod(periodData);
                               }
                               setExpandedPeriodIndex(index);
                             }

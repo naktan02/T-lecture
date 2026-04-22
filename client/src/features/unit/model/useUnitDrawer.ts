@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState, useCallback, FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { unitApi, UnitData } from '../api/unitApi';
 import { showError, showSuccess, showWarning, showConfirm } from '../../../shared/utils/toast';
-import { generateDateRange, generateBusinessDateRange } from '../../../shared/utils/dateFormat';
+import { generateBusinessDateRange } from '../../../shared/utils/dateFormat';
 import {
   Unit,
   TrainingPeriod,
@@ -48,8 +48,8 @@ interface UseUnitDrawerReturn {
   handleBasicFormChange: (field: keyof UnitBasicFormData, value: string) => void;
   handleAddPeriod: (
     name: string,
-    startDate?: string,
-    endDate?: string,
+    startDate: string,
+    endDate: string,
     excludedDates?: string[],
   ) => Promise<void>;
   handleRemovePeriod: (index: number) => void;
@@ -102,6 +102,9 @@ const createEmptyLocation = (): LocationData => ({
 });
 
 const createEmptyPeriod = (name: string): TrainingPeriodFormData => ({
+  lectureYear: null,
+  startDate: null,
+  endDate: null,
   name,
   workStartTime: '09:00',
   workEndTime: '17:00',
@@ -116,6 +119,7 @@ const createEmptyPeriod = (name: string): TrainingPeriodFormData => ({
   locations: [],
   schedules: [],
   scheduleLocationMap: {},
+  excludedDates: [],
 });
 
 const toTimeString = (dateStr?: string | null): string => {
@@ -145,6 +149,11 @@ const mapLocationToForm = (loc: TrainingLocation): LocationData => ({
 
 const mapPeriodToForm = (period: TrainingPeriod): TrainingPeriodFormData => {
   const scheduleLocationMap: Record<number | string, ScheduleLocationFormData[]> = {};
+  const scheduleDates = (period.schedules || [])
+    .map((s) => toDateInputValue(s.date))
+    .filter(Boolean)
+    .sort();
+
   (period.schedules || []).forEach((s, idx) => {
     const key = s.id ?? `new-${idx}`;
     const locations = (s.scheduleLocations || []).map((sl) => ({
@@ -183,6 +192,13 @@ const mapPeriodToForm = (period: TrainingPeriod): TrainingPeriodFormData => {
 
   return {
     id: period.id,
+    lectureYear:
+      period.lectureYear ??
+      (period.startDate ? Number(toDateInputValue(period.startDate).slice(0, 4)) : null),
+    startDate: period.startDate ? toDateInputValue(period.startDate) : scheduleDates[0] || null,
+    endDate: period.endDate
+      ? toDateInputValue(period.endDate)
+      : scheduleDates[scheduleDates.length - 1] || null,
     name: period.name,
     workStartTime: toTimeString(period.workStartTime),
     workEndTime: toTimeString(period.workEndTime),
@@ -201,6 +217,7 @@ const mapPeriodToForm = (period: TrainingPeriod): TrainingPeriodFormData => {
     })),
     scheduleLocationMap,
     hasAssignments,
+    excludedDates: period.excludedDates || [],
   };
 };
 
@@ -380,8 +397,8 @@ export const useUnitDrawer = ({
       return {
         id: p.id,
         name: p.name,
-        startDate: dates[0] || null,
-        endDate: dates[dates.length - 1] || null,
+        startDate: p.startDate || dates[0] || null,
+        endDate: p.endDate || dates[dates.length - 1] || null,
         scheduleCount: p.schedules.length,
         locationCount: p.locations.length,
       };
@@ -394,14 +411,16 @@ export const useUnitDrawer = ({
   }, []);
 
   const handleAddPeriod = useCallback(
-    async (name: string, startDate?: string, endDate?: string, excludedDates?: string[]) => {
+    async (name: string, startDate: string, endDate: string, excludedDates?: string[]) => {
       const newPeriod = createEmptyPeriod(name);
+      newPeriod.startDate = startDate || null;
+      newPeriod.endDate = endDate || null;
+      newPeriod.lectureYear = startDate ? Number(startDate.slice(0, 4)) : null;
+      newPeriod.excludedDates = excludedDates || [];
 
       // 시작일과 종료일이 있으면 일정 자동 생성
-      if (startDate && endDate) {
-        const dates = generateBusinessDateRange(startDate, endDate, excludedDates || []);
-        newPeriod.schedules = dates.map((date) => ({ date }));
-      }
+      const dates = generateBusinessDateRange(startDate, endDate, excludedDates || []);
+      newPeriod.schedules = dates.map((date) => ({ date }));
 
       if (unitId) {
         try {
@@ -901,22 +920,10 @@ export const useUnitDrawer = ({
           const sortedSchedules = [...firstPeriod.schedules].sort((a, b) =>
             a.date.localeCompare(b.date),
           );
-          const educationStart = sortedSchedules[0]?.date?.split('T')[0] || null;
+          const educationStart = firstPeriod.startDate || sortedSchedules[0]?.date || null;
           const educationEnd =
-            sortedSchedules[sortedSchedules.length - 1]?.date?.split('T')[0] || null;
-
-          const scheduleDates = new Set(
-            sortedSchedules.map((s) => s.date?.split('T')[0] || s.date),
-          );
-          const excludedDates: string[] = [];
-          if (educationStart && educationEnd) {
-            const allDates = generateDateRange(educationStart, educationEnd);
-            allDates.forEach((dateStr) => {
-              if (!scheduleDates.has(dateStr)) {
-                excludedDates.push(dateStr);
-              }
-            });
-          }
+            firstPeriod.endDate || sortedSchedules[sortedSchedules.length - 1]?.date || null;
+          const excludedDates = firstPeriod.excludedDates || [];
 
           const registerPayload = {
             ...basicForm,
@@ -1003,10 +1010,23 @@ export const useUnitDrawer = ({
       }
 
       // 로컬 상태 업데이트
-      const dates = generateDateRange(startDate, endDate, excludedDates);
+      const dates = generateBusinessDateRange(startDate, endDate, excludedDates);
       const schedules = dates.map((date) => ({ date }));
 
-      setTrainingPeriods((prev) => prev.map((p, i) => (i === index ? { ...p, schedules } : p)));
+      setTrainingPeriods((prev) =>
+        prev.map((p, i) =>
+          i === index
+            ? {
+                ...p,
+                lectureYear: Number(startDate.slice(0, 4)),
+                startDate,
+                endDate,
+                excludedDates,
+                schedules,
+              }
+            : p,
+        ),
+      );
     },
     [trainingPeriods, updateScheduleMutation],
   );

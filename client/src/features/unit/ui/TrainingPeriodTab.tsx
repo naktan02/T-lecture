@@ -10,6 +10,9 @@ import { TimeDropdownPicker } from './TimeDropdownPicker';
 
 export interface TrainingPeriodFormData {
   id?: number;
+  lectureYear?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
   name: string;
 
   // 근무시간 (HH:mm 형식)
@@ -39,6 +42,7 @@ export interface TrainingPeriodFormData {
 
   // 배정여부 확인용 플래그 (삭제 방지 등 용도)
   hasAssignments?: boolean;
+  excludedDates?: string[];
 }
 
 export interface ScheduleLocationFormData {

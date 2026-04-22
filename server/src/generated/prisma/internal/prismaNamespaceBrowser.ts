@@ -309,6 +309,9 @@ export type UnitScalarFieldEnum = (typeof UnitScalarFieldEnum)[keyof typeof Unit
 export const TrainingPeriodScalarFieldEnum = {
   id: 'id',
   unitId: 'unitId',
+  lectureYear: 'lectureYear',
+  startDate: 'startDate',
+  endDate: 'endDate',
   name: 'name',
   workStartTime: 'workStartTime',
   workEndTime: 'workEndTime',

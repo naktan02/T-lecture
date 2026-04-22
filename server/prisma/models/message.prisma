@@ -74,7 +74,7 @@ model Notice {
   updatedAt     DateTime @updatedAt @map("수정일시")
 
   // 관계
-  author   User            @relation("NoticeAuthor", fields: [authorId], references: [id])
+  author      User               @relation("NoticeAuthor", fields: [authorId], references: [id])
   receipts    NoticeReceipt[]
   attachments NoticeAttachment[]
 

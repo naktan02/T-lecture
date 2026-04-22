@@ -128,7 +128,7 @@ export function buildUnitWhere(query: UnitQuery = {}): Prisma.UnitWhereInput {
     });
   }
 
-  // 날짜 범위 필터 (일정)
+  // 날짜 범위 필터 (교육기간)
   if (startDate || endDate) {
     const gte = startDate ? new Date(`${startDate}T00:00:00.000Z`) : undefined;
     const lte = endDate ? new Date(`${endDate}T23:59:59.999Z`) : undefined;
@@ -136,11 +136,8 @@ export function buildUnitWhere(query: UnitQuery = {}): Prisma.UnitWhereInput {
     conditions.push({
       trainingPeriods: {
         some: {
-          schedules: {
-            some: {
-              date: { gte, lte },
-            },
-          },
+          ...(gte ? { endDate: { gte } } : {}),
+          ...(lte ? { startDate: { lte } } : {}),
         },
       },
     });

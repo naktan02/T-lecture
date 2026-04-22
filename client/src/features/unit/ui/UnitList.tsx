@@ -70,6 +70,12 @@ const renderEducationPeriods = (periods?: TrainingPeriod[]): ReactElement => {
   );
 };
 
+const getLocationCount = (period?: TrainingPeriod): number => {
+  if (!period) return 0;
+  if (typeof period.locationCount === 'number') return period.locationCount;
+  return period.locations?.length || 0;
+};
+
 export const UnitList = ({
   units = [],
   selectedIds = [],
@@ -182,7 +188,7 @@ export const UnitList = ({
                           warningMessage = '주소 좌표를 찾을 수 없습니다. 주소를 확인해주세요.';
                         } else if (!unit.trainingPeriods || unit.trainingPeriods.length === 0) {
                           warningMessage = '교육기간이 없습니다.';
-                        } else if (unit.trainingPeriods[0]?.locations?.length === 0) {
+                        } else if (getLocationCount(unit.trainingPeriods[0]) === 0) {
                           warningMessage = '교육장소가 없습니다.';
                         }
 
