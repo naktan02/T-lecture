@@ -15,14 +15,15 @@ export const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
   const { isCompactViewport, isShortViewport, isVeryShortViewport } = useViewportHeightTier();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
+  const currentMonthKey = `${year}-${month.toString().padStart(2, '0')}`;
 
-  // ISO string -> Date -> year/month filter -> day number array
+  // YYYY-MM-DD 문자열을 Date로 재해석하지 않고 그대로 월/일을 읽는다.
   const selectedDays = useMemo(() => {
     return availableDates
-      .map((dateStr) => new Date(dateStr))
-      .filter((d) => d.getFullYear() === year && d.getMonth() + 1 === month)
-      .map((d) => d.getDate());
-  }, [availableDates, year, month]);
+      .filter((dateStr) => dateStr.slice(0, 7) === currentMonthKey)
+      .map((dateStr) => Number(dateStr.slice(8, 10)))
+      .filter((day) => Number.isInteger(day));
+  }, [availableDates, currentMonthKey]);
 
   const handleDateClick = (date: Date) => {
     // 로컬 시간 기준 YYYY-MM-DD 포맷팅

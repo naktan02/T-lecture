@@ -7,7 +7,7 @@ import { showWarning, showSuccess, showError } from '../../../shared/utils/toast
 import { userManagementApi, User, UpdateUserDto } from '../api/userManagementApi';
 import { getTeams, getVirtues, Team, Virtue } from '../../settings/settingsApi';
 import { AvailabilityCalendar } from './AvailabilityCalendar';
-import { formatPhoneNumber } from '../../../shared/utils';
+import { formatPhoneNumber, toDateOnlyString } from '../../../shared/utils';
 
 interface UserDetailDrawerProps {
   isOpen: boolean;
@@ -189,9 +189,9 @@ export const UserDetailDrawer = ({
 
     // 가용일 설정
     const dates =
-      target.instructor?.availabilities?.map(
-        (a) => new Date(a.availableOn).toISOString().split('T')[0],
-      ) || [];
+      target.instructor?.availabilities
+        ?.map((a) => toDateOnlyString(a.availableOn))
+        .filter((date): date is string => Boolean(date)) || [];
     setAvailableDates(dates);
     setChangedAvailabilityMonths(new Set());
 

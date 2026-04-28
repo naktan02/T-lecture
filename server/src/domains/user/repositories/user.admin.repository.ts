@@ -17,6 +17,13 @@ interface UserFilters {
   excludeSuperAdmins?: boolean; // 슈퍼 관리자 제외
 }
 
+const toDateOnlyUtcDate = (date: string) => new Date(`${date}T00:00:00.000Z`);
+
+const getMonthDateRangeUtc = (year: number, month: number) => ({
+  startDate: new Date(Date.UTC(year, month - 1, 1)),
+  endDateExclusive: new Date(Date.UTC(year, month, 1)),
+});
+
 class AdminRepository {
   // 전체 유저 목록 조회 (페이지네이션 지원)
   async findAll(
@@ -310,7 +317,7 @@ class AdminRepository {
           data: availabilities.map((date) => ({
             instructorId,
             // UTC 자정 기준으로 저장
-            availableOn: new Date(`${date}T00:00:00.000Z`),
+            availableOn: toDateOnlyUtcDate(date),
           })),
         });
       }
@@ -331,15 +338,17 @@ class AdminRepository {
       for (const monthUpdate of months) {
         const yearStr = monthUpdate.year.toString();
         const monthStr = monthUpdate.month.toString().padStart(2, '0');
-        const lastDay = new Date(monthUpdate.year, monthUpdate.month, 0).getDate();
-        const lastDayStr = lastDay.toString().padStart(2, '0');
+        const { startDate, endDateExclusive } = getMonthDateRangeUtc(
+          monthUpdate.year,
+          monthUpdate.month,
+        );
 
         await tx.instructorAvailability.deleteMany({
           where: {
             instructorId,
             availableOn: {
-              gte: new Date(`${yearStr}-${monthStr}-01T00:00:00.000Z`),
-              lte: new Date(`${yearStr}-${monthStr}-${lastDayStr}T00:00:00.000Z`),
+              gte: startDate,
+              lt: endDateExclusive,
             },
           },
         });
@@ -351,7 +360,7 @@ class AdminRepository {
               return {
                 instructorId,
                 // UTC 자정 기준으로 저장
-                availableOn: new Date(`${yearStr}-${monthStr}-${dayStr}T00:00:00.000Z`),
+                availableOn: toDateOnlyUtcDate(`${yearStr}-${monthStr}-${dayStr}`),
               };
             }),
           });

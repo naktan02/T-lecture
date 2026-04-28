@@ -73,8 +73,9 @@ export const useSchedule = (year: number, month: number) => {
 
     const days =
       availableDates
-        ?.filter((d) => d.isAvailable)
-        .map((d) => new Date(d.date).getDate())
+        ?.filter((d) => d.isAvailable && d.date.slice(0, 7) === currentMonthKey)
+        .map((d) => Number(d.date.slice(8, 10)))
+        .filter((day) => Number.isInteger(day))
         .sort((a, b) => a - b) || [];
 
     setDraftByMonth((prev) => ({

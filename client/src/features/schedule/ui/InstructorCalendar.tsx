@@ -324,6 +324,7 @@ export const InstructorCalendar: React.FC = () => {
               size="large"
               cutoffDate={cutoffDate}
               fitHeight={!shouldUseScrollLayout}
+              maxScale={0.9}
             />
           </div>
         </div>

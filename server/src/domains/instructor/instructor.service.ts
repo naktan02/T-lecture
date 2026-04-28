@@ -12,32 +12,31 @@ interface AvailabilityMonthUpdate {
 
 interface AvailabilityMonthReplacement {
   startDate: Date;
-  endDate: Date;
+  endDateExclusive: Date;
   newDates: string[];
 }
 
 const getLastDayOfMonth = (year: number, month: number) => new Date(year, month, 0).getDate();
+const getMonthStartUtc = (year: number, month: number) => new Date(Date.UTC(year, month - 1, 1));
+const getNextMonthStartUtc = (year: number, month: number) => new Date(Date.UTC(year, month, 1));
+const toDateOnlyString = (date: Date) => date.toISOString().split('T')[0];
 
 class InstructorService {
   // 근무 가능일 조회
   async getAvailabilities(instructorId: number, year: number, month: number) {
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
+    const startDate = getMonthStartUtc(year, month);
+    const endDateExclusive = getNextMonthStartUtc(year, month);
 
     const availabilities = await instructorRepository.findAvailabilities(
       instructorId,
       startDate,
-      endDate,
+      endDateExclusive,
     );
 
     // 클라이언트가 기대하는 형식으로 반환: { data: AvailabilityDate[] }
     const data = availabilities.map((item) => {
-      const date = item.availableOn;
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
       return {
-        date: `${year}-${month}-${day}`,
+        date: toDateOnlyString(item.availableOn),
         isAvailable: true,
       };
     });
@@ -159,8 +158,8 @@ class InstructorService {
     month: number,
     dates: number[],
   ): Promise<AvailabilityMonthReplacement> {
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
+    const startDate = getMonthStartUtc(year, month);
+    const endDateExclusive = getNextMonthStartUtc(year, month);
 
     // UTC 자정 기준 오늘 (과거 날짜 필터링용)
     const now = new Date();
@@ -184,20 +183,18 @@ class InstructorService {
     const activeAssignmentDates = await instructorRepository.findActiveAssignmentsDate(
       instructorId,
       startDate,
-      endDate,
+      endDateExclusive,
     );
 
     // 배정된 날짜 Set 생성
     const assignedDatesSet = new Set(
-      activeAssignmentDates
-        .filter((d): d is Date => d !== null)
-        .map((d) => d.toISOString().split('T')[0]),
+      activeAssignmentDates.filter((d): d is Date => d !== null).map(toDateOnlyString),
     );
 
     // 배정된 날짜를 새 가능일에 자동 추가 (배정 확정된 날짜는 제외 불가)
     const newDates = [...new Set([...newDatesStr, ...Array.from(assignedDatesSet)])];
 
-    return { startDate, endDate, newDates };
+    return { startDate, endDateExclusive, newDates };
   }
 
   // 통계 조회
