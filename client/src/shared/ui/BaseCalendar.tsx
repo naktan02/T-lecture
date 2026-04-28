@@ -212,10 +212,7 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
   };
 
   const scaleLimit = Math.min(1, Math.max(0.1, maxScale));
-  const scale =
-    fitHeight && containerSize.height > 0 && contentSize.height > 0
-      ? Math.min(scaleLimit, containerSize.height / contentSize.height)
-      : scaleLimit;
+  const scale = scaleLimit;
 
   const frameStyle: CSSProperties = {
     width: '100%',
