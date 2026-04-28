@@ -16,6 +16,14 @@ router.put(
   instructorController.updateAvailability,
 );
 
+// 근무 가능일 다중 월 수정
+router.put(
+  '/availability/bulk',
+  auth,
+  requireRole('INSTRUCTOR'),
+  instructorController.updateAvailabilityBulk,
+);
+
 // 내 통계 조회
 router.get('/stats', auth, requireRole('INSTRUCTOR'), instructorController.getMyStats);
 

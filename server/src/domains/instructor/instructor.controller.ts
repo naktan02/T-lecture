@@ -33,6 +33,16 @@ export const updateAvailability = asyncHandler(async (req: Request, res: Respons
   res.json(result);
 });
 
+export const updateAvailabilityBulk = asyncHandler(async (req: Request, res: Response) => {
+  const { months } = req.body;
+  if (!Array.isArray(months)) {
+    throw new AppError('months 배열이 필요합니다.', 400, 'VALIDATION_ERROR');
+  }
+
+  const result = await instructorService.updateAvailabilitiesBulk(req.user!.id, months);
+  res.json(result);
+});
+
 // 강사 통계 조회
 export const getMyStats = asyncHandler(async (req: Request, res: Response) => {
   const stats = await instructorService.getInstructorStats(req.user!.id);
@@ -63,6 +73,7 @@ export const requestPromotion = asyncHandler(async (req: Request, res: Response)
 module.exports = {
   getAvailability,
   updateAvailability,
+  updateAvailabilityBulk,
   getMyStats,
   updateVirtues,
   requestPromotion,

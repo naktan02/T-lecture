@@ -1,15 +1,23 @@
 // server/src/domains/instructor/instructor.repository.ts
 import prisma from '../../libs/prisma';
 
+interface AvailabilityMonthReplacement {
+  startDate: Date;
+  endDateExclusive: Date;
+  newDates: string[];
+}
+
+const toDateOnlyUtcDate = (date: string) => new Date(`${date}T00:00:00.000Z`);
+
 class InstructorRepository {
   // 특정 기간의 근무 가능일 조회
-  async findAvailabilities(instructorId: number, startDate: Date, endDate: Date) {
+  async findAvailabilities(instructorId: number, startDate: Date, endDateExclusive: Date) {
     return await prisma.instructorAvailability.findMany({
       where: {
         instructorId: Number(instructorId),
         availableOn: {
           gte: startDate,
-          lte: endDate,
+          lt: endDateExclusive,
         },
       },
       orderBy: { availableOn: 'asc' },
@@ -20,7 +28,7 @@ class InstructorRepository {
   async replaceAvailabilities(
     instructorId: number,
     startDate: Date,
-    endDate: Date,
+    endDateExclusive: Date,
     newDates: string[],
   ) {
     return await prisma.$transaction(async (tx) => {
@@ -28,7 +36,7 @@ class InstructorRepository {
       await tx.instructorAvailability.deleteMany({
         where: {
           instructorId: Number(instructorId),
-          availableOn: { gte: startDate, lte: endDate },
+          availableOn: { gte: startDate, lt: endDateExclusive },
         },
       });
 
@@ -37,9 +45,38 @@ class InstructorRepository {
         await tx.instructorAvailability.createMany({
           data: newDates.map((date) => ({
             instructorId: Number(instructorId),
-            availableOn: new Date(date),
+            availableOn: toDateOnlyUtcDate(date),
           })),
         });
+      }
+    });
+  }
+
+  async replaceAvailabilityMonths(
+    instructorId: number,
+    replacements: AvailabilityMonthReplacement[],
+  ) {
+    return await prisma.$transaction(async (tx) => {
+      const data: { instructorId: number; availableOn: Date }[] = [];
+
+      for (const replacement of replacements) {
+        await tx.instructorAvailability.deleteMany({
+          where: {
+            instructorId: Number(instructorId),
+            availableOn: { gte: replacement.startDate, lt: replacement.endDateExclusive },
+          },
+        });
+
+        data.push(
+          ...replacement.newDates.map((date) => ({
+            instructorId: Number(instructorId),
+            availableOn: toDateOnlyUtcDate(date),
+          })),
+        );
+      }
+
+      if (data.length > 0) {
+        await tx.instructorAvailability.createMany({ data });
       }
     });
   }
@@ -136,14 +173,14 @@ class InstructorRepository {
    * - 원래 AssignmentRepository에 있던 로직과 유사하지만,
    * '강사 근무 가능일 수정' 시 유효성 검사를 위해 이곳에 추가했습니다.
    */
-  async findActiveAssignmentsDate(instructorId: number, startDate: Date, endDate: Date) {
+  async findActiveAssignmentsDate(instructorId: number, startDate: Date, endDateExclusive: Date) {
     const assignments = await prisma.instructorUnitAssignment.findMany({
       where: {
         userId: Number(instructorId),
         // ✅ 수정: 'Active' 대신 유효한 상태 ['Pending', 'Accepted'] 사용
         state: { in: ['Pending', 'Accepted'] },
         UnitSchedule: {
-          date: { gte: startDate, lte: endDate },
+          date: { gte: startDate, lt: endDateExclusive },
         },
       },
       include: { UnitSchedule: true },

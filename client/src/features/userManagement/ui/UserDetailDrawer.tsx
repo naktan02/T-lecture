@@ -7,7 +7,7 @@ import { showWarning, showSuccess, showError } from '../../../shared/utils/toast
 import { userManagementApi, User, UpdateUserDto } from '../api/userManagementApi';
 import { getTeams, getVirtues, Team, Virtue } from '../../settings/settingsApi';
 import { AvailabilityCalendar } from './AvailabilityCalendar';
-import { formatPhoneNumber } from '../../../shared/utils';
+import { formatPhoneNumber, toDateOnlyString } from '../../../shared/utils';
 
 interface UserDetailDrawerProps {
   isOpen: boolean;
@@ -74,6 +74,21 @@ const CATEGORY_OPTIONS = [
 
 // 팀과 덕목은 API에서 동적으로 로드
 
+const getMonthKeyFromDateString = (dateStr: string) => dateStr.slice(0, 7);
+
+const buildAvailabilityMonthUpdates = (dates: string[], changedMonths: Set<string>) =>
+  Array.from(changedMonths).map((key) => {
+    const [year, month] = key.split('-').map(Number);
+    return {
+      year,
+      month,
+      dates: dates
+        .filter((dateStr) => getMonthKeyFromDateString(dateStr) === key)
+        .map((dateStr) => Number(dateStr.slice(8, 10)))
+        .sort((a, b) => a - b),
+    };
+  });
+
 type TabKey = 'basic' | 'instructor' | 'availability' | 'admin';
 
 export const UserDetailDrawer = ({
@@ -89,6 +104,9 @@ export const UserDetailDrawer = ({
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM);
   const [selectedVirtues, setSelectedVirtues] = useState<number[]>([]);
   const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [changedAvailabilityMonths, setChangedAvailabilityMonths] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [originalAddress, setOriginalAddress] = useState<string>(''); // 원본 주소 저장
 
   const userId = initialUser?.id;
@@ -136,6 +154,7 @@ export const UserDetailDrawer = ({
       setFormData({ ...INITIAL_FORM });
       setSelectedVirtues([]);
       setAvailableDates([]);
+      setChangedAvailabilityMonths(new Set());
       setActiveTab('basic');
       return;
     }
@@ -170,10 +189,11 @@ export const UserDetailDrawer = ({
 
     // 가용일 설정
     const dates =
-      target.instructor?.availabilities?.map(
-        (a) => new Date(a.availableOn).toISOString().split('T')[0],
-      ) || [];
+      target.instructor?.availabilities
+        ?.map((a) => toDateOnlyString(a.availableOn))
+        .filter((date): date is string => Boolean(date)) || [];
     setAvailableDates(dates);
+    setChangedAvailabilityMonths(new Set());
 
     setActiveTab('basic');
   }, [isOpen, initialUser, boundUser]);
@@ -201,6 +221,15 @@ export const UserDetailDrawer = ({
     setSelectedVirtues((prev) =>
       prev.includes(virtueId) ? prev.filter((id) => id !== virtueId) : [...prev, virtueId],
     );
+  };
+
+  const handleAvailabilityChange = (nextDates: string[], changedDate: string) => {
+    setAvailableDates(nextDates);
+    setChangedAvailabilityMonths((prev) => {
+      const next = new Set(prev);
+      next.add(getMonthKeyFromDateString(changedDate));
+      return next;
+    });
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -248,17 +277,11 @@ export const UserDetailDrawer = ({
       }
       // profileCompleted는 백엔드에서 자동 계산되므로 제외
 
-      // 근무 가능일 비교 및 업데이트
-      const originalDates =
-        boundUser.instructor.availabilities?.map(
-          (a) => new Date(a.availableOn).toISOString().split('T')[0],
-        ) || [];
-      const isDatesChanged =
-        originalDates.length !== availableDates.length ||
-        !availableDates.every((d) => originalDates.includes(d));
-
-      if (isDatesChanged) {
-        updateData.availabilities = availableDates;
+      if (changedAvailabilityMonths.size > 0) {
+        updateData.availabilityMonths = buildAvailabilityMonthUpdates(
+          availableDates,
+          changedAvailabilityMonths,
+        );
       }
 
       const originalVirtueIds = (boundUser.instructor.virtues || [])
@@ -670,7 +693,7 @@ export const UserDetailDrawer = ({
 
                   <AvailabilityCalendar
                     availableDates={availableDates}
-                    onDateChange={setAvailableDates}
+                    onDateChange={handleAvailabilityChange}
                   />
                 </section>
 

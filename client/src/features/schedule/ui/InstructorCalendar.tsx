@@ -10,8 +10,16 @@ export const InstructorCalendar: React.FC = () => {
   const [month, setMonth] = useState(today.getMonth() + 1);
   const { isCompactViewport, isShortViewport, isVeryShortViewport } = useViewportHeightTier();
 
-  const { selectedDays, toggleDay, saveSchedule, refresh, loading, fetching, cutoffDate } =
-    useSchedule(year, month);
+  const {
+    selectedDays,
+    toggleDay,
+    saveSchedule,
+    refresh,
+    dirtyMonthCount,
+    loading,
+    fetching,
+    cutoffDate,
+  } = useSchedule(year, month);
 
   const shouldUseScrollLayout = isVeryShortViewport;
   const rootLayoutClass = shouldUseScrollLayout ? 'min-h-full' : 'flex-1 min-h-0';
@@ -149,7 +157,7 @@ export const InstructorCalendar: React.FC = () => {
                       : 'px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm'
               }`}
             >
-              {loading ? '저장...' : '저장'}
+              {loading ? '저장...' : dirtyMonthCount > 0 ? `저장 (${dirtyMonthCount})` : '저장'}
             </button>
           </div>
         </div>
@@ -316,6 +324,7 @@ export const InstructorCalendar: React.FC = () => {
               size="large"
               cutoffDate={cutoffDate}
               fitHeight={!shouldUseScrollLayout}
+              maxScale={0.9}
             />
           </div>
         </div>

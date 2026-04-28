@@ -14,6 +14,12 @@ export interface UpdateAvailabilityResponse {
   message: string;
 }
 
+export interface AvailabilityMonthUpdate {
+  year: number;
+  month: number;
+  dates: number[];
+}
+
 /**
  * 강사 가용 일정 조회
  * GET /api/v1/instructor/availability?year=2024&month=12
@@ -40,6 +46,21 @@ export const updateAvailability = async (
   const res = await apiClient('/api/v1/instructor/availability', {
     method: 'PUT',
     body: JSON.stringify({ year, month, dates }),
+  });
+  return res.json();
+};
+
+/**
+ * 강사 가용 일정 다중 월 수정
+ * PUT /api/v1/instructor/availability/bulk
+ * body: { months: [{ year, month, dates }] }
+ */
+export const updateAvailabilityBulk = async (
+  months: AvailabilityMonthUpdate[],
+): Promise<UpdateAvailabilityResponse> => {
+  const res = await apiClient('/api/v1/instructor/availability/bulk', {
+    method: 'PUT',
+    body: JSON.stringify({ months }),
   });
   return res.json();
 };

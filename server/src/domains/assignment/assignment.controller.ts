@@ -8,6 +8,16 @@ import logger from '../../config/logger';
 import { measureOperation } from '../../common/utils/operationMonitor';
 import { runExclusiveOperation } from '../../common/utils/operationLock';
 
+const ASSIGNMENT_WRITE_LOCK_KEY = 'assignment:write';
+const ASSIGNMENT_WRITE_CONFLICT_MESSAGE =
+  '배정 저장 작업이 이미 진행 중입니다. 잠시 후 다시 시도해주세요.';
+
+function runAssignmentWriteOperation<T>(fn: () => Promise<T>): Promise<T> {
+  return runExclusiveOperation(ASSIGNMENT_WRITE_LOCK_KEY, fn, {
+    conflictMessage: ASSIGNMENT_WRITE_CONFLICT_MESSAGE,
+  });
+}
+
 // [근무 이력 조회] (Confirmed + Past)
 export const getWorkHistory = asyncHandler(async (req: Request, res: Response) => {
   const history = await assignmentService.getWorkHistory(req.user!.id);
@@ -35,10 +45,8 @@ export const respondAssignment = asyncHandler(async (req: Request, res: Response
     response,
   });
 
-  const result = await assignmentService.respondToAssignment(
-    req.user!.id,
-    unitScheduleId,
-    response,
+  const result = await runAssignmentWriteOperation(() =>
+    assignmentService.respondToAssignment(req.user!.id, unitScheduleId, response),
   );
 
   res.json(result);
@@ -125,7 +133,7 @@ export const autoAssign = asyncHandler(async (req: Request, res: Response) => {
   });
 
   const result = await runExclusiveOperation(
-    'assignment:auto-assign',
+    ASSIGNMENT_WRITE_LOCK_KEY,
     () =>
       measureOperation(
         'assignment.autoAssign',
@@ -148,7 +156,7 @@ export const autoAssign = asyncHandler(async (req: Request, res: Response) => {
         },
       ),
     {
-      conflictMessage: '자동배정 작업이 이미 실행 중입니다. 잠시 후 다시 시도해주세요.',
+      conflictMessage: ASSIGNMENT_WRITE_CONFLICT_MESSAGE,
     },
   );
 
@@ -163,11 +171,13 @@ export const cancelAssignmentByAdmin = asyncHandler(async (req: Request, res: Re
   if (!Number.isFinite(unitScheduleId) || !Number.isFinite(instructorId)) {
     throw new AppError('unitScheduleId와 instructorId가 필요합니다.', 400, 'VALIDATION_ERROR');
   }
-  const result = await assignmentService.cancelAssignment(
-    req.user!.id,
-    req.user!.isAdmin ? (req.user!.adminLevel === 'SUPER' ? 'SUPER' : 'ADMIN') : 'USER',
-    instructorId,
-    unitScheduleId,
+  const result = await runAssignmentWriteOperation(() =>
+    assignmentService.cancelAssignment(
+      req.user!.id,
+      req.user!.isAdmin ? (req.user!.adminLevel === 'SUPER' ? 'SUPER' : 'ADMIN') : 'USER',
+      instructorId,
+      unitScheduleId,
+    ),
   );
 
   res.json(result);
@@ -231,7 +241,9 @@ export const bulkSaveAssignments = asyncHandler(async (req: Request, res: Respon
     count: assignments.length,
   });
 
-  const result = await assignmentService.bulkSaveAssignments(assignments);
+  const result = await runAssignmentWriteOperation(() =>
+    assignmentService.bulkSaveAssignments(assignments),
+  );
   res.status(200).json(result);
 });
 
@@ -248,7 +260,9 @@ export const toggleStaffLock = asyncHandler(async (req: Request, res: Response) 
     throw new AppError('isStaffLocked(boolean)가 필요합니다.', 400, 'VALIDATION_ERROR');
   }
 
-  const result = await assignmentService.toggleStaffLock(trainingPeriodId, isStaffLocked);
+  const result = await runAssignmentWriteOperation(() =>
+    assignmentService.toggleStaffLock(trainingPeriodId, isStaffLocked),
+  );
   res.status(200).json({
     message: isStaffLocked ? '인원고정 설정 완료' : '인원고정 해제',
     result,
@@ -285,13 +299,15 @@ export const batchUpdate = asyncHandler(async (req: Request, res: Response) => {
     stateChanges = [],
   } = changes;
 
-  const result = await assignmentService.batchUpdateAssignments({
-    add,
-    remove,
-    roleChanges,
-    staffLockChanges,
-    stateChanges,
-  });
+  const result = await runAssignmentWriteOperation(() =>
+    assignmentService.batchUpdateAssignments({
+      add,
+      remove,
+      roleChanges,
+      staffLockChanges,
+      stateChanges,
+    }),
+  );
 
   res.status(200).json({
     message: '일괄 저장 완료',
@@ -312,10 +328,12 @@ export const updateRole = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('role은 Head, Supervisor, 또는 null이어야 합니다.', 400, 'VALIDATION_ERROR');
   }
 
-  const result = await assignmentService.updateRoleForTrainingPeriod(
-    Number(trainingPeriodId),
-    Number(instructorId),
-    role || null,
+  const result = await runAssignmentWriteOperation(() =>
+    assignmentService.updateRoleForTrainingPeriod(
+      Number(trainingPeriodId),
+      Number(instructorId),
+      role || null,
+    ),
   );
 
   res.status(200).json({

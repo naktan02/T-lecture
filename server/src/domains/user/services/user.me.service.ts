@@ -4,7 +4,9 @@ import distanceService from '../../distance/distance.service';
 import dispatchService from '../../dispatch/dispatch.service';
 import inquiryRepository from '../../inquiry/inquiry.repository';
 import noticeRepository from '../../notice/notice.repository';
+import authRepository from '../../auth/auth.repository';
 import userRepository from '../repositories/user.repository';
+import { normalizeEmail } from '../../../common/utils/email';
 
 interface UpdateProfileDto {
   name?: string;
@@ -99,6 +101,17 @@ class UserMeService {
       throw new AppError('category는 문자열이어야 합니다.', 400, 'INVALID_CATEGORY');
     }
 
+    if (
+      virtueIds !== undefined &&
+      (!Array.isArray(virtueIds) ||
+        virtueIds.some((virtueId) => typeof virtueId !== 'number' || !Number.isInteger(virtueId)))
+    ) {
+      throw new AppError('virtueIds는 정수 배열이어야 합니다.', 400, 'INVALID_INPUT');
+    }
+
+    const normalizedEmail = email !== undefined ? normalizeEmail(email) : undefined;
+    const uniqueVirtueIds = virtueIds !== undefined ? [...new Set(virtueIds)] : undefined;
+
     const hasAnyField =
       name !== undefined ||
       phoneNumber !== undefined ||
@@ -127,13 +140,20 @@ class UserMeService {
       userData.userphoneNumber = phoneNumber;
     }
 
-    if (email !== undefined && email !== user.userEmail) {
-      const existingUser = await userRepository.findByEmail(email);
+    let shouldDeleteEmailVerifications = false;
+    if (normalizedEmail !== undefined && normalizedEmail !== user.userEmail) {
+      const existingUser = await userRepository.findByEmail(normalizedEmail);
       if (existingUser) {
         throw new AppError('이미 사용 중인 이메일입니다.', 409, 'EMAIL_EXISTS');
       }
 
-      userData.userEmail = email;
+      const verification = await authRepository.findLatestVerification(normalizedEmail);
+      if (!verification || !verification.isVerified) {
+        throw new AppError('이메일 인증이 완료되지 않았습니다.', 400, 'EMAIL_NOT_VERIFIED');
+      }
+
+      userData.userEmail = normalizedEmail;
+      shouldDeleteEmailVerifications = true;
     }
 
     if (password !== undefined && password.trim() !== '') {
@@ -168,10 +188,10 @@ class UserMeService {
         instructorData.locationDetail = locationDetail === '' ? null : locationDetail;
       }
 
-      if (virtueIds !== undefined && Array.isArray(virtueIds)) {
+      if (uniqueVirtueIds !== undefined) {
         instructorData.virtues = {
           deleteMany: {},
-          create: virtueIds.map((id) => ({
+          create: uniqueVirtueIds.map((id) => ({
             virtue: { connect: { id } },
           })),
         };
@@ -188,6 +208,10 @@ class UserMeService {
     }
 
     const updatedUser = await userRepository.update(userId, userData, instructorData);
+    if (shouldDeleteEmailVerifications && normalizedEmail) {
+      await authRepository.deleteVerifications(normalizedEmail);
+    }
+
     const { password: persistedPassword, ...result } = updatedUser;
     void persistedPassword;
 

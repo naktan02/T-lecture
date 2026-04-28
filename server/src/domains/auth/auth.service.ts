@@ -9,6 +9,7 @@ import instructorRepository from '../instructor/instructor.repository';
 import userRepository from '../user/repositories/user.repository';
 import authRepository from './auth.repository';
 import { JwtPayload, RegisterDto } from '../../types/auth.types';
+import { normalizeEmail } from '../../common/utils/email';
 
 const SALT_ROUNDS = 10;
 const ACCESS_TOKEN_EXPIRES_IN = '1h';
@@ -22,17 +23,19 @@ function createInvalidLoginError(): AppError {
 
 class AuthService {
   async sendVerificationCode(email: string) {
+    const normalizedEmail = normalizeEmail(email);
     const code = crypto.randomInt(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 3 * 60 * 1000);
 
-    await authRepository.createVerificationCode(email, code, expiresAt);
-    await sendAuthCode(email, code);
+    await authRepository.createVerificationCode(normalizedEmail, code, expiresAt);
+    await sendAuthCode(normalizedEmail, code);
 
     return { message: '인증번호가 발송되었습니다. (유효시간 3분)' };
   }
 
   async sendPasswordResetCode(email: string) {
-    const user = await userRepository.findByEmail(email);
+    const normalizedEmail = normalizeEmail(email);
+    const user = await userRepository.findByEmail(normalizedEmail);
 
     if (!user) {
       return { message: '입력한 이메일로 계정이 존재하면 인증번호가 발송됩니다. (유효시간 3분)' };
@@ -41,14 +44,15 @@ class AuthService {
     const code = crypto.randomInt(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 3 * 60 * 1000);
 
-    await authRepository.createVerificationCode(email, code, expiresAt);
-    await sendAuthCode(email, code);
+    await authRepository.createVerificationCode(normalizedEmail, code, expiresAt);
+    await sendAuthCode(normalizedEmail, code);
 
     return { message: '입력한 이메일로 계정이 존재하면 인증번호가 발송됩니다. (유효시간 3분)' };
   }
 
   async verifyCode(email: string, code: string) {
-    const record = await authRepository.findLatestVerification(email);
+    const normalizedEmail = normalizeEmail(email);
+    const record = await authRepository.findLatestVerification(normalizedEmail);
 
     if (!record) {
       throw new AppError('인증 요청 기록이 없습니다.', 404, 'VERIFICATION_NOT_FOUND');
@@ -80,17 +84,18 @@ class AuthService {
       teamId,
       category,
     } = dto;
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!email || !password || !name || !phoneNumber) {
+    if (!password || !name || !phoneNumber) {
       throw new AppError('필수 정보가 누락되었습니다.', 400, 'VALIDATION_ERROR');
     }
 
-    const existingUser = await userRepository.findByEmail(email);
+    const existingUser = await userRepository.findByEmail(normalizedEmail);
     if (existingUser) {
       throw new AppError('이미 가입한 이메일입니다.', 409, 'EMAIL_ALREADY_EXISTS');
     }
 
-    const verification = await authRepository.findLatestVerification(email);
+    const verification = await authRepository.findLatestVerification(normalizedEmail);
     if (!verification || !verification.isVerified) {
       throw new AppError('이메일 인증이 완료되지 않았습니다.', 400, 'EMAIL_NOT_VERIFIED');
     }
@@ -98,7 +103,7 @@ class AuthService {
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
     const commonData = {
-      userEmail: email,
+      userEmail: normalizedEmail,
       password: hashedPassword,
       name,
       userphoneNumber: phoneNumber,
@@ -138,7 +143,7 @@ class AuthService {
       newUser = await userRepository.createUser(commonData);
     }
 
-    await authRepository.deleteVerifications(email);
+    await authRepository.deleteVerifications(normalizedEmail);
 
     return {
       id: newUser.id,
@@ -150,7 +155,8 @@ class AuthService {
   }
 
   async login(email: string, password: string, deviceId: string | null, rememberMe = true) {
-    const user = await userRepository.findByEmail(email);
+    const normalizedEmail = normalizeEmail(email);
+    const user = await userRepository.findByEmail(normalizedEmail);
     const passwordHash = user?.password || DUMMY_PASSWORD_HASH;
     const ok = await bcrypt.compare(password, passwordHash);
 
@@ -261,6 +267,7 @@ class AuthService {
   }
 
   async resetPassword(email: string, code: string, newPassword: string) {
+    const normalizedEmail = normalizeEmail(email);
     const invalidResetError = () =>
       new AppError(
         '이메일 또는 인증번호가 올바르지 않거나 만료되었습니다.',
@@ -268,10 +275,10 @@ class AuthService {
         'VERIFICATION_FAILED',
       );
 
-    const user = await userRepository.findByEmail(email);
+    const user = await userRepository.findByEmail(normalizedEmail);
     if (!user) throw invalidResetError();
 
-    const record = await authRepository.findLatestVerification(email);
+    const record = await authRepository.findLatestVerification(normalizedEmail);
     if (!record || record.code !== code) {
       throw invalidResetError();
     }
@@ -282,7 +289,7 @@ class AuthService {
 
     const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
     await userRepository.updatePassword(user.id, hashedPassword);
-    await authRepository.deleteVerifications(email);
+    await authRepository.deleteVerifications(normalizedEmail);
 
     return { message: '비밀번호가 성공적으로 변경되었습니다.' };
   }

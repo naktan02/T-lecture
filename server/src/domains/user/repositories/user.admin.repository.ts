@@ -17,6 +17,13 @@ interface UserFilters {
   excludeSuperAdmins?: boolean; // 슈퍼 관리자 제외
 }
 
+const toDateOnlyUtcDate = (date: string) => new Date(`${date}T00:00:00.000Z`);
+
+const getMonthDateRangeUtc = (year: number, month: number) => ({
+  startDate: new Date(Date.UTC(year, month - 1, 1)),
+  endDateExclusive: new Date(Date.UTC(year, month, 1)),
+});
+
 class AdminRepository {
   // 전체 유저 목록 조회 (페이지네이션 지원)
   async findAll(
@@ -310,12 +317,56 @@ class AdminRepository {
           data: availabilities.map((date) => ({
             instructorId,
             // UTC 자정 기준으로 저장
-            availableOn: new Date(`${date}T00:00:00.000Z`),
+            availableOn: toDateOnlyUtcDate(date),
           })),
         });
       }
 
       // 결과 반환 (생성된 목록 조회)
+      return await tx.instructorAvailability.findMany({
+        where: { instructorId },
+        orderBy: { availableOn: 'asc' },
+      });
+    });
+  }
+
+  async updateInstructorAvailabilityMonths(
+    instructorId: number,
+    months: Array<{ year: number; month: number; dates: number[] }>,
+  ) {
+    return await prisma.$transaction(async (tx) => {
+      for (const monthUpdate of months) {
+        const yearStr = monthUpdate.year.toString();
+        const monthStr = monthUpdate.month.toString().padStart(2, '0');
+        const { startDate, endDateExclusive } = getMonthDateRangeUtc(
+          monthUpdate.year,
+          monthUpdate.month,
+        );
+
+        await tx.instructorAvailability.deleteMany({
+          where: {
+            instructorId,
+            availableOn: {
+              gte: startDate,
+              lt: endDateExclusive,
+            },
+          },
+        });
+
+        if (monthUpdate.dates.length > 0) {
+          await tx.instructorAvailability.createMany({
+            data: monthUpdate.dates.map((day) => {
+              const dayStr = day.toString().padStart(2, '0');
+              return {
+                instructorId,
+                // UTC 자정 기준으로 저장
+                availableOn: toDateOnlyUtcDate(`${yearStr}-${monthStr}-${dayStr}`),
+              };
+            }),
+          });
+        }
+      }
+
       return await tx.instructorAvailability.findMany({
         where: { instructorId },
         orderBy: { availableOn: 'asc' },

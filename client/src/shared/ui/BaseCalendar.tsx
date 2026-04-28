@@ -1,7 +1,7 @@
 // shared/ui/BaseCalendar.tsx
 // 캘린더 공통 로직과 스타일을 제공하는 베이스 컴포넌트
 
-import React, { CSSProperties, useEffect, useRef, useState } from 'react';
+import React, { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { isHoliday, isSaturday, isSunday, isSelectableDate, formatDay } from '../utils';
@@ -43,6 +43,7 @@ export interface BaseCalendarProps {
   size?: 'small' | 'medium' | 'large';
   cutoffDate?: string | null; // 잠금 기준일 (YYYY-MM-DD, 이 날짜이전포함 수정 불가)
   fitHeight?: boolean;
+  maxScale?: number;
 }
 
 export const BaseCalendar: React.FC<BaseCalendarProps> = ({
@@ -56,11 +57,13 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
   size = 'medium',
   cutoffDate,
   fitHeight = false,
+  maxScale = 1,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState<ElementSize>({ width: 0, height: 0 });
   const [contentSize, setContentSize] = useState<ElementSize>({ width: 0, height: 0 });
+  const activeStartDate = useMemo(() => new Date(year, month - 1, 1), [year, month]);
 
   const cutoffUTC = cutoffDate ? new Date(cutoffDate + 'T00:00:00Z') : null;
 
@@ -157,6 +160,7 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
   const getTileDisabled = ({ date, view }: CalendarTileArgs): boolean => {
     if (view !== 'month') return false;
     if (readOnly) return true;
+    if (date.getFullYear() !== year || date.getMonth() + 1 !== month) return true;
     if (!isSelectableDate(date)) return true;
     if (cutoffUTC) {
       const dateUTC = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -207,10 +211,8 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
     },
   };
 
-  const scale =
-    fitHeight && containerSize.height > 0 && contentSize.height > 0
-      ? Math.min(1, containerSize.height / contentSize.height)
-      : 1;
+  const scaleLimit = Math.min(1, Math.max(0.1, maxScale));
+  const scale = scaleLimit;
 
   const frameStyle: CSSProperties = {
     width: '100%',
@@ -492,6 +494,7 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
         <div style={frameStyle}>
           <div ref={contentRef} style={contentStyle}>
             <Calendar
+              activeStartDate={activeStartDate}
               onClickDay={handleClickDay}
               onActiveStartDateChange={handleActiveStartDateChange}
               tileClassName={getTileClassName}
