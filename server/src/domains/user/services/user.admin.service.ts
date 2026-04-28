@@ -153,6 +153,8 @@ function assertValidStatusOrUndefined(status: unknown): void {
   }
 }
 
+const getLastDayOfMonth = (year: number, month: number) => new Date(year, month, 0).getDate();
+
 interface UpdateUserDto {
   name?: string;
   phoneNumber?: string;
@@ -167,6 +169,7 @@ interface UpdateUserDto {
   restrictedArea?: string | null;
   virtueIds?: number[];
   availabilities?: string[];
+  availabilityMonths?: Array<{ year: number; month: number; dates: number[] }>;
 }
 
 interface PaginationQuery extends QueryFilters {
@@ -226,6 +229,7 @@ class AdminService {
       restrictedArea,
       virtueIds,
       availabilities,
+      availabilityMonths,
     } = dto;
 
     assertStringOrUndefined(name, 'name');
@@ -249,6 +253,10 @@ class AdminService {
       throw new AppError('availabilities는 배열이어야 합니다.', 400, 'INVALID_INPUT');
     }
 
+    if (availabilityMonths !== undefined && !Array.isArray(availabilityMonths)) {
+      throw new AppError('availabilityMonths는 배열이어야 합니다.', 400, 'INVALID_INPUT');
+    }
+
     if (
       virtueIds !== undefined &&
       (!Array.isArray(virtueIds) ||
@@ -260,6 +268,10 @@ class AdminService {
     const uniqueVirtueIds = virtueIds !== undefined ? [...new Set(virtueIds)] : undefined;
     const uniqueAvailabilities =
       availabilities !== undefined ? [...new Set(availabilities)] : undefined;
+    const normalizedAvailabilityMonths =
+      availabilityMonths !== undefined
+        ? this.normalizeAvailabilityMonths(availabilityMonths)
+        : undefined;
 
     const validCategories = ['Main', 'Co', 'Assistant', 'Practicum'] as const;
     if (
@@ -297,7 +309,8 @@ class AdminService {
       generation !== undefined ||
       restrictedArea !== undefined ||
       virtueIds !== undefined ||
-      availabilities !== undefined;
+      availabilities !== undefined ||
+      availabilityMonths !== undefined;
 
     if (!hasAny) {
       throw new AppError('수정할 값이 없습니다.', 400, 'NO_UPDATE_FIELDS');
@@ -379,7 +392,20 @@ class AdminService {
       instructorData.profileCompleted = isProfileComplete;
 
       // 근무 가능일 업데이트 (별도 트랜잭션 처리)
-      if (uniqueAvailabilities !== undefined && user.instructor) {
+      if (normalizedAvailabilityMonths !== undefined && user.instructor) {
+        await runExclusiveOperation(
+          `instructor-availability:${user.instructor.userId}`,
+          () =>
+            adminRepository.updateInstructorAvailabilityMonths(
+              user.instructor!.userId,
+              normalizedAvailabilityMonths,
+            ),
+          {
+            conflictMessage:
+              '해당 강사의 근무 가능일 저장이 이미 진행 중입니다. 잠시 후 다시 시도해주세요.',
+          },
+        );
+      } else if (uniqueAvailabilities !== undefined && user.instructor) {
         await runExclusiveOperation(
           `instructor-availability:${user.instructor.userId}`,
           () =>
@@ -399,6 +425,42 @@ class AdminService {
 
     // 업데이트된 availabilities를 포함해서 반환하기 위해 다시 조회 (선택사항)
     return await this.getUserById(id);
+  }
+
+  private normalizeAvailabilityMonths(
+    months: Array<{ year: number; month: number; dates: number[] }>,
+  ): Array<{ year: number; month: number; dates: number[] }> {
+    const byMonth = new Map<string, { year: number; month: number; dates: number[] }>();
+
+    months.forEach((item) => {
+      const year = Number(item?.year);
+      const month = Number(item?.month);
+      const dates = item?.dates;
+      const normalizedDates = Array.isArray(dates) ? dates.map(Number) : [];
+      const lastDay =
+        Number.isInteger(year) && Number.isInteger(month) && month >= 1 && month <= 12
+          ? getLastDayOfMonth(year, month)
+          : 31;
+
+      if (
+        !Number.isInteger(year) ||
+        !Number.isInteger(month) ||
+        month < 1 ||
+        month > 12 ||
+        !Array.isArray(dates) ||
+        normalizedDates.some((day) => !Number.isInteger(day) || day < 1 || day > lastDay)
+      ) {
+        throw new AppError('잘못된 근무 가능일 월 데이터입니다.', 400, 'INVALID_INPUT');
+      }
+
+      byMonth.set(`${year}-${month}`, {
+        year,
+        month,
+        dates: [...new Set(normalizedDates)],
+      });
+    });
+
+    return Array.from(byMonth.values());
   }
 
   // 유저 식제 (모든 회원은 소프트 삭제 - 상태를 INACTIVE로 변경)

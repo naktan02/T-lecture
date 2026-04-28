@@ -323,6 +323,48 @@ class AdminRepository {
     });
   }
 
+  async updateInstructorAvailabilityMonths(
+    instructorId: number,
+    months: Array<{ year: number; month: number; dates: number[] }>,
+  ) {
+    return await prisma.$transaction(async (tx) => {
+      for (const monthUpdate of months) {
+        const yearStr = monthUpdate.year.toString();
+        const monthStr = monthUpdate.month.toString().padStart(2, '0');
+        const lastDay = new Date(monthUpdate.year, monthUpdate.month, 0).getDate();
+        const lastDayStr = lastDay.toString().padStart(2, '0');
+
+        await tx.instructorAvailability.deleteMany({
+          where: {
+            instructorId,
+            availableOn: {
+              gte: new Date(`${yearStr}-${monthStr}-01T00:00:00.000Z`),
+              lte: new Date(`${yearStr}-${monthStr}-${lastDayStr}T00:00:00.000Z`),
+            },
+          },
+        });
+
+        if (monthUpdate.dates.length > 0) {
+          await tx.instructorAvailability.createMany({
+            data: monthUpdate.dates.map((day) => {
+              const dayStr = day.toString().padStart(2, '0');
+              return {
+                instructorId,
+                // UTC 자정 기준으로 저장
+                availableOn: new Date(`${yearStr}-${monthStr}-${dayStr}T00:00:00.000Z`),
+              };
+            }),
+          });
+        }
+      }
+
+      return await tx.instructorAvailability.findMany({
+        where: { instructorId },
+        orderBy: { availableOn: 'asc' },
+      });
+    });
+  }
+
   // 강사 역할 부여 (Instructor 레코드 생성)
   async createInstructor(userId: number | string) {
     return await prisma.instructor.create({

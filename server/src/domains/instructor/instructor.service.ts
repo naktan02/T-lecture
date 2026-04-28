@@ -4,6 +4,20 @@ import AppError from '../../common/errors/AppError';
 import { PROMOTION_CRITERIA } from '../../common/constants/constants';
 import { runExclusiveOperation } from '../../common/utils/operationLock';
 
+interface AvailabilityMonthUpdate {
+  year: number;
+  month: number;
+  dates: number[];
+}
+
+interface AvailabilityMonthReplacement {
+  startDate: Date;
+  endDate: Date;
+  newDates: string[];
+}
+
+const getLastDayOfMonth = (year: number, month: number) => new Date(year, month, 0).getDate();
+
 class InstructorService {
   // 근무 가능일 조회
   async getAvailabilities(instructorId: number, year: number, month: number) {
@@ -41,57 +55,21 @@ class InstructorService {
     const normalizedInstructorId = Number(instructorId);
     const normalizedYear = Number(year);
     const normalizedMonth = Number(month);
+    const [monthUpdate] = this.normalizeAvailabilityMonthUpdates([
+      { year: normalizedYear, month: normalizedMonth, dates },
+    ]);
 
     return await runExclusiveOperation(
       `instructor-availability:${normalizedInstructorId}`,
       async () => {
-        const startDate = new Date(normalizedYear, normalizedMonth - 1, 1);
-        const endDate = new Date(normalizedYear, normalizedMonth, 0);
-
-        // UTC 자정 기준 오늘 (과거 날짜 필터링용)
-        const now = new Date();
-        const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-
-        // 과거 날짜 필터링 (오늘 포함 이전 제외)
-        const futureDates = dates.filter((day) => {
-          const targetDateUTC = new Date(Date.UTC(normalizedYear, normalizedMonth - 1, day));
-          return targetDateUTC > todayUTC;
-        });
-
-        // day 숫자를 날짜 문자열로 변환 (로컬 시간대 유지)
-        const newDatesStr = futureDates.map((day) => {
-          const year_str = normalizedYear.toString();
-          const month_str = normalizedMonth.toString().padStart(2, '0');
-          const day_str = day.toString().padStart(2, '0');
-          return `${year_str}-${month_str}-${day_str}`;
-        });
-
-        // 해당 기간에 이미 배정된(Active) 날짜 조회
-        const activeAssignmentDates = await instructorRepository.findActiveAssignmentsDate(
+        const replacement = await this.buildAvailabilityMonthReplacement(
           normalizedInstructorId,
-          startDate,
-          endDate,
+          monthUpdate.year,
+          monthUpdate.month,
+          monthUpdate.dates,
         );
 
-        // 배정된 날짜 Set 생성
-        const assignedDatesSet = new Set(
-          activeAssignmentDates
-            .filter((d): d is Date => d !== null)
-            .map((d) => d.toISOString().split('T')[0]),
-        );
-
-        // 배정된 날짜를 새 가능일에 자동 추가 (배정 확정된 날짜는 제외 불가)
-        const newDatesWithAssigned = [
-          ...new Set([...newDatesStr, ...Array.from(assignedDatesSet)]),
-        ];
-
-        // 업데이트 수행
-        await instructorRepository.replaceAvailabilities(
-          normalizedInstructorId,
-          startDate,
-          endDate,
-          newDatesWithAssigned,
-        );
+        await instructorRepository.replaceAvailabilityMonths(normalizedInstructorId, [replacement]);
 
         return { message: '근무 가능일이 저장되었습니다.' };
       },
@@ -99,6 +77,127 @@ class InstructorService {
         conflictMessage: '근무 가능일 저장이 이미 진행 중입니다. 잠시 후 다시 시도해주세요.',
       },
     );
+  }
+
+  async updateAvailabilitiesBulk(instructorId: number, months: AvailabilityMonthUpdate[]) {
+    const normalizedInstructorId = Number(instructorId);
+    const normalizedMonths = this.normalizeAvailabilityMonthUpdates(months);
+
+    if (normalizedMonths.length === 0) {
+      throw new AppError('저장할 근무 가능일 월 목록이 없습니다.', 400, 'VALIDATION_ERROR');
+    }
+
+    return await runExclusiveOperation(
+      `instructor-availability:${normalizedInstructorId}`,
+      async () => {
+        const replacements: AvailabilityMonthReplacement[] = [];
+
+        for (const monthUpdate of normalizedMonths) {
+          replacements.push(
+            await this.buildAvailabilityMonthReplacement(
+              normalizedInstructorId,
+              monthUpdate.year,
+              monthUpdate.month,
+              monthUpdate.dates,
+            ),
+          );
+        }
+
+        await instructorRepository.replaceAvailabilityMonths(normalizedInstructorId, replacements);
+
+        return { message: '근무 가능일이 저장되었습니다.' };
+      },
+      {
+        conflictMessage: '근무 가능일 저장이 이미 진행 중입니다. 잠시 후 다시 시도해주세요.',
+      },
+    );
+  }
+
+  private normalizeAvailabilityMonthUpdates(
+    months: AvailabilityMonthUpdate[],
+  ): AvailabilityMonthUpdate[] {
+    if (!Array.isArray(months)) {
+      throw new AppError('months는 배열이어야 합니다.', 400, 'VALIDATION_ERROR');
+    }
+
+    const byMonth = new Map<string, AvailabilityMonthUpdate>();
+
+    months.forEach((item) => {
+      const year = Number(item?.year);
+      const month = Number(item?.month);
+      const dates = item?.dates;
+      const normalizedDates = Array.isArray(dates) ? dates.map(Number) : [];
+      const lastDay =
+        Number.isInteger(year) && Number.isInteger(month) && month >= 1 && month <= 12
+          ? getLastDayOfMonth(year, month)
+          : 31;
+
+      if (
+        !Number.isInteger(year) ||
+        !Number.isInteger(month) ||
+        month < 1 ||
+        month > 12 ||
+        !Array.isArray(dates) ||
+        normalizedDates.some((day) => !Number.isInteger(day) || day < 1 || day > lastDay)
+      ) {
+        throw new AppError('잘못된 근무 가능일 월 데이터입니다.', 400, 'VALIDATION_ERROR');
+      }
+
+      byMonth.set(`${year}-${month}`, {
+        year,
+        month,
+        dates: [...new Set(normalizedDates)],
+      });
+    });
+
+    return Array.from(byMonth.values());
+  }
+
+  private async buildAvailabilityMonthReplacement(
+    instructorId: number,
+    year: number,
+    month: number,
+    dates: number[],
+  ): Promise<AvailabilityMonthReplacement> {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+
+    // UTC 자정 기준 오늘 (과거 날짜 필터링용)
+    const now = new Date();
+    const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+
+    // 과거 날짜 필터링 (오늘 포함 이전 제외)
+    const futureDates = dates.filter((day) => {
+      const targetDateUTC = new Date(Date.UTC(year, month - 1, day));
+      return targetDateUTC > todayUTC;
+    });
+
+    // day 숫자를 날짜 문자열로 변환 (로컬 시간대 유지)
+    const newDatesStr = futureDates.map((day) => {
+      const year_str = year.toString();
+      const month_str = month.toString().padStart(2, '0');
+      const day_str = day.toString().padStart(2, '0');
+      return `${year_str}-${month_str}-${day_str}`;
+    });
+
+    // 해당 기간에 이미 배정된(Active) 날짜 조회
+    const activeAssignmentDates = await instructorRepository.findActiveAssignmentsDate(
+      instructorId,
+      startDate,
+      endDate,
+    );
+
+    // 배정된 날짜 Set 생성
+    const assignedDatesSet = new Set(
+      activeAssignmentDates
+        .filter((d): d is Date => d !== null)
+        .map((d) => d.toISOString().split('T')[0]),
+    );
+
+    // 배정된 날짜를 새 가능일에 자동 추가 (배정 확정된 날짜는 제외 불가)
+    const newDates = [...new Set([...newDatesStr, ...Array.from(assignedDatesSet)])];
+
+    return { startDate, endDate, newDates };
   }
 
   // 통계 조회

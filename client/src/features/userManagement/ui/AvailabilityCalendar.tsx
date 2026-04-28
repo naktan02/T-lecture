@@ -4,7 +4,7 @@ import { BaseCalendar } from '../../../shared/ui/BaseCalendar';
 
 interface AvailabilityCalendarProps {
   availableDates: string[]; // ['YYYY-MM-DD']
-  onDateChange: (newDates: string[]) => void;
+  onDateChange: (newDates: string[], changedDate: string) => void;
 }
 
 export const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
@@ -34,9 +34,12 @@ export const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
       String(date.getDate()).padStart(2, '0');
 
     if (availableDates.includes(dateStr)) {
-      onDateChange(availableDates.filter((d) => d !== dateStr));
+      onDateChange(
+        availableDates.filter((d) => d !== dateStr),
+        dateStr,
+      );
     } else {
-      onDateChange([...availableDates, dateStr].sort());
+      onDateChange([...availableDates, dateStr].sort(), dateStr);
     }
   };
 
