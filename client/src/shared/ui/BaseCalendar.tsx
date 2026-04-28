@@ -507,7 +507,6 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
               formatDay={(_, date) => formatDay(date)}
               calendarType="gregory"
               showNeighboringMonth={showNeighboringMonth}
-              showFixedNumberOfWeeks={fitHeight}
               value={null}
             />
           </div>
