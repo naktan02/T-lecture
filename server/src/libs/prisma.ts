@@ -8,9 +8,22 @@ import path from 'path';
 // ============================================
 // pg Pool 직접 생성 (연결 풀 옵션 제어)
 // ============================================
+const DEFAULT_DB_POOL_MAX = 9;
+
+function parsePositiveInteger(value: string | undefined, fallback: number): number {
+  if (!value) return fallback;
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
+
+  return parsed;
+}
+
+const dbPoolMax = parsePositiveInteger(process.env.DB_POOL_MAX, DEFAULT_DB_POOL_MAX);
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 15, // Aiven 무료티어 20개 제한 - Render(15) + 로컬/유지보수(5)
+  max: dbPoolMax, // Aiven Free(20 connections)에서는 Render 1 instance 기준 8~9 권장
   min: 0,
   idleTimeoutMillis: 60000,
   connectionTimeoutMillis: 30000,
