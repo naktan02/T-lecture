@@ -2,6 +2,7 @@
 import instructorRepository from './instructor.repository';
 import AppError from '../../common/errors/AppError';
 import { PROMOTION_CRITERIA } from '../../common/constants/constants';
+import { runExclusiveOperation } from '../../common/utils/operationLock';
 
 class InstructorService {
   // 근무 가능일 조회
@@ -37,53 +38,67 @@ class InstructorService {
     month: number,
     dates: number[], // day 숫자 배열 (1~31)
   ) {
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
+    const normalizedInstructorId = Number(instructorId);
+    const normalizedYear = Number(year);
+    const normalizedMonth = Number(month);
 
-    // UTC 자정 기준 오늘 (과거 날짜 필터링용)
-    const now = new Date();
-    const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    return await runExclusiveOperation(
+      `instructor-availability:${normalizedInstructorId}:${normalizedYear}-${normalizedMonth}`,
+      async () => {
+        const startDate = new Date(normalizedYear, normalizedMonth - 1, 1);
+        const endDate = new Date(normalizedYear, normalizedMonth, 0);
 
-    // 과거 날짜 필터링 (오늘 포함 이전 제외)
-    const futureDates = dates.filter((day) => {
-      const targetDateUTC = new Date(Date.UTC(year, month - 1, day));
-      return targetDateUTC > todayUTC;
-    });
+        // UTC 자정 기준 오늘 (과거 날짜 필터링용)
+        const now = new Date();
+        const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
 
-    // day 숫자를 날짜 문자열로 변환 (로컬 시간대 유지)
-    const newDatesStr = futureDates.map((day) => {
-      const year_str = year.toString();
-      const month_str = month.toString().padStart(2, '0');
-      const day_str = day.toString().padStart(2, '0');
-      return `${year_str}-${month_str}-${day_str}`;
-    });
+        // 과거 날짜 필터링 (오늘 포함 이전 제외)
+        const futureDates = dates.filter((day) => {
+          const targetDateUTC = new Date(Date.UTC(normalizedYear, normalizedMonth - 1, day));
+          return targetDateUTC > todayUTC;
+        });
 
-    // 해당 기간에 이미 배정된(Active) 날짜 조회
-    const activeAssignmentDates = await instructorRepository.findActiveAssignmentsDate(
-      instructorId,
-      startDate,
-      endDate,
+        // day 숫자를 날짜 문자열로 변환 (로컬 시간대 유지)
+        const newDatesStr = futureDates.map((day) => {
+          const year_str = normalizedYear.toString();
+          const month_str = normalizedMonth.toString().padStart(2, '0');
+          const day_str = day.toString().padStart(2, '0');
+          return `${year_str}-${month_str}-${day_str}`;
+        });
+
+        // 해당 기간에 이미 배정된(Active) 날짜 조회
+        const activeAssignmentDates = await instructorRepository.findActiveAssignmentsDate(
+          normalizedInstructorId,
+          startDate,
+          endDate,
+        );
+
+        // 배정된 날짜 Set 생성
+        const assignedDatesSet = new Set(
+          activeAssignmentDates
+            .filter((d): d is Date => d !== null)
+            .map((d) => d.toISOString().split('T')[0]),
+        );
+
+        // 배정된 날짜를 새 가능일에 자동 추가 (배정 확정된 날짜는 제외 불가)
+        const newDatesWithAssigned = [
+          ...new Set([...newDatesStr, ...Array.from(assignedDatesSet)]),
+        ];
+
+        // 업데이트 수행
+        await instructorRepository.replaceAvailabilities(
+          normalizedInstructorId,
+          startDate,
+          endDate,
+          newDatesWithAssigned,
+        );
+
+        return { message: '근무 가능일이 저장되었습니다.' };
+      },
+      {
+        conflictMessage: '근무 가능일 저장이 이미 진행 중입니다. 잠시 후 다시 시도해주세요.',
+      },
     );
-
-    // 배정된 날짜 Set 생성
-    const assignedDatesSet = new Set(
-      activeAssignmentDates
-        .filter((d): d is Date => d !== null)
-        .map((d) => d.toISOString().split('T')[0]),
-    );
-
-    // 배정된 날짜를 새 가능일에 자동 추가 (배정 확정된 날짜는 제외 불가)
-    const newDatesWithAssigned = [...new Set([...newDatesStr, ...Array.from(assignedDatesSet)])];
-
-    // 업데이트 수행
-    await instructorRepository.replaceAvailabilities(
-      instructorId,
-      startDate,
-      endDate,
-      newDatesWithAssigned,
-    );
-
-    return { message: '근무 가능일이 저장되었습니다.' };
   }
 
   // 통계 조회
