@@ -2,6 +2,7 @@ import adminRepository from '../repositories/user.admin.repository';
 import userRepository from '../repositories/user.repository';
 import kakaoService from '../../../infra/kakao.service';
 import AppError from '../../../common/errors/AppError';
+import { runExclusiveOperation } from '../../../common/utils/operationLock';
 import {
   UserStatus,
   AdminLevel,
@@ -256,6 +257,10 @@ class AdminService {
       throw new AppError('virtueIds는 정수 배열이어야 합니다.', 400, 'INVALID_INPUT');
     }
 
+    const uniqueVirtueIds = virtueIds !== undefined ? [...new Set(virtueIds)] : undefined;
+    const uniqueAvailabilities =
+      availabilities !== undefined ? [...new Set(availabilities)] : undefined;
+
     const validCategories = ['Main', 'Co', 'Assistant', 'Practicum'] as const;
     if (
       category !== undefined &&
@@ -357,10 +362,10 @@ class AdminService {
 
       // 프로필 완료 여부 자동 계산
       // 필수 필드: 주소, 분류 (팀 소속은 무소속 가능하므로 제외)
-      if (virtueIds !== undefined) {
+      if (uniqueVirtueIds !== undefined) {
         instructorData.virtues = {
           deleteMany: {},
-          create: virtueIds.map((virtueId) => ({
+          create: uniqueVirtueIds.map((virtueId) => ({
             virtue: { connect: { id: virtueId } },
           })),
         };
@@ -374,10 +379,18 @@ class AdminService {
       instructorData.profileCompleted = isProfileComplete;
 
       // 근무 가능일 업데이트 (별도 트랜잭션 처리)
-      if (availabilities && user.instructor) {
-        await adminRepository.updateInstructorAvailabilities(
-          user.instructor.userId,
-          availabilities,
+      if (uniqueAvailabilities !== undefined && user.instructor) {
+        await runExclusiveOperation(
+          `instructor-availability:${user.instructor.userId}`,
+          () =>
+            adminRepository.updateInstructorAvailabilities(
+              user.instructor!.userId,
+              uniqueAvailabilities,
+            ),
+          {
+            conflictMessage:
+              '해당 강사의 근무 가능일 저장이 이미 진행 중입니다. 잠시 후 다시 시도해주세요.',
+          },
         );
       }
     }

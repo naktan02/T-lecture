@@ -43,7 +43,7 @@ class InstructorService {
     const normalizedMonth = Number(month);
 
     return await runExclusiveOperation(
-      `instructor-availability:${normalizedInstructorId}:${normalizedYear}-${normalizedMonth}`,
+      `instructor-availability:${normalizedInstructorId}`,
       async () => {
         const startDate = new Date(normalizedYear, normalizedMonth - 1, 1);
         const endDate = new Date(normalizedYear, normalizedMonth, 0);
@@ -134,7 +134,7 @@ class InstructorService {
 
   // 강의 가능 과목(덕목) 수정
   async updateVirtues(instructorId: number, virtueIds: number[]) {
-    await instructorRepository.updateVirtues(instructorId, virtueIds);
+    await instructorRepository.updateVirtues(instructorId, [...new Set(virtueIds)]);
 
     return { message: '강의 가능 과목이 수정되었습니다.' };
   }

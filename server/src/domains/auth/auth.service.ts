@@ -9,30 +9,16 @@ import instructorRepository from '../instructor/instructor.repository';
 import userRepository from '../user/repositories/user.repository';
 import authRepository from './auth.repository';
 import { JwtPayload, RegisterDto } from '../../types/auth.types';
+import { normalizeEmail } from '../../common/utils/email';
 
 const SALT_ROUNDS = 10;
 const ACCESS_TOKEN_EXPIRES_IN = '1h';
 const REFRESH_TOKEN_EXPIRES_IN = '7d';
 const REFRESH_TOKEN_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000;
 const DUMMY_PASSWORD_HASH = '$2b$10$sgrlGCi/OCnQGgwZ/X9pXuvOyk2vhDC9hNf/X0yPTLqrV8ahaijfO';
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 function createInvalidLoginError(): AppError {
   return new AppError('이메일 또는 비밀번호가 올바르지 않습니다.', 401, 'INVALID_CREDENTIALS');
-}
-
-function normalizeEmail(email: unknown): string {
-  if (typeof email !== 'string') {
-    throw new AppError('email은 문자열이어야 합니다.', 400, 'INVALID_EMAIL');
-  }
-
-  const normalizedEmail = email.trim();
-
-  if (!normalizedEmail || normalizedEmail.length > 254 || !EMAIL_PATTERN.test(normalizedEmail)) {
-    throw new AppError('올바른 이메일 형식이 아닙니다.', 400, 'INVALID_EMAIL');
-  }
-
-  return normalizedEmail;
 }
 
 class AuthService {
