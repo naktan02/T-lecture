@@ -28,11 +28,7 @@ function normalizeEmail(email: unknown): string {
 
   const normalizedEmail = email.trim();
 
-  if (
-    !normalizedEmail ||
-    normalizedEmail.length > 254 ||
-    !EMAIL_PATTERN.test(normalizedEmail)
-  ) {
+  if (!normalizedEmail || normalizedEmail.length > 254 || !EMAIL_PATTERN.test(normalizedEmail)) {
     throw new AppError('올바른 이메일 형식이 아닙니다.', 400, 'INVALID_EMAIL');
   }
 
