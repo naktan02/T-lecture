@@ -38,7 +38,7 @@ class AuthService {
     const user = await userRepository.findByEmail(normalizedEmail);
 
     if (!user) {
-      return { message: '입력한 이메일로 계정이 존재하면 인증번호가 발송됩니다. (유효시간 3분)' };
+      return { message: '가입된 이메일을 찾을 수 없습니다.', sent: false };
     }
 
     const code = crypto.randomInt(100000, 999999).toString();
@@ -47,7 +47,7 @@ class AuthService {
     await authRepository.createVerificationCode(normalizedEmail, code, expiresAt);
     await sendAuthCode(normalizedEmail, code);
 
-    return { message: '입력한 이메일로 계정이 존재하면 인증번호가 발송됩니다. (유효시간 3분)' };
+    return { message: '인증번호가 발송되었습니다. (유효시간 3분)', sent: true };
   }
 
   async verifyCode(email: string, code: string) {
