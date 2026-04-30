@@ -8,6 +8,11 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 type Step = 'EMAIL' | 'VERIFY' | 'RESET';
 
+interface PasswordResetCodeResponse {
+  message?: string;
+  sent?: boolean;
+}
+
 export default function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>('EMAIL');
@@ -34,8 +39,13 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ email }),
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as PasswordResetCodeResponse;
       if (!res.ok) throw new Error(data.message || '인증번호 발송 실패');
+
+      if (data.sent === false) {
+        showError(data.message || '가입된 이메일을 찾을 수 없습니다.');
+        return;
+      }
 
       showSuccess(data.message);
       setStep('VERIFY');
