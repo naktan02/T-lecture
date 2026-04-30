@@ -47,7 +47,7 @@ export default function ForgotPasswordPage() {
         return;
       }
 
-      showSuccess(data.message);
+      showSuccess(data.message || '인증번호가 발송되었습니다. (유효시간 3분)');
       setStep('VERIFY');
       setCountdown(180); // 3분
       startCountdown();
