@@ -23,6 +23,8 @@ import { LoadingSpinner } from '../../shared/ui';
 const getErrorMessage = (error: unknown, fallbackMessage: string) =>
   error instanceof Error && error.message ? error.message : fallbackMessage;
 
+const normalizeProfileEmail = (email?: string | null) => (email || '').trim();
+
 const CATEGORY_LABELS: Record<string, string> = {
   Main: '주강사',
   Co: '부강사',
@@ -202,7 +204,9 @@ const UserProfilePage: React.FC = () => {
     }
 
     // 이메일 변경 시 인증 확인
-    if (formData.email !== user?.userEmail && !isEmailVerified) {
+    const normalizedEmail = normalizeProfileEmail(formData.email);
+    const isEmailChanged = normalizedEmail !== normalizeProfileEmail(user?.userEmail);
+    if (isEmailChanged && !isEmailVerified) {
       showWarning('이메일 변경 시 인증이 필요합니다.');
       return;
     }
@@ -212,7 +216,7 @@ const UserProfilePage: React.FC = () => {
       return;
     }
 
-    updateMutation.mutate(formData);
+    updateMutation.mutate({ ...formData, email: normalizedEmail });
   };
 
   const handleInputChange = (
@@ -278,13 +282,15 @@ const UserProfilePage: React.FC = () => {
 
   const isAddressChanged =
     formData.address !== originalAddress || formData.locationDetail !== originalLocationDetail;
+  const normalizedFormEmail = normalizeProfileEmail(formData.email);
+  const isEmailChanged = normalizedFormEmail !== normalizeProfileEmail(user?.userEmail);
 
   // 이메일 인증 발송
   const handleSendCode = async () => {
-    if (!formData.email) return;
+    if (!normalizedFormEmail) return;
     try {
       setIsSendingCode(true);
-      await sendVerificationCode(formData.email);
+      await sendVerificationCode(normalizedFormEmail);
       setEmailVerificationMsg('인증번호가 발송되었습니다.');
       setIsEmailVerified(false);
     } catch (e: unknown) {
@@ -296,10 +302,10 @@ const UserProfilePage: React.FC = () => {
 
   // 이메일 인증 확인
   const handleVerifyCode = async () => {
-    if (!formData.email || !emailCode) return;
+    if (!normalizedFormEmail || !emailCode) return;
     try {
       setIsVerifyingCode(true);
-      await verifyEmailCode(formData.email, emailCode);
+      await verifyEmailCode(normalizedFormEmail, emailCode);
       setIsEmailVerified(true);
       setEmailVerificationMsg('인증되었습니다.');
     } catch (e: unknown) {
@@ -505,7 +511,7 @@ const UserProfilePage: React.FC = () => {
                           }}
                           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
                         />
-                        {formData.email !== user.userEmail && (
+                        {isEmailChanged && (
                           <button
                             type="button"
                             onClick={handleSendCode}
@@ -521,7 +527,7 @@ const UserProfilePage: React.FC = () => {
                         )}
                       </div>
                       {/* 인증번호 입력창 */}
-                      {formData.email !== user.userEmail && !isEmailVerified && (
+                      {isEmailChanged && !isEmailVerified && (
                         <div className="flex gap-2">
                           <input
                             type="text"

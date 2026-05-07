@@ -2,6 +2,7 @@
 // 캘린더 공통 로직과 스타일을 제공하는 베이스 컴포넌트
 
 import React, { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { isHoliday, isSaturday, isSunday, isSelectableDate, formatDay } from '../utils';
@@ -172,8 +173,8 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
   const sizeStyles: Record<string, CalendarCustomStyle> = {
     small: {
       '--base-calendar-font-size': '10px',
-      '--base-calendar-nav-height': '30px',
-      '--base-calendar-nav-min-width': '24px',
+      '--base-calendar-nav-height': '38px',
+      '--base-calendar-nav-min-width': '38px',
       '--base-calendar-nav-radius': '8px',
       '--base-calendar-nav-gap': '4px',
       '--base-calendar-nav-margin': '8px',
@@ -185,8 +186,8 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
     },
     medium: {
       '--base-calendar-font-size': '13px',
-      '--base-calendar-nav-height': '38px',
-      '--base-calendar-nav-min-width': '32px',
+      '--base-calendar-nav-height': '42px',
+      '--base-calendar-nav-min-width': '42px',
       '--base-calendar-nav-radius': '9px',
       '--base-calendar-nav-gap': '6px',
       '--base-calendar-nav-margin': '8px',
@@ -198,8 +199,8 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
     },
     large: {
       '--base-calendar-font-size': '15px',
-      '--base-calendar-nav-height': '44px',
-      '--base-calendar-nav-min-width': '40px',
+      '--base-calendar-nav-height': '48px',
+      '--base-calendar-nav-min-width': '48px',
       '--base-calendar-nav-radius': '10px',
       '--base-calendar-nav-gap': '6px',
       '--base-calendar-nav-margin': '10px',
@@ -240,8 +241,8 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
       <style>{`
         .base-calendar-root.base-calendar-small {
           --base-calendar-font-size: 10px;
-          --base-calendar-nav-height: 30px;
-          --base-calendar-nav-min-width: 24px;
+          --base-calendar-nav-height: 38px;
+          --base-calendar-nav-min-width: 38px;
           --base-calendar-nav-radius: 8px;
           --base-calendar-nav-gap: 4px;
           --base-calendar-nav-margin: 8px;
@@ -253,8 +254,8 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
         }
         .base-calendar-root.base-calendar-medium {
           --base-calendar-font-size: 13px;
-          --base-calendar-nav-height: 38px;
-          --base-calendar-nav-min-width: 32px;
+          --base-calendar-nav-height: 42px;
+          --base-calendar-nav-min-width: 42px;
           --base-calendar-nav-radius: 9px;
           --base-calendar-nav-gap: 6px;
           --base-calendar-nav-margin: 8px;
@@ -266,8 +267,8 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
         }
         .base-calendar-root.base-calendar-large {
           --base-calendar-font-size: 15px;
-          --base-calendar-nav-height: 44px;
-          --base-calendar-nav-min-width: 40px;
+          --base-calendar-nav-height: 48px;
+          --base-calendar-nav-min-width: 48px;
           --base-calendar-nav-radius: 10px;
           --base-calendar-nav-gap: 6px;
           --base-calendar-nav-margin: 10px;
@@ -291,14 +292,50 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
         }
         .base-calendar-root .react-calendar__navigation button {
           min-width: var(--base-calendar-nav-min-width) !important;
+          height: var(--base-calendar-nav-height) !important;
           border-radius: var(--base-calendar-nav-radius) !important;
           font-size: 1em !important;
           font-weight: 600 !important;
           color: #111827 !important;
+          background: #ffffff !important;
+          border: 1px solid #d1d5db !important;
+          box-shadow: 0 1px 2px rgb(15 23 42 / 0.08) !important;
+          transition:
+            background-color 120ms ease,
+            border-color 120ms ease,
+            color 120ms ease,
+            box-shadow 120ms ease,
+            transform 120ms ease !important;
+        }
+        .base-calendar-root .react-calendar__navigation__prev-button,
+        .base-calendar-root .react-calendar__navigation__next-button {
+          flex: 0 0 var(--base-calendar-nav-min-width) !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          color: #1d4ed8 !important;
+          border-color: #93c5fd !important;
+          background: #eff6ff !important;
+        }
+        .base-calendar-root .react-calendar__navigation__label {
+          border-color: transparent !important;
+          box-shadow: none !important;
+          background: transparent !important;
+        }
+        .base-calendar-root .base-calendar-nav-icon {
+          width: 1.35rem;
+          height: 1.35rem;
+          stroke-width: 2.75;
         }
         .base-calendar-root .react-calendar__navigation button:enabled:hover,
         .base-calendar-root .react-calendar__navigation button:enabled:focus {
-          background: #e5e7eb !important;
+          background: #dbeafe !important;
+          border-color: #3b82f6 !important;
+          color: #1e40af !important;
+          box-shadow: 0 4px 10px rgb(37 99 235 / 0.18) !important;
+        }
+        .base-calendar-root .react-calendar__navigation button:enabled:active {
+          transform: scale(0.96);
         }
         .base-calendar-root .react-calendar__navigation__label {
           font-weight: 700 !important;
@@ -370,7 +407,7 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
         @media (max-height: 1120px) {
           .base-calendar-root.base-calendar-small {
             --base-calendar-nav-height: 28px;
-            --base-calendar-nav-min-width: 22px;
+            --base-calendar-nav-min-width: 38px;
             --base-calendar-nav-radius: 7px;
             --base-calendar-nav-gap: 3px;
             --base-calendar-nav-margin: 6px;
@@ -382,7 +419,7 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
           }
           .base-calendar-root.base-calendar-medium {
             --base-calendar-nav-height: 34px;
-            --base-calendar-nav-min-width: 28px;
+            --base-calendar-nav-min-width: 40px;
             --base-calendar-nav-radius: 8px;
             --base-calendar-nav-gap: 5px;
             --base-calendar-nav-margin: 7px;
@@ -394,7 +431,7 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
           }
           .base-calendar-root.base-calendar-large {
             --base-calendar-nav-height: 38px;
-            --base-calendar-nav-min-width: 34px;
+            --base-calendar-nav-min-width: 44px;
             --base-calendar-nav-radius: 9px;
             --base-calendar-nav-gap: 5px;
             --base-calendar-nav-margin: 7px;
@@ -408,7 +445,7 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
         @media (max-height: 980px) {
           .base-calendar-root.base-calendar-small {
             --base-calendar-nav-height: 28px;
-            --base-calendar-nav-min-width: 22px;
+            --base-calendar-nav-min-width: 38px;
             --base-calendar-nav-radius: 7px;
             --base-calendar-nav-gap: 3px;
             --base-calendar-nav-margin: 6px;
@@ -420,7 +457,7 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
           }
           .base-calendar-root.base-calendar-medium {
             --base-calendar-nav-height: 34px;
-            --base-calendar-nav-min-width: 28px;
+            --base-calendar-nav-min-width: 40px;
             --base-calendar-nav-radius: 8px;
             --base-calendar-nav-gap: 5px;
             --base-calendar-nav-margin: 7px;
@@ -435,7 +472,7 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
           }
           .base-calendar-root.base-calendar-large {
             --base-calendar-nav-height: 40px;
-            --base-calendar-nav-min-width: 36px;
+            --base-calendar-nav-min-width: 44px;
             --base-calendar-nav-radius: 9px;
             --base-calendar-nav-gap: 6px;
             --base-calendar-nav-margin: 8px;
@@ -449,7 +486,7 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
         @media (max-height: 860px) {
           .base-calendar-root.base-calendar-small {
             --base-calendar-nav-height: 26px;
-            --base-calendar-nav-min-width: 20px;
+            --base-calendar-nav-min-width: 36px;
             --base-calendar-nav-radius: 6px;
             --base-calendar-nav-gap: 2px;
             --base-calendar-nav-margin: 5px;
@@ -461,7 +498,7 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
           }
           .base-calendar-root.base-calendar-medium {
             --base-calendar-nav-height: 30px;
-            --base-calendar-nav-min-width: 24px;
+            --base-calendar-nav-min-width: 38px;
             --base-calendar-nav-radius: 7px;
             --base-calendar-nav-gap: 4px;
             --base-calendar-nav-margin: 6px;
@@ -473,7 +510,7 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
           }
           .base-calendar-root.base-calendar-large {
             --base-calendar-nav-height: 36px;
-            --base-calendar-nav-min-width: 32px;
+            --base-calendar-nav-min-width: 42px;
             --base-calendar-nav-radius: 8px;
             --base-calendar-nav-gap: 5px;
             --base-calendar-nav-margin: 6px;
@@ -499,6 +536,10 @@ export const BaseCalendar: React.FC<BaseCalendarProps> = ({
               onActiveStartDateChange={handleActiveStartDateChange}
               tileClassName={getTileClassName}
               tileDisabled={getTileDisabled}
+              prevLabel={<ChevronLeftIcon className="base-calendar-nav-icon" aria-hidden="true" />}
+              prevAriaLabel="이전 달"
+              nextLabel={<ChevronRightIcon className="base-calendar-nav-icon" aria-hidden="true" />}
+              nextAriaLabel="다음 달"
               next2Label={null}
               prev2Label={null}
               formatDay={(_, date) => formatDay(date)}

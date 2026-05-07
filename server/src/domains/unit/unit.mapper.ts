@@ -70,7 +70,7 @@ export function toCreateUnitDto(
 
   return {
     lectureYear,
-    name: rawData.name,
+    name: rawData.name.trim(),
     unitType: toMilitaryType(rawData.unitType),
     wideArea: rawData.wideArea,
     region: rawData.region,

@@ -23,6 +23,8 @@ import {
 // 서비스 입력 타입들
 type RawUnitInput = RawUnitData;
 type ScheduleData = ScheduleInput;
+type ExistingUnitForUpsert = NonNullable<Awaited<ReturnType<typeof unitRepository.findUnitByName>>>;
+type ExcelUploadFailure = { unitName: string | null; reason: string };
 
 /**
  * 날짜 문자열을 UTC 자정으로 변환 (시간 없는 날짜 전용)
@@ -69,6 +71,9 @@ const toStoredTime = (value: string | Date | null | undefined): Date | null => {
     Date.UTC(2000, 0, 1, parsed.getUTCHours(), parsed.getUTCMinutes(), parsed.getUTCSeconds()),
   );
 };
+
+const toFailureReason = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
 
 interface UnitBasicInfoInput {
   name?: string;
@@ -118,6 +123,113 @@ class UnitService {
       const existingEnd = period.endDate ? toDateOnlyString(period.endDate) : null;
       return existingStart === startDate && existingEnd === endDate;
     });
+  }
+
+  private _isUnitNameUniqueError(error: unknown): boolean {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+      return false;
+    }
+
+    const target = error.meta?.target;
+    if (Array.isArray(target)) {
+      return target.some((field) => field === '부대명' || field === 'name');
+    }
+    return String(target || '').includes('부대명') || String(target || '').includes('name');
+  }
+
+  private _getLocationImportKey(location: {
+    originalPlace?: string | null;
+    changedPlace?: string | null;
+  }): string | null {
+    const originalPlace = location.originalPlace?.trim();
+    const changedPlace = location.changedPlace?.trim();
+    return originalPlace || changedPlace || null;
+  }
+
+  private _buildLocationImportKeySet(
+    locations: { originalPlace?: string | null; changedPlace?: string | null }[],
+  ): Set<string> {
+    return new Set(
+      locations
+        .map((location) => this._getLocationImportKey(location))
+        .filter((key): key is string => Boolean(key)),
+    );
+  }
+
+  private async _appendRawDataToExistingUnit(
+    existingUnit: ExistingUnitForUpsert,
+    rawData: RawUnitInput,
+    lectureYear?: number,
+  ): Promise<{ locationsAdded: number; locationsSkipped: number; periodCreated: boolean }> {
+    const periodWindow = this._buildPeriodWindow(
+      rawData.educationStart,
+      rawData.educationEnd,
+      rawData.excludedDates || [],
+      lectureYear,
+    );
+    const existingPeriod = this._findExistingTrainingPeriodByRange(
+      existingUnit.trainingPeriods,
+      periodWindow.normalizedStart,
+      periodWindow.normalizedEnd,
+    );
+
+    if (!existingPeriod) {
+      await this._createTrainingPeriodFromRawData(existingUnit.id, rawData, lectureYear);
+      return {
+        locationsAdded: rawData.trainingLocations?.length || 0,
+        locationsSkipped: 0,
+        periodCreated: true,
+      };
+    }
+
+    const incomingLocations = rawData.trainingLocations || [];
+    if (incomingLocations.length === 0) {
+      return { locationsAdded: 0, locationsSkipped: 0, periodCreated: false };
+    }
+
+    const existingPlaceNames = this._buildLocationImportKeySet(existingPeriod.locations);
+    const locationsToCreate: {
+      trainingPeriodId: number;
+      location: TrainingLocationData;
+    }[] = [];
+    let locationsSkipped = 0;
+
+    for (const location of incomingLocations) {
+      const placeKey = this._getLocationImportKey(location);
+      if (placeKey && existingPlaceNames.has(placeKey)) {
+        locationsSkipped++;
+        continue;
+      }
+
+      if (placeKey) existingPlaceNames.add(placeKey);
+      locationsToCreate.push({
+        trainingPeriodId: existingPeriod.id,
+        location,
+      });
+    }
+
+    if (locationsToCreate.length > 0) {
+      await unitRepository.bulkAddTrainingLocations(locationsToCreate);
+    }
+
+    return {
+      locationsAdded: locationsToCreate.length,
+      locationsSkipped,
+      periodCreated: false,
+    };
+  }
+
+  private async _appendRawDataToExistingUnitByName(
+    rawData: RawUnitInput,
+    lectureYear?: number,
+  ): Promise<{ locationsAdded: number; locationsSkipped: number; periodCreated: boolean } | null> {
+    const unitName = rawData.name?.trim();
+    if (!unitName) return null;
+
+    const existingUnit = await unitRepository.findUnitByName(unitName);
+    if (!existingUnit) return null;
+
+    return this._appendRawDataToExistingUnit(existingUnit, rawData, lectureYear);
   }
 
   private async _createTrainingPeriodFromRawData(
@@ -316,6 +428,10 @@ class UnitService {
       if (e instanceof Error && e.message.includes('부대명(name)은 필수입니다.')) {
         throw new AppError(e.message, 400, 'VALIDATION_ERROR');
       }
+      if (this._isUnitNameUniqueError(e)) {
+        logger.warn(`[UnitService] Duplicate unit name in registerSingleUnit: ${rawData.name}`);
+        throw e;
+      }
       logger.error(`[UnitService] Unexpected error in registerSingleUnit: ${e}`);
       throw e;
     }
@@ -356,6 +472,7 @@ class UnitService {
     let updated = 0;
     let locationsAdded = 0;
     let locationsSkipped = 0;
+    const failures: ExcelUploadFailure[] = [];
 
     const newUnitsToCreate: RawUnitInput[] = [];
     const newPeriodsToCreate: { unitId: number; rawData: RawUnitInput }[] = [];
@@ -389,18 +506,16 @@ class UnitService {
 
         if (existingPeriod && rawData.trainingLocations && rawData.trainingLocations.length > 0) {
           // 기존 장소 이름 Set (TrainingPeriod 내 모든 locations)
-          const existingPlaceNames = new Set(
-            existingPeriod.locations.map((l: { originalPlace: string | null }) => l.originalPlace),
-          );
+          const existingPlaceNames = this._buildLocationImportKeySet(existingPeriod.locations);
 
           for (const loc of rawData.trainingLocations) {
-            const placeName = loc.originalPlace;
+            const placeKey = this._getLocationImportKey(loc);
             // 메모리 상 중복 체크
-            if (placeName && existingPlaceNames.has(placeName)) {
+            if (placeKey && existingPlaceNames.has(placeKey)) {
               locationsSkipped++;
             } else {
               // 신규 장소 매핑 대기 (엑셀 내 중복 방지 위해 Set에도 추가)
-              if (placeName) existingPlaceNames.add(placeName);
+              if (placeKey) existingPlaceNames.add(placeKey);
               trainingLocationsToCreate.push({
                 trainingPeriodId: existingPeriod.id,
                 location: loc,
@@ -432,8 +547,24 @@ class UnitService {
             created++;
             locationsAdded += data.trainingLocations?.length || 0;
           } catch (e) {
-            // registerSingleUnit이 name이 없는 경우 등에 대헤 throw 할 수 있음
+            if (this._isUnitNameUniqueError(e)) {
+              const merged = await this._appendRawDataToExistingUnitByName(data, lectureYear);
+              if (merged) {
+                updated++;
+                locationsAdded += merged.locationsAdded;
+                locationsSkipped += merged.locationsSkipped;
+                logger.warn(
+                  `[UnitService] Unit already existed during bulk import; merged instead: ${data.name}`,
+                );
+                return;
+              }
+            }
+            // registerSingleUnit이 name이 없는 경우 등에 대해 throw 할 수 있음
             logger.error(`[UnitService] Critical failure registering unit ${data.name}: ${e}`);
+            failures.push({
+              unitName: data.name?.trim() || null,
+              reason: toFailureReason(e),
+            });
           }
         }),
       );
@@ -456,6 +587,10 @@ class UnitService {
             logger.error(
               `[UnitService] Failed to create training period for existing unit ${rawData.name}: ${e}`,
             );
+            failures.push({
+              unitName: rawData.name?.trim() || null,
+              reason: toFailureReason(e),
+            });
           }
         }),
       );
@@ -471,6 +606,8 @@ class UnitService {
       updated,
       locationsAdded,
       locationsSkipped,
+      failed: failures.length,
+      failures,
     };
   }
 
