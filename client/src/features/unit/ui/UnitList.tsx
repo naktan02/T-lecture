@@ -93,8 +93,7 @@ const getUnitWarnings = (unit: Unit): UnitWarning[] => {
   }
   if (!unit.addressDetail) {
     warnings.push({ message: '주소가 입력되지 않았습니다.', tone: 'error' });
-  }
-  if (unit.lat === null) {
+  } else if (unit.lat === null) {
     warnings.push({ message: '주소 좌표를 찾을 수 없습니다. 주소를 확인해주세요.', tone: 'error' });
   }
   if (!unit.trainingPeriods || unit.trainingPeriods.length === 0) {
@@ -224,13 +223,20 @@ export const UnitList = ({
                     />
                   </td>
 
-                  <td className="px-4 py-3">
-                    <div className="font-semibold text-gray-900 flex items-center gap-1">
-                      {unit.name}
+                  <td className="px-4 py-3 max-w-[260px] overflow-hidden">
+                    <div className="font-semibold text-gray-900 flex items-center gap-1 min-w-0 max-w-[260px]">
+                      <span className="min-w-0 truncate" title={unit.name}>
+                        {unit.name}
+                      </span>
                       {/* 주소/데이터/교육기간/장소 오류 경고 아이콘 */}
-                      {unitWarnings.map((warning) => (
-                        <WarningIcon key={`${warning.tone}-${warning.message}`} warning={warning} />
-                      ))}
+                      <span className="inline-flex shrink-0 items-center gap-0.5">
+                        {unitWarnings.map((warning, index) => (
+                          <WarningIcon
+                            key={`${index}-${warning.tone}-${warning.message}`}
+                            warning={warning}
+                          />
+                        ))}
+                      </span>
                     </div>
                     {(() => {
                       const colors = getUnitTypeColor(unit.unitType);
@@ -334,13 +340,15 @@ export const UnitList = ({
                       <h3 className="font-bold text-gray-900 text-sm md:text-base truncate">
                         {unit.name}
                       </h3>
-                      {unitWarnings.map((warning) => (
-                        <WarningIcon
-                          key={`${warning.tone}-${warning.message}`}
-                          warning={warning}
-                          className="shrink-0"
-                        />
-                      ))}
+                      <span className="inline-flex shrink-0 items-center gap-0.5">
+                        {unitWarnings.map((warning, index) => (
+                          <WarningIcon
+                            key={`${index}-${warning.tone}-${warning.message}`}
+                            warning={warning}
+                            className="shrink-0"
+                          />
+                        ))}
+                      </span>
                     </div>
                     {(() => {
                       const colors = getUnitTypeColor(unit.unitType);
