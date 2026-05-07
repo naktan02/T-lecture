@@ -5,13 +5,19 @@ import { TrainingLocationData, ScheduleData, UnitFilterParams } from '../../type
 
 // 헬퍼
 const safeInt = (val: unknown): number | null => {
-  if (!val) return null;
+  if (val === null || val === undefined || val === '') return null;
   const n = Number(val);
-  return isNaN(n) ? 0 : n;
+  return Number.isFinite(n) ? n : null;
 };
 
 const safeBool = (val: unknown): boolean =>
   val === true || val === 'true' || String(val).toUpperCase() === 'O';
+
+const cleanString = (val: unknown): string | null => {
+  if (typeof val !== 'string') return null;
+  const trimmed = val.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
 
 /**
  * 날짜 문자열을 UTC 자정으로 변환
@@ -30,11 +36,11 @@ class UnitRepository {
    */
   private _mapLocationData(loc: TrainingLocationData, _unitId?: number) {
     return {
-      originalPlace: loc.originalPlace || null,
-      changedPlace: loc.changedPlace || null,
+      originalPlace: cleanString(loc.originalPlace),
+      changedPlace: cleanString(loc.changedPlace),
       hasInstructorLounge: safeBool(loc.hasInstructorLounge),
       hasWomenRestroom: safeBool(loc.hasWomenRestroom),
-      note: loc.note || null,
+      note: cleanString(loc.note),
     };
   }
 
@@ -316,7 +322,7 @@ class UnitRepository {
       initialLocationCount?: number | null;
     },
   ) {
-    // 시간 문자열을 Date로 변환 (HH:MM 형식 지원)
+    // 시간 문자열을 Date로 변환 (HH:mm, HH:mm:ss 형식 지원)
     const parseTime = (t: Date | string | null | undefined): Date | null => {
       if (!t) return null;
       if (t instanceof Date) {
@@ -325,119 +331,130 @@ class UnitRepository {
           Date.UTC(2000, 0, 1, t.getUTCHours(), t.getUTCMinutes(), t.getUTCSeconds()),
         );
       }
-      if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(t)) {
-        return new Date(`2000-01-01T${t}:00.000Z`);
+      const trimmed = t.trim();
+      if (!trimmed) return null;
+
+      const timeMatch = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+      if (timeMatch) {
+        const hours = Number(timeMatch[1]);
+        const minutes = Number(timeMatch[2]);
+        const seconds = Number(timeMatch[3] || 0);
+        if (hours > 23 || minutes > 59 || seconds > 59) return null;
+        return new Date(Date.UTC(2000, 0, 1, hours, minutes, seconds));
       }
-      const d = new Date(t);
+      const d = new Date(trimmed);
       if (isNaN(d.getTime())) return null;
       return new Date(Date.UTC(2000, 0, 1, d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds()));
     };
 
-    // 1. Unit + TrainingPeriod + Locations + Schedules 생성
-    const unit = await prisma.unit.create({
-      data: {
-        ...unitData,
-        trainingPeriods: {
-          create: {
-            name: periodData.name,
-            lectureYear: periodData.lectureYear ?? null,
-            startDate: periodData.startDate ?? null,
-            endDate: periodData.endDate ?? null,
-            workStartTime: parseTime(periodData.workStartTime),
-            workEndTime: parseTime(periodData.workEndTime),
-            lunchStartTime: parseTime(periodData.lunchStartTime),
-            lunchEndTime: parseTime(periodData.lunchEndTime),
-            officerName: periodData.officerName || null,
-            officerPhone: periodData.officerPhone || null,
-            officerEmail: periodData.officerEmail || null,
-            excludedDates: periodData.excludedDates ?? [],
-            hasCateredMeals: periodData.hasCateredMeals ?? false,
-            hasHallLodging: periodData.hasHallLodging ?? false,
-            allowsPhoneBeforeAfter: periodData.allowsPhoneBeforeAfter ?? false,
-            // 최초계획 (보고서용)
-            initialPeriodDays: periodData.initialPeriodDays ?? null,
-            initialLocationCount: periodData.initialLocationCount ?? null,
-            locations: {
-              create: (periodData.locations || []).map((l) => {
-                const d = this._mapLocationData(l);
-                return d;
-              }),
-            },
-            schedules: {
-              create: (periodData.schedules || []).map((s) => {
-                const dt = toUTCMidnight(s.date);
-                return {
-                  date: dt,
-                };
-              }),
-            },
-          },
-        },
-      },
-      include: {
-        trainingPeriods: {
-          include: {
-            locations: true,
-            schedules: true,
-          },
-        },
-      },
-    });
-
-    // 2. ScheduleLocation 생성 (모든 schedule × 모든 location)
-    const trainingPeriod = unit.trainingPeriods[0];
-    if (
-      trainingPeriod &&
-      trainingPeriod.locations.length > 0 &&
-      trainingPeriod.schedules.length > 0
-    ) {
-      const scheduleLocationData: {
-        unitScheduleId: number;
-        trainingLocationId: number;
-        plannedCount: number | null;
-        actualCount: number | null;
-      }[] = [];
-
-      // locations 배열과 DB에 저장된 locations를 인덱스로 매칭
-      const dbLocations = trainingPeriod.locations;
-      const inputLocations = periodData.locations || [];
-
-      for (const schedule of trainingPeriod.schedules) {
-        for (let i = 0; i < dbLocations.length; i++) {
-          const dbLoc = dbLocations[i];
-          // 입력 데이터에서 인원수 가져오기 (인덱스 매칭)
-          const inputLoc = inputLocations[i];
-          scheduleLocationData.push({
-            unitScheduleId: schedule.id,
-            trainingLocationId: dbLoc.id,
-            plannedCount: safeInt(inputLoc?.plannedCount),
-            actualCount: safeInt(inputLoc?.actualCount),
-          });
-        }
-      }
-
-      if (scheduleLocationData.length > 0) {
-        await prisma.scheduleLocation.createMany({
-          data: scheduleLocationData,
-        });
-      }
-    }
-
-    // 3. ScheduleLocation 포함하여 다시 조회
-    return prisma.unit.findUnique({
-      where: { id: unit.id },
-      include: {
-        trainingPeriods: {
-          include: {
-            locations: true,
-            schedules: {
-              include: {
-                scheduleLocations: true,
+    return prisma.$transaction(async (tx) => {
+      // 1. Unit + TrainingPeriod + Locations + Schedules 생성
+      const unit = await tx.unit.create({
+        data: {
+          ...unitData,
+          trainingPeriods: {
+            create: {
+              name: periodData.name,
+              lectureYear: periodData.lectureYear ?? null,
+              startDate: periodData.startDate ?? null,
+              endDate: periodData.endDate ?? null,
+              workStartTime: parseTime(periodData.workStartTime),
+              workEndTime: parseTime(periodData.workEndTime),
+              lunchStartTime: parseTime(periodData.lunchStartTime),
+              lunchEndTime: parseTime(periodData.lunchEndTime),
+              officerName: cleanString(periodData.officerName),
+              officerPhone: cleanString(periodData.officerPhone),
+              officerEmail: cleanString(periodData.officerEmail),
+              excludedDates: periodData.excludedDates ?? [],
+              hasCateredMeals: periodData.hasCateredMeals ?? false,
+              hasHallLodging: periodData.hasHallLodging ?? false,
+              allowsPhoneBeforeAfter: periodData.allowsPhoneBeforeAfter ?? false,
+              // 최초계획 (보고서용)
+              initialPeriodDays: periodData.initialPeriodDays ?? null,
+              initialLocationCount: periodData.initialLocationCount ?? null,
+              locations: {
+                create: (periodData.locations || []).map((l) => {
+                  const d = this._mapLocationData(l);
+                  return d;
+                }),
+              },
+              schedules: {
+                create: (periodData.schedules || []).map((s) => {
+                  const dt = toUTCMidnight(s.date);
+                  return {
+                    date: dt,
+                  };
+                }),
               },
             },
           },
         },
-      },
+        include: {
+          trainingPeriods: {
+            include: {
+              locations: true,
+              schedules: true,
+            },
+          },
+        },
+      });
+
+      // 2. ScheduleLocation 생성 (모든 schedule × 모든 location)
+      const trainingPeriod = unit.trainingPeriods[0];
+      if (
+        trainingPeriod &&
+        trainingPeriod.locations.length > 0 &&
+        trainingPeriod.schedules.length > 0
+      ) {
+        const scheduleLocationData: {
+          unitScheduleId: number;
+          trainingLocationId: number;
+          plannedCount: number | null;
+          actualCount: number | null;
+        }[] = [];
+
+        // locations 배열과 DB에 저장된 locations를 인덱스로 매칭
+        const dbLocations = trainingPeriod.locations;
+        const inputLocations = periodData.locations || [];
+
+        for (const schedule of trainingPeriod.schedules) {
+          for (let i = 0; i < dbLocations.length; i++) {
+            const dbLoc = dbLocations[i];
+            // 입력 데이터에서 인원수 가져오기 (인덱스 매칭)
+            const inputLoc = inputLocations[i];
+            scheduleLocationData.push({
+              unitScheduleId: schedule.id,
+              trainingLocationId: dbLoc.id,
+              plannedCount: safeInt(inputLoc?.plannedCount),
+              actualCount: safeInt(inputLoc?.actualCount),
+            });
+          }
+        }
+
+        if (scheduleLocationData.length > 0) {
+          await tx.scheduleLocation.createMany({
+            data: scheduleLocationData,
+            skipDuplicates: true,
+          });
+        }
+      }
+
+      // 3. ScheduleLocation 포함하여 다시 조회
+      return tx.unit.findUnique({
+        where: { id: unit.id },
+        include: {
+          trainingPeriods: {
+            include: {
+              locations: true,
+              schedules: {
+                include: {
+                  scheduleLocations: true,
+                },
+              },
+            },
+          },
+        },
+      });
     });
   }
 

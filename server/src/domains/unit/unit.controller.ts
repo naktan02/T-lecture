@@ -58,6 +58,7 @@ export const uploadExcelAndRegisterUnits = asyncHandler(async (req: Request, res
   if (result.created > 0) messages.push(`${result.created}개 부대 생성`);
   if (result.updated > 0) messages.push(`${result.updated}개 부대 업데이트`);
   if (result.locationsSkipped > 0) messages.push(`${result.locationsSkipped}개 교육장소 중복 스킵`);
+  if (result.failed > 0) messages.push(`${result.failed}개 항목 처리 실패`);
 
   let message = messages.length > 0 ? messages.join(', ') + ' 완료' : '처리된 데이터가 없습니다.';
   if (lectureYear) {

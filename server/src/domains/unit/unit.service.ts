@@ -24,6 +24,7 @@ import {
 type RawUnitInput = RawUnitData;
 type ScheduleData = ScheduleInput;
 type ExistingUnitForUpsert = NonNullable<Awaited<ReturnType<typeof unitRepository.findUnitByName>>>;
+type ExcelUploadFailure = { unitName: string | null; reason: string };
 
 /**
  * 날짜 문자열을 UTC 자정으로 변환 (시간 없는 날짜 전용)
@@ -70,6 +71,9 @@ const toStoredTime = (value: string | Date | null | undefined): Date | null => {
     Date.UTC(2000, 0, 1, parsed.getUTCHours(), parsed.getUTCMinutes(), parsed.getUTCSeconds()),
   );
 };
+
+const toFailureReason = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
 
 interface UnitBasicInfoInput {
   name?: string;
@@ -133,6 +137,25 @@ class UnitService {
     return String(target || '').includes('부대명') || String(target || '').includes('name');
   }
 
+  private _getLocationImportKey(location: {
+    originalPlace?: string | null;
+    changedPlace?: string | null;
+  }): string | null {
+    const originalPlace = location.originalPlace?.trim();
+    const changedPlace = location.changedPlace?.trim();
+    return originalPlace || changedPlace || null;
+  }
+
+  private _buildLocationImportKeySet(
+    locations: { originalPlace?: string | null; changedPlace?: string | null }[],
+  ): Set<string> {
+    return new Set(
+      locations
+        .map((location) => this._getLocationImportKey(location))
+        .filter((key): key is string => Boolean(key)),
+    );
+  }
+
   private async _appendRawDataToExistingUnit(
     existingUnit: ExistingUnitForUpsert,
     rawData: RawUnitInput,
@@ -164,9 +187,7 @@ class UnitService {
       return { locationsAdded: 0, locationsSkipped: 0, periodCreated: false };
     }
 
-    const existingPlaceNames = new Set(
-      existingPeriod.locations.map((l: { originalPlace: string | null }) => l.originalPlace),
-    );
+    const existingPlaceNames = this._buildLocationImportKeySet(existingPeriod.locations);
     const locationsToCreate: {
       trainingPeriodId: number;
       location: TrainingLocationData;
@@ -174,13 +195,13 @@ class UnitService {
     let locationsSkipped = 0;
 
     for (const location of incomingLocations) {
-      const placeName = location.originalPlace;
-      if (placeName && existingPlaceNames.has(placeName)) {
+      const placeKey = this._getLocationImportKey(location);
+      if (placeKey && existingPlaceNames.has(placeKey)) {
         locationsSkipped++;
         continue;
       }
 
-      if (placeName) existingPlaceNames.add(placeName);
+      if (placeKey) existingPlaceNames.add(placeKey);
       locationsToCreate.push({
         trainingPeriodId: existingPeriod.id,
         location,
@@ -451,6 +472,7 @@ class UnitService {
     let updated = 0;
     let locationsAdded = 0;
     let locationsSkipped = 0;
+    const failures: ExcelUploadFailure[] = [];
 
     const newUnitsToCreate: RawUnitInput[] = [];
     const newPeriodsToCreate: { unitId: number; rawData: RawUnitInput }[] = [];
@@ -484,18 +506,16 @@ class UnitService {
 
         if (existingPeriod && rawData.trainingLocations && rawData.trainingLocations.length > 0) {
           // 기존 장소 이름 Set (TrainingPeriod 내 모든 locations)
-          const existingPlaceNames = new Set(
-            existingPeriod.locations.map((l: { originalPlace: string | null }) => l.originalPlace),
-          );
+          const existingPlaceNames = this._buildLocationImportKeySet(existingPeriod.locations);
 
           for (const loc of rawData.trainingLocations) {
-            const placeName = loc.originalPlace;
+            const placeKey = this._getLocationImportKey(loc);
             // 메모리 상 중복 체크
-            if (placeName && existingPlaceNames.has(placeName)) {
+            if (placeKey && existingPlaceNames.has(placeKey)) {
               locationsSkipped++;
             } else {
               // 신규 장소 매핑 대기 (엑셀 내 중복 방지 위해 Set에도 추가)
-              if (placeName) existingPlaceNames.add(placeName);
+              if (placeKey) existingPlaceNames.add(placeKey);
               trainingLocationsToCreate.push({
                 trainingPeriodId: existingPeriod.id,
                 location: loc,
@@ -539,8 +559,12 @@ class UnitService {
                 return;
               }
             }
-            // registerSingleUnit이 name이 없는 경우 등에 대헤 throw 할 수 있음
+            // registerSingleUnit이 name이 없는 경우 등에 대해 throw 할 수 있음
             logger.error(`[UnitService] Critical failure registering unit ${data.name}: ${e}`);
+            failures.push({
+              unitName: data.name?.trim() || null,
+              reason: toFailureReason(e),
+            });
           }
         }),
       );
@@ -563,6 +587,10 @@ class UnitService {
             logger.error(
               `[UnitService] Failed to create training period for existing unit ${rawData.name}: ${e}`,
             );
+            failures.push({
+              unitName: rawData.name?.trim() || null,
+              reason: toFailureReason(e),
+            });
           }
         }),
       );
@@ -578,6 +606,8 @@ class UnitService {
       updated,
       locationsAdded,
       locationsSkipped,
+      failed: failures.length,
+      failures,
     };
   }
 
