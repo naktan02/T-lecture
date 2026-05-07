@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { Button } from '../../../shared/ui';
 import { showSuccess, showError, showConfirm } from '../../../shared/utils/toast';
 import { isHoliday } from '../../../shared/utils/holidays';
+import { logger } from '../../../shared/utils/logger';
 import {
   TrainingPeriodTab,
   TrainingPeriodFormData,
@@ -323,8 +324,7 @@ export const AssignmentUnitEditModal: React.FC<Props> = ({
           : periodForm.schedules.map((s) => ({ id: s.id ?? 0, date: s.date }));
       _onSave?.(finalSchedules);
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('일정 수정 실패:', error);
+      logger.error('일정 수정 실패:', error);
       showError('일정 수정에 실패했습니다');
       // 실패 시 원래 상태로 복원
       setPeriodForm((prev) => ({
@@ -484,8 +484,7 @@ export const AssignmentUnitEditModal: React.FC<Props> = ({
       });
       showSuccess('기본 정보가 저장되었습니다');
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('기본 정보 저장 실패:', error);
+      logger.error('기본 정보 저장 실패:', error);
       showError('기본 정보 저장에 실패했습니다');
     }
   };
@@ -558,8 +557,7 @@ export const AssignmentUnitEditModal: React.FC<Props> = ({
       showSuccess('장소 정보가 저장되었습니다');
       // 로컬 상태는 이미 수정되어 있으므로 별도 새로고침 불필요
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('장소 정보 저장 실패:', error);
+      logger.error('장소 정보 저장 실패:', error);
       showError('장소 정보 저장에 실패했습니다');
     }
   };

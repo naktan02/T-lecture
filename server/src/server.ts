@@ -82,8 +82,8 @@ app.options('*', (_req: Request, res: Response) => {
   res.sendStatus(200);
 });
 
-app.use(express.json());
 app.use(requestLogger);
+app.use(express.json());
 app.use(cookieParser());
 
 // 전역 Rate Limit 적용 (15분당 IP당 100회)

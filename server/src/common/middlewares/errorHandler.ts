@@ -99,6 +99,8 @@ export const errorHandler = (err: unknown, req: Request, res: Response, _next: N
       : normalized.message;
 
   const logPayload = {
+    event: 'api.error',
+    requestId: req.requestId ?? null,
     code: normalized.code,
     statusCode: normalized.statusCode,
     message: normalized.message,
@@ -134,10 +136,13 @@ export const errorHandler = (err: unknown, req: Request, res: Response, _next: N
     logger.warn('[API ERROR]', logPayload);
   }
 
+  req.errorLogged = true;
+
   res.status(normalized.statusCode).json({
     error: safeMessage,
     code: normalized.code,
     statusCode: normalized.statusCode,
+    requestId: req.requestId ?? null,
   });
 };
 

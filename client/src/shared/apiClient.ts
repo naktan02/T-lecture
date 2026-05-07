@@ -8,12 +8,28 @@ import {
 } from './auth/session';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const REQUEST_ID_HEADER = 'X-Request-Id';
 
 export interface ApiClientOptions extends RequestInit {
   skipInterceptor?: boolean;
 }
 
+const createRequestId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `web_${crypto.randomUUID()}`;
+  }
+
+  return `web_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const appendRequestId = (message: string, requestId: string | null): string => {
+  if (!requestId) return message;
+  return `${message} (오류 ID: ${requestId})`;
+};
+
 const readErrorMessage = async (response: Response): Promise<string> => {
+  const responseRequestId = response.headers.get(REQUEST_ID_HEADER);
+
   // 429 rate limit 초과 시 남은 시간 안내
   if (response.status === 429) {
     const resetHeader = response.headers.get('RateLimit-Reset');
@@ -22,19 +38,24 @@ const readErrorMessage = async (response: Response): Promise<string> => {
       const remainMs = resetTime - Date.now();
       if (remainMs > 0) {
         const remainMin = Math.ceil(remainMs / 60000);
-        return `요청이 너무 많습니다. ${remainMin}분 후 다시 시도해주세요.`;
+        return appendRequestId(
+          `요청이 너무 많습니다. ${remainMin}분 후 다시 시도해주세요.`,
+          responseRequestId,
+        );
       }
     }
-    return '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.';
+    return appendRequestId('요청이 너무 많습니다. 잠시 후 다시 시도해주세요.', responseRequestId);
   }
 
   const ct = response.headers.get('content-type') || '';
   if (ct.includes('application/json')) {
     const errorData = await response.json().catch(() => ({}) as any);
-    return errorData.error || errorData.message || `Request failed: ${response.status}`;
+    const requestId = responseRequestId || errorData.requestId || null;
+    const message = errorData.error || errorData.message || `Request failed: ${response.status}`;
+    return appendRequestId(message, requestId);
   }
   const text = await response.text().catch(() => '');
-  return text || `Request failed: ${response.status}`;
+  return appendRequestId(text || `Request failed: ${response.status}`, responseRequestId);
 };
 
 export const apiClient = async (url: string, options: ApiClientOptions = {}): Promise<Response> => {
@@ -51,6 +72,7 @@ export const apiClient = async (url: string, options: ApiClientOptions = {}): Pr
   });
 
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (!headers[REQUEST_ID_HEADER]) headers[REQUEST_ID_HEADER] = createRequestId();
 
   const config: RequestInit = {
     credentials: 'include', // ✅ 일반 요청도 쿠키 포함
