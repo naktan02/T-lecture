@@ -46,6 +46,11 @@ class UnitRepository {
       where: {
         lat: null,
         addressDetail: { not: null }, // 주소는 있는데 좌표가 없는 경우
+        NOT: {
+          validationMessage: {
+            contains: '주소를 검색할 수 없습니다',
+          },
+        },
       },
       take,
     });
@@ -207,13 +212,53 @@ class UnitRepository {
   ) {
     if (items.length === 0) return { count: 0 };
 
-    const dbData = items.map((item) => ({
-      ...this._mapLocationData(item.location),
-      trainingPeriodId: item.trainingPeriodId,
-    }));
+    const itemsByPeriod = new Map<number, TrainingLocationData[]>();
+    for (const item of items) {
+      const locations = itemsByPeriod.get(item.trainingPeriodId) || [];
+      locations.push(item.location);
+      itemsByPeriod.set(item.trainingPeriodId, locations);
+    }
 
-    return prisma.trainingLocation.createMany({
-      data: dbData,
+    return prisma.$transaction(async (tx) => {
+      let count = 0;
+
+      for (const [trainingPeriodId, locations] of itemsByPeriod) {
+        const createdLocations: { id: number; input: TrainingLocationData }[] = [];
+
+        for (const location of locations) {
+          const created = await tx.trainingLocation.create({
+            data: {
+              ...this._mapLocationData(location),
+              trainingPeriodId,
+            },
+            select: { id: true },
+          });
+          createdLocations.push({ id: created.id, input: location });
+        }
+
+        const schedules = await tx.unitSchedule.findMany({
+          where: { trainingPeriodId },
+          select: { id: true },
+        });
+
+        if (schedules.length > 0 && createdLocations.length > 0) {
+          await tx.scheduleLocation.createMany({
+            data: schedules.flatMap((schedule) =>
+              createdLocations.map(({ id, input }) => ({
+                unitScheduleId: schedule.id,
+                trainingLocationId: id,
+                plannedCount: safeInt(input.plannedCount),
+                actualCount: safeInt(input.actualCount),
+              })),
+            ),
+            skipDuplicates: true,
+          });
+        }
+
+        count += createdLocations.length;
+      }
+
+      return { count };
     });
   }
 
@@ -910,50 +955,69 @@ class UnitRepository {
       initialLocationCount?: number | null;
     },
   ) {
-    return prisma.trainingPeriod.create({
-      data: {
-        unitId,
-        name: data.name,
-        lectureYear: data.lectureYear ?? null,
-        startDate: data.startDate ?? null,
-        endDate: data.endDate ?? null,
-        workStartTime: data.workStartTime,
-        workEndTime: data.workEndTime,
-        lunchStartTime: data.lunchStartTime,
-        lunchEndTime: data.lunchEndTime,
-        officerName: data.officerName,
-        officerPhone: data.officerPhone,
-        officerEmail: data.officerEmail,
-        excludedDates: data.excludedDates ?? [],
-        hasCateredMeals: data.hasCateredMeals ?? false,
-        hasHallLodging: data.hasHallLodging ?? false,
-        allowsPhoneBeforeAfter: data.allowsPhoneBeforeAfter ?? false,
-        // 최초계획 (보고서용)
-        initialPeriodDays: data.initialPeriodDays ?? null,
-        initialLocationCount: data.initialLocationCount ?? null,
-        locations: data.locations
-          ? {
-              create: data.locations.map((l) => ({
-                originalPlace: l.originalPlace || '',
-                changedPlace: l.changedPlace || null,
-                hasInstructorLounge: l.hasInstructorLounge ?? false,
-                hasWomenRestroom: l.hasWomenRestroom ?? false,
-                note: l.note || null,
-              })),
-            }
-          : undefined,
-        schedules: data.schedules
-          ? {
-              create: data.schedules.map((s) => ({
-                date: toUTCMidnight(s.date),
-              })),
-            }
-          : undefined,
-      },
-      include: {
-        locations: true,
-        schedules: true,
-      },
+    return prisma.$transaction(async (tx) => {
+      const period = await tx.trainingPeriod.create({
+        data: {
+          unitId,
+          name: data.name,
+          lectureYear: data.lectureYear ?? null,
+          startDate: data.startDate ?? null,
+          endDate: data.endDate ?? null,
+          workStartTime: data.workStartTime,
+          workEndTime: data.workEndTime,
+          lunchStartTime: data.lunchStartTime,
+          lunchEndTime: data.lunchEndTime,
+          officerName: data.officerName,
+          officerPhone: data.officerPhone,
+          officerEmail: data.officerEmail,
+          excludedDates: data.excludedDates ?? [],
+          hasCateredMeals: data.hasCateredMeals ?? false,
+          hasHallLodging: data.hasHallLodging ?? false,
+          allowsPhoneBeforeAfter: data.allowsPhoneBeforeAfter ?? false,
+          // 최초계획 (보고서용)
+          initialPeriodDays: data.initialPeriodDays ?? null,
+          initialLocationCount: data.initialLocationCount ?? null,
+          locations: data.locations
+            ? {
+                create: data.locations.map((l) => ({
+                  originalPlace: l.originalPlace || '',
+                  changedPlace: l.changedPlace || null,
+                  hasInstructorLounge: l.hasInstructorLounge ?? false,
+                  hasWomenRestroom: l.hasWomenRestroom ?? false,
+                  note: l.note || null,
+                })),
+              }
+            : undefined,
+          schedules: data.schedules
+            ? {
+                create: data.schedules.map((s) => ({
+                  date: toUTCMidnight(s.date),
+                })),
+              }
+            : undefined,
+        },
+        include: {
+          locations: true,
+          schedules: true,
+        },
+      });
+
+      if (period.locations.length > 0 && period.schedules.length > 0) {
+        const inputLocations = data.locations || [];
+        await tx.scheduleLocation.createMany({
+          data: period.schedules.flatMap((schedule) =>
+            period.locations.map((location, index) => ({
+              unitScheduleId: schedule.id,
+              trainingLocationId: location.id,
+              plannedCount: safeInt(inputLocations[index]?.plannedCount),
+              actualCount: null,
+            })),
+          ),
+          skipDuplicates: true,
+        });
+      }
+
+      return period;
     });
   }
 

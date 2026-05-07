@@ -23,6 +23,7 @@ import {
 // 서비스 입력 타입들
 type RawUnitInput = RawUnitData;
 type ScheduleData = ScheduleInput;
+type ExistingUnitForUpsert = NonNullable<Awaited<ReturnType<typeof unitRepository.findUnitByName>>>;
 
 /**
  * 날짜 문자열을 UTC 자정으로 변환 (시간 없는 날짜 전용)
@@ -118,6 +119,96 @@ class UnitService {
       const existingEnd = period.endDate ? toDateOnlyString(period.endDate) : null;
       return existingStart === startDate && existingEnd === endDate;
     });
+  }
+
+  private _isUnitNameUniqueError(error: unknown): boolean {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+      return false;
+    }
+
+    const target = error.meta?.target;
+    if (Array.isArray(target)) {
+      return target.some((field) => field === '부대명' || field === 'name');
+    }
+    return String(target || '').includes('부대명') || String(target || '').includes('name');
+  }
+
+  private async _appendRawDataToExistingUnit(
+    existingUnit: ExistingUnitForUpsert,
+    rawData: RawUnitInput,
+    lectureYear?: number,
+  ): Promise<{ locationsAdded: number; locationsSkipped: number; periodCreated: boolean }> {
+    const periodWindow = this._buildPeriodWindow(
+      rawData.educationStart,
+      rawData.educationEnd,
+      rawData.excludedDates || [],
+      lectureYear,
+    );
+    const existingPeriod = this._findExistingTrainingPeriodByRange(
+      existingUnit.trainingPeriods,
+      periodWindow.normalizedStart,
+      periodWindow.normalizedEnd,
+    );
+
+    if (!existingPeriod) {
+      await this._createTrainingPeriodFromRawData(existingUnit.id, rawData, lectureYear);
+      return {
+        locationsAdded: rawData.trainingLocations?.length || 0,
+        locationsSkipped: 0,
+        periodCreated: true,
+      };
+    }
+
+    const incomingLocations = rawData.trainingLocations || [];
+    if (incomingLocations.length === 0) {
+      return { locationsAdded: 0, locationsSkipped: 0, periodCreated: false };
+    }
+
+    const existingPlaceNames = new Set(
+      existingPeriod.locations.map((l: { originalPlace: string | null }) => l.originalPlace),
+    );
+    const locationsToCreate: {
+      trainingPeriodId: number;
+      location: TrainingLocationData;
+    }[] = [];
+    let locationsSkipped = 0;
+
+    for (const location of incomingLocations) {
+      const placeName = location.originalPlace;
+      if (placeName && existingPlaceNames.has(placeName)) {
+        locationsSkipped++;
+        continue;
+      }
+
+      if (placeName) existingPlaceNames.add(placeName);
+      locationsToCreate.push({
+        trainingPeriodId: existingPeriod.id,
+        location,
+      });
+    }
+
+    if (locationsToCreate.length > 0) {
+      await unitRepository.bulkAddTrainingLocations(locationsToCreate);
+    }
+
+    return {
+      locationsAdded: locationsToCreate.length,
+      locationsSkipped,
+      periodCreated: false,
+    };
+  }
+
+  private async _appendRawDataToExistingUnitByName(
+    rawData: RawUnitInput,
+    lectureYear?: number,
+  ): Promise<{ locationsAdded: number; locationsSkipped: number; periodCreated: boolean } | null> {
+    const unitName = rawData.name?.trim();
+    if (!unitName) return null;
+
+    const existingUnit = await unitRepository.findUnitByName(unitName);
+    if (!existingUnit) return null;
+
+    return this._appendRawDataToExistingUnit(existingUnit, rawData, lectureYear);
   }
 
   private async _createTrainingPeriodFromRawData(
@@ -316,6 +407,10 @@ class UnitService {
       if (e instanceof Error && e.message.includes('부대명(name)은 필수입니다.')) {
         throw new AppError(e.message, 400, 'VALIDATION_ERROR');
       }
+      if (this._isUnitNameUniqueError(e)) {
+        logger.warn(`[UnitService] Duplicate unit name in registerSingleUnit: ${rawData.name}`);
+        throw e;
+      }
       logger.error(`[UnitService] Unexpected error in registerSingleUnit: ${e}`);
       throw e;
     }
@@ -432,6 +527,18 @@ class UnitService {
             created++;
             locationsAdded += data.trainingLocations?.length || 0;
           } catch (e) {
+            if (this._isUnitNameUniqueError(e)) {
+              const merged = await this._appendRawDataToExistingUnitByName(data, lectureYear);
+              if (merged) {
+                updated++;
+                locationsAdded += merged.locationsAdded;
+                locationsSkipped += merged.locationsSkipped;
+                logger.warn(
+                  `[UnitService] Unit already existed during bulk import; merged instead: ${data.name}`,
+                );
+                return;
+              }
+            }
             // registerSingleUnit이 name이 없는 경우 등에 대헤 throw 할 수 있음
             logger.error(`[UnitService] Critical failure registering unit ${data.name}: ${e}`);
           }

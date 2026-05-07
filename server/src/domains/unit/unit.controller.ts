@@ -4,6 +4,7 @@ import unitService from './unit.service';
 import excelService from '../../infra/excel.service';
 import asyncHandler from '../../common/middlewares/asyncHandler';
 import AppError from '../../common/errors/AppError';
+import { runExclusiveOperation } from '../../common/utils/operationLock';
 
 // 부대 목록 조회
 export const getUnitList = asyncHandler(async (req: Request, res: Response) => {
@@ -38,8 +39,19 @@ export const uploadExcelAndRegisterUnits = asyncHandler(async (req: Request, res
   }
 
   // 메타데이터 포함 파싱 (강의년도 추출)
-  const { rows: rawRows, meta } = await excelService.bufferToJsonWithMeta(req.file.buffer);
-  const result = await unitService.processExcelDataAndRegisterUnits(rawRows, meta.lectureYear);
+  const { result, lectureYear } = await runExclusiveOperation(
+    'unit:excel-upload',
+    async () => {
+      const { rows: rawRows, meta } = await excelService.bufferToJsonWithMeta(req.file!.buffer);
+      return {
+        result: await unitService.processExcelDataAndRegisterUnits(rawRows, meta.lectureYear),
+        lectureYear: meta.lectureYear,
+      };
+    },
+    {
+      conflictMessage: '부대 엑셀 업로드가 이미 실행 중입니다. 잠시 후 다시 시도해주세요.',
+    },
+  );
 
   // 메시지 구성
   const messages: string[] = [];
@@ -48,8 +60,8 @@ export const uploadExcelAndRegisterUnits = asyncHandler(async (req: Request, res
   if (result.locationsSkipped > 0) messages.push(`${result.locationsSkipped}개 교육장소 중복 스킵`);
 
   let message = messages.length > 0 ? messages.join(', ') + ' 완료' : '처리된 데이터가 없습니다.';
-  if (meta.lectureYear) {
-    message = `[${meta.lectureYear}년] ` + message;
+  if (lectureYear) {
+    message = `[${lectureYear}년] ` + message;
   }
 
   res.status(201).json({
