@@ -81,27 +81,29 @@ type UnitWarning = {
   tone: 'error' | 'warning';
 };
 
-const getUnitWarning = (unit: Unit): UnitWarning | null => {
+const getUnitWarnings = (unit: Unit): UnitWarning[] => {
+  const warnings: UnitWarning[] = [];
+
   if (unit.validationStatus === 'Invalid') {
     const validationMessage = unit.validationMessage || '알 수 없는 오류';
-    return {
+    warnings.push({
       message: `[데이터 오류] ${validationMessage}`,
       tone: validationMessage.includes('교육장소') ? 'warning' : 'error',
-    };
+    });
   }
   if (!unit.addressDetail) {
-    return { message: '주소가 입력되지 않았습니다.', tone: 'error' };
+    warnings.push({ message: '주소가 입력되지 않았습니다.', tone: 'error' });
   }
   if (unit.lat === null) {
-    return { message: '주소 좌표를 찾을 수 없습니다. 주소를 확인해주세요.', tone: 'error' };
+    warnings.push({ message: '주소 좌표를 찾을 수 없습니다. 주소를 확인해주세요.', tone: 'error' });
   }
   if (!unit.trainingPeriods || unit.trainingPeriods.length === 0) {
-    return { message: '교육기간이 없습니다.', tone: 'warning' };
+    warnings.push({ message: '교육기간이 없습니다.', tone: 'warning' });
+  } else if (unit.trainingPeriods.some((period) => getLocationCount(period) === 0)) {
+    warnings.push({ message: '교육장소가 없습니다.', tone: 'warning' });
   }
-  if (getLocationCount(unit.trainingPeriods[0]) === 0) {
-    return { message: '교육장소가 없습니다.', tone: 'warning' };
-  }
-  return null;
+
+  return warnings;
 };
 
 const WarningIcon = ({ warning, className = '' }: { warning: UnitWarning; className?: string }) => (
@@ -198,7 +200,9 @@ export const UnitList = ({
           <tbody className="divide-y divide-gray-100">
             {units.map((unit) => {
               const isSelected = selectedIds.includes(unit.id);
-              const unitWarning = getUnitWarning(unit);
+              const unitWarnings = getUnitWarnings(unit);
+              const hasError = unitWarnings.some((warning) => warning.tone === 'error');
+              const hasWarning = unitWarnings.some((warning) => warning.tone === 'warning');
 
               return (
                 <tr
@@ -206,8 +210,8 @@ export const UnitList = ({
                   className={`
                     transition-all duration-200 cursor-pointer
                     ${isSelected ? 'bg-green-50' : 'hover:bg-gray-50'}
-                    ${unitWarning?.tone === 'error' ? 'bg-red-50' : ''}
-                    ${unitWarning?.tone === 'warning' ? 'bg-amber-50' : ''}
+                    ${hasError ? 'bg-red-50' : ''}
+                    ${!hasError && hasWarning ? 'bg-amber-50' : ''}
                   `}
                   onClick={() => onUnitClick?.(unit)}
                 >
@@ -224,7 +228,9 @@ export const UnitList = ({
                     <div className="font-semibold text-gray-900 flex items-center gap-1">
                       {unit.name}
                       {/* 주소/데이터/교육기간/장소 오류 경고 아이콘 */}
-                      {unitWarning && <WarningIcon warning={unitWarning} />}
+                      {unitWarnings.map((warning) => (
+                        <WarningIcon key={`${warning.tone}-${warning.message}`} warning={warning} />
+                      ))}
                     </div>
                     {(() => {
                       const colors = getUnitTypeColor(unit.unitType);
@@ -290,7 +296,7 @@ export const UnitList = ({
 
         {units.map((unit) => {
           const isSelected = selectedIds.includes(unit.id);
-          const unitWarning = getUnitWarning(unit);
+          const unitWarnings = getUnitWarnings(unit);
           const firstPeriod = unit.trainingPeriods?.[0];
           const { start, end } = firstPeriod
             ? getPeriodDateRange(firstPeriod)
@@ -328,7 +334,13 @@ export const UnitList = ({
                       <h3 className="font-bold text-gray-900 text-sm md:text-base truncate">
                         {unit.name}
                       </h3>
-                      {unitWarning && <WarningIcon warning={unitWarning} className="shrink-0" />}
+                      {unitWarnings.map((warning) => (
+                        <WarningIcon
+                          key={`${warning.tone}-${warning.message}`}
+                          warning={warning}
+                          className="shrink-0"
+                        />
+                      ))}
                     </div>
                     {(() => {
                       const colors = getUnitTypeColor(unit.unitType);
