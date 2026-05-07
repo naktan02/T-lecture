@@ -9,9 +9,21 @@ import * as Sentry from '@sentry/node';
 const logDir = 'logs';
 const { combine, timestamp, printf, colorize } = winston.format;
 
-// NODE_ENV 기반 로그 레벨 자동 설정
+const allowedLogLevels = new Set(['error', 'warn', 'info', 'debug']);
+
+function normalizeLogLevel(value: string | undefined, fallback: string): string {
+  const normalized = value?.trim().toLowerCase();
+  return normalized && allowedLogLevels.has(normalized) ? normalized : fallback;
+}
+
+// 운영 로그가 불필요하게 커지지 않도록 기본 콘솔/파일 로그는 warn 이상만 출력한다.
+// 상세 로그가 필요할 때만 LOG_LEVEL=info 또는 LOG_LEVEL=debug로 명시적으로 올린다.
 const isProd = process.env.NODE_ENV === 'production';
-const consoleLogLevel = isProd ? 'warn' : 'info'; // 프로덕션: warn, 개발: info
+const consoleLogLevel = normalizeLogLevel(
+  process.env.LOG_LEVEL || process.env.SERVER_LOG_LEVEL,
+  'warn',
+);
+const fileLogLevel = normalizeLogLevel(process.env.FILE_LOG_LEVEL, 'warn');
 const debugToFile = process.env.DEBUG_TO_FILE === 'true';
 
 const logFormat = printf((info) => {
@@ -19,7 +31,13 @@ const logFormat = printf((info) => {
   const meta = Object.fromEntries(Object.entries(rest).filter(([, value]) => value !== undefined));
   const metaString =
     Object.keys(meta).length > 0
-      ? ` ${inspect(meta, { depth: 5, breakLength: Infinity, colors: false })}`
+      ? ` ${inspect(meta, {
+          depth: 3,
+          breakLength: Infinity,
+          colors: false,
+          maxArrayLength: 20,
+          maxStringLength: 1000,
+        })}`
       : '';
 
   return `${timestamp} [${level}]: ${message}${metaString}`;
@@ -74,7 +92,7 @@ if (!isProd) {
     }),
     // 일반 로그 파일 (info 이상)
     new winstonDaily({
-      level: 'info',
+      level: fileLogLevel,
       datePattern: 'YYYY-MM-DD',
       dirname: logDir,
       filename: `%DATE%.log`,

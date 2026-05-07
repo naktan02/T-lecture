@@ -6,6 +6,7 @@ declare global {
     interface Request {
       user?: AuthUser; // 이제 어디서든 req.user를 바로 쓸 수 있습니다.
       requestId?: string;
+      errorLogged?: boolean;
     }
   }
 }

@@ -4,6 +4,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/client.js';
 import fs from 'fs';
 import path from 'path';
+import logger from '../config/logger';
 
 // ============================================
 // pg Pool 직접 생성 (연결 풀 옵션 제어)
@@ -40,8 +41,9 @@ const pool = new Pool({
 
 // Pool 에러 핸들링 (연결 실패 시 로깅)
 pool.on('error', (err) => {
-  // eslint-disable-next-line no-console
-  console.error('[DB Pool] Unexpected error on idle client:', err.message);
+  logger.error('[DB Pool] Unexpected error on idle client', {
+    message: err.message,
+  });
 });
 
 // Prisma 7 PrismaPg 어댑터
@@ -107,17 +109,21 @@ const prismaWithRetry = basePrisma.$extends({
 
           // 마지막 시도였으면 throw
           if (attempt >= MAX_RETRIES) {
-            // eslint-disable-next-line no-console
-            console.error(`[DB Retry] ${operation} failed after ${MAX_RETRIES} retries`);
+            logger.error('[DB Retry] Operation failed after retries', {
+              operation,
+              maxRetries: MAX_RETRIES,
+            });
             throw error;
           }
 
           // 지수 백오프로 재시도
           const delay = RETRY_DELAYS[attempt] || 2000;
-          // eslint-disable-next-line no-console
-          console.warn(
-            `[DB Retry] ${operation} failed, retry ${attempt + 1}/${MAX_RETRIES} in ${delay}ms...`,
-          );
+          logger.warn('[DB Retry] Retrying transient database operation', {
+            operation,
+            attempt: attempt + 1,
+            maxRetries: MAX_RETRIES,
+            delayMs: delay,
+          });
           await new Promise((r) => setTimeout(r, delay));
         }
       }
@@ -145,8 +151,7 @@ if (process.env.NODE_ENV !== 'production') {
 // 연결 상태 모니터링
 // ============================================
 export function logPoolStatus(): void {
-  // eslint-disable-next-line no-console
-  console.log('[DB Pool] Status:', {
+  logger.debug('[DB Pool] Status', {
     totalCount: pool.totalCount,
     idleCount: pool.idleCount,
     waitingCount: pool.waitingCount,
@@ -165,28 +170,24 @@ export function startDatabaseHeartbeat(): void {
   heartbeatInterval = setInterval(async () => {
     try {
       await basePrisma.$queryRaw`SELECT 1`;
-      // eslint-disable-next-line no-console
-      console.log('[DB Heartbeat] OK -', {
+      logger.debug('[DB Heartbeat] OK', {
         total: pool.totalCount,
         idle: pool.idleCount,
         waiting: pool.waitingCount,
       });
     } catch {
-      // eslint-disable-next-line no-console
-      console.warn('[DB Heartbeat] Connection check failed, will auto-recover');
+      logger.warn('[DB Heartbeat] Connection check failed, will auto-recover');
     }
   }, HEARTBEAT_INTERVAL_MS);
 
-  // eslint-disable-next-line no-console
-  console.log('[DB Heartbeat] Started (interval: 2 minutes)');
+  logger.debug('[DB Heartbeat] Started', { intervalMs: HEARTBEAT_INTERVAL_MS });
 }
 
 export function stopDatabaseHeartbeat(): void {
   if (heartbeatInterval) {
     clearInterval(heartbeatInterval);
     heartbeatInterval = null;
-    // eslint-disable-next-line no-console
-    console.log('[DB Heartbeat] Stopped');
+    logger.debug('[DB Heartbeat] Stopped');
   }
 }
 
@@ -197,8 +198,7 @@ export async function closePool(): Promise<void> {
   stopDatabaseHeartbeat();
   await basePrisma.$disconnect();
   await pool.end();
-  // eslint-disable-next-line no-console
-  console.log('[DB Pool] Closed');
+  logger.debug('[DB Pool] Closed');
 }
 
 export default prisma;

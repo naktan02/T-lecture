@@ -1,8 +1,24 @@
 import { NextFunction, Request, Response } from 'express';
+import { randomUUID } from 'crypto';
 import logger from '../../config/logger';
 import { getLoggableUrl, getRoutePattern } from '../utils/requestMeta';
 
 const SLOW_REQUEST_THRESHOLD_MS = 1000;
+const REQUEST_ID_HEADER = 'X-Request-Id';
+const REQUEST_ID_PATTERN = /^[a-zA-Z0-9._:-]{6,80}$/;
+
+function getIncomingRequestId(req: Request): string | null {
+  const requestId = req.get(REQUEST_ID_HEADER)?.trim();
+  if (!requestId || !REQUEST_ID_PATTERN.test(requestId)) return null;
+
+  return requestId;
+}
+
+function ensureRequestId(req: Request, res: Response): void {
+  const requestId = req.requestId || getIncomingRequestId(req) || `req_${randomUUID()}`;
+  req.requestId = requestId;
+  res.setHeader(REQUEST_ID_HEADER, requestId);
+}
 
 function shouldSkip(req: Request): boolean {
   const url = getLoggableUrl(req);
@@ -27,6 +43,8 @@ function shouldLogRequest(req: Request, statusCode: number, durationMs: number):
 }
 
 export const requestLogger = (req: Request, res: Response, next: NextFunction) => {
+  ensureRequestId(req, res);
+
   if (shouldSkip(req)) return next();
 
   const start = Date.now();
@@ -35,7 +53,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
     const statusCode = res.statusCode;
     const durationMs = Date.now() - start;
 
-    if (statusCode >= 500 || statusCode === 304) {
+    if (statusCode >= 500 || statusCode === 304 || req.errorLogged) {
       return;
     }
 
@@ -44,26 +62,22 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
     }
 
     const payload = {
+      event: statusCode >= 400 ? 'api.request.failed' : 'api.request.slow',
+      requestId: req.requestId,
       method: req.method,
-      url: getLoggableUrl(req),
+      path: getLoggableUrl(req),
       route: getRoutePattern(req),
       statusCode,
       durationMs,
-      requestId: req.requestId ?? null,
       userId: req.user?.id ?? null,
-      queryKeys: Object.keys(req.query || {}),
-      ip: req.ip,
-      userAgent: req.get('user-agent') || null,
     };
 
-    const message = `${req.method} ${getLoggableUrl(req)} - ${statusCode} (${durationMs}ms)`;
+    const message =
+      statusCode >= 400
+        ? '[api.request.failed]'
+        : `[api.request.slow] ${durationMs}ms >= ${SLOW_REQUEST_THRESHOLD_MS}ms`;
 
-    if (statusCode >= 400) {
-      logger.warn(message, payload);
-      return;
-    }
-
-    logger.info(message, payload);
+    logger.warn(message, payload);
   });
 
   next();
