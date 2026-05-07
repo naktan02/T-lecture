@@ -380,6 +380,8 @@ export const useUnitDrawer = ({
       region: unitData.region || '',
       addressDetail: unitData.addressDetail || '',
       detailAddress: unitData.detailAddress || '',
+      validationStatus: unitData.validationStatus || 'Valid',
+      validationMessage: unitData.validationMessage || '',
     });
 
     const periods = (unitData.trainingPeriods || []).map(mapPeriodToForm);

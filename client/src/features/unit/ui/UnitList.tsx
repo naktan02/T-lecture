@@ -76,6 +76,52 @@ const getLocationCount = (period?: TrainingPeriod): number => {
   return period.locations?.length || 0;
 };
 
+type UnitWarning = {
+  message: string;
+  tone: 'error' | 'warning';
+};
+
+const getUnitWarnings = (unit: Unit): UnitWarning[] => {
+  const warnings: UnitWarning[] = [];
+
+  if (unit.validationStatus === 'Invalid') {
+    const validationMessage = unit.validationMessage || '알 수 없는 오류';
+    warnings.push({
+      message: `[데이터 오류] ${validationMessage}`,
+      tone: validationMessage.includes('교육장소') ? 'warning' : 'error',
+    });
+  }
+  if (!unit.addressDetail) {
+    warnings.push({ message: '주소가 입력되지 않았습니다.', tone: 'error' });
+  } else if (unit.lat === null) {
+    warnings.push({ message: '주소 좌표를 찾을 수 없습니다. 주소를 확인해주세요.', tone: 'error' });
+  }
+  if (!unit.trainingPeriods || unit.trainingPeriods.length === 0) {
+    warnings.push({ message: '교육기간이 없습니다.', tone: 'warning' });
+  } else if (unit.trainingPeriods.some((period) => getLocationCount(period) === 0)) {
+    warnings.push({ message: '교육장소가 없습니다.', tone: 'warning' });
+  }
+
+  return warnings;
+};
+
+const WarningIcon = ({ warning, className = '' }: { warning: UnitWarning; className?: string }) => (
+  <span title={warning.message} aria-label={warning.message} className={className}>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={`w-4 h-4 ${warning.tone === 'error' ? 'text-red-500' : 'text-amber-500'}`}
+    >
+      <path
+        fillRule="evenodd"
+        d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  </span>
+);
+
 export const UnitList = ({
   units = [],
   selectedIds = [],
@@ -153,6 +199,9 @@ export const UnitList = ({
           <tbody className="divide-y divide-gray-100">
             {units.map((unit) => {
               const isSelected = selectedIds.includes(unit.id);
+              const unitWarnings = getUnitWarnings(unit);
+              const hasError = unitWarnings.some((warning) => warning.tone === 'error');
+              const hasWarning = unitWarnings.some((warning) => warning.tone === 'warning');
 
               return (
                 <tr
@@ -160,7 +209,8 @@ export const UnitList = ({
                   className={`
                     transition-all duration-200 cursor-pointer
                     ${isSelected ? 'bg-green-50' : 'hover:bg-gray-50'}
-                    ${unit.validationStatus === 'Invalid' ? 'bg-red-50' : ''}
+                    ${hasError ? 'bg-red-50' : ''}
+                    ${!hasError && hasWarning ? 'bg-amber-50' : ''}
                   `}
                   onClick={() => onUnitClick?.(unit)}
                 >
@@ -173,44 +223,20 @@ export const UnitList = ({
                     />
                   </td>
 
-                  <td className="px-4 py-3">
-                    <div className="font-semibold text-gray-900 flex items-center gap-1">
-                      {unit.name}
+                  <td className="px-4 py-3 max-w-[260px] overflow-hidden">
+                    <div className="font-semibold text-gray-900 flex items-center gap-1 min-w-0 max-w-[260px]">
+                      <span className="min-w-0 truncate" title={unit.name}>
+                        {unit.name}
+                      </span>
                       {/* 주소/데이터/교육기간/장소 오류 경고 아이콘 */}
-                      {(() => {
-                        // 경고 메시지 우선순위 결정
-                        let warningMessage: string | null = null;
-                        if (unit.validationStatus === 'Invalid') {
-                          warningMessage = `[데이터 오류] ${unit.validationMessage}`;
-                        } else if (!unit.addressDetail) {
-                          warningMessage = '주소가 입력되지 않았습니다.';
-                        } else if (unit.lat === null) {
-                          warningMessage = '주소 좌표를 찾을 수 없습니다. 주소를 확인해주세요.';
-                        } else if (!unit.trainingPeriods || unit.trainingPeriods.length === 0) {
-                          warningMessage = '교육기간이 없습니다.';
-                        } else if (getLocationCount(unit.trainingPeriods[0]) === 0) {
-                          warningMessage = '교육장소가 없습니다.';
-                        }
-
-                        if (!warningMessage) return null;
-
-                        return (
-                          <span title={warningMessage}>
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="currentColor"
-                              className="w-4 h-4 text-red-500"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          </span>
-                        );
-                      })()}
+                      <span className="inline-flex shrink-0 items-center gap-0.5">
+                        {unitWarnings.map((warning, index) => (
+                          <WarningIcon
+                            key={`${index}-${warning.tone}-${warning.message}`}
+                            warning={warning}
+                          />
+                        ))}
+                      </span>
                     </div>
                     {(() => {
                       const colors = getUnitTypeColor(unit.unitType);
@@ -276,6 +302,7 @@ export const UnitList = ({
 
         {units.map((unit) => {
           const isSelected = selectedIds.includes(unit.id);
+          const unitWarnings = getUnitWarnings(unit);
           const firstPeriod = unit.trainingPeriods?.[0];
           const { start, end } = firstPeriod
             ? getPeriodDateRange(firstPeriod)
@@ -309,9 +336,20 @@ export const UnitList = ({
                 {/* 상단: 부대명 + 타입 */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <h3 className="font-bold text-gray-900 text-sm md:text-base truncate">
-                      {unit.name}
-                    </h3>
+                    <div className="flex items-center gap-1 min-w-0">
+                      <h3 className="font-bold text-gray-900 text-sm md:text-base truncate">
+                        {unit.name}
+                      </h3>
+                      <span className="inline-flex shrink-0 items-center gap-0.5">
+                        {unitWarnings.map((warning, index) => (
+                          <WarningIcon
+                            key={`${index}-${warning.tone}-${warning.message}`}
+                            warning={warning}
+                            className="shrink-0"
+                          />
+                        ))}
+                      </span>
+                    </div>
                     {(() => {
                       const colors = getUnitTypeColor(unit.unitType);
                       return (
