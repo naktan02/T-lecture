@@ -891,6 +891,17 @@ class UnitRepository {
     });
   }
 
+  async updateValidationState(
+    unitId: number | string,
+    validationStatus: 'Valid' | 'Invalid',
+    validationMessage: string | null,
+  ) {
+    return prisma.unit.update({
+      where: { id: Number(unitId) },
+      data: { validationStatus, validationMessage },
+    });
+  }
+
   // ===== TrainingPeriod 일정 조회 =====
 
   /**
