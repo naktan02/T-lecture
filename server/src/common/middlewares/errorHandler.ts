@@ -22,14 +22,37 @@ const defaultCodeByStatus = (statusCode: number): string => {
   return statusMap[statusCode] || 'INTERNAL_ERROR';
 };
 
-function normalizeError(err: unknown): {
+type ApiErrorLogLevel = 'debug' | 'warn' | 'error';
+
+interface NormalizedError {
   statusCode: number;
   code: string;
   message: string;
   stack?: string;
   meta?: Record<string, unknown> | null;
   isAppError: boolean;
-} {
+}
+
+export function getApiErrorLogLevel(
+  requestUrl: string,
+  error: Pick<NormalizedError, 'statusCode' | 'code'>,
+): ApiErrorLogLevel {
+  if (error.statusCode >= 500) {
+    return 'error';
+  }
+
+  const isExpectedRefreshFailure =
+    requestUrl.startsWith('/api/v1/auth/refresh') && error.statusCode === 401;
+  const isExpiredAccessToken = error.statusCode === 401 && error.code === 'TOKEN_EXPIRED';
+
+  if (isExpectedRefreshFailure || isExpiredAccessToken) {
+    return 'debug';
+  }
+
+  return 'warn';
+}
+
+function normalizeError(err: unknown): NormalizedError {
   if (err instanceof AppError) {
     const statusCode = Number(err.statusCode || 500);
     return {
@@ -90,8 +113,7 @@ export const errorHandler = (err: unknown, req: Request, res: Response, _next: N
   const mapped = mapPrismaError(err);
   const normalized = normalizeError(mapped ?? err);
   const requestUrl = getLoggableUrl(req);
-  const isExpectedRefreshFailure =
-    requestUrl.startsWith('/api/v1/auth/refresh') && normalized.statusCode === 401;
+  const logLevel = getApiErrorLogLevel(requestUrl, normalized);
 
   const safeMessage =
     normalized.statusCode >= 500 || !normalized.isAppError
@@ -111,7 +133,7 @@ export const errorHandler = (err: unknown, req: Request, res: Response, _next: N
     ...(normalized.statusCode >= 500 ? { stack: normalized.stack } : {}),
   };
 
-  if (normalized.statusCode >= 500) {
+  if (logLevel === 'error') {
     logger.error('[API ERROR]', logPayload);
 
     Sentry.withScope((scope) => {
@@ -130,7 +152,7 @@ export const errorHandler = (err: unknown, req: Request, res: Response, _next: N
       });
       Sentry.captureException(err);
     });
-  } else if (isExpectedRefreshFailure) {
+  } else if (logLevel === 'debug') {
     logger.debug('[API ERROR]', logPayload);
   } else {
     logger.warn('[API ERROR]', logPayload);
