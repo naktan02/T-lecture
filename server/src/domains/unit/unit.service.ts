@@ -7,6 +7,7 @@ import distanceService from '../distance/distance.service';
 import AppError from '../../common/errors/AppError';
 import logger from '../../config/logger';
 import { isKoreanHoliday } from '../../common/utils/koreanHolidays';
+import { runWithConcurrency } from '../../common/utils/concurrency';
 import { Prisma, MilitaryType } from '../../generated/prisma/client.js';
 import ExcelJS from 'exceljs';
 import {
@@ -25,6 +26,10 @@ type RawUnitInput = RawUnitData;
 type ScheduleData = ScheduleInput;
 type ExistingUnitForUpsert = NonNullable<Awaited<ReturnType<typeof unitRepository.findUnitByName>>>;
 type ExcelUploadFailure = { unitName: string | null; reason: string };
+type RegisterSingleUnitOptions = { geocodeBeforeSave?: boolean };
+type BulkUnitImportOptions = RegisterSingleUnitOptions;
+
+const UNIT_EXCEL_IMPORT_CONCURRENCY = 3;
 
 /**
  * 날짜 문자열을 UTC 자정으로 변환 (시간 없는 날짜 전용)
@@ -293,11 +298,16 @@ class UnitService {
    * 부대 단건 등록 (일정 자동 생성 포함)
    * - educationStart ~ educationEnd 사이의 날짜를 일정으로 생성
    * - excludedDates는 제외하고 교육 가능한 날만 스케줄에 추가
-   * - 주소를 좌표로 변환 (실패해도 부대 생성 진행)
+   * - 주소 좌표 변환은 호출 옵션에 따라 즉시 처리하거나 백그라운드로 넘김
    */
-  async registerSingleUnit(rawData: RawUnitInput, lectureYear?: number) {
+  async registerSingleUnit(
+    rawData: RawUnitInput,
+    lectureYear?: number,
+    options: RegisterSingleUnitOptions = {},
+  ) {
     const errorMessages: string[] = [];
     let validationStatus: 'Valid' | 'Invalid' = 'Valid';
+    const geocodeBeforeSave = options.geocodeBeforeSave ?? true;
 
     try {
       const cleanData = toCreateUnitDto(rawData, lectureYear);
@@ -337,19 +347,21 @@ class UnitService {
         errorMessages.push('교육 종료일이 시작일보다 빠를 수 없습니다.');
       }
 
-      // 3. 주소 → 좌표 변환 (일일 한도 체크 포함)
+      // 3. 주소 → 좌표 변환 (엑셀 업로드는 저장 우선, 백그라운드 변환)
       let lat: number | null = null;
       let lng: number | null = null;
       if (cleanData.addressDetail) {
-        const coords = await kakaoService.addressToCoordsWithLimit(cleanData.addressDetail);
-        if (coords && !coords.limitExceeded) {
-          lat = coords.lat;
-          lng = coords.lng;
-          logger.info(`[UnitService] Geocoded: ${cleanData.addressDetail} → (${lat}, ${lng})`);
-        } else if (coords?.limitExceeded) {
-          logger.warn(`[UnitService] Geocode limit exceeded for: ${cleanData.name}`);
-        } else {
-          errorMessages.push(`주소를 검색할 수 없습니다: ${cleanData.addressDetail}`);
+        if (geocodeBeforeSave) {
+          const coords = await kakaoService.addressToCoordsWithLimit(cleanData.addressDetail);
+          if (coords && !coords.limitExceeded) {
+            lat = coords.lat;
+            lng = coords.lng;
+            logger.info(`[UnitService] Geocoded: ${cleanData.addressDetail} → (${lat}, ${lng})`);
+          } else if (coords?.limitExceeded) {
+            logger.warn(`[UnitService] Geocode limit exceeded for: ${cleanData.name}`);
+          } else {
+            errorMessages.push(`주소를 검색할 수 없습니다: ${cleanData.addressDetail}`);
+          }
         }
       } else {
         errorMessages.push('부대 주소 정보가 없습니다.');
@@ -445,13 +457,17 @@ class UnitService {
    */
   async processExcelDataAndRegisterUnits(rawRows: Record<string, unknown>[], lectureYear?: number) {
     const rawDataList = groupExcelRowsByUnit(rawRows);
-    return await this.upsertMultipleUnits(rawDataList, lectureYear);
+    return await this.upsertMultipleUnits(rawDataList, lectureYear, { geocodeBeforeSave: false });
   }
 
   /**
    * Upsert 로직으로 부대 등록/업데이트
    */
-  async upsertMultipleUnits(dataArray: RawUnitInput[], lectureYear?: number) {
+  async upsertMultipleUnits(
+    dataArray: RawUnitInput[],
+    lectureYear?: number,
+    options: BulkUnitImportOptions = {},
+  ) {
     if (!Array.isArray(dataArray) || dataArray.length === 0) {
       throw new AppError('등록할 데이터가 없습니다.', 400, 'VALIDATION_ERROR');
     }
@@ -530,71 +546,64 @@ class UnitService {
           });
         }
       } else {
-        // [신규 부대] -> 리스트에 추가 (나중에 청크 처리)
+        // [신규 부대] -> 리스트에 추가 (동시성 제한 처리)
         newUnitsToCreate.push(rawData);
       }
     }
 
     // 4. 실행
-    // 4-1. 신규 부대 등록 (청크 처리: 50개씩)
-    const CHUNK_SIZE = 50;
-    for (let i = 0; i < newUnitsToCreate.length; i += CHUNK_SIZE) {
-      const chunk = newUnitsToCreate.slice(i, i + CHUNK_SIZE);
-      await Promise.all(
-        chunk.map(async (data) => {
-          try {
-            await this.registerSingleUnit(data, lectureYear);
-            created++;
-            locationsAdded += data.trainingLocations?.length || 0;
-          } catch (e) {
-            if (this._isUnitNameUniqueError(e)) {
-              const merged = await this._appendRawDataToExistingUnitByName(data, lectureYear);
-              if (merged) {
-                updated++;
-                locationsAdded += merged.locationsAdded;
-                locationsSkipped += merged.locationsSkipped;
-                logger.warn(
-                  `[UnitService] Unit already existed during bulk import; merged instead: ${data.name}`,
-                );
-                return;
-              }
-            }
-            // registerSingleUnit이 name이 없는 경우 등에 대해 throw 할 수 있음
-            logger.error(`[UnitService] Critical failure registering unit ${data.name}: ${e}`);
-            failures.push({
-              unitName: data.name?.trim() || null,
-              reason: toFailureReason(e),
-            });
+    // 4-1. 신규 부대 등록: Prisma 트랜잭션 시작 대기 초과를 막기 위해 동시 실행 수 제한
+    await runWithConcurrency(newUnitsToCreate, UNIT_EXCEL_IMPORT_CONCURRENCY, async (data) => {
+      try {
+        await this.registerSingleUnit(data, lectureYear, options);
+        created++;
+        locationsAdded += data.trainingLocations?.length || 0;
+      } catch (e) {
+        if (this._isUnitNameUniqueError(e)) {
+          const merged = await this._appendRawDataToExistingUnitByName(data, lectureYear);
+          if (merged) {
+            updated++;
+            locationsAdded += merged.locationsAdded;
+            locationsSkipped += merged.locationsSkipped;
+            logger.warn(
+              `[UnitService] Unit already existed during bulk import; merged instead: ${data.name}`,
+            );
+            return;
           }
-        }),
-      );
-    }
+        }
+        // registerSingleUnit이 name이 없는 경우 등에 대해 throw 할 수 있음
+        logger.error(`[UnitService] Critical failure registering unit ${data.name}: ${e}`);
+        failures.push({
+          unitName: data.name?.trim() || null,
+          reason: toFailureReason(e),
+        });
+      }
+    });
 
     // 4-2. 기존 부대 장소 일괄 추가 (Bulk Insert)
     if (trainingLocationsToCreate.length > 0) {
       await unitRepository.bulkAddTrainingLocations(trainingLocationsToCreate);
     }
 
-    // 4-3. 기존 부대에 새 교육기간 생성
-    for (let i = 0; i < newPeriodsToCreate.length; i += CHUNK_SIZE) {
-      const chunk = newPeriodsToCreate.slice(i, i + CHUNK_SIZE);
-      await Promise.all(
-        chunk.map(async ({ unitId, rawData }) => {
-          try {
-            await this._createTrainingPeriodFromRawData(unitId, rawData, lectureYear);
-            locationsAdded += rawData.trainingLocations?.length || 0;
-          } catch (e) {
-            logger.error(
-              `[UnitService] Failed to create training period for existing unit ${rawData.name}: ${e}`,
-            );
-            failures.push({
-              unitName: rawData.name?.trim() || null,
-              reason: toFailureReason(e),
-            });
-          }
-        }),
-      );
-    }
+    // 4-3. 기존 부대에 새 교육기간 생성: 신규 부대와 같은 이유로 동시 실행 수 제한
+    await runWithConcurrency(
+      newPeriodsToCreate,
+      UNIT_EXCEL_IMPORT_CONCURRENCY,
+      async ({ unitId, rawData }) => {
+        try {
+          await this._createTrainingPeriodFromRawData(unitId, rawData, lectureYear);
+          locationsAdded += rawData.trainingLocations?.length || 0;
+        } catch (e) {
+          logger.error(
+            `[UnitService] Failed to create training period for existing unit ${rawData.name}: ${e}`,
+          );
+          failures.push({
+            unitName: rawData.name?.trim() || null,
+            reason: toFailureReason(e),
+          });
+        }
+      },
+    );
 
     // 5. 비동기 좌표 변환 (백그라운드)
     this.updateUnitCoordsInBackground().catch((err) => {
@@ -633,12 +642,23 @@ class UnitService {
     for (const unit of units) {
       if (!unit.addressDetail) continue;
 
-      const coords = await kakaoService.addressToCoordsOrNull(unit.addressDetail);
+      const coords = await kakaoService.addressToCoordsWithLimit(unit.addressDetail);
+      if (coords?.limitExceeded) {
+        logger.warn('[UnitService] Geocode limit exceeded during background geocoding.');
+        break;
+      }
+
       if (coords) {
         await unitRepository.updateCoords(unit.id, coords.lat, coords.lng);
         successCount++;
         // 약간의 딜레이
         await new Promise((r) => setTimeout(r, 100));
+      } else {
+        await unitRepository.updateValidationState(
+          unit.id,
+          'Invalid',
+          `주소를 검색할 수 없습니다: ${unit.addressDetail}`,
+        );
       }
     }
 

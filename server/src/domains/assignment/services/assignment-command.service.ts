@@ -9,9 +9,12 @@ import {
 import instructorRepository from '../../instructor/instructor.repository';
 import distanceRepository from '../../distance/distance.repository';
 import AppError from '../../../common/errors/AppError';
+import { runWithConcurrency } from '../../../common/utils/concurrency';
 import assignmentAlgorithm from '../engine/adapter';
 import { assignmentResponseService } from './assignment-response.service';
 import type { TrainingLocationRaw, ScheduleLocationRaw } from '../../../types/assignment.types';
+
+const ASSIGNMENT_POST_PROCESS_CONCURRENCY = 5;
 
 // =============================================================================
 // Local Types (TrainingPeriod 구조 반영)
@@ -301,18 +304,26 @@ class AssignmentCommandService {
     // 6) 저장 및 후처리
     const summary = await assignmentCommandRepository.createAssignmentsBulk(matchResults);
 
-    // 후처리: 병렬 실행으로 최적화
+    // 후처리: DB 쓰기 작업이 몰리지 않도록 제한된 병렬 실행
     const assignedInstructorIds = Array.from(new Set(matchResults.map((m) => m.instructorId)));
     const affectedTrainingPeriodIds = Array.from(
       new Set(units.flatMap((u) => u.trainingPeriods.map((period) => period.id))),
     );
 
-    await Promise.all([
-      ...assignedInstructorIds.map((id) => this.consumePriorityCredit(id)),
-      ...affectedTrainingPeriodIds.map((id) =>
-        assignmentCommandRepository.recalculateRolesForTrainingPeriod(id),
-      ),
-    ]);
+    await runWithConcurrency(
+      assignedInstructorIds,
+      ASSIGNMENT_POST_PROCESS_CONCURRENCY,
+      async (id) => {
+        await this.consumePriorityCredit(id);
+      },
+    );
+    await runWithConcurrency(
+      affectedTrainingPeriodIds,
+      ASSIGNMENT_POST_PROCESS_CONCURRENCY,
+      async (id) => {
+        await assignmentCommandRepository.recalculateRolesForTrainingPeriod(id);
+      },
+    );
 
     return { summary };
   }
@@ -479,11 +490,12 @@ class AssignmentCommandService {
         const trainingPeriodIds =
           await assignmentQueryRepository.getTrainingPeriodIdsByScheduleIds(scheduleIds);
 
-        // 병렬 실행으로 최적화
-        await Promise.all(
-          Array.from(trainingPeriodIds).map((id) =>
-            assignmentCommandRepository.recalculateRolesForTrainingPeriod(id),
-          ),
+        await runWithConcurrency(
+          Array.from(trainingPeriodIds),
+          ASSIGNMENT_POST_PROCESS_CONCURRENCY,
+          async (id) => {
+            await assignmentCommandRepository.recalculateRolesForTrainingPeriod(id);
+          },
         );
       }
     }
@@ -494,9 +506,12 @@ class AssignmentCommandService {
         .filter((sc) => sc.state === 'Accepted')
         .map((sc) => sc.unitScheduleId);
 
-      // 병렬 실행으로 최적화
-      await Promise.all(
-        acceptedScheduleIds.map((id) => assignmentResponseService.checkAndAutoConfirm(id)),
+      await runWithConcurrency(
+        acceptedScheduleIds,
+        ASSIGNMENT_POST_PROCESS_CONCURRENCY,
+        async (id) => {
+          await assignmentResponseService.checkAndAutoConfirm(id);
+        },
       );
     }
 
