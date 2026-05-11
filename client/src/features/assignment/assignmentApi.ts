@@ -370,7 +370,7 @@ export const batchUpdateAssignmentsApi = async (
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || '일괄 저장에 실패했습니다.');
+    throw new Error(error.error || error.message || '일괄 저장에 실패했습니다.');
   }
   return res.json();
 };
