@@ -261,7 +261,7 @@ class AssignmentDTO {
             const locations =
               period.locations?.length > 0
                 ? period.locations
-                : [{ id: 'default', originalPlace: '교육장소 미정' }];
+                : [{ id: null, originalPlace: '교육장소 미정' }];
 
             const schedules = period.schedules || [];
 
