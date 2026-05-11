@@ -178,6 +178,7 @@ function distributeToLocations(
     unitScheduleId: number;
     instructorId: number;
     trainingLocationId: number | null;
+    role?: 'Head' | 'Supervisor' | null;
   }[] = [];
 
   for (const [scheduleId, scheduleAssignments] of bySchedule) {
@@ -185,10 +186,9 @@ function distributeToLocations(
     const trainingPeriodId = trainingPeriodIdByScheduleId.get(scheduleId) || 0;
 
     if (locations.length === 0) {
-      // 장소 없으면 null로
-      for (const a of scheduleAssignments) {
-        result.push({ ...a, trainingLocationId: null });
-      }
+      logger.warn(
+        `[Algorithm] Schedule:${scheduleId} has no training location; skipping ${scheduleAssignments.length} assignment(s)`,
+      );
       continue;
     }
 
@@ -407,10 +407,19 @@ class AssignmentAlgorithm {
 
         // 장소 정보 변환
         for (const loc of period.locations || []) {
+          if (!loc.id) continue;
+
           locations.push({
-            id: loc.id || 0,
+            id: loc.id,
             name: loc.originalPlace || '',
           });
+        }
+
+        if (locations.length === 0) {
+          logger.warn(
+            `[Algorithm] Unit:${unit.id} Period:${period.id} has no training location; skipping period`,
+          );
+          continue;
         }
 
         for (const schedule of period.schedules || []) {
@@ -422,6 +431,8 @@ class AssignmentAlgorithm {
           let totalRequired = 0;
 
           for (const loc of period.locations || []) {
+            if (!loc.id) continue;
+
             // 스케줄-장소별 인원 정보 찾기
             const schedLoc = schedule.scheduleLocations?.find(
               (sl) => sl.trainingLocationId === loc.id,
@@ -441,15 +452,10 @@ class AssignmentAlgorithm {
             totalRequired += locRequired;
 
             locInfos.push({
-              id: loc.id || 0,
+              id: loc.id,
               name: loc.originalPlace || '',
               requiredCount: locRequired,
             });
-          }
-
-          // 장소가 없으면 기본값 사용
-          if (locInfos.length === 0) {
-            totalRequired = 2;
           }
 
           scheduleLocationMap.set(schedule.id, locInfos);

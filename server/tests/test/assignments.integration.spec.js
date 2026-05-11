@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const { AssignmentEngine } = require('../../src/domains/assignment/engine');
+const { AssignmentEngine, assignmentAlgorithm } = require('../../src/domains/assignment/engine');
 
 function makeUnit(requiredCounts, dates = ['2026-04-01', '2026-04-02', '2026-04-03']) {
   return [
@@ -327,5 +327,67 @@ describe('AssignmentEngine', () => {
     const assignedScheduleIds = result.assignments.map((assignment) => assignment.unitScheduleId);
 
     assert.deepEqual(assignedScheduleIds, [103, 202, 203]);
+  });
+});
+
+describe('assignmentAlgorithm adapter', () => {
+  function makeRawInstructor() {
+    return {
+      userId: 1,
+      category: 'Main',
+      teamId: null,
+      team: null,
+      isTeamLeader: false,
+      generation: null,
+      restrictedArea: null,
+      location: null,
+      availabilities: [{ availableOn: new Date('2026-04-01T00:00:00.000Z') }],
+      priorityCredit: null,
+      User: { name: '주강사' },
+    };
+  }
+
+  function makeRawUnit(locations, scheduleLocations = []) {
+    return {
+      id: 1,
+      name: '테스트 부대',
+      region: '서울',
+      wideArea: '서울',
+      trainingPeriods: [
+        {
+          id: 11,
+          isStaffLocked: false,
+          excludedDates: [],
+          locations,
+          schedules: [
+            {
+              id: 101,
+              date: new Date('2026-04-01T00:00:00.000Z'),
+              assignments: [],
+              scheduleLocations,
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  it('does not create assignments for schedules without training locations', () => {
+    const result = assignmentAlgorithm.execute([makeRawUnit([])], [makeRawInstructor()], {
+      debugTopK: 3,
+    });
+
+    assert.deepEqual(result.assignments, []);
+    assert.equal(result.debug, undefined);
+  });
+
+  it('keeps automatic assignments tied to a valid training location', () => {
+    const result = assignmentAlgorithm.execute(
+      [makeRawUnit([{ id: 501, originalPlace: '1강의장', plannedCount: 36 }])],
+      [makeRawInstructor()],
+    );
+
+    assert.equal(result.assignments.length, 1);
+    assert.equal(result.assignments[0].trainingLocationId, 501);
   });
 });
