@@ -29,7 +29,7 @@ interface AlgorithmScheduleLocation {
 }
 
 interface AlgorithmTrainingLocation {
-  id: number | string;
+  id: number | string | null;
   originalPlace: string | null;
   actualCount: number | null;
   plannedCount: number | null;
