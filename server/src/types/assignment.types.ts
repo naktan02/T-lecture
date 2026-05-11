@@ -29,7 +29,7 @@ export type AssignmentWithUser = Prisma.InstructorUnitAssignmentGetPayload<{
 
 // DTO 변환용 간소화된 타입 (Prisma 반환과 호환)
 export interface TrainingLocationRaw {
-  id: number | string;
+  id: number | string | null;
   originalPlace: string | null;
   changedPlace?: string | null;
   note?: string | null;
