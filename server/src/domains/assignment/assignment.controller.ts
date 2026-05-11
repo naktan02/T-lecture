@@ -301,7 +301,9 @@ export const batchUpdate = asyncHandler(async (req: Request, res: Response) => {
 
   // trainingLocationId 방어: 양의 정수가 아닌 값(null, 'default', '' 등)은 null로 정제
   // DTO fallback({ id: null })이 클라이언트를 거쳐 들어오는 경우 등 비정상 값 차단
-  const sanitizedAdd = (add as Array<{ unitScheduleId: unknown; instructorId: unknown; trainingLocationId: unknown }>).map((a) => {
+  const sanitizedAdd = (
+    add as Array<{ unitScheduleId: unknown; instructorId: unknown; trainingLocationId: unknown }>
+  ).map((a) => {
     const locId = Number(a.trainingLocationId);
     return {
       unitScheduleId: Number(a.unitScheduleId),
