@@ -7,6 +7,7 @@ import AppError from '../../common/errors/AppError';
 import logger from '../../config/logger';
 import { measureOperation } from '../../common/utils/operationMonitor';
 import { runExclusiveOperation } from '../../common/utils/operationLock';
+import { sanitizeAssignmentCreates } from './assignment-input';
 
 const ASSIGNMENT_WRITE_LOCK_KEY = 'assignment:write';
 const ASSIGNMENT_WRITE_CONFLICT_MESSAGE =
@@ -230,11 +231,7 @@ export const previewAutoAssign = asyncHandler(async (req: Request, res: Response
 
 // [배정 일괄 저장]
 export const bulkSaveAssignments = asyncHandler(async (req: Request, res: Response) => {
-  const { assignments } = req.body;
-
-  if (!assignments || !Array.isArray(assignments)) {
-    throw new AppError('저장할 배정 목록(assignments)이 필요합니다.', 400, 'VALIDATION_ERROR');
-  }
+  const assignments = sanitizeAssignmentCreates(req.body.assignments);
 
   logger.info('[assignment.bulkSave]', {
     userId: req.user!.id,
@@ -299,27 +296,7 @@ export const batchUpdate = asyncHandler(async (req: Request, res: Response) => {
     stateChanges = [],
   } = changes;
 
-  // trainingLocationId 방어: 양의 정수가 아닌 값(null, 'default', '' 등)은 null로 정제
-  // DTO fallback({ id: null })이 클라이언트를 거쳐 들어오는 경우 등 비정상 값 차단
-  const sanitizedAdd = (
-    add as Array<{ unitScheduleId: unknown; instructorId: unknown; trainingLocationId: unknown }>
-  ).map((a) => {
-    const locId = Number(a.trainingLocationId);
-    return {
-      unitScheduleId: Number(a.unitScheduleId),
-      instructorId: Number(a.instructorId),
-      trainingLocationId: Number.isInteger(locId) && locId > 0 ? locId : null,
-    };
-  });
-
-  // 교육장소 미등록 부대에 강사 추가 시도 차단
-  if (sanitizedAdd.some((a) => a.trainingLocationId === null)) {
-    throw new AppError(
-      '교육장소가 없습니다. 교육장소를 추가해주세요.',
-      400,
-      'NO_TRAINING_LOCATION',
-    );
-  }
+  const sanitizedAdd = sanitizeAssignmentCreates(add);
 
   const result = await runAssignmentWriteOperation(() =>
     assignmentService.batchUpdateAssignments({
