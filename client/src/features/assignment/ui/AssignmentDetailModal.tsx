@@ -65,7 +65,7 @@ interface DateInfo {
 }
 
 interface TrainingLocation {
-  id: number;
+  id: number | null;
   name: string;
   actualCount: number;
   dates: DateInfo[];
@@ -98,6 +98,10 @@ const formatTime = (dateStr: unknown): string => {
     ? new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : dateStr;
 };
+const getLocationKey = (id: number | null, index: number): string =>
+  id !== null ? String(id) : `missing-location-${index}`;
+const getValidTrainingLocationId = (id: number | null): number | null =>
+  typeof id === 'number' && id > 0 ? id : null;
 
 // --- 1. 강사 필드 설정 ---
 const INSTRUCTOR_FIELD_CONFIG: FieldConfig[] = [
@@ -309,7 +313,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
   });
 
   // 역할 선택 드롭다운 표시 상태
-  const [showRoleSelector, setShowRoleSelector] = useState<number | null>(null);
+  const [showRoleSelector, setShowRoleSelector] = useState<string | null>(null);
 
   // 변경사항 있는지 확인
   const hasChanges = useMemo(() => {
@@ -334,7 +338,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
 
   // 로컬에서 추가된 강사 목록 가져오기 (trainingLocationId도 확인)
   const getLocallyAddedInstructors = useCallback(
-    (unitScheduleId: number, trainingLocationId: number) => {
+    (unitScheduleId: number, trainingLocationId: number | null) => {
       return changeSet.add
         .filter(
           (a) => a.unitScheduleId === unitScheduleId && a.trainingLocationId === trainingLocationId,
@@ -629,9 +633,9 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
 
         {/* 2. Body */}
         <div className="flex-1 overflow-y-auto bg-gray-50 p-6 space-y-6">
-          {group.trainingLocations.map((loc) => (
+          {group.trainingLocations.map((loc, locationIndex) => (
             <div
-              key={loc.id}
+              key={getLocationKey(loc.id, locationIndex)}
               className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
             >
               <div className="bg-indigo-50 px-4 py-3 border-b border-indigo-100">
@@ -646,7 +650,11 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                     <button
                       type="button"
                       onClick={() =>
-                        setShowRoleSelector(showRoleSelector === loc.id ? null : loc.id)
+                        setShowRoleSelector(
+                          showRoleSelector === getLocationKey(loc.id, locationIndex)
+                            ? null
+                            : getLocationKey(loc.id, locationIndex),
+                        )
                       }
                       className="text-sm text-gray-600 hover:bg-indigo-100 px-2 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer"
                     >
@@ -694,7 +702,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                     </button>
 
                     {/* 드롭다운 목록 - 이름만 표시, 클릭 시 총괄강사로 지정 */}
-                    {showRoleSelector === loc.id && (
+                    {showRoleSelector === getLocationKey(loc.id, locationIndex) && (
                       <div className="absolute z-50 top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[180px]">
                         <div className="text-xs text-gray-500 px-3 py-1 border-b border-gray-100">
                           총괄강사로 지정할 강사 선택
@@ -1025,6 +1033,19 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                           );
                         }
 
+                        const trainingLocationId = getValidTrainingLocationId(loc.id);
+
+                        if (trainingLocationId === null) {
+                          return (
+                            <div
+                              className="w-8 h-8 rounded-full border-2 border-dashed border-gray-200 text-gray-300 flex items-center justify-center bg-gray-50 cursor-not-allowed"
+                              title="교육장소를 먼저 추가해주세요"
+                            >
+                              +
+                            </div>
+                          );
+                        }
+
                         return (
                           <button
                             onClick={() =>
@@ -1032,7 +1053,7 @@ export const AssignmentGroupDetailModal: React.FC<AssignmentGroupDetailModalProp
                                 unitScheduleId: dateInfo.unitScheduleId,
                                 date: dateInfo.date,
                                 locationName: loc.name,
-                                trainingLocationId: loc.id,
+                                trainingLocationId,
                               })
                             }
                             className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 text-gray-400 flex items-center justify-center hover:border-indigo-400 hover:text-indigo-500 hover:bg-indigo-50 transition-all"

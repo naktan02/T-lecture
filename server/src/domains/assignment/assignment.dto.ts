@@ -30,6 +30,15 @@ const toKSTTimeString = (date: Date | string | null | undefined): string => {
   return kstDate.toISOString().split('T')[1].substring(0, 5);
 };
 
+const formatRegionLabel = (...parts: Array<string | null | undefined>): string => {
+  const label = parts
+    .map((part) => part?.trim())
+    .filter((part): part is string => Boolean(part))
+    .join(' ');
+
+  return label || '-';
+};
+
 /**
  * 필요 강사 수 계산 (우선순위: 수동설정 > 참여인원 > 계획인원)
  * 1. requiredCount(수동 설정 필요인원)가 있으면 그 값 사용
@@ -475,7 +484,7 @@ class AssignmentDTO {
             trainingPeriodId: unit.period.id,
             trainingPeriodName: unit.period.name,
             unitName: unit.name,
-            region: `${unit.wideArea} ${unit.region}`,
+            region: formatRegionLabel(unit.wideArea, unit.region),
             period: `${startDate} ~ ${endDate}`,
             totalRequired,
             totalAssigned,
