@@ -312,6 +312,15 @@ export const batchUpdate = asyncHandler(async (req: Request, res: Response) => {
     };
   });
 
+  // 교육장소 미등록 부대에 강사 추가 시도 차단
+  if (sanitizedAdd.some((a) => a.trainingLocationId === null)) {
+    throw new AppError(
+      '교육장소가 없습니다. 교육장소를 추가해주세요.',
+      400,
+      'NO_TRAINING_LOCATION',
+    );
+  }
+
   const result = await runAssignmentWriteOperation(() =>
     assignmentService.batchUpdateAssignments({
       add: sanitizedAdd,
