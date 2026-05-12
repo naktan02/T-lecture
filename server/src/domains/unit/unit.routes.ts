@@ -1,11 +1,15 @@
 // server/src/domains/unit/unit.routes.ts
 import express from 'express';
 import multer from 'multer';
+import os from 'os';
+import path from 'path';
 import * as unitController from './unit.controller';
 import { auth, requireRole } from '../../common/middlewares';
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  dest: path.join(os.tmpdir(), 't-lecture-unit-uploads'),
+});
 
 // 모든 부대 관련 API는 관리자(ADMIN) 권한 필요
 router.use(auth, requireRole('ADMIN'));

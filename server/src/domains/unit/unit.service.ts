@@ -1,7 +1,13 @@
 // server/src/domains/unit/unit.service.ts
 import unitRepository from './unit.repository';
 import { buildPaging, buildUnitWhere } from './unit.filters';
-import { toCreateUnitDto, groupExcelRowsByUnit, RawUnitData, normalizePhone } from './unit.mapper';
+import {
+  toCreateUnitDto,
+  excelRowToRawUnit,
+  groupExcelRowsByUnit,
+  RawUnitData,
+  normalizePhone,
+} from './unit.mapper';
 import kakaoService from '../../infra/kakao.service';
 import distanceService from '../distance/distance.service';
 import AppError from '../../common/errors/AppError';
@@ -20,16 +26,26 @@ import {
   TrainingLocationUpdateInput,
   UpdateTrainingPeriodInfoInput,
 } from '../../types/unit.types';
+import type { ExcelJsonRowStreamEvent } from '../../infra/excel.service';
 
 // 서비스 입력 타입들
 type RawUnitInput = RawUnitData;
 type ScheduleData = ScheduleInput;
 type ExistingUnitForUpsert = NonNullable<Awaited<ReturnType<typeof unitRepository.findUnitByName>>>;
 type ExcelUploadFailure = { unitName: string | null; reason: string };
+type ExcelUploadResult = {
+  created: number;
+  updated: number;
+  locationsAdded: number;
+  locationsSkipped: number;
+  failed: number;
+  failures: ExcelUploadFailure[];
+};
 type RegisterSingleUnitOptions = { geocodeBeforeSave?: boolean };
-type BulkUnitImportOptions = RegisterSingleUnitOptions;
+type BulkUnitImportOptions = RegisterSingleUnitOptions & { runBackgroundGeocoding?: boolean };
 
 const UNIT_EXCEL_IMPORT_CONCURRENCY = 3;
+const UNIT_EXCEL_IMPORT_CHUNK_SIZE = 100;
 
 /**
  * 날짜 문자열을 UTC 자정으로 변환 (시간 없는 날짜 전용)
@@ -79,6 +95,28 @@ const toStoredTime = (value: string | Date | null | undefined): Date | null => {
 
 const toFailureReason = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
+
+const createEmptyExcelUploadResult = (): ExcelUploadResult => ({
+  created: 0,
+  updated: 0,
+  locationsAdded: 0,
+  locationsSkipped: 0,
+  failed: 0,
+  failures: [],
+});
+
+const mergeExcelUploadResult = (
+  target: ExcelUploadResult,
+  source: ExcelUploadResult,
+): ExcelUploadResult => {
+  target.created += source.created;
+  target.updated += source.updated;
+  target.locationsAdded += source.locationsAdded;
+  target.locationsSkipped += source.locationsSkipped;
+  target.failed += source.failed;
+  target.failures.push(...source.failures);
+  return target;
+};
 
 interface UnitBasicInfoInput {
   name?: string;
@@ -460,6 +498,97 @@ class UnitService {
     return await this.upsertMultipleUnits(rawDataList, lectureYear, { geocodeBeforeSave: false });
   }
 
+  async processExcelDataStreamAndRegisterUnits(events: AsyncIterable<ExcelJsonRowStreamEvent>) {
+    let lectureYear: number | undefined;
+    let currentUnit: RawUnitInput | null = null;
+    let processedUnits = 0;
+    const chunk: RawUnitInput[] = [];
+    const result = createEmptyExcelUploadResult();
+
+    const flushChunk = async () => {
+      if (chunk.length === 0) return;
+
+      const units = this._mergeRawUnitChunk(chunk.splice(0, chunk.length));
+      const partial = await this.upsertMultipleUnits(units, lectureYear, {
+        geocodeBeforeSave: false,
+        runBackgroundGeocoding: false,
+      });
+      mergeExcelUploadResult(result, partial);
+    };
+
+    const enqueueUnit = async (unit: RawUnitInput | null) => {
+      const unitName = unit?.name?.trim();
+      if (!unitName || !unit) return;
+
+      chunk.push(unit);
+      processedUnits++;
+
+      if (chunk.length >= UNIT_EXCEL_IMPORT_CHUNK_SIZE) {
+        await flushChunk();
+      }
+    };
+
+    for await (const event of events) {
+      if (event.type === 'meta') {
+        lectureYear = event.meta.lectureYear;
+        continue;
+      }
+
+      const rowUnitName = (event.row.name as string | undefined)?.trim() || '';
+      const rowUnitData = excelRowToRawUnit(event.row);
+
+      if (rowUnitName) {
+        await enqueueUnit(currentUnit);
+        currentUnit = rowUnitData;
+        continue;
+      }
+
+      if (
+        currentUnit &&
+        rowUnitData.trainingLocations &&
+        rowUnitData.trainingLocations.length > 0
+      ) {
+        currentUnit.trainingLocations = currentUnit.trainingLocations || [];
+        currentUnit.trainingLocations.push(...rowUnitData.trainingLocations);
+      }
+    }
+
+    await enqueueUnit(currentUnit);
+    await flushChunk();
+
+    if (processedUnits === 0) {
+      throw new AppError('엑셀 파일에 유효한 데이터가 없습니다.', 400, 'EMPTY_EXCEL_FILE');
+    }
+
+    this.updateUnitCoordsInBackground().catch((err) => {
+      logger.error(`Background Geocoding Error: ${err}`);
+    });
+
+    return { result, lectureYear };
+  }
+
+  private _mergeRawUnitChunk(units: RawUnitInput[]): RawUnitInput[] {
+    const unitMap = new Map<string, RawUnitInput>();
+    const unitOrder: string[] = [];
+
+    for (const unit of units) {
+      const unitName = unit.name?.trim();
+      if (!unitName) continue;
+
+      const existing = unitMap.get(unitName);
+      if (existing) {
+        existing.trainingLocations = existing.trainingLocations || [];
+        existing.trainingLocations.push(...(unit.trainingLocations || []));
+        continue;
+      }
+
+      unitMap.set(unitName, unit);
+      unitOrder.push(unitName);
+    }
+
+    return unitOrder.map((unitName) => unitMap.get(unitName)!);
+  }
+
   /**
    * Upsert 로직으로 부대 등록/업데이트
    */
@@ -606,9 +735,11 @@ class UnitService {
     );
 
     // 5. 비동기 좌표 변환 (백그라운드)
-    this.updateUnitCoordsInBackground().catch((err) => {
-      logger.error(`Background Geocoding Error: ${err}`);
-    });
+    if (options.runBackgroundGeocoding !== false) {
+      this.updateUnitCoordsInBackground().catch((err) => {
+        logger.error(`Background Geocoding Error: ${err}`);
+      });
+    }
 
     return {
       created,

@@ -1,5 +1,6 @@
 // server/src/domains/unit/unit.controller.ts
 import { Request, Response } from 'express';
+import fs from 'fs/promises';
 import unitService from './unit.service';
 import excelService from '../../infra/excel.service';
 import asyncHandler from '../../common/middlewares/asyncHandler';
@@ -38,20 +39,26 @@ export const uploadExcelAndRegisterUnits = asyncHandler(async (req: Request, res
     throw new AppError('파일이 업로드되지 않았습니다.', 400, 'VALIDATION_ERROR');
   }
 
-  // 메타데이터 포함 파싱 (강의년도 추출)
-  const { result, lectureYear } = await runExclusiveOperation(
-    'unit:excel-upload',
-    async () => {
-      const { rows: rawRows, meta } = await excelService.bufferToJsonWithMeta(req.file!.buffer);
-      return {
-        result: await unitService.processExcelDataAndRegisterUnits(rawRows, meta.lectureYear),
-        lectureYear: meta.lectureYear,
-      };
-    },
-    {
-      conflictMessage: '부대 엑셀 업로드가 이미 실행 중입니다. 잠시 후 다시 시도해주세요.',
-    },
-  );
+  let operationResult: Awaited<
+    ReturnType<typeof unitService.processExcelDataStreamAndRegisterUnits>
+  >;
+
+  try {
+    operationResult = await runExclusiveOperation(
+      'unit:excel-upload',
+      async () =>
+        unitService.processExcelDataStreamAndRegisterUnits(
+          excelService.streamJsonRowsWithMeta(req.file!.path),
+        ),
+      {
+        conflictMessage: '부대 엑셀 업로드가 이미 실행 중입니다. 잠시 후 다시 시도해주세요.',
+      },
+    );
+  } finally {
+    await fs.unlink(req.file.path).catch(() => undefined);
+  }
+
+  const { result, lectureYear } = operationResult;
 
   // 메시지 구성
   const messages: string[] = [];

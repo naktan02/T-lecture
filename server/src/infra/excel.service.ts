@@ -43,6 +43,15 @@ const COLUMN_MAPPING: Record<string, string> = {
   특이사항: 'note',
 };
 
+type StreamedRowSnapshot = {
+  number: number;
+  cells: Map<number, unknown>;
+};
+
+export type ExcelJsonRowStreamEvent =
+  | { type: 'meta'; meta: { lectureYear?: number } }
+  | { type: 'row'; row: Record<string, unknown> };
+
 class ExcelService {
   /**
    * 엑셀 파일 버퍼를 JSON 배열로 변환 (스마트 파싱)
@@ -171,6 +180,110 @@ class ExcelService {
   }
 
   /**
+   * XLSX 파일을 스트리밍으로 읽어 JSON 행을 순차 반환한다.
+   * 업로드 경로에서 전체 workbook/row 배열을 메모리에 올리지 않기 위한 메서드다.
+   */
+  async *streamJsonRowsWithMeta(filePath: string): AsyncGenerator<ExcelJsonRowStreamEvent> {
+    const workbookReader = new ExcelJS.stream.xlsx.WorkbookReader(filePath, {
+      entries: 'ignore',
+      sharedStrings: 'cache',
+      hyperlinks: 'ignore',
+      styles: 'cache',
+      worksheets: 'emit',
+    });
+
+    let worksheetFound = false;
+    let firstWorksheetParsed = false;
+
+    for await (const worksheetReader of workbookReader) {
+      worksheetFound = true;
+
+      if (!firstWorksheetParsed) {
+        firstWorksheetParsed = true;
+        yield* this._streamWorksheetRowsWithMeta(worksheetReader);
+        break;
+      }
+    }
+
+    if (!worksheetFound) {
+      throw new AppError('엑셀 파일에 시트가 없습니다.', 400, 'NO_WORKSHEET');
+    }
+  }
+
+  private async *_streamWorksheetRowsWithMeta(
+    worksheetReader: ExcelJS.stream.xlsx.WorksheetReader,
+  ): AsyncGenerator<ExcelJsonRowStreamEvent> {
+    const pendingRows: StreamedRowSnapshot[] = [];
+    let bestHeaderRowNum = -1;
+    let bestMatchCount = 0;
+    let bestColumnMap = new Map<number, string>();
+    let headerResolved = false;
+
+    const resolveHeader = function* (
+      this: ExcelService,
+    ): Generator<ExcelJsonRowStreamEvent, void, unknown> {
+      if (headerResolved) return;
+      headerResolved = true;
+
+      if (bestHeaderRowNum === -1) {
+        throw new AppError(
+          '헤더 행을 찾을 수 없습니다. 알려진 컬럼명(부대명, 군구분 등)이 포함된 행이 필요합니다.',
+          400,
+          'HEADER_NOT_FOUND',
+        );
+      }
+
+      const lectureYear = this._extractLectureYearFromSnapshots(pendingRows, bestHeaderRowNum);
+      yield { type: 'meta', meta: { lectureYear } };
+
+      for (const row of pendingRows) {
+        if (row.number <= bestHeaderRowNum) continue;
+        const rowData = this._snapshotToRowData(row, bestColumnMap);
+        if (rowData) {
+          yield { type: 'row', row: rowData };
+        }
+      }
+
+      pendingRows.length = 0;
+    }.bind(this);
+
+    for await (const rowOrRows of worksheetReader) {
+      const rows = Array.isArray(rowOrRows) ? rowOrRows : [rowOrRows];
+
+      for (const row of rows) {
+        const snapshot = this._snapshotRow(row);
+
+        if (!headerResolved) {
+          pendingRows.push(snapshot);
+
+          if (snapshot.number <= 50) {
+            const { matchCount, columnMap } = this._matchHeaderSnapshot(snapshot);
+            if (matchCount > bestMatchCount && matchCount >= 2) {
+              bestMatchCount = matchCount;
+              bestHeaderRowNum = snapshot.number;
+              bestColumnMap = columnMap;
+            }
+          }
+
+          if (snapshot.number < 50) continue;
+
+          yield* resolveHeader();
+          continue;
+        }
+
+        const rowData = this._snapshotToRowData(snapshot, bestColumnMap);
+        if (rowData) {
+          yield { type: 'row', row: rowData };
+        }
+      }
+    }
+
+    if (!headerResolved) {
+      yield* resolveHeader();
+    }
+  }
+
+  /**
    * 헤더 행 찾기
    */
   private _findHeaderRow(worksheet: ExcelJS.Worksheet): {
@@ -210,12 +323,117 @@ class ExcelService {
     return { headerRowNum: bestRowNum, columnMap: bestColumnMap };
   }
 
+  private _snapshotRow(row: ExcelJS.Row): StreamedRowSnapshot {
+    const cells = new Map<number, unknown>();
+
+    row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+      cells.set(colNumber, cell.value);
+    });
+
+    return { number: row.number, cells };
+  }
+
+  private _matchHeaderSnapshot(row: StreamedRowSnapshot): {
+    matchCount: number;
+    columnMap: Map<number, string>;
+  } {
+    const knownColumns = new Set(Object.keys(COLUMN_MAPPING));
+    const columnMap = new Map<number, string>();
+    let matchCount = 0;
+
+    for (const [colNumber, value] of row.cells) {
+      const cellValue = this._cellValueToText(value).trim();
+
+      if (knownColumns.has(cellValue)) {
+        columnMap.set(colNumber, COLUMN_MAPPING[cellValue]);
+        matchCount++;
+      }
+    }
+
+    return { matchCount, columnMap };
+  }
+
+  private _extractLectureYearFromSnapshots(
+    rows: StreamedRowSnapshot[],
+    headerRowNum: number,
+  ): number | undefined {
+    let lectureYear: number | undefined;
+
+    for (const row of rows) {
+      if (row.number >= headerRowNum || lectureYear !== undefined) break;
+
+      let lectureYearLabelCol: number | null = null;
+      for (const [colNumber, value] of row.cells) {
+        const cellValue = this._cellValueToText(value).trim();
+        if (cellValue === '강의년도' || cellValue === '강의연도') {
+          lectureYearLabelCol = colNumber;
+        }
+      }
+
+      if (lectureYearLabelCol !== null) {
+        const yearValue = this._cellValueToText(row.cells.get(lectureYearLabelCol + 1)).trim();
+        const yearMatch = yearValue.match(/^(\d{4})년?$/);
+        if (yearMatch) {
+          lectureYear = parseInt(yearMatch[1], 10);
+        } else if (/^\d{4}$/.test(yearValue)) {
+          lectureYear = parseInt(yearValue, 10);
+        }
+        continue;
+      }
+
+      for (const value of row.cells.values()) {
+        if (lectureYear !== undefined) break;
+        const cellValue = this._cellValueToText(value).trim();
+
+        const match1 = cellValue.match(/강의년도\s*[:：]?\s*(\d{4})/);
+        if (match1) {
+          lectureYear = parseInt(match1[1], 10);
+          break;
+        }
+
+        const match2 = cellValue.match(/^(\d{4})년?$/);
+        if (match2) {
+          lectureYear = parseInt(match2[1], 10);
+          break;
+        }
+      }
+    }
+
+    return lectureYear;
+  }
+
+  private _snapshotToRowData(
+    row: StreamedRowSnapshot,
+    columnMap: Map<number, string>,
+  ): Record<string, unknown> | null {
+    const rowData: Record<string, unknown> = {};
+    let hasData = false;
+
+    for (const [colNumber, value] of row.cells) {
+      const fieldName = columnMap.get(colNumber);
+      if (!fieldName) continue;
+
+      const converted = this._convertRawCellValue(value, fieldName);
+      if (converted !== null && converted !== undefined && converted !== '') {
+        rowData[fieldName] = converted;
+        hasData = true;
+      }
+    }
+
+    const nameValue = String(rowData.name || '').trim();
+    const isInstructionRow = nameValue.startsWith('※') || nameValue.startsWith('↑');
+
+    return hasData && !isInstructionRow ? rowData : null;
+  }
+
   /**
    * 셀 값을 필드 타입에 맞게 변환
    */
   private _convertCellValue(cell: ExcelJS.Cell, fieldName: string): unknown {
-    const value = cell.value;
+    return this._convertRawCellValue(cell.value, fieldName);
+  }
 
+  private _convertRawCellValue(value: unknown, fieldName: string): unknown {
     if (value === null || value === undefined) {
       return null;
     }
@@ -258,7 +476,29 @@ class ExcelService {
       return this._parseExcludedDates(value);
     }
 
-    return String(value).trim();
+    return this._cellValueToText(value).trim();
+  }
+
+  private _cellValueToText(value: unknown): string {
+    if (value === null || value === undefined) return '';
+    if (value instanceof Date) return value.toISOString();
+    if (typeof value !== 'object') return String(value);
+
+    if ('result' in value) {
+      return this._cellValueToText((value as { result?: unknown }).result);
+    }
+
+    if ('text' in value && typeof (value as { text?: unknown }).text === 'string') {
+      return (value as { text: string }).text;
+    }
+
+    if (Array.isArray((value as { richText?: unknown }).richText)) {
+      return (value as { richText: Array<{ text?: unknown }> }).richText
+        .map((item) => this._cellValueToText(item.text))
+        .join('');
+    }
+
+    return String(value);
   }
 
   /**
