@@ -1,5 +1,5 @@
 // src/features/auth/ui/RegisterForm.tsx
-import { useState, ChangeEvent, FormEvent } from 'react';
+import { useState, useEffect, useRef, ChangeEvent, FormEvent } from 'react';
 import { Button } from '../../../shared/ui';
 import { sendVerificationCode, verifyEmailCode, registerUser } from '../authApi';
 import { useNavigate } from 'react-router-dom';
@@ -47,6 +47,16 @@ const defaultFormData: RegisterFormData = {
 export const RegisterForm: React.FC = () => {
   const [userType, setUserType] = useState<UserType>('INSTRUCTOR');
   const navigate = useNavigate();
+  const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (!redirectTimeoutRef.current) return;
+
+      clearTimeout(redirectTimeoutRef.current);
+      redirectTimeoutRef.current = null;
+    };
+  }, []);
 
   // sessionStorage에서 폼 데이터 복원
   const [form, setForm] = useState<RegisterFormData>(() => {
@@ -183,7 +193,11 @@ export const RegisterForm: React.FC = () => {
       const result = await registerUser(payload);
 
       setInfo(result.message || '가입 신청이 완료되었습니다.');
-      setTimeout(() => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
+      redirectTimeoutRef.current = setTimeout(() => {
+        redirectTimeoutRef.current = null;
         navigate('/login');
       }, 1200);
     } catch (e) {

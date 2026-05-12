@@ -7,6 +7,18 @@ import { isHoliday as checkHoliday, getHolidayNames } from '@hyunbinseo/holidays
 // 월별 공휴일 캐시 (year-month -> holidays map)
 // 동적으로 모든 연도를 캐싱 - 연도 explicit import 불필요
 const holidayCache = new Map<string, string[]>();
+const MAX_HOLIDAY_CACHE_ENTRIES = 20;
+
+function rememberYearHolidays(cacheKey: string, holidays: string[]): void {
+  if (!holidayCache.has(cacheKey) && holidayCache.size >= MAX_HOLIDAY_CACHE_ENTRIES) {
+    const oldestKey = holidayCache.keys().next().value;
+    if (oldestKey) {
+      holidayCache.delete(oldestKey);
+    }
+  }
+
+  holidayCache.set(cacheKey, holidays);
+}
 
 /**
  * 특정 날짜가 한국 공휴일인지 확인
@@ -43,7 +55,7 @@ export function getHolidaysForYear(year: number): string[] {
     }
   }
 
-  holidayCache.set(cacheKey, holidays);
+  rememberYearHolidays(cacheKey, holidays);
   return holidays;
 }
 

@@ -22,39 +22,6 @@ function parsePositiveInteger(value: string | undefined, fallback: number): numb
 
 const dbPoolMax = parsePositiveInteger(process.env.DB_POOL_MAX, DEFAULT_DB_POOL_MAX);
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  max: dbPoolMax, // Aiven Free(20 connections)에서는 Render 1 instance 기준 8~9 권장
-  min: 0,
-  idleTimeoutMillis: 60000,
-  connectionTimeoutMillis: 30000,
-  ssl: process.env.DATABASE_URL?.includes('localhost')
-    ? false
-    : {
-        rejectUnauthorized: true,
-        // 파일 경로로부터 인증서 내용을 읽어옵니다.
-        ca: process.env.AIVEN_CA_CERT
-          ? fs.readFileSync(path.resolve(process.cwd(), process.env.AIVEN_CA_CERT)).toString()
-          : undefined,
-      },
-});
-
-// Pool 에러 핸들링 (연결 실패 시 로깅)
-pool.on('error', (err) => {
-  logger.error('[DB Pool] Unexpected error on idle client', {
-    message: err.message,
-  });
-});
-
-// Prisma 7 PrismaPg 어댑터
-const adapter = new PrismaPg(pool);
-
-// 기본 Prisma Client (extension 적용 전)
-const basePrisma = new PrismaClient({
-  adapter,
-  log: ['error', 'warn'],
-});
-
 // ============================================
 // 일시적 에러 판별 (재시도 대상)
 // ============================================
@@ -79,71 +46,113 @@ function isTransientError(error: unknown): boolean {
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [500, 1000, 2000]; // 500ms, 1s, 2s
 
-const prismaWithRetry = basePrisma.$extends({
-  name: 'robustRetry',
-  query: {
-    $allOperations: async ({ operation, args, query }) => {
-      // Write 작업은 재시도 안 함 (중복 방지)
-      const WRITE_OPS = [
-        'create',
-        'createMany',
-        'update',
-        'updateMany',
-        'delete',
-        'deleteMany',
-        'upsert',
-      ];
-      const isWriteOp = WRITE_OPS.includes(operation);
+function createPool(): Pool {
+  const nextPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: dbPoolMax, // Aiven Free(20 connections)에서는 Render 1 instance 기준 8~9 권장
+    min: 0,
+    idleTimeoutMillis: 60000,
+    connectionTimeoutMillis: 30000,
+    ssl: process.env.DATABASE_URL?.includes('localhost')
+      ? false
+      : {
+          rejectUnauthorized: true,
+          // 파일 경로로부터 인증서 내용을 읽어옵니다.
+          ca: process.env.AIVEN_CA_CERT
+            ? fs.readFileSync(path.resolve(process.cwd(), process.env.AIVEN_CA_CERT)).toString()
+            : undefined,
+        },
+  });
 
-      let lastError: unknown;
-      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-        try {
-          return await query(args);
-        } catch (error) {
-          lastError = error;
+  nextPool.on('error', (err) => {
+    logger.error('[DB Pool] Unexpected error on idle client', {
+      message: err.message,
+    });
+  });
 
-          // Write 작업이거나 일시적 에러가 아니면 즉시 throw
-          if (isWriteOp || !isTransientError(error)) {
-            throw error;
-          }
+  return nextPool;
+}
 
-          // 마지막 시도였으면 throw
-          if (attempt >= MAX_RETRIES) {
-            logger.error('[DB Retry] Operation failed after retries', {
+function createPrismaBundle(clientPool: Pool) {
+  const adapter = new PrismaPg(clientPool);
+  const base = new PrismaClient({
+    adapter,
+    log: ['error', 'warn'],
+  });
+
+  const extended = base.$extends({
+    name: 'robustRetry',
+    query: {
+      $allOperations: async ({ operation, args, query }) => {
+        // Write 작업은 재시도 안 함 (중복 방지)
+        const WRITE_OPS = [
+          'create',
+          'createMany',
+          'update',
+          'updateMany',
+          'delete',
+          'deleteMany',
+          'upsert',
+        ];
+        const isWriteOp = WRITE_OPS.includes(operation);
+
+        let lastError: unknown;
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+          try {
+            return await query(args);
+          } catch (error) {
+            lastError = error;
+
+            // Write 작업이거나 일시적 에러가 아니면 즉시 throw
+            if (isWriteOp || !isTransientError(error)) {
+              throw error;
+            }
+
+            // 마지막 시도였으면 throw
+            if (attempt >= MAX_RETRIES) {
+              logger.error('[DB Retry] Operation failed after retries', {
+                operation,
+                maxRetries: MAX_RETRIES,
+              });
+              throw error;
+            }
+
+            // 지수 백오프로 재시도
+            const delay = RETRY_DELAYS[attempt] || 2000;
+            logger.warn('[DB Retry] Retrying transient database operation', {
               operation,
+              attempt: attempt + 1,
               maxRetries: MAX_RETRIES,
+              delayMs: delay,
             });
-            throw error;
+            await new Promise((r) => setTimeout(r, delay));
           }
-
-          // 지수 백오프로 재시도
-          const delay = RETRY_DELAYS[attempt] || 2000;
-          logger.warn('[DB Retry] Retrying transient database operation', {
-            operation,
-            attempt: attempt + 1,
-            maxRetries: MAX_RETRIES,
-            delayMs: delay,
-          });
-          await new Promise((r) => setTimeout(r, delay));
         }
-      }
 
-      throw lastError;
+        throw lastError;
+      },
     },
-  },
-});
+  });
+
+  return { base, extended };
+}
+
+type PrismaBundle = ReturnType<typeof createPrismaBundle>;
 
 // 전역 선언 (개발 환경 커넥션 누수 방지)
 const globalForPrisma = global as unknown as {
-  prisma: typeof prismaWithRetry;
-  pool: Pool;
+  prismaBundle?: PrismaBundle;
+  pool?: Pool;
 };
 
-export const prisma = globalForPrisma.prisma || prismaWithRetry;
+const pool = globalForPrisma.pool || createPool();
+const prismaBundle = globalForPrisma.prismaBundle || createPrismaBundle(pool);
+const basePrisma = prismaBundle.base;
+export const prisma = prismaBundle.extended;
 export { pool };
 
 if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma;
+  globalForPrisma.prismaBundle = prismaBundle;
   globalForPrisma.pool = pool;
 }
 

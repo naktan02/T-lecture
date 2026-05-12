@@ -1,5 +1,5 @@
 // client/src/features/settings/ui/ReportSection.tsx
-import { useState, useEffect, ReactElement } from 'react';
+import { useState, useEffect, useRef, ReactElement } from 'react';
 import { Button } from '../../../shared/ui';
 import { showSuccess, showError } from '../../../shared/utils';
 import { apiClient, apiClientJson } from '../../../shared/apiClient';
@@ -15,23 +15,54 @@ export const ReportSection = (): ReactElement => {
   const [isDownloadingWeekly, setIsDownloadingWeekly] = useState(false);
   const [isDownloadingMonthly, setIsDownloadingMonthly] = useState(false);
   const [cooldown, setCooldown] = useState(false); // 쿨다운 상태 추가
+  const cooldownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearCooldownTimeout = () => {
+    if (!cooldownTimeoutRef.current) return;
+
+    clearTimeout(cooldownTimeoutRef.current);
+    cooldownTimeoutRef.current = null;
+  };
+
+  const scheduleCooldown = () => {
+    clearCooldownTimeout();
+    setCooldown(true);
+    cooldownTimeoutRef.current = setTimeout(() => {
+      setCooldown(false);
+      cooldownTimeoutRef.current = null;
+    }, 3000);
+  };
 
   // 사용 가능한 연도 목록 조회
   useEffect(() => {
+    let active = true;
+
     const fetchYears = async () => {
       try {
         const years = await apiClientJson<number[]>('/api/v1/reports/years');
+        if (!active) return;
+
         setAvailableYears(years);
         // 현재 연도가 목록에 있으면 선택, 없으면 첫 번째 연도 선택
         if (years.length > 0 && !years.includes(currentYear)) {
           setYear(years[0]);
         }
       } catch {
+        if (!active) return;
+
         // 조회 실패 시 현재 ±1년 사용
         setAvailableYears([currentYear - 1, currentYear, currentYear + 1]);
       }
     };
     fetchYears();
+
+    return () => {
+      active = false;
+      if (!cooldownTimeoutRef.current) return;
+
+      clearTimeout(cooldownTimeoutRef.current);
+      cooldownTimeoutRef.current = null;
+    };
   }, [currentYear]);
 
   const handleDownloadWeekly = async () => {
@@ -73,8 +104,7 @@ export const ReportSection = (): ReactElement => {
         error instanceof Error ? error.message : '주간 보고서 다운로드에 실패했습니다.';
       showError(message);
       // 에러 시 3초 쿨다운
-      setCooldown(true);
-      setTimeout(() => setCooldown(false), 3000);
+      scheduleCooldown();
     } finally {
       setIsDownloadingWeekly(false);
     }
@@ -116,8 +146,7 @@ export const ReportSection = (): ReactElement => {
         error instanceof Error ? error.message : '월간 보고서 다운로드에 실패했습니다.';
       showError(message);
       // 에러 시 3초 쿨다운
-      setCooldown(true);
-      setTimeout(() => setCooldown(false), 3000);
+      scheduleCooldown();
     } finally {
       setIsDownloadingMonthly(false);
     }

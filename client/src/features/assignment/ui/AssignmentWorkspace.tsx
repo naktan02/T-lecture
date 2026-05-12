@@ -244,6 +244,15 @@ export const AssignmentWorkspace: React.FC<AssignmentWorkspaceProps> = ({ onRefr
 
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    return () => {
+      if (!closeTimeoutRef.current) return;
+
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    };
+  }, []);
+
   const handleDateChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
     if (!value) return;

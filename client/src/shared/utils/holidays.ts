@@ -7,6 +7,18 @@ import { isHoliday as isHolidayLib, getHolidayNames } from '@hyunbinseo/holidays
 // 월별 공휴일 캐시 (year-month -> holidays map)
 // 동적으로 모든 연도를 캐싱 - 연도 explicit import 불필요
 const holidayCache = new Map<string, Map<string, string>>();
+const MAX_HOLIDAY_CACHE_ENTRIES = 72;
+
+const rememberMonthHolidays = (cacheKey: string, holidays: Map<string, string>): void => {
+  if (!holidayCache.has(cacheKey) && holidayCache.size >= MAX_HOLIDAY_CACHE_ENTRIES) {
+    const oldestKey = holidayCache.keys().next().value;
+    if (oldestKey) {
+      holidayCache.delete(oldestKey);
+    }
+  }
+
+  holidayCache.set(cacheKey, holidays);
+};
 
 /**
  * Date를 YYYY-MM-DD 형식으로 변환
@@ -41,7 +53,7 @@ export const getHolidaysForMonth = (year: number, month: number): Map<string, st
     }
   }
 
-  holidayCache.set(cacheKey, monthHolidays);
+  rememberMonthHolidays(cacheKey, monthHolidays);
   return monthHolidays;
 };
 

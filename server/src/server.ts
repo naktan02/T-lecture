@@ -19,7 +19,7 @@ import {
   startNoticeAttachmentCleanup,
   stopNoticeAttachmentCleanup,
 } from './domains/notice/notice-attachment-cleanup.service';
-import prisma, { startDatabaseHeartbeat, stopDatabaseHeartbeat } from './libs/prisma';
+import prisma, { closePool, startDatabaseHeartbeat } from './libs/prisma';
 
 const app = express();
 
@@ -116,6 +116,32 @@ function logMemoryUsage(label: string): void {
   );
 }
 
+let memoryCheckInterval: ReturnType<typeof setInterval> | null = null;
+
+function startMemoryMonitor(): void {
+  if (memoryCheckInterval) return;
+
+  // 5분마다 메모리 사용량 체크 (무료 티어: 512MB 제한)
+  memoryCheckInterval = setInterval(
+    () => {
+      const used = process.memoryUsage();
+      const heapUsedMB = used.heapUsed / 1024 / 1024;
+      if (heapUsedMB > 400) {
+        logger.warn(`[Memory Warning] Heap usage high: ${heapUsedMB.toFixed(2)}MB (limit ~512MB)`);
+        Sentry.captureMessage(`High memory usage: ${heapUsedMB.toFixed(2)}MB`, 'warning');
+      }
+    },
+    5 * 60 * 1000,
+  );
+}
+
+function stopMemoryMonitor(): void {
+  if (!memoryCheckInterval) return;
+
+  clearInterval(memoryCheckInterval);
+  memoryCheckInterval = null;
+}
+
 // DB 연결 미리 생성 (첫 요청 지연 방지)
 server.on('listening', async () => {
   try {
@@ -128,21 +154,7 @@ server.on('listening', async () => {
 
     // 시작 시 메모리 로깅
     logMemoryUsage('startup');
-
-    // 5분마다 메모리 사용량 체크 (무료 티어: 512MB 제한)
-    setInterval(
-      () => {
-        const used = process.memoryUsage();
-        const heapUsedMB = used.heapUsed / 1024 / 1024;
-        if (heapUsedMB > 400) {
-          logger.warn(
-            `[Memory Warning] Heap usage high: ${heapUsedMB.toFixed(2)}MB (limit ~512MB)`,
-          );
-          Sentry.captureMessage(`High memory usage: ${heapUsedMB.toFixed(2)}MB`, 'warning');
-        }
-      },
-      5 * 60 * 1000,
-    ); // 5분
+    startMemoryMonitor();
   } catch (error) {
     logger.error('Failed to connect to database:', error);
   }
@@ -189,9 +201,9 @@ process.on('SIGTERM', () => {
 
   server.close(async () => {
     logger.info('HTTP server closed');
+    stopMemoryMonitor();
     stopNoticeAttachmentCleanup();
-    stopDatabaseHeartbeat();
-    await prisma.$disconnect();
+    await closePool();
     logger.info('Database connection closed');
     await Sentry.close(2000);
     process.exit(0);

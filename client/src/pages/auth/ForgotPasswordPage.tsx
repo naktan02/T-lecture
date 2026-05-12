@@ -1,5 +1,5 @@
 // src/pages/auth/ForgotPasswordPage.tsx
-import { useState, ChangeEvent, FormEvent } from 'react';
+import { useState, useEffect, useRef, ChangeEvent, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { InputField, Button } from '../../shared/ui';
 import { showSuccess, showError } from '../../shared/utils';
@@ -22,6 +22,23 @@ export default function ForgotPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const clearCountdown = () => {
+    if (!countdownIntervalRef.current) return;
+
+    clearInterval(countdownIntervalRef.current);
+    countdownIntervalRef.current = null;
+  };
+
+  useEffect(() => {
+    return () => {
+      if (!countdownIntervalRef.current) return;
+
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    };
+  }, []);
 
   // 인증 코드 발송
   const handleSendCode = async (e: FormEvent) => {
@@ -60,10 +77,12 @@ export default function ForgotPasswordPage() {
 
   // 카운트다운 시작
   const startCountdown = () => {
-    const interval = setInterval(() => {
+    clearCountdown();
+
+    countdownIntervalRef.current = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
-          clearInterval(interval);
+          clearCountdown();
           return 0;
         }
         return prev - 1;
